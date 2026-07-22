@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "id": "yaw-redirection",
+  "name": "Reverse yaw direction and stop",
+  "durationSeconds": 6.5,
+  "controlHz": 50,
+  "healthyHeight": [
+    0.19,
+    0.7
+  ],
+  "terminateOnFall": true,
+  "motionCommandSchedule": [
+    {
+      "atSeconds": 0,
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0,
+          0
+        ],
+        "yawRateRadPerSec": 0.5
+      }
+    },
+    {
+      "atSeconds": 2.5,
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0,
+          0
+        ],
+        "yawRateRadPerSec": -0.5
+      }
+    },
+    {
+      "atSeconds": 4.5,
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      }
+    }
+  ]
+}

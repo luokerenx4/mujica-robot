@@ -229,14 +229,24 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift) gateReasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate`);
     if (candidateCase && candidateCase.metrics.planarVelocityTrackingError > objective.gates.maximumPlanarVelocityTrackingError) gateReasons.push(`${candidateCase.case.id}: planar velocity tracking error ${candidateCase.metrics.planarVelocityTrackingError.toFixed(3)} exceeds gate`);
     if (candidateCase && candidateCase.metrics.yawRateTrackingError > objective.gates.maximumYawRateTrackingError) gateReasons.push(`${candidateCase.case.id}: yaw rate tracking error ${candidateCase.metrics.yawRateTrackingError.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumTransitionTerminalPlanarTrackingError > objective.gates.maximumTransitionTerminalPlanarTrackingError) gateReasons.push(`${candidateCase.case.id}: transition terminal planar tracking error ${candidateCase.metrics.maximumTransitionTerminalPlanarTrackingError.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumTransitionTerminalYawRateTrackingError > objective.gates.maximumTransitionTerminalYawRateTrackingError) gateReasons.push(`${candidateCase.case.id}: transition terminal yaw tracking error ${candidateCase.metrics.maximumTransitionTerminalYawRateTrackingError.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumPlanarSettlingTimeSeconds > objective.gates.maximumPlanarSettlingTimeSeconds) gateReasons.push(`${candidateCase.case.id}: planar settling time ${candidateCase.metrics.maximumPlanarSettlingTimeSeconds.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumPlanarBrakingSettlingTimeSeconds > objective.gates.maximumPlanarBrakingSettlingTimeSeconds) gateReasons.push(`${candidateCase.case.id}: planar braking settling time ${candidateCase.metrics.maximumPlanarBrakingSettlingTimeSeconds.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumYawRateSettlingTimeSeconds > objective.gates.maximumYawRateSettlingTimeSeconds) gateReasons.push(`${candidateCase.case.id}: yaw settling time ${candidateCase.metrics.maximumYawRateSettlingTimeSeconds.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumPlanarOvershootMps > objective.gates.maximumPlanarOvershootMps) gateReasons.push(`${candidateCase.case.id}: planar overshoot ${candidateCase.metrics.maximumPlanarOvershootMps.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.maximumYawRateOvershootRadPerSec > objective.gates.maximumYawRateOvershootRadPerSec) gateReasons.push(`${candidateCase.case.id}: yaw-rate overshoot ${candidateCase.metrics.maximumYawRateOvershootRadPerSec.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.unsettledPlanarTransitionCount > objective.gates.maximumUnsettledPlanarTransitions) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.unsettledPlanarTransitionCount} planar transitions did not settle`);
+    if (candidateCase && candidateCase.metrics.unsettledYawRateTransitionCount > objective.gates.maximumUnsettledYawRateTransitions) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.unsettledYawRateTransitionCount} yaw transitions did not settle`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) gateReasons.push(`${candidateCase.case.id}: score regression exceeds gate`);
   }
   const allowedChangeHashes: Record<string, string> = {};
   for (const path of candidate.allowedChanges) allowedChangeHashes[path] = sha256(await readFile(confined(project.rootDir, path)));
-  const verdict = gateReasons.length === 0 && delta > 0 ? "KEEP" : "REVERT"; const candidateHash = hashJson({ candidate, allowedChangeHashes });
+  const baselineViolationCount = baseline.cases.reduce((count, baselineCase) => count + diagnosticGates(objective, baselineCase, baselineCase).filter((gate) => gate.enforced && !gate.passed).length, 0);
+  const selection = candidateSelection(gateReasons, delta, baselineViolationCount); const { verdict } = selection; const candidateHash = hashJson({ candidate, allowedChangeHashes });
   const proposedRevisionHash = hashJson({ parent: candidate.baseRevision, candidateHash, lockHash: lock.lockHash, proposedHash: proposed.assemblyHash, evaluation: proposed.cases.map((item) => item.resultHash) });
   const proposedRevisionId = `${project.manifest.id}-r-${proposedRevisionHash.slice(0, 12)}`;
-  const result = { candidate, candidateHash, allowedChangeHashes, verifiedChanges, benchmarkLockHash: lock.lockHash, comparison, baseline, proposed, scoreDelta: delta, gateReasons, verdict, proposedRevisionHash, proposedRevisionId };
+  const result = { candidate, candidateHash, allowedChangeHashes, verifiedChanges, benchmarkLockHash: lock.lockHash, comparison, baseline, proposed, scoreDelta: delta, baselineViolationCount, gateReasons, ...selection, proposedRevisionHash, proposedRevisionId };
   if (!apply) return success("candidate", result, project);
   if (verdict !== "KEEP") throw new Error(`Candidate verdict is ${verdict}; only KEEP may create a revision`);
   const revisions = await listManifestDirectories(join(project.rootDir, "revisions"));
@@ -270,20 +280,41 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
 
 type EvaluationResult = Awaited<ReturnType<typeof evaluatePair>>;
 
+export function candidateSelection(gateReasons: string[], scoreDelta: number, baselineViolationCount: number) {
+  const feasible = gateReasons.length === 0;
+  const verdict = feasible && (baselineViolationCount > 0 || scoreDelta > 0) ? "KEEP" as const : "REVERT" as const;
+  const selectionReason = verdict === "KEEP" ? (baselineViolationCount > 0 ? "fewer-gate-violations" as const : "score-improvement-within-feasibility-tier" as const) : (gateReasons.length ? "candidate-gate-violation" as const : "no-feasibility-or-score-improvement" as const);
+  return { verdict, selectionReason };
+}
+
 type GateAssessment = {
-  id: "survival" | "forward-progress" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "score-regression";
+  id: "survival" | "forward-progress" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
+
+export function upperViolationSeverity(value: number, threshold: number, normalization = Math.max(Math.abs(threshold), 1e-9)) {
+  const margin = threshold - value;
+  return margin < 0 ? -margin / Math.max(normalization, 1e-9) : 0;
+}
 
 function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, candidate: EvaluationResult["cases"][number], baseline: EvaluationResult["cases"][number] | undefined): GateAssessment[] {
   const enforced = candidate.case.gating !== false; const gates: GateAssessment[] = [];
   const lower = (id: GateAssessment["id"], metric: string, value: number, threshold: number): GateAssessment => { const margin = value - threshold; return { id, metric, comparator: ">=", threshold, value, margin, passed: margin >= 0, enforced, severity: margin < 0 ? -margin / Math.max(Math.abs(threshold), 1e-9) : 0 }; };
-  const upper = (id: GateAssessment["id"], metric: string, value: number, threshold: number): GateAssessment => { const margin = threshold - value; return { id, metric, comparator: "<=", threshold, value, margin, passed: margin >= 0, enforced, severity: margin < 0 ? -margin / Math.max(Math.abs(threshold), 1e-9) : 0 }; };
+  const upper = (id: GateAssessment["id"], metric: string, value: number, threshold: number, normalization?: number): GateAssessment => { const margin = threshold - value; return { id, metric, comparator: "<=", threshold, value, margin, passed: margin >= 0, enforced, severity: upperViolationSeverity(value, threshold, normalization) }; };
   gates.push(lower("survival", "survivalRate", candidate.metrics.survivalRate, objective.gates.minimumSurvivalRate));
   if (candidate.metrics.targetDistance > 0) gates.push(lower("forward-progress", "forwardProgress", candidate.metrics.forwardProgress, objective.gates.minimumForwardProgress));
   gates.push(upper("lateral-drift", "lateralDrift", candidate.metrics.lateralDrift, objective.gates.maximumLateralDrift));
   gates.push(upper("planar-velocity-tracking", "planarVelocityTrackingError", candidate.metrics.planarVelocityTrackingError, objective.gates.maximumPlanarVelocityTrackingError));
   gates.push(upper("yaw-rate-tracking", "yawRateTrackingError", candidate.metrics.yawRateTrackingError, objective.gates.maximumYawRateTrackingError));
+  gates.push(upper("transition-terminal-planar", "maximumTransitionTerminalPlanarTrackingError", candidate.metrics.maximumTransitionTerminalPlanarTrackingError ?? 0, objective.gates.maximumTransitionTerminalPlanarTrackingError));
+  gates.push(upper("transition-terminal-yaw", "maximumTransitionTerminalYawRateTrackingError", candidate.metrics.maximumTransitionTerminalYawRateTrackingError ?? 0, objective.gates.maximumTransitionTerminalYawRateTrackingError));
+  gates.push(upper("planar-settling-time", "maximumPlanarSettlingTimeSeconds", candidate.metrics.maximumPlanarSettlingTimeSeconds ?? 0, objective.gates.maximumPlanarSettlingTimeSeconds));
+  gates.push(upper("planar-braking-settling-time", "maximumPlanarBrakingSettlingTimeSeconds", candidate.metrics.maximumPlanarBrakingSettlingTimeSeconds ?? 0, objective.gates.maximumPlanarBrakingSettlingTimeSeconds));
+  gates.push(upper("yaw-settling-time", "maximumYawRateSettlingTimeSeconds", candidate.metrics.maximumYawRateSettlingTimeSeconds ?? 0, objective.gates.maximumYawRateSettlingTimeSeconds));
+  gates.push(upper("planar-overshoot", "maximumPlanarOvershootMps", candidate.metrics.maximumPlanarOvershootMps ?? 0, objective.gates.maximumPlanarOvershootMps));
+  gates.push(upper("yaw-overshoot", "maximumYawRateOvershootRadPerSec", candidate.metrics.maximumYawRateOvershootRadPerSec ?? 0, objective.gates.maximumYawRateOvershootRadPerSec));
+  gates.push(upper("unsettled-planar", "unsettledPlanarTransitionCount", candidate.metrics.unsettledPlanarTransitionCount ?? 0, objective.gates.maximumUnsettledPlanarTransitions, 1));
+  gates.push(upper("unsettled-yaw", "unsettledYawRateTransitionCount", candidate.metrics.unsettledYawRateTransitionCount ?? 0, objective.gates.maximumUnsettledYawRateTransitions, 1));
   if (baseline) gates.push(lower("score-regression", "scoreDelta", candidate.score.total - baseline.score.total, -objective.gates.maximumRegression));
   return gates;
 }
@@ -295,6 +326,8 @@ function diagnosticHypotheses(violations: GateAssessment[]) {
   if (violations.some((gate) => gate.id === "lateral-drift")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.", rationale: "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response." });
   if (violations.some((gate) => gate.id === "planar-velocity-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.", rationale: "The measured planar velocity error exceeded the locked command-tracking gate." });
   if (violations.some((gate) => gate.id === "yaw-rate-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test a bounded left-right or front-rear steering differential against measured body yaw rate.", rationale: "The measured yaw-rate error exceeded the locked command-tracking gate." });
+  if (violations.some((gate) => gate.id === "transition-terminal-planar" || gate.id === "planar-settling-time" || gate.id === "planar-braking-settling-time" || gate.id === "planar-overshoot" || gate.id === "unsettled-planar")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.", rationale: "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command." });
+  if (violations.some((gate) => gate.id === "transition-terminal-yaw" || gate.id === "yaw-settling-time" || gate.id === "yaw-overshoot" || gate.id === "unsettled-yaw")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect yaw response after the exact boundary and test bounded steering damping against current measured yaw rate.", rationale: "The measured yaw transient ended too far from target, settled too slowly, failed to remain settled, or overshot the new command." });
   if (violations.some((gate) => gate.id === "score-regression")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.", rationale: "The case regressed beyond the locked baseline allowance." });
   return hypotheses;
 }

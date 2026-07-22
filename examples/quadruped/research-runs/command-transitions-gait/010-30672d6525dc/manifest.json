@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "010-30672d6525dc",
+  "sequence": 10,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "06313f50eb63119216faa5d683ac4141ab97649a31e3369d8a1146d810f2816e",
+  "candidateControllerHash": "68dc72f93824756d2667ff609de1765a7af231db671187f9a34c4ea2deceaf83",
+  "proposal": {
+    "strategy": "coordinate-delayed-command-rate-scale-decrease",
+    "hypothesis": "Decrease delayedCommandRateScale by one bounded step.",
+    "expectedEffect": "Test whether delayedCommandRateScale=0.75 improves the complete locked quadruped score.",
+    "values": {
+      "/config/delayedCommandRateScale": 0.75
+    }
+  },
+  "strategy": "coordinate-delayed-command-rate-scale-decrease",
+  "score": 64.61883751561807,
+  "delta": 0,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 7000000005.48477,
+    "candidateViolationSeverity": 7000000005.48477,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

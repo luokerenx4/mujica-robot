@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "command-transitions-and-braking",
+  "name": "Promote safe command transitions and braking",
+  "kind": "development",
+  "benchmark": "command-transitions",
+  "baseRevision": "quadruped-r-6ef154e62373",
+  "baseline": { "assembly": "command-conditioned-history-3dof", "controller": "command-tracking-gait" },
+  "proposed": { "assembly": "command-conditioned-history-3dof", "controller": "transition-aware-gait" },
+  "changes": {
+    "components": { "added": [], "removed": [], "modified": [] },
+    "observations": { "added": [], "removed": [], "changed": [] },
+    "actions": { "added": [], "removed": [], "changed": [] },
+    "controller": {
+      "from": "command-tracking-gait",
+      "to": "transition-aware-gait",
+      "files": [
+        "controllers/transition-aware-gait/controller.json",
+        "controllers/transition-aware-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/transition-aware-gait/controller.json",
+    "controllers/transition-aware-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/command-transitions.benchmark.json",
+    "benchmarks/command-transitions.lock.json",
+    "objectives/command-transitions.objective.json",
+    "tasks/accelerate-stop.task.json",
+    "tasks/forward-reverse-stop.task.json",
+    "tasks/lateral-redirection.task.json",
+    "tasks/yaw-redirection.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/delayed-lateral-push.scenario.json"
+  ],
+  "hypothesis": "Command-boundary state, bounded delay-aware rate limiting, direction-specific yaw authority, and transition-specific phase/velocity feedback can make reversal, redirection, and braking settle without previewing future commands or changing the robot ABI.",
+  "expectedEffect": "Eliminate every locked transition gate violation, retain command-tracking and spatial-generalization gates, and preserve the severe delayed-push case as visible non-gating stress evidence."
+}

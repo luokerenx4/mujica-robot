@@ -18,6 +18,26 @@ class StepResult:
     info: dict[str, Any]
 
 
+def motion_command_vector(command: dict[str, Any]) -> np.ndarray:
+    return np.asarray([*command["linearVelocityMps"], command["yawRateRadPerSec"]], dtype=np.float64)
+
+
+def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]]:
+    if int(task["version"]) == 2:
+        return [{"atStep": 0, "atSeconds": 0.0, "command": motion_command_vector(task["motionCommand"])}]
+    if int(task["version"]) != 3:
+        raise RuntimeError(f"Unsupported Task version '{task['version']}'")
+    control_hz = float(task["controlHz"])
+    schedule: list[dict[str, Any]] = []
+    for segment in task["motionCommandSchedule"]:
+        raw_step = float(segment["atSeconds"]) * control_hz
+        step = round(raw_step)
+        if abs(raw_step - step) > 1e-9:
+            raise RuntimeError(f"Motion command boundary {segment['atSeconds']} does not align to the control grid")
+        schedule.append({"atStep": step, "atSeconds": float(segment["atSeconds"]), "command": motion_command_vector(segment["command"])})
+    return schedule
+
+
 class RobotEnvironment:
     def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
@@ -31,6 +51,8 @@ class RobotEnvironment:
         self.physics_steps = max(1, round(self.control_dt / self.model.opt.timestep))
         self.max_steps = round(float(task["durationSeconds"]) * float(task["controlHz"]))
         self.step_index = 0
+        self.motion_command_schedule = compile_motion_command_schedule(task)
+        self.motion_command_by_step = {int(segment["atStep"]): segment["command"] for segment in self.motion_command_schedule}
         self.previous_action = np.zeros(self.model.nu, dtype=np.float64)
         self.last_commanded_action = np.zeros(self.model.nu, dtype=np.float64)
         self.last_applied_action = np.zeros(self.model.nu, dtype=np.float64)
@@ -41,9 +63,7 @@ class RobotEnvironment:
         self._configure_scenario()
 
     def _configure_scenario(self) -> None:
-        floor = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
-        if floor >= 0:
-            self.model.geom_friction[floor, 0] = float(self.scenario["friction"])
+        self.model.geom_friction[:, 0] = float(self.scenario["friction"])
         torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "torso")
         if torso >= 0:
             self.model.body_mass[torso] += float(self.scenario["payloadKg"])
@@ -68,8 +88,17 @@ class RobotEnvironment:
         self.command_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(self.scenario["actuatorDelaySteps"]) + 1)], maxlen=int(self.scenario["actuatorDelaySteps"]) + 1)
-        self.events = [{"type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"]}]
+        initial_command = self.motion_command(0)
+        self.events = [{"type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"], "motionCommand": initial_command.tolist()}]
         return self.observation()
+
+    def motion_command(self, step_index: int | None = None) -> np.ndarray:
+        step = self.step_index if step_index is None else int(step_index)
+        active = self.motion_command_schedule[0]["command"]
+        for segment in self.motion_command_schedule[1:]:
+            if int(segment["atStep"]) > step: break
+            active = segment["command"]
+        return np.asarray(active, dtype=np.float64).copy()
 
     def observation(self) -> dict[str, np.ndarray]:
         result: dict[str, np.ndarray] = {}
@@ -86,8 +115,7 @@ class RobotEnvironment:
             elif source == "control:applied-history-4": value = np.concatenate(tuple(self.applied_history))
             elif source == "control:actuator-delay-steps": value = np.array([float(self.scenario["actuatorDelaySteps"])])
             elif source == "task:motion-command":
-                command = self.task["motionCommand"]
-                value = np.array([*command["linearVelocityMps"], command["yawRateRadPerSec"]], dtype=np.float64)
+                value = self.motion_command()
             elif source.startswith("sensor:"):
                 sensor_name = source.split(":", 1)[1]
                 sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, sensor_name)
@@ -114,6 +142,10 @@ class RobotEnvironment:
         return np.concatenate([observation[channel["name"]] for channel in self.compiled["observationContract"]["channels"]]).astype(np.float32)
 
     def step(self, action: np.ndarray) -> StepResult:
+        command_step = self.step_index
+        target = self.motion_command(command_step)
+        if command_step > 0 and command_step in self.motion_command_by_step:
+            self.events.append({"type": "motion-command.changed", "time": command_step * self.control_dt, "step": command_step, "motionCommand": target.tolist()})
         action = np.asarray(action, dtype=np.float64).reshape(-1)
         if action.size != self.model.nu: raise RuntimeError(f"Action expected {self.model.nu} values, got {action.size}")
         if not np.isfinite(action).all(): raise RuntimeError("Action contains non-finite values")
@@ -137,8 +169,6 @@ class RobotEnvironment:
         height = float(self.data.qpos[2])
         healthy_min, healthy_max = self.task["healthyHeight"]
         healthy = float(healthy_min) <= height <= float(healthy_max)
-        command = self.task["motionCommand"]
-        target = np.asarray([*command["linearVelocityMps"], command["yawRateRadPerSec"]], dtype=np.float64)
         measured_motion = np.asarray([self.data.qvel[0], self.data.qvel[1], self.data.qvel[5]], dtype=np.float64)
         planar_velocity_error = float(np.linalg.norm(measured_motion[:2] - target[:2]))
         yaw_rate_error = abs(float(measured_motion[2] - target[2]))
@@ -162,4 +192,4 @@ class RobotEnvironment:
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()
-        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})
+        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})

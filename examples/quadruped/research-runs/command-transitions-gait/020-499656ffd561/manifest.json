@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "020-499656ffd561",
+  "sequence": 20,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "06313f50eb63119216faa5d683ac4141ab97649a31e3369d8a1146d810f2816e",
+  "candidateControllerHash": "127ede408b42f877907df33b628ffb247e4855e872d053f0524eb30dfd4d258d",
+  "proposal": {
+    "strategy": "coordinate-lateral-abduction-amplitude-decrease",
+    "hypothesis": "Decrease lateralAbductionAmplitude by one bounded step.",
+    "expectedEffect": "Test whether lateralAbductionAmplitude=0.06 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralAbductionAmplitude": 0.06
+    }
+  },
+  "strategy": "coordinate-lateral-abduction-amplitude-decrease",
+  "score": 61.4837668868155,
+  "delta": -3.1350706288025663,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 16,
+    "previousViolationSeverity": 7000000005.48477,
+    "candidateViolationSeverity": 8000000007.867602,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

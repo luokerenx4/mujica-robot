@@ -9,8 +9,8 @@ import numpy as np
 import torch
 
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
-from mujica_runtime.environment import RobotEnvironment
-from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics
+from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
+from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
 
 
@@ -69,7 +69,7 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
 
     def test_locomotion_score_requires_net_forward_progress(self):
-        task = {"motionCommand": {"frame": "world", "linearVelocityMps": [0.2, 0.0], "yawRateRadPerSec": 0.0}, "durationSeconds": 3.0}
+        task = {"version": 2, "motionCommand": {"frame": "world", "linearVelocityMps": [0.2, 0.0], "yawRateRadPerSec": 0.0}, "durationSeconds": 3.0, "controlHz": 50}
         stationary = motion_metrics(np.zeros(3), np.array([0.03, 0.0, 0.0]), 0.1, task, 3.0)
         walking = motion_metrics(np.zeros(3), np.array([0.6, 0.02, 0.0]), 0.65, task, 3.0)
         self.assertAlmostEqual(stationary["forwardProgress"], 0.05)
@@ -81,6 +81,57 @@ class RuntimeContractTest(unittest.TestCase):
         stationary_score = score_metrics({**base, **stationary}, objective, compiled)["total"]
         walking_score = score_metrics({**base, **walking}, objective, compiled)["total"]
         self.assertGreater(walking_score - stationary_score, 30)
+
+    def test_scheduled_command_switches_on_the_exact_pre_action_boundary(self):
+        model, compiled = compiled_assembly("command-conditioned-history-3dof")
+        task = {"version": 3, "id": "boundary", "name": "Boundary", "durationSeconds": 0.06, "controlHz": 50, "healthyHeight": [0.19, 0.7], "terminateOnFall": True, "motionCommandSchedule": [
+            {"atSeconds": 0.0, "command": {"frame": "world", "linearVelocityMps": [0.25, 0.0], "yawRateRadPerSec": 0.0}},
+            {"atSeconds": 0.02, "command": {"frame": "world", "linearVelocityMps": [0.0, 0.0], "yawRateRadPerSec": 0.5}},
+        ]}
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 7)
+        observation = environment.reset(); np.testing.assert_allclose(observation["motion-command"], [0.25, 0.0, 0.0])
+        first = environment.step(np.zeros(environment.model.nu))
+        self.assertEqual(first.info["commandStep"], 0); np.testing.assert_allclose(first.info["motionCommand"], [0.25, 0.0, 0.0])
+        np.testing.assert_allclose(first.observation["motion-command"], [0.0, 0.0, 0.5])
+        second = environment.step(np.zeros(environment.model.nu))
+        self.assertEqual(second.info["commandStep"], 1); np.testing.assert_allclose(second.info["motionCommand"], [0.0, 0.0, 0.5])
+        self.assertEqual(environment.events[-1], {"type": "motion-command.changed", "time": 0.02, "step": 1, "motionCommand": [0.0, 0.0, 0.5]})
+
+    def test_transition_metrics_expose_settling_terminal_error_and_overshoot(self):
+        task = {"version": 3, "durationSeconds": 2.0, "controlHz": 10, "motionCommandSchedule": [
+            {"atSeconds": 0.0, "command": {"frame": "world", "linearVelocityMps": [0.5, 0.0], "yawRateRadPerSec": 0.0}},
+            {"atSeconds": 1.0, "command": {"frame": "world", "linearVelocityMps": [0.0, 0.0], "yawRateRadPerSec": 0.0}},
+        ]}
+        objective = {"transientMeasurement": {"planarToleranceMps": 0.12, "yawRateToleranceRadPerSec": 0.1, "holdSeconds": 0.2}}
+        rows = [{"step": step + 1, "commandStep": step, "measuredMotion": measured} for step, measured in [(10, [0.4, 0, 0]), (11, [0.11, 0, 0]), (12, [0.1, 0, 0]), (13, [-0.03, 0, 0])]]
+        metrics = transition_response_metrics(rows, task, objective); transition = metrics["transitions"][0]
+        self.assertEqual(compile_motion_command_schedule(task)[1]["atStep"], 10)
+        self.assertAlmostEqual(transition["planarSettlingTimeSeconds"], 0.3)
+        self.assertAlmostEqual(transition["terminalPlanarTrackingError"], 0.035)
+        self.assertAlmostEqual(transition["planarOvershootMps"], 0.03)
+        self.assertTrue(transition["planarSettled"])
+        self.assertTrue(transition["planarBraking"])
+        self.assertAlmostEqual(metrics["maximumPlanarBrakingSettlingTimeSeconds"], 0.3)
+
+    def test_scenario_friction_applies_to_every_contact_geometry(self):
+        model, compiled = compiled_assembly("baseline")
+        task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
+        scenario = {**json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text()), "friction": 0.37}
+        environment = RobotEnvironment(model, compiled, task, scenario, 7)
+        np.testing.assert_allclose(environment.model.geom_friction[:, 0], 0.37)
+
+    def test_transition_controller_is_exact_for_an_unchanged_forward_command(self):
+        baseline_root = PROJECT / "controllers" / "command-tracking-gait"; transition_root = PROJECT / "controllers" / "transition-aware-gait"
+        baseline = load_program_controller(baseline_root, json.loads((baseline_root / "controller.json").read_text())); baseline.reset(7)
+        transition = load_program_controller(transition_root, json.loads((transition_root / "controller.json").read_text())); transition.reset(7)
+        observation = {
+            "joint-position": np.linspace(-0.2, 0.2, 12), "joint-velocity": np.linspace(0.1, -0.1, 12),
+            "base-velocity": np.array([0.2, 0.01, 0, 0, 0, 0]), "base-orientation": np.array([1.0, 0, 0, 0]),
+            "imu-angular-velocity": np.zeros(3), "foot-contact-force": np.array([5, 10, 15, 20]),
+            "actuator-delay-steps": np.array([2.0]), "motion-command": np.array([0.25, 0, 0]),
+        }
+        for time_seconds in [0.0, 0.02, 0.04]: np.testing.assert_array_equal(transition.act(observation, time_seconds), baseline.act(observation, time_seconds))
 
     def test_motion_command_is_explicit_controller_input_and_tracks_yaw_not_height(self):
         model, compiled = compiled_assembly("command-conditioned-history-3dof")

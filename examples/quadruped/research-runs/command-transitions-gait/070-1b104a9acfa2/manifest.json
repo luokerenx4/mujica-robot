@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "070-1b104a9acfa2",
+  "sequence": 70,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0b6ad432436db0ac5b9425bd9fd11837d765192db5e23cd3f5d3744046988d15",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "b2f4ad87808ed4c81ddf513cf279b28c09f0b6e13d98a8f23e7e49cf3580df79",
+  "beforeControllerHash": "7b61a8f9582ab500829972ff51d04c6d4bc6039f92c3ef61468ceb8db133d4b1",
+  "candidateControllerHash": "a388eefb045aef9e13d9e0fe9f0d7dcb800537c7e44c5e9634a69d8976fd4054",
+  "proposal": {
+    "strategy": "coordinate-transition-yaw-damping-gain-decrease",
+    "hypothesis": "Decrease transitionYawDampingGain by one bounded step.",
+    "expectedEffect": "Test whether transitionYawDampingGain=0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionYawDampingGain": 0.1
+    }
+  },
+  "strategy": "coordinate-transition-yaw-damping-gain-decrease",
+  "score": 63.883897038025175,
+  "delta": -0.8401442849678844,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "lateral-redirection: unsettled-planar regressed from passing to failing",
+    "disturbed-lateral-redirection: survival regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "lateral-redirection: unsettled-planar regressed from passing to failing",
+      "disturbed-lateral-redirection: survival regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 11.444056888130586,
+    "candidateViolationSeverity": 17.921434709413983,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

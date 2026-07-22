@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadTraining, loadTrainingResearch } from "@mujica/core";
-import { researchDecision, researchGateReasons, validateResearchProposal, validateTrainingProposal } from "./commands";
+import { candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -61,7 +61,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
-    expect(envelope.data.definitions.research).toBe(5);
+    expect(envelope.data.definitions.research).toBe(6);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
@@ -119,7 +119,7 @@ describe("agent CLI contract", () => {
     expect(revisions.length).toBeGreaterThan(1);
     for (let index = 1; index < revisions.length; index++) expect(revisions[index].parent).toBe(revisions[index - 1].id);
     const spatial = revisions.find((item: any) => item.candidateId === "spatial-quadruped"); expect(spatial.aggregateScore).toBeCloseTo(62.616999752834296);
-    expect(revisions.at(-1)).toMatchObject({ id: "quadruped-r-45f394da4a24", candidateId: "command-conditioned-locomotion", controller: "command-tracking-gait" });
+    expect(revisions.find((item: any) => item.id === "quadruped-r-45f394da4a24")).toMatchObject({ candidateId: "command-conditioned-locomotion", controller: "command-tracking-gait" });
   });
 
   test("command-conditioned locomotion passes command and legacy spatial gates", () => {
@@ -136,11 +136,14 @@ describe("agent CLI contract", () => {
     expect(envelope.data.proof.oldModelHash).toBe(envelope.data.proof.newModelHash); expect(envelope.data.proof.executionHash).toHaveLength(64);
   });
 
-  test("the promoted spatial policy passes every locked gate", () => {
+  test("the promoted spatial policy exposes the corrected low-friction failure", () => {
     const result = invoke(["evaluate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-residual-gait", "--benchmark", "spatial-robustness", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.evaluation.aggregateScore).toBeCloseTo(63.143887669660515);
-    expect(envelope.data.evaluation.cases.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.forwardProgress >= 0.25 && item.metrics.lateralDrift <= 0.2)).toBe(true);
+    expect(envelope.data.evaluation.aggregateScore).toBeCloseTo(60.413012468635095);
+    const ordinary = envelope.data.evaluation.cases.filter((item: any) => item.case.id !== "low-friction");
+    expect(ordinary.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.forwardProgress >= 0.25 && item.metrics.lateralDrift <= 0.2)).toBe(true);
+    const lowFriction = envelope.data.evaluation.cases.find((item: any) => item.case.id === "low-friction");
+    expect(lowFriction.metrics.survivalRate).toBe(1); expect(lowFriction.metrics.forwardProgress).toBe(0);
     const delay = envelope.data.evaluation.cases.find((item: any) => item.case.id === "actuator-delay");
     expect(delay.metrics.survivalRate).toBe(1);
     expect(delay.metrics.forwardProgress).toBeGreaterThan(0.69);
@@ -155,6 +158,19 @@ describe("agent CLI contract", () => {
     expect(envelope.nextActions[0]).toMatchObject({ id: "reproduce-worst-case", effect: "creates-artifact", argv: worst.reproduceArgv });
   }, 20_000);
 
+  test("zero-threshold count gates use one event as the severity unit", () => {
+    expect(upperViolationSeverity(0, 0, 1)).toBe(0);
+    expect(upperViolationSeverity(1, 0, 1)).toBe(1);
+    expect(upperViolationSeverity(2, 0, 1)).toBe(2);
+  });
+
+  test("candidate selection prioritizes reaching the feasible gate tier", () => {
+    expect(candidateSelection([], -1.2, 6)).toEqual({ verdict: "KEEP", selectionReason: "fewer-gate-violations" });
+    expect(candidateSelection([], 0.1, 0)).toEqual({ verdict: "KEEP", selectionReason: "score-improvement-within-feasibility-tier" });
+    expect(candidateSelection([], -0.1, 0).verdict).toBe("REVERT");
+    expect(candidateSelection(["braking failed"], 10, 6).verdict).toBe("REVERT");
+  });
+
   test("agent research proposals cannot escape declared values or bounds", async () => {
     const project = resolve(root, "examples/quadruped"); const research = await loadResearch(project, "support-controller"); const controller = await loadController(project, research.controller);
     expect(() => validateResearchProposal(research, controller.definition, { strategy: "escape", hypothesis: "edit hidden gain", expectedEffect: "unsafe", values: { "/config/frequencyHz": 2 } })).toThrow("not editable");
@@ -163,7 +179,7 @@ describe("agent CLI contract", () => {
 
   test("research preserves passing gates and orders infeasible candidates by severity", () => {
     const result = (drift: number, score: number) => ({ aggregateScore: score, cases: [{ case: { id: "compound", gating: true }, metrics: { survivalRate: 1, targetDistance: 1, forwardProgress: 0.4, lateralDrift: drift, planarVelocityTrackingError: 0, yawRateTrackingError: 0 }, score: { total: score } }] });
-    const objective = { gates: { minimumSurvivalRate: 0.8, minimumForwardProgress: 0.25, maximumLateralDrift: 0.2, maximumPlanarVelocityTrackingError: 1, maximumYawRateTrackingError: 1, maximumRegression: 20 } };
+    const objective = { gates: { minimumSurvivalRate: 0.8, minimumForwardProgress: 0.25, maximumLateralDrift: 0.2, maximumPlanarVelocityTrackingError: 1, maximumYawRateTrackingError: 1, maximumTransitionTerminalPlanarTrackingError: 1_000_000, maximumTransitionTerminalYawRateTrackingError: 1_000_000, maximumPlanarSettlingTimeSeconds: 1_000_000, maximumPlanarBrakingSettlingTimeSeconds: 1_000_000, maximumYawRateSettlingTimeSeconds: 1_000_000, maximumPlanarOvershootMps: 1_000_000, maximumYawRateOvershootRadPerSec: 1_000_000, maximumUnsettledPlanarTransitions: 1_000_000, maximumUnsettledYawRateTransitions: 1_000_000, maximumRegression: 20 } };
     expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.7, 56) as any)).toEqual([]);
     expect(researchDecision(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.7, 54) as any, 0.01)).toMatchObject({ verdict: "KEEP", severityImproved: true, selectionReason: "lower-gate-violation-severity" });
     expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.1, 55) as any, result(0.3, 56) as any)).toEqual(["compound: lateral-drift regressed from passing to failing"]);

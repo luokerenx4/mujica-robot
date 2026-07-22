@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "025-d21e2d4068fa",
+  "sequence": 25,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "555c1ace2077212cbfb39a6f0d0cee9c0d12f0ee9fe158637326464737aef770",
+  "proposal": {
+    "strategy": "coordinate-transition-yaw-rate-gain-decrease",
+    "hypothesis": "Decrease transitionYawRateGain by one bounded step.",
+    "expectedEffect": "Test whether transitionYawRateGain=-0.2 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionYawRateGain": -0.2
+    }
+  },
+  "strategy": "coordinate-transition-yaw-rate-gain-decrease",
+  "score": 63.25594423347164,
+  "delta": -1.3619543351824177,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 9000000013.491282,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

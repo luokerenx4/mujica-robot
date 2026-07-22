@@ -1,0 +1,2270 @@
+{
+  "previous": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait",
+    "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+    "aggregateScore": 64.61883751561807,
+    "cases": [
+      {
+        "case": {
+          "id": "accelerate-stop",
+          "task": "accelerate-stop",
+          "scenario": "nominal",
+          "seed": 1201,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 5.999999999999561,
+          "steps": 300,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMotionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.022153667806788076,
+            9.310714213037202e-17,
+            -3.5496451624541946e-16
+          ],
+          "planarVelocityTrackingError": 0.10284633219321193,
+          "yawRateTrackingError": 3.5496451624541946e-16,
+          "meanVelocityTrackingError": 0.15777900226169184,
+          "meanPlanarVelocityTrackingError": 0.15777900226169184,
+          "meanYawRateTrackingError": 4.519849552319093e-15,
+          "meanUpright": 0.9604917407427646,
+          "meanEnergy": 191.13360444466423,
+          "meanSmoothness": 132.36511587673104,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 50,
+              "atSeconds": 1,
+              "command": [
+                0.25,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 200,
+              "atSeconds": 4,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 50,
+              "atSeconds": 1,
+              "endStep": 200,
+              "fromCommand": [
+                0,
+                0,
+                0
+              ],
+              "toCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "sampleCount": 150,
+              "peakPlanarTrackingError": 0.6612173235868064,
+              "peakYawRateTrackingError": 1.5631185381614568e-14,
+              "terminalMeasuredMotion": [
+                0.1791695959330984,
+                -8.514791919142933e-16,
+                -2.1945927757798083e-15
+              ],
+              "terminalPlanarTrackingError": 0.07083040406690161,
+              "terminalYawRateTrackingError": 2.1945927757798083e-15,
+              "planarOvershootMps": 0.13354506784337322,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2.6,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 200,
+              "atSeconds": 4,
+              "endStep": 300,
+              "fromCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.22796916634990655,
+              "peakYawRateTrackingError": 1.9720516708925168e-14,
+              "terminalMeasuredMotion": [
+                -0.031138864132716416,
+                5.4197963072464965e-16,
+                3.250527124211044e-15
+              ],
+              "terminalPlanarTrackingError": 0.031138864132716416,
+              "terminalYawRateTrackingError": 3.250527124211044e-15,
+              "planarOvershootMps": 0.1166457278047335,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 0.56,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.07083040406690161,
+          "maximumTransitionTerminalYawRateTrackingError": 3.250527124211044e-15,
+          "maximumPlanarSettlingTimeSeconds": 2.6,
+          "maximumYawRateSettlingTimeSeconds": 0.2,
+          "maximumPlanarOvershootMps": 0.13354506784337322,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 0,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.1313737986312097,
+            5.646018500851278e-16,
+            0.4134558927759949
+          ],
+          "netDisplacement": [
+            0.1313737986312097,
+            5.646018500851278e-16,
+            -0.026544107224005076
+          ],
+          "targetPlanarDisplacement": [
+            0.75,
+            0
+          ],
+          "forwardDisplacement": 0.1313737986312097,
+          "targetDistance": 0.75,
+          "forwardProgress": 0.17516506484161296,
+          "meanForwardVelocity": 0.02189563310520322,
+          "lateralDrift": 5.646018500851278e-16,
+          "distanceTraveled": 0.6951823824281321
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 17.274453899172904,
+            "forwardProgress": 1.7516506484161296,
+            "upright": 14.407376111141469,
+            "lateralDrift": -2.823009250425639e-15,
+            "transitionTracking": 7.491804954466112,
+            "energy": -0.9556680222233211,
+            "smoothness": -0.13236511587673105,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 67.56125247509655
+        },
+        "resultHash": "151cb424cb7626442d9139d6b7f30240e98a57787488da4b7f6d6ed5566c4737"
+      },
+      {
+        "case": {
+          "id": "forward-reverse-stop",
+          "task": "forward-reverse-stop",
+          "scenario": "nominal",
+          "seed": 1202,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.030769230769230813,
+            0,
+            0
+          ],
+          "meanMotionCommand": [
+            0.030769230769230813,
+            0,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.08472844914229574,
+            -0.009570843227408084,
+            0.003995719596919124
+          ],
+          "planarVelocityTrackingError": 0.05480144421012763,
+          "yawRateTrackingError": 0.003995719596919124,
+          "meanVelocityTrackingError": 0.1596188444641338,
+          "meanPlanarVelocityTrackingError": 0.14557758986605923,
+          "meanYawRateTrackingError": 0.028127618882949075,
+          "meanUpright": 0.6114354336720312,
+          "meanEnergy": 190.75597038123033,
+          "meanSmoothness": 131.10982469280097,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0.2,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                -0.15,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0.2,
+                0,
+                0
+              ],
+              "toCommand": [
+                -0.15,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.7037966665268426,
+              "peakYawRateTrackingError": 0.39245908725230133,
+              "terminalMeasuredMotion": [
+                -0.11294558649057111,
+                -0.037377726376410444,
+                0.002656719046754113
+              ],
+              "terminalPlanarTrackingError": 0.05263196737342767,
+              "terminalYawRateTrackingError": 0.002656719046754113,
+              "planarOvershootMps": 0.22383471844426275,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 1.92,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                -0.15,
+                0,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.20125858344018843,
+              "peakYawRateTrackingError": 0.04144547023123304,
+              "terminalMeasuredMotion": [
+                -0.02958275219924401,
+                -0.01149585588830131,
+                -0.012163552375938767
+              ],
+              "terminalPlanarTrackingError": 0.031737894232076395,
+              "terminalYawRateTrackingError": 0.012163552375938767,
+              "planarOvershootMps": 0.04420557742585994,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 0.2,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.05263196737342767,
+          "maximumTransitionTerminalYawRateTrackingError": 0.012163552375938767,
+          "maximumPlanarSettlingTimeSeconds": 1.92,
+          "maximumYawRateSettlingTimeSeconds": 0.2,
+          "maximumPlanarOvershootMps": 0.22383471844426275,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 0,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.5707110518436646,
+            -0.05545325350208779,
+            0.2527133231646734
+          ],
+          "netDisplacement": [
+            0.5707110518436646,
+            -0.05545325350208779,
+            -0.18728667683532663
+          ],
+          "targetPlanarDisplacement": [
+            0.2,
+            0
+          ],
+          "forwardDisplacement": 0.5707110518436646,
+          "targetDistance": 0.2,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0.08780170028364737,
+          "lateralDrift": 0.05545325350208779,
+          "distanceTraveled": 1.071430916315833
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 17.247046385523433,
+            "forwardProgress": 10,
+            "upright": 9.171531505080468,
+            "lateralDrift": -0.2772662675104389,
+            "transitionTracking": 8.8011893058539,
+            "energy": -0.9537798519061517,
+            "smoothness": -0.13110982469280097,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 71.58161125234841
+        },
+        "resultHash": "e7e496e44129056a1ca5552e4775b077540dc15e0fff0df22f434c616954ac41"
+      },
+      {
+        "case": {
+          "id": "lateral-redirection",
+          "task": "lateral-redirection",
+          "scenario": "nominal",
+          "seed": 1203,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMotionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMeasuredMotion": [
+            -0.051008735387357666,
+            0.014501678508983862,
+            -0.03306836111857273
+          ],
+          "planarVelocityTrackingError": 0.05128034292432767,
+          "yawRateTrackingError": 0.03306836111857273,
+          "meanVelocityTrackingError": 0.1925311691569839,
+          "meanPlanarVelocityTrackingError": 0.1256822705729806,
+          "meanYawRateTrackingError": 0.12602058044158423,
+          "meanUpright": 0.9439434630487844,
+          "meanEnergy": 195.6698257032661,
+          "meanSmoothness": 138.88908137015449,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                0,
+                -0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0,
+                0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.2970122212364467,
+              "peakYawRateTrackingError": 0.6989127009294303,
+              "terminalMeasuredMotion": [
+                -0.03114811518458916,
+                0.013373847997497027,
+                0.015915418732100693
+              ],
+              "terminalPlanarTrackingError": 0.13696272634995213,
+              "terminalYawRateTrackingError": 0.015915418732100693,
+              "planarOvershootMps": 0,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 1.8,
+              "planarSettled": false,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.24977742043364654,
+              "peakYawRateTrackingError": 0.2810709355459528,
+              "terminalMeasuredMotion": [
+                -0.07708841934831803,
+                0.03550146242548326,
+                0.0385859011791935
+              ],
+              "terminalPlanarTrackingError": 0.08487036132814643,
+              "terminalYawRateTrackingError": 0.0385859011791935,
+              "planarOvershootMps": 0.07841903597440879,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 0.98,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.13696272634995213,
+          "maximumTransitionTerminalYawRateTrackingError": 0.0385859011791935,
+          "maximumPlanarSettlingTimeSeconds": 2,
+          "maximumYawRateSettlingTimeSeconds": 1.8,
+          "maximumPlanarOvershootMps": 0.07841903597440879,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 1,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.32129576896154116,
+            0.09086098268489509,
+            0.4205873187113922
+          ],
+          "netDisplacement": [
+            -0.32129576896154116,
+            0.09086098268489509,
+            -0.01941268128860779
+          ],
+          "targetPlanarDisplacement": [
+            0,
+            0.06
+          ],
+          "forwardDisplacement": 0.09086098268489509,
+          "targetDistance": 0.06,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0.013978612720754154,
+          "lateralDrift": 0.32129576896154116,
+          "distanceTraveled": 0.5259884808043798
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 16.77105011363205,
+            "forwardProgress": 10,
+            "upright": 14.159151945731766,
+            "lateralDrift": -1.6064788448077059,
+            "transitionTracking": 5.93593034174721,
+            "energy": -0.9783491285163305,
+            "smoothness": -0.1388890813701545,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 71.86641534641683
+        },
+        "resultHash": "b3e9e53fadefce5b6cf9fef482b7dc6f1b445cee2c618cffb0a22b77ecc3cf55"
+      },
+      {
+        "case": {
+          "id": "yaw-redirection",
+          "task": "yaw-redirection",
+          "scenario": "nominal",
+          "seed": 1204,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0,
+            0.038461538461538464
+          ],
+          "meanMotionCommand": [
+            0,
+            0,
+            0.038461538461538464
+          ],
+          "meanMeasuredMotion": [
+            -0.02040651266776132,
+            -0.02027045631322977,
+            0.08979885963423327
+          ],
+          "planarVelocityTrackingError": 0.028763121499692273,
+          "yawRateTrackingError": 0.05133732117269481,
+          "meanVelocityTrackingError": 0.38468501272430095,
+          "meanPlanarVelocityTrackingError": 0.11714695230347423,
+          "meanYawRateTrackingError": 0.3368675200132147,
+          "meanUpright": 0.9524176635858379,
+          "meanEnergy": 195.03328322090695,
+          "meanSmoothness": 135.50310275201429,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0,
+                0.5
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                0,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0,
+                0,
+                0.5
+              ],
+              "toCommand": [
+                0,
+                0,
+                -0.5
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.25194470860861734,
+              "peakYawRateTrackingError": 1.0159682884233687,
+              "terminalMeasuredMotion": [
+                -0.05711185700478315,
+                -0.05305320527734225,
+                0.3242381904110879
+              ],
+              "terminalPlanarTrackingError": 0.07795131044911698,
+              "terminalYawRateTrackingError": 0.8242381904110879,
+              "planarOvershootMps": 0,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 1,
+              "yawRateSettlingTimeSeconds": 2,
+              "planarSettled": true,
+              "yawRateSettled": false
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                0,
+                0,
+                -0.5
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.2647552239606698,
+              "peakYawRateTrackingError": 0.3848356624729095,
+              "terminalMeasuredMotion": [
+                -0.06880490429513648,
+                -0.05558877565620871,
+                -0.0038053823637568458
+              ],
+              "terminalPlanarTrackingError": 0.08845465976430633,
+              "terminalYawRateTrackingError": 0.0038053823637568458,
+              "planarOvershootMps": 0,
+              "yawRateOvershootRadPerSec": 0.10265384758591373,
+              "planarSettlingTimeSeconds": 0.9,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.08845465976430633,
+          "maximumTransitionTerminalYawRateTrackingError": 0.8242381904110879,
+          "maximumPlanarSettlingTimeSeconds": 1,
+          "maximumYawRateSettlingTimeSeconds": 2,
+          "maximumPlanarOvershootMps": 0,
+          "maximumYawRateOvershootRadPerSec": 0.10265384758591373,
+          "unsettledPlanarTransitionCount": 0,
+          "unsettledYawRateTransitionCount": 1,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.12968112227130307,
+            -0.13040279559893253,
+            0.4205959854628171
+          ],
+          "netDisplacement": [
+            -0.12968112227130307,
+            -0.13040279559893253,
+            -0.01940401453718288
+          ],
+          "targetPlanarDisplacement": [
+            0,
+            0
+          ],
+          "forwardDisplacement": 0,
+          "targetDistance": 0,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0,
+          "lateralDrift": 0.18390780998522502,
+          "distanceTraveled": 0.6974075538752401
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 14.443718113660353,
+            "forwardProgress": 10,
+            "upright": 14.286264953787569,
+            "lateralDrift": -0.9195390499261251,
+            "transitionTracking": 5.981640314794398,
+            "energy": -0.9751664161045348,
+            "smoothness": -0.1355031027520143,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 70.40541481345967
+        },
+        "resultHash": "e5ec10ea41e8737782eccaf655002d5cd05884517b936656da41730b60572e66"
+      },
+      {
+        "case": {
+          "id": "delayed-braking",
+          "task": "accelerate-stop",
+          "scenario": "actuator-delay-three-step",
+          "seed": 1205,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 5.999999999999561,
+          "steps": 300,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMotionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.08196049955313559,
+            -0.14822068092170293,
+            -0.02150721846216909
+          ],
+          "planarVelocityTrackingError": 0.1543430233331229,
+          "yawRateTrackingError": 0.02150721846216909,
+          "meanVelocityTrackingError": 0.7188009344780482,
+          "meanPlanarVelocityTrackingError": 0.47711326798998804,
+          "meanYawRateTrackingError": 0.43421613124039427,
+          "meanUpright": 0.4349194800014363,
+          "meanEnergy": 655.4025934746337,
+          "meanSmoothness": 29.764674841975847,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 50,
+              "atSeconds": 1,
+              "command": [
+                0.25,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 200,
+              "atSeconds": 4,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 50,
+              "atSeconds": 1,
+              "endStep": 200,
+              "fromCommand": [
+                0,
+                0,
+                0
+              ],
+              "toCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "sampleCount": 150,
+              "peakPlanarTrackingError": 1.1445025935261322,
+              "peakYawRateTrackingError": 1.7426049770987857,
+              "terminalMeasuredMotion": [
+                -0.34233791004553826,
+                0.14561170384146954,
+                0.4222341854331685
+              ],
+              "terminalPlanarTrackingError": 0.6099729239669021,
+              "terminalYawRateTrackingError": 0.4222341854331685,
+              "planarOvershootMps": 0.8933753980849581,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 3,
+              "yawRateSettlingTimeSeconds": 3,
+              "planarSettled": false,
+              "yawRateSettled": false
+            },
+            {
+              "index": 2,
+              "atStep": 200,
+              "atSeconds": 4,
+              "endStep": 300,
+              "fromCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.983683404186814,
+              "peakYawRateTrackingError": 2.294584507952547,
+              "terminalMeasuredMotion": [
+                0.6496391761319573,
+                -0.37393208585865806,
+                -0.18798472424772472
+              ],
+              "terminalPlanarTrackingError": 0.749570719812357,
+              "terminalYawRateTrackingError": 0.18798472424772472,
+              "planarOvershootMps": 0.770296862398003,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 2,
+              "planarSettled": false,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.749570719812357,
+          "maximumTransitionTerminalYawRateTrackingError": 0.4222341854331685,
+          "maximumPlanarSettlingTimeSeconds": 3,
+          "maximumYawRateSettlingTimeSeconds": 3,
+          "maximumPlanarOvershootMps": 0.8933753980849581,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 2,
+          "unsettledYawRateTransitionCount": 1,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.4943188921174035,
+            -0.8838522369999032,
+            0.27605243755273223
+          ],
+          "netDisplacement": [
+            0.4943188921174035,
+            -0.8838522369999032,
+            -0.16394756244726777
+          ],
+          "targetPlanarDisplacement": [
+            0.75,
+            0
+          ],
+          "forwardDisplacement": 0.4943188921174035,
+          "targetDistance": 0.75,
+          "forwardProgress": 0.659091856156538,
+          "meanForwardVelocity": 0.08238648201957327,
+          "lateralDrift": 0.8838522369999032,
+          "distanceTraveled": 2.667569430221415
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 11.636018807537734,
+            "forwardProgress": 6.590918561565379,
+            "upright": 6.5237922000215445,
+            "lateralDrift": -4.419261184999516,
+            "transitionTracking": 3.3093660573941603,
+            "energy": -3.2770129673731687,
+            "smoothness": -0.029764674841975848,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 48.05805679930416
+        },
+        "resultHash": "750bcfb5e8b33e5ec5d1567d3e96bc795fae866e3db7980aa45b46ca5f28a62e"
+      },
+      {
+        "case": {
+          "id": "disturbed-lateral-redirection",
+          "task": "lateral-redirection",
+          "scenario": "delayed-lateral-push",
+          "seed": 1206,
+          "weight": 2,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMotionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.10616690043772042,
+            0.21030520953575096,
+            0.11850986503212071
+          ],
+          "planarVelocityTrackingError": 0.2273814884561065,
+          "yawRateTrackingError": 0.11850986503212071,
+          "meanVelocityTrackingError": 0.8705061531653989,
+          "meanPlanarVelocityTrackingError": 0.40728510938723844,
+          "meanYawRateTrackingError": 0.7112262150015773,
+          "meanUpright": 0.8897066174593098,
+          "meanEnergy": 514.2133903363717,
+          "meanSmoothness": 40.53535393591595,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                0,
+                -0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0,
+                0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.5219575181816601,
+              "peakYawRateTrackingError": 1.7358746691904687,
+              "terminalMeasuredMotion": [
+                0.19740315789508395,
+                0.05988046395103599,
+                0.07148608867255758
+              ],
+              "terminalPlanarTrackingError": 0.2670673848641788,
+              "terminalYawRateTrackingError": 0.07148608867255758,
+              "planarOvershootMps": 0.41319349286183493,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 1.94,
+              "planarSettled": false,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 1.1928370679617977,
+              "peakYawRateTrackingError": 2.249317189933326,
+              "terminalMeasuredMotion": [
+                0.17219525439431313,
+                0.0915215248090039,
+                0.10218998296822226
+              ],
+              "terminalPlanarTrackingError": 0.19500614128608187,
+              "terminalYawRateTrackingError": 0.10218998296822226,
+              "planarOvershootMps": 0.8414955272667642,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 1.96,
+              "planarSettled": false,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.2670673848641788,
+          "maximumTransitionTerminalYawRateTrackingError": 0.10218998296822226,
+          "maximumPlanarSettlingTimeSeconds": 2,
+          "maximumYawRateSettlingTimeSeconds": 1.96,
+          "maximumPlanarOvershootMps": 0.8414955272667642,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 2,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.6882828999242372,
+            1.365666950842902,
+            0.2575554487698757
+          ],
+          "netDisplacement": [
+            0.6882828999242372,
+            1.365666950842902,
+            -0.18244455123012432
+          ],
+          "targetPlanarDisplacement": [
+            0,
+            0.06
+          ],
+          "forwardDisplacement": 1.365666950842902,
+          "targetDistance": 0.06,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0.21010260782200088,
+          "lateralDrift": 0.6882828999242372,
+          "distanceTraveled": 2.753581988424127
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 10.69229308128959,
+            "forwardProgress": 10,
+            "upright": 13.345599261889646,
+            "lateralDrift": -3.441414499621186,
+            "transitionTracking": 4.861643386145977,
+            "energy": -2.5710669516818587,
+            "smoothness": -0.04053535393591595,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 60.57051892408625
+        },
+        "resultHash": "fe2a7e60ad830d417211bf5e2afc22b63643438368b125c645fc3742fa15c2e9"
+      }
+    ]
+  },
+  "candidate": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait",
+    "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+    "aggregateScore": 64.72173425040688,
+    "cases": [
+      {
+        "case": {
+          "id": "accelerate-stop",
+          "task": "accelerate-stop",
+          "scenario": "nominal",
+          "seed": 1201,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 5.999999999999561,
+          "steps": 300,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMotionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.022153667806788076,
+            9.310714213037202e-17,
+            -3.5496451624541946e-16
+          ],
+          "planarVelocityTrackingError": 0.10284633219321193,
+          "yawRateTrackingError": 3.5496451624541946e-16,
+          "meanVelocityTrackingError": 0.15777900226169184,
+          "meanPlanarVelocityTrackingError": 0.15777900226169184,
+          "meanYawRateTrackingError": 4.519849552319093e-15,
+          "meanUpright": 0.9604917407427646,
+          "meanEnergy": 191.13360444466423,
+          "meanSmoothness": 132.36511587673104,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 50,
+              "atSeconds": 1,
+              "command": [
+                0.25,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 200,
+              "atSeconds": 4,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 50,
+              "atSeconds": 1,
+              "endStep": 200,
+              "fromCommand": [
+                0,
+                0,
+                0
+              ],
+              "toCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "sampleCount": 150,
+              "peakPlanarTrackingError": 0.6612173235868064,
+              "peakYawRateTrackingError": 1.5631185381614568e-14,
+              "terminalMeasuredMotion": [
+                0.1791695959330984,
+                -8.514791919142933e-16,
+                -2.1945927757798083e-15
+              ],
+              "terminalPlanarTrackingError": 0.07083040406690161,
+              "terminalYawRateTrackingError": 2.1945927757798083e-15,
+              "planarOvershootMps": 0.13354506784337322,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2.6,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 200,
+              "atSeconds": 4,
+              "endStep": 300,
+              "fromCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.22796916634990655,
+              "peakYawRateTrackingError": 1.9720516708925168e-14,
+              "terminalMeasuredMotion": [
+                -0.031138864132716416,
+                5.4197963072464965e-16,
+                3.250527124211044e-15
+              ],
+              "terminalPlanarTrackingError": 0.031138864132716416,
+              "terminalYawRateTrackingError": 3.250527124211044e-15,
+              "planarOvershootMps": 0.1166457278047335,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 0.56,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.07083040406690161,
+          "maximumTransitionTerminalYawRateTrackingError": 3.250527124211044e-15,
+          "maximumPlanarSettlingTimeSeconds": 2.6,
+          "maximumYawRateSettlingTimeSeconds": 0.2,
+          "maximumPlanarOvershootMps": 0.13354506784337322,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 0,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.1313737986312097,
+            5.646018500851278e-16,
+            0.4134558927759949
+          ],
+          "netDisplacement": [
+            0.1313737986312097,
+            5.646018500851278e-16,
+            -0.026544107224005076
+          ],
+          "targetPlanarDisplacement": [
+            0.75,
+            0
+          ],
+          "forwardDisplacement": 0.1313737986312097,
+          "targetDistance": 0.75,
+          "forwardProgress": 0.17516506484161296,
+          "meanForwardVelocity": 0.02189563310520322,
+          "lateralDrift": 5.646018500851278e-16,
+          "distanceTraveled": 0.6951823824281321
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 17.274453899172904,
+            "forwardProgress": 1.7516506484161296,
+            "upright": 14.407376111141469,
+            "lateralDrift": -2.823009250425639e-15,
+            "transitionTracking": 7.491804954466112,
+            "energy": -0.9556680222233211,
+            "smoothness": -0.13236511587673105,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 67.56125247509655
+        },
+        "resultHash": "e5672b42a1c8d52f5fdf0658f5c0ac609d63d3462d2691814e85ddb6c2713c91"
+      },
+      {
+        "case": {
+          "id": "forward-reverse-stop",
+          "task": "forward-reverse-stop",
+          "scenario": "nominal",
+          "seed": 1202,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.030769230769230813,
+            0,
+            0
+          ],
+          "meanMotionCommand": [
+            0.030769230769230813,
+            0,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.08472844914229574,
+            -0.009570843227408084,
+            0.003995719596919124
+          ],
+          "planarVelocityTrackingError": 0.05480144421012763,
+          "yawRateTrackingError": 0.003995719596919124,
+          "meanVelocityTrackingError": 0.1596188444641338,
+          "meanPlanarVelocityTrackingError": 0.14557758986605923,
+          "meanYawRateTrackingError": 0.028127618882949075,
+          "meanUpright": 0.6114354336720312,
+          "meanEnergy": 190.75597038123033,
+          "meanSmoothness": 131.10982469280097,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0.2,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                -0.15,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0.2,
+                0,
+                0
+              ],
+              "toCommand": [
+                -0.15,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.7037966665268426,
+              "peakYawRateTrackingError": 0.39245908725230133,
+              "terminalMeasuredMotion": [
+                -0.11294558649057111,
+                -0.037377726376410444,
+                0.002656719046754113
+              ],
+              "terminalPlanarTrackingError": 0.05263196737342767,
+              "terminalYawRateTrackingError": 0.002656719046754113,
+              "planarOvershootMps": 0.22383471844426275,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 1.92,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                -0.15,
+                0,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.20125858344018843,
+              "peakYawRateTrackingError": 0.04144547023123304,
+              "terminalMeasuredMotion": [
+                -0.02958275219924401,
+                -0.01149585588830131,
+                -0.012163552375938767
+              ],
+              "terminalPlanarTrackingError": 0.031737894232076395,
+              "terminalYawRateTrackingError": 0.012163552375938767,
+              "planarOvershootMps": 0.04420557742585994,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 0.2,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.05263196737342767,
+          "maximumTransitionTerminalYawRateTrackingError": 0.012163552375938767,
+          "maximumPlanarSettlingTimeSeconds": 1.92,
+          "maximumYawRateSettlingTimeSeconds": 0.2,
+          "maximumPlanarOvershootMps": 0.22383471844426275,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 0,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.5707110518436646,
+            -0.05545325350208779,
+            0.2527133231646734
+          ],
+          "netDisplacement": [
+            0.5707110518436646,
+            -0.05545325350208779,
+            -0.18728667683532663
+          ],
+          "targetPlanarDisplacement": [
+            0.2,
+            0
+          ],
+          "forwardDisplacement": 0.5707110518436646,
+          "targetDistance": 0.2,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0.08780170028364737,
+          "lateralDrift": 0.05545325350208779,
+          "distanceTraveled": 1.071430916315833
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 17.247046385523433,
+            "forwardProgress": 10,
+            "upright": 9.171531505080468,
+            "lateralDrift": -0.2772662675104389,
+            "transitionTracking": 8.8011893058539,
+            "energy": -0.9537798519061517,
+            "smoothness": -0.13110982469280097,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 71.58161125234841
+        },
+        "resultHash": "77bcb0362ac60752f3a8253be2f9385c391071b7635819f48f8e17bc23ea313b"
+      },
+      {
+        "case": {
+          "id": "lateral-redirection",
+          "task": "lateral-redirection",
+          "scenario": "nominal",
+          "seed": 1203,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMotionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMeasuredMotion": [
+            -0.0509650832677488,
+            0.013989319878251505,
+            -0.03151925284429334
+          ],
+          "planarVelocityTrackingError": 0.05118675137917254,
+          "yawRateTrackingError": 0.03151925284429334,
+          "meanVelocityTrackingError": 0.19202221359537108,
+          "meanPlanarVelocityTrackingError": 0.1255685572108402,
+          "meanYawRateTrackingError": 0.12579896415659045,
+          "meanUpright": 0.9439439901589447,
+          "meanEnergy": 195.60980124196652,
+          "meanSmoothness": 138.84527945767053,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                0,
+                -0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0,
+                0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.29828160579637686,
+              "peakYawRateTrackingError": 0.686847133584508,
+              "terminalMeasuredMotion": [
+                -0.029559960736493873,
+                0.011894624281208518,
+                0.007677037104203305
+              ],
+              "terminalPlanarTrackingError": 0.13516650174146042,
+              "terminalYawRateTrackingError": 0.007677037104203305,
+              "planarOvershootMps": 0,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 1.8,
+              "planarSettled": false,
+              "yawRateSettled": true
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.2507038595910565,
+              "peakYawRateTrackingError": 0.3133675888434148,
+              "terminalMeasuredMotion": [
+                -0.08002782390502604,
+                0.033312264364833304,
+                0.043086388110790255
+              ],
+              "terminalPlanarTrackingError": 0.0866842520651035,
+              "terminalYawRateTrackingError": 0.043086388110790255,
+              "planarOvershootMps": 0.07817767833944347,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 0.96,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.13516650174146042,
+          "maximumTransitionTerminalYawRateTrackingError": 0.043086388110790255,
+          "maximumPlanarSettlingTimeSeconds": 2,
+          "maximumYawRateSettlingTimeSeconds": 1.8,
+          "maximumPlanarOvershootMps": 0.07817767833944347,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 1,
+          "unsettledYawRateTransitionCount": 0,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.320769385095442,
+            0.08762592473033151,
+            0.4206529788143639
+          ],
+          "netDisplacement": [
+            -0.320769385095442,
+            0.08762592473033151,
+            -0.019347021185636082
+          ],
+          "targetPlanarDisplacement": [
+            0,
+            0.06
+          ],
+          "forwardDisplacement": 0.08762592473033151,
+          "targetDistance": 0.06,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0.013480911496975103,
+          "lateralDrift": 0.320769385095442,
+          "distanceTraveled": 0.5264349414662037
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 16.778210818467976,
+            "forwardProgress": 10,
+            "upright": 14.159159852384171,
+            "lateralDrift": -1.60384692547721,
+            "transitionTracking": 5.933039047093798,
+            "energy": -0.9780490062098326,
+            "smoothness": -0.13884527945767053,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 71.87366850680124
+        },
+        "resultHash": "48e8383dbb5ced526eeab026c823dbf7f0fa38217e07b544859ed58c4ce4002e"
+      },
+      {
+        "case": {
+          "id": "yaw-redirection",
+          "task": "yaw-redirection",
+          "scenario": "nominal",
+          "seed": 1204,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0,
+            0.038461538461538464
+          ],
+          "meanMotionCommand": [
+            0,
+            0,
+            0.038461538461538464
+          ],
+          "meanMeasuredMotion": [
+            -0.01779174128065361,
+            -0.01994401725700662,
+            0.09045121431385103
+          ],
+          "planarVelocityTrackingError": 0.026726576326673263,
+          "yawRateTrackingError": 0.05198967585231257,
+          "meanVelocityTrackingError": 0.3861848141601247,
+          "meanPlanarVelocityTrackingError": 0.11852108672455315,
+          "meanYawRateTrackingError": 0.33602488087217985,
+          "meanUpright": 0.9521016056496334,
+          "meanEnergy": 195.18464572617654,
+          "meanSmoothness": 135.60306692787506,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0,
+                0.5
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                0,
+                0,
+                -0.5
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0,
+                0,
+                0.5
+              ],
+              "toCommand": [
+                0,
+                0,
+                -0.5
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.2808386884296614,
+              "peakYawRateTrackingError": 0.9671592041623208,
+              "terminalMeasuredMotion": [
+                -0.05718764739932357,
+                -0.04717860690985825,
+                0.3095996318562285
+              ],
+              "terminalPlanarTrackingError": 0.07413668434064397,
+              "terminalYawRateTrackingError": 0.8095996318562285,
+              "planarOvershootMps": 0,
+              "yawRateOvershootRadPerSec": 0.01615980568747688,
+              "planarSettlingTimeSeconds": 1.04,
+              "yawRateSettlingTimeSeconds": 2,
+              "planarSettled": true,
+              "yawRateSettled": false
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                0,
+                0,
+                -0.5
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.26439578734037883,
+              "peakYawRateTrackingError": 0.28533854718770324,
+              "terminalMeasuredMotion": [
+                -0.06945843250499797,
+                -0.056873553726417614,
+                -0.01297796007125721
+              ],
+              "terminalPlanarTrackingError": 0.08977235075190507,
+              "terminalYawRateTrackingError": 0.01297796007125721,
+              "planarOvershootMps": 0,
+              "yawRateOvershootRadPerSec": 0.09442275700785442,
+              "planarSettlingTimeSeconds": 0.96,
+              "yawRateSettlingTimeSeconds": 0.2,
+              "planarSettled": true,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.08977235075190507,
+          "maximumTransitionTerminalYawRateTrackingError": 0.8095996318562285,
+          "maximumPlanarSettlingTimeSeconds": 1.04,
+          "maximumYawRateSettlingTimeSeconds": 2,
+          "maximumPlanarOvershootMps": 0,
+          "maximumYawRateOvershootRadPerSec": 0.09442275700785442,
+          "unsettledPlanarTransitionCount": 0,
+          "unsettledYawRateTransitionCount": 1,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.11261500486180097,
+            -0.12777001263280552,
+            0.4206989308848344
+          ],
+          "netDisplacement": [
+            -0.11261500486180097,
+            -0.12777001263280552,
+            -0.019301069115165603
+          ],
+          "targetPlanarDisplacement": [
+            0,
+            0
+          ],
+          "forwardDisplacement": 0,
+          "targetDistance": 0,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0,
+          "lateralDrift": 0.17031534120040606,
+          "distanceTraveled": 0.7093832460909757
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 14.428090537204303,
+            "forwardProgress": 10,
+            "upright": 14.2815240847445,
+            "lateralDrift": -0.8515767060020303,
+            "transitionTracking": 5.959718572531346,
+            "energy": -0.9759232286308828,
+            "smoothness": -0.13560306692787508,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 70.43023019291937
+        },
+        "resultHash": "5115d420265ad35ccafca75edf711e0fefe19ca388986933235267373b2cdcdd"
+      },
+      {
+        "case": {
+          "id": "delayed-braking",
+          "task": "accelerate-stop",
+          "scenario": "actuator-delay-three-step",
+          "seed": 1205,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 5.999999999999561,
+          "steps": 300,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMotionCommand": [
+            0.125,
+            0,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.08196049955313559,
+            -0.14822068092170293,
+            -0.02150721846216909
+          ],
+          "planarVelocityTrackingError": 0.1543430233331229,
+          "yawRateTrackingError": 0.02150721846216909,
+          "meanVelocityTrackingError": 0.7188009344780482,
+          "meanPlanarVelocityTrackingError": 0.47711326798998804,
+          "meanYawRateTrackingError": 0.43421613124039427,
+          "meanUpright": 0.4349194800014363,
+          "meanEnergy": 655.4025934746337,
+          "meanSmoothness": 29.764674841975847,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 50,
+              "atSeconds": 1,
+              "command": [
+                0.25,
+                0,
+                0
+              ]
+            },
+            {
+              "atStep": 200,
+              "atSeconds": 4,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 50,
+              "atSeconds": 1,
+              "endStep": 200,
+              "fromCommand": [
+                0,
+                0,
+                0
+              ],
+              "toCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "sampleCount": 150,
+              "peakPlanarTrackingError": 1.1445025935261322,
+              "peakYawRateTrackingError": 1.7426049770987857,
+              "terminalMeasuredMotion": [
+                -0.34233791004553826,
+                0.14561170384146954,
+                0.4222341854331685
+              ],
+              "terminalPlanarTrackingError": 0.6099729239669021,
+              "terminalYawRateTrackingError": 0.4222341854331685,
+              "planarOvershootMps": 0.8933753980849581,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 3,
+              "yawRateSettlingTimeSeconds": 3,
+              "planarSettled": false,
+              "yawRateSettled": false
+            },
+            {
+              "index": 2,
+              "atStep": 200,
+              "atSeconds": 4,
+              "endStep": 300,
+              "fromCommand": [
+                0.25,
+                0,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.983683404186814,
+              "peakYawRateTrackingError": 2.294584507952547,
+              "terminalMeasuredMotion": [
+                0.6496391761319573,
+                -0.37393208585865806,
+                -0.18798472424772472
+              ],
+              "terminalPlanarTrackingError": 0.749570719812357,
+              "terminalYawRateTrackingError": 0.18798472424772472,
+              "planarOvershootMps": 0.770296862398003,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 2,
+              "planarSettled": false,
+              "yawRateSettled": true
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.749570719812357,
+          "maximumTransitionTerminalYawRateTrackingError": 0.4222341854331685,
+          "maximumPlanarSettlingTimeSeconds": 3,
+          "maximumYawRateSettlingTimeSeconds": 3,
+          "maximumPlanarOvershootMps": 0.8933753980849581,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 2,
+          "unsettledYawRateTransitionCount": 1,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.4943188921174035,
+            -0.8838522369999032,
+            0.27605243755273223
+          ],
+          "netDisplacement": [
+            0.4943188921174035,
+            -0.8838522369999032,
+            -0.16394756244726777
+          ],
+          "targetPlanarDisplacement": [
+            0.75,
+            0
+          ],
+          "forwardDisplacement": 0.4943188921174035,
+          "targetDistance": 0.75,
+          "forwardProgress": 0.659091856156538,
+          "meanForwardVelocity": 0.08238648201957327,
+          "lateralDrift": 0.8838522369999032,
+          "distanceTraveled": 2.667569430221415
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 11.636018807537734,
+            "forwardProgress": 6.590918561565379,
+            "upright": 6.5237922000215445,
+            "lateralDrift": -4.419261184999516,
+            "transitionTracking": 3.3093660573941603,
+            "energy": -3.2770129673731687,
+            "smoothness": -0.029764674841975848,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 48.05805679930416
+        },
+        "resultHash": "9eb6c0a125736f021c558e08523a2b84496d86a09d4a2a3d24cbc2e3812a3bb1"
+      },
+      {
+        "case": {
+          "id": "disturbed-lateral-redirection",
+          "task": "lateral-redirection",
+          "scenario": "delayed-lateral-push",
+          "seed": 1206,
+          "weight": 2,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 6.499999999999506,
+          "steps": 325,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMotionCommand": [
+            0,
+            0.009230769230769237,
+            0
+          ],
+          "meanMeasuredMotion": [
+            0.07339920594061569,
+            0.19521476929525844,
+            0.18724937573227898
+          ],
+          "planarVelocityTrackingError": 0.19994372136353977,
+          "yawRateTrackingError": 0.18724937573227898,
+          "meanVelocityTrackingError": 0.9613255513088286,
+          "meanPlanarVelocityTrackingError": 0.38676576478375846,
+          "meanYawRateTrackingError": 0.8279213992670994,
+          "meanUpright": 0.943896066877003,
+          "meanEnergy": 512.7965646096762,
+          "meanSmoothness": 40.61270387700487,
+          "peakActuator": 8,
+          "motionCommandSchedule": [
+            {
+              "atStep": 0,
+              "atSeconds": 0,
+              "command": [
+                0,
+                0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "command": [
+                0,
+                -0.12,
+                0
+              ]
+            },
+            {
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "command": [
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "transitionCount": 2,
+          "transitions": [
+            {
+              "index": 1,
+              "atStep": 125,
+              "atSeconds": 2.5,
+              "endStep": 225,
+              "fromCommand": [
+                0,
+                0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 0.564298785898935,
+              "peakYawRateTrackingError": 2.4293532260160484,
+              "terminalMeasuredMotion": [
+                0.14235704255875067,
+                -0.09960795696730654,
+                0.8980929519151868
+              ],
+              "terminalPlanarTrackingError": 0.14381016301055072,
+              "terminalYawRateTrackingError": 0.8980929519151868,
+              "planarOvershootMps": 0.4185830370410777,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 2,
+              "planarSettled": false,
+              "yawRateSettled": false
+            },
+            {
+              "index": 2,
+              "atStep": 225,
+              "atSeconds": 4.5,
+              "endStep": 325,
+              "fromCommand": [
+                0,
+                -0.12,
+                0
+              ],
+              "toCommand": [
+                0,
+                0,
+                0
+              ],
+              "sampleCount": 100,
+              "peakPlanarTrackingError": 1.0596327026941599,
+              "peakYawRateTrackingError": 2.4732837528612728,
+              "terminalMeasuredMotion": [
+                0.5923981958565878,
+                0.7516504220746828,
+                0.6404932390429128
+              ],
+              "terminalPlanarTrackingError": 0.9570339489585461,
+              "terminalYawRateTrackingError": 0.6404932390429128,
+              "planarOvershootMps": 0.8606468735161205,
+              "yawRateOvershootRadPerSec": 0,
+              "planarSettlingTimeSeconds": 2,
+              "yawRateSettlingTimeSeconds": 2,
+              "planarSettled": false,
+              "yawRateSettled": false
+            }
+          ],
+          "maximumTransitionTerminalPlanarTrackingError": 0.9570339489585461,
+          "maximumTransitionTerminalYawRateTrackingError": 0.8980929519151868,
+          "maximumPlanarSettlingTimeSeconds": 2,
+          "maximumYawRateSettlingTimeSeconds": 2,
+          "maximumPlanarOvershootMps": 0.8606468735161205,
+          "maximumYawRateOvershootRadPerSec": 0,
+          "unsettledPlanarTransitionCount": 2,
+          "unsettledYawRateTransitionCount": 2,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.4707333578663093,
+            1.2612029901922464,
+            0.3554186754108892
+          ],
+          "netDisplacement": [
+            0.4707333578663093,
+            1.2612029901922464,
+            -0.08458132458911083
+          ],
+          "targetPlanarDisplacement": [
+            0,
+            0.06
+          ],
+          "forwardDisplacement": 1.2612029901922464,
+          "targetDistance": 0.06,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0.19403122926036034,
+          "lateralDrift": 0.4707333578663093,
+          "distanceTraveled": 2.616227636776784
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 10.197185259047705,
+            "forwardProgress": 10,
+            "upright": 14.158441003155046,
+            "lateralDrift": -2.3536667893315464,
+            "transitionTracking": 3.8881388798069487,
+            "energy": -2.563982823048381,
+            "smoothness": -0.04061270387700487,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 61.00950282575277
+        },
+        "resultHash": "3fb185d2d60ccb61bc5e4bc45a570c5324162682d5b3f4f1f44f4354c3558103"
+      }
+    ]
+  },
+  "delta": 0.10289673478881411,
+  "gateReasons": [
+    "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 7000000005.48477,
+    "candidateViolationSeverity": 9000000009.049847,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  }
+}

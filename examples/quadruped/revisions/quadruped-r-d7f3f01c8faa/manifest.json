@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "id": "quadruped-r-d7f3f01c8faa",
+  "parent": "quadruped-r-6ef154e62373",
+  "candidateId": "command-transitions-and-braking",
+  "candidateHash": "04e83a9a0ac4696be796d5ed3c80fecfa17487b48319ccfb72b5b8c5efcee7b6",
+  "benchmarkId": "command-transitions",
+  "benchmarkLockHash": "a1f7a7e9c219d5ee022561291490e12ceaf199ee7fbf92330642a052145b2803",
+  "assembly": "command-conditioned-history-3dof",
+  "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+  "componentHashes": {
+    "body-imu": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+    "actuator-history": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+    "motion-command-input": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+    "foot-force-kit": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c"
+  },
+  "observationContractHash": "37b9663cd7106e269da55f0e7a2a5f8c4b4c68e3100cbb5544dbcbdcf36f5f38",
+  "actionContractHash": "130b3327995e6142afe6396b23fcaab97502e3feb265b44426d5c8ae0698e010",
+  "controller": "transition-aware-gait",
+  "controllerHash": "9c61420aac7d18d149c4ccae30ff03988afdbc827fc9903e12551afbfc2e9947",
+  "policyId": null,
+  "policyHash": null,
+  "verifiedChanges": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "aggregateScore": 68.19427864220374,
+  "scoreDelta": -1.133672615504338,
+  "exactChangedFiles": [
+    "controllers/transition-aware-gait/controller.json",
+    "controllers/transition-aware-gait/controller.py"
+  ],
+  "sourceClosure": [
+    "assemblies/command-conditioned-history-3dof.robot.json",
+    "benchmarks/command-transitions.benchmark.json",
+    "benchmarks/command-transitions.lock.json",
+    "components/actuator-history/component.json",
+    "components/actuator-history/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "controllers/transition-aware-gait/controller.json",
+    "controllers/transition-aware-gait/controller.py",
+    "objectives/command-transitions.objective.json",
+    "robots/quadruped-3dof/model.xml",
+    "robots/quadruped-3dof/robot.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/delayed-lateral-push.scenario.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "tasks/accelerate-stop.task.json",
+    "tasks/forward-reverse-stop.task.json",
+    "tasks/lateral-redirection.task.json",
+    "tasks/yaw-redirection.task.json"
+  ],
+  "appliedAt": "2026-07-22T22:06:27.972Z"
+}

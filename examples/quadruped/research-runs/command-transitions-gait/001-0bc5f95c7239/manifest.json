@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "001-0bc5f95c7239",
+  "sequence": 1,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "b7c8829b13816c0991ba2817f577f000b49d56fa38dc481bbf75977f2ee4d274",
+  "candidateControllerHash": "d3439844551a2b2786f9c9e7d13bfddcde4b453dbbadc3f3a1001a958ef56575",
+  "proposal": {
+    "strategy": "coordinate-transition-planar-velocity-gain-increase",
+    "hypothesis": "Increase transitionPlanarVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether transitionPlanarVelocityGain=0.3 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionPlanarVelocityGain": 0.3
+    }
+  },
+  "strategy": "coordinate-transition-planar-velocity-gain-increase",
+  "score": 63.61146073299106,
+  "delta": -0.07880074421493788,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 15,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 9000000008.338562,
+    "candidateViolationSeverity": 9000000009.916086,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

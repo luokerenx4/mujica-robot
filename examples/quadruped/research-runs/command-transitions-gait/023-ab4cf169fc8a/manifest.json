@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "023-ab4cf169fc8a",
+  "sequence": 23,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "b41e72066b236c5a97e5f61c258bbdd7f7f0e9a5fe339f58e29897f7069d5950",
+  "proposal": {
+    "strategy": "coordinate-transition-planar-velocity-gain-decrease",
+    "hypothesis": "Decrease transitionPlanarVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether transitionPlanarVelocityGain=0.2 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionPlanarVelocityGain": 0.2
+    }
+  },
+  "strategy": "coordinate-transition-planar-velocity-gain-decrease",
+  "score": 65.00136445138533,
+  "delta": 0.38346588273127225,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 8000000008.055386,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

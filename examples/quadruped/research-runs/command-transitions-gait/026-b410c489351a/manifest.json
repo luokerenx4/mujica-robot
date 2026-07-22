@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "026-b410c489351a",
+  "sequence": 26,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "f892aa253c6301870102a1d7422af54c234a8a9f6f48645e7f246f1d3283b8b5",
+  "proposal": {
+    "strategy": "coordinate-planar-command-rate-limit-mps2-decrease",
+    "hypothesis": "Decrease planarCommandRateLimitMps2 by one bounded step.",
+    "expectedEffect": "Test whether planarCommandRateLimitMps2=90 improves the complete locked quadruped score.",
+    "values": {
+      "/config/planarCommandRateLimitMps2": 90
+    }
+  },
+  "strategy": "coordinate-planar-command-rate-limit-mps2-decrease",
+  "score": 64.61789856865406,
+  "delta": 0,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 7000000005.410622,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "004-1e2e6e0f31de",
+  "sequence": 4,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "b7c8829b13816c0991ba2817f577f000b49d56fa38dc481bbf75977f2ee4d274",
+  "candidateControllerHash": "2cb4fb5d5f2bd144ea4f667db86671e4d75aa68fdfbfba76beb3f74e124821c9",
+  "proposal": {
+    "strategy": "coordinate-transition-yaw-rate-gain-decrease",
+    "hypothesis": "Decrease transitionYawRateGain by one bounded step.",
+    "expectedEffect": "Test whether transitionYawRateGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionYawRateGain": -0.1
+    }
+  },
+  "strategy": "coordinate-transition-yaw-rate-gain-decrease",
+  "score": 65.00625554615083,
+  "delta": 1.3159940689448248,
+  "verdict": "KEEP",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 15,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 9000000008.338562,
+    "candidateViolationSeverity": 8000000008.142724,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": true,
+    "selectionReason": "lower-gate-violation-severity"
+  },
+  "error": null,
+  "revisionId": "quadruped-r-63d76a28b8b5",
+  "completed": true
+}

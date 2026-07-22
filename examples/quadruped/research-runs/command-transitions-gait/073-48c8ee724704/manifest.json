@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "073-48c8ee724704",
+  "sequence": 73,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0b6ad432436db0ac5b9425bd9fd11837d765192db5e23cd3f5d3744046988d15",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "b2f4ad87808ed4c81ddf513cf279b28c09f0b6e13d98a8f23e7e49cf3580df79",
+  "beforeControllerHash": "7b61a8f9582ab500829972ff51d04c6d4bc6039f92c3ef61468ceb8db133d4b1",
+  "candidateControllerHash": "394e4e2810fde42365431f3e80595c8d5806c07a91fae0881e92a3fba8d79f6f",
+  "proposal": {
+    "strategy": "coordinate-delayed-command-rate-scale-decrease",
+    "hypothesis": "Decrease delayedCommandRateScale by one bounded step.",
+    "expectedEffect": "Test whether delayedCommandRateScale=0.5 improves the complete locked quadruped score.",
+    "values": {
+      "/config/delayedCommandRateScale": 0.5
+    }
+  },
+  "strategy": "coordinate-delayed-command-rate-scale-decrease",
+  "score": 64.5673291562603,
+  "delta": -0.15671216673275978,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delayed-braking: transition-terminal-planar regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "delayed-braking: transition-terminal-planar regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 14,
+    "previousViolationSeverity": 11.444056888130586,
+    "candidateViolationSeverity": 11.470076760395488,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

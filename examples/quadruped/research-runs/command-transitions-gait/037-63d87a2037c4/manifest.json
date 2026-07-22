@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "037-63d87a2037c4",
+  "sequence": 37,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "d6edfbee5e69c697114f25e9b486d5da5e87f705263553edff79151ec379ad14",
+  "proposal": {
+    "strategy": "coordinate-lateral-abduction-amplitude-increase",
+    "hypothesis": "Increase lateralAbductionAmplitude by one bounded step.",
+    "expectedEffect": "Test whether lateralAbductionAmplitude=0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralAbductionAmplitude": 0.1
+    }
+  },
+  "strategy": "coordinate-lateral-abduction-amplitude-increase",
+  "score": 61.196714061212205,
+  "delta": -3.4211845074418505,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: survival regressed from passing to failing",
+    "disturbed-lateral-redirection: planar-velocity-tracking regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: survival regressed from passing to failing",
+      "disturbed-lateral-redirection: planar-velocity-tracking regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 16,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 9000000007.628187,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

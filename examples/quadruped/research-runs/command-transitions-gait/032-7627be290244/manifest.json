@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "032-7627be290244",
+  "sequence": 32,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "b9b6f6ada23ed188278a7a12504b09491a485c5a0d9db3040c98b2c3d68add7f",
+  "proposal": {
+    "strategy": "coordinate-yaw-abduction-differential-increase",
+    "hypothesis": "Increase yawAbductionDifferential by one bounded step.",
+    "expectedEffect": "Test whether yawAbductionDifferential=0.14 improves the complete locked quadruped score.",
+    "values": {
+      "/config/yawAbductionDifferential": 0.14
+    }
+  },
+  "strategy": "coordinate-yaw-abduction-differential-increase",
+  "score": 64.64059492080244,
+  "delta": 0.022696352148386723,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 14,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 8000000005.938854,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

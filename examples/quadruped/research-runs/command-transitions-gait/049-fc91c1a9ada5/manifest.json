@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "049-fc91c1a9ada5",
+  "sequence": 49,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0b6ad432436db0ac5b9425bd9fd11837d765192db5e23cd3f5d3744046988d15",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "b2f4ad87808ed4c81ddf513cf279b28c09f0b6e13d98a8f23e7e49cf3580df79",
+  "beforeControllerHash": "3b80952aca441b641cc903a9367bd7f21825e1fe76c78729070a48e1e91fa27b",
+  "candidateControllerHash": "1f910a403ba2009716f918e8ddeab5bd8c1f1dc5a6378646577aa380caa485f4",
+  "proposal": {
+    "strategy": "coordinate-transition-lateral-velocity-gain-decrease",
+    "hypothesis": "Decrease transitionLateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether transitionLateralVelocityGain=0.2 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionLateralVelocityGain": 0.2
+    }
+  },
+  "strategy": "coordinate-transition-lateral-velocity-gain-decrease",
+  "score": 65.0752501831127,
+  "delta": 0.5693472929584971,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "lateral-redirection: unsettled-planar regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "lateral-redirection: unsettled-planar regressed from passing to failing"
+    ],
+    "previousViolationCount": 14,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 13.660722377563758,
+    "candidateViolationSeverity": 19.621612291805604,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

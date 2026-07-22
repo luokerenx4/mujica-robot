@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "036-422032f40945",
+  "sequence": 36,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "54ae573dbf769f348ca91527d22d10a517b8b134653f321e0223f4d631a40c09",
+  "proposal": {
+    "strategy": "coordinate-command-lateral-velocity-gain-decrease",
+    "hypothesis": "Decrease commandLateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether commandLateralVelocityGain=-0.2 improves the complete locked quadruped score.",
+    "values": {
+      "/config/commandLateralVelocityGain": -0.2
+    }
+  },
+  "strategy": "coordinate-command-lateral-velocity-gain-decrease",
+  "score": 61.79232598355374,
+  "delta": -2.8255725851003177,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: survival regressed from passing to failing",
+    "disturbed-lateral-redirection: planar-velocity-tracking regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: survival regressed from passing to failing",
+      "disturbed-lateral-redirection: planar-velocity-tracking regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 16,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 8000000008.528774,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

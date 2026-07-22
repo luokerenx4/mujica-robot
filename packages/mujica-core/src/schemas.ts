@@ -58,13 +58,30 @@ export const controllerSchema = z.discriminatedUnion("kind", [
   z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("policy"), policy: idSchema, deterministic: z.boolean().default(true) }).strict(),
 ]);
 
-export const taskSchema = z.object({
-  version: z.literal(2), id: idSchema, name: z.string().min(1), durationSeconds: z.number().positive(), controlHz: z.number().positive(),
-  motionCommand: z.object({
-    frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite().min(-1).max(1), z.number().finite().min(-1).max(1)]), yawRateRadPerSec: z.number().finite().min(-2).max(2),
-  }).strict(),
-  healthyHeight: z.tuple([z.number(), z.number()]), terminateOnFall: z.boolean(),
+const motionCommandSchema = z.object({
+  frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite().min(-1).max(1), z.number().finite().min(-1).max(1)]), yawRateRadPerSec: z.number().finite().min(-2).max(2),
 }).strict();
+
+const taskBase = { id: idSchema, name: z.string().min(1), durationSeconds: z.number().finite().positive(), controlHz: z.number().finite().positive(), healthyHeight: z.tuple([z.number(), z.number()]), terminateOnFall: z.boolean() };
+
+const scheduledTaskSchema = z.object({
+  version: z.literal(3), ...taskBase,
+  motionCommandSchedule: z.array(z.object({ atSeconds: z.number().finite().nonnegative(), command: motionCommandSchema }).strict()).min(1).max(16),
+}).strict().superRefine((task, context) => {
+  const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
+  if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
+  task.motionCommandSchedule.forEach((segment, index) => {
+    if (index === 0 && segment.atSeconds !== 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "first segment must start at 0 seconds" });
+    if (index > 0 && segment.atSeconds <= task.motionCommandSchedule[index - 1]!.atSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment times must be strictly increasing" });
+    if (segment.atSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment must start before the episode ends" });
+    if (!aligned(segment.atSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "must align to an integer control step" });
+  });
+});
+
+export const taskSchema = z.union([
+  z.object({ version: z.literal(2), ...taskBase, motionCommand: motionCommandSchema }).strict(),
+  scheduledTaskSchema,
+]);
 
 export const scenarioSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), friction: z.number().positive(), payloadKg: z.number().nonnegative(),
@@ -77,12 +94,21 @@ export const objectiveSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
   weights: z.object({
     survival: z.number(), velocityTracking: z.number(), forwardProgress: z.number().default(0), upright: z.number(), lateralDrift: z.number().default(0),
-    energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
+    transitionTracking: z.number().default(0), energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
   }).strict(),
+  transientMeasurement: z.object({
+    planarToleranceMps: z.number().finite().nonnegative(), yawRateToleranceRadPerSec: z.number().finite().nonnegative(), holdSeconds: z.number().finite().positive(),
+  }).strict().default({ planarToleranceMps: 0.12, yawRateToleranceRadPerSec: 0.25, holdSeconds: 0.2 }),
   gates: z.object({
     minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
     maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumPlanarVelocityTrackingError: z.number().nonnegative().default(1_000_000),
-    maximumYawRateTrackingError: z.number().nonnegative().default(1_000_000), maximumRegression: z.number().nonnegative(),
+    maximumYawRateTrackingError: z.number().nonnegative().default(1_000_000),
+    maximumTransitionTerminalPlanarTrackingError: z.number().nonnegative().default(1_000_000), maximumTransitionTerminalYawRateTrackingError: z.number().nonnegative().default(1_000_000),
+    maximumPlanarSettlingTimeSeconds: z.number().nonnegative().default(1_000_000), maximumPlanarBrakingSettlingTimeSeconds: z.number().nonnegative().default(1_000_000),
+    maximumYawRateSettlingTimeSeconds: z.number().nonnegative().default(1_000_000),
+    maximumPlanarOvershootMps: z.number().nonnegative().default(1_000_000), maximumYawRateOvershootRadPerSec: z.number().nonnegative().default(1_000_000),
+    maximumUnsettledPlanarTransitions: z.number().int().nonnegative().default(1_000_000), maximumUnsettledYawRateTransitions: z.number().int().nonnegative().default(1_000_000),
+    maximumRegression: z.number().nonnegative(),
   }).strict(),
 }).strict();
 

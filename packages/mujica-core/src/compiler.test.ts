@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadController, loadResearch, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
+import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadController, loadResearch, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -153,5 +153,16 @@ describe("Robot Assembly compiler", () => {
     const spatial = await loadBenchmark(project, "spatial-robustness");
     expect(spatial.cases.find((item) => item.id === "actuator-delay")?.gating).toBe(true);
     expect(spatial.cases.find((item) => item.id === "strong-lateral-push")?.gating).toBe(true);
+  });
+
+  test("scheduled motion commands are bounded and aligned to exact control steps", () => {
+    const task = { version: 3, id: "brake", name: "Brake", durationSeconds: 4, controlHz: 50, healthyHeight: [0.19, 0.7], terminateOnFall: true, motionCommandSchedule: [
+      { atSeconds: 0, command: { frame: "world", linearVelocityMps: [0.25, 0], yawRateRadPerSec: 0 } },
+      { atSeconds: 2, command: { frame: "world", linearVelocityMps: [0, 0], yawRateRadPerSec: 0 } },
+    ] };
+    expect(taskSchema.safeParse(task).success).toBe(true);
+    expect(taskSchema.safeParse({ ...task, motionCommandSchedule: [{ ...task.motionCommandSchedule[0], atSeconds: 0.01 }] }).success).toBe(false);
+    expect(taskSchema.safeParse({ ...task, motionCommandSchedule: [task.motionCommandSchedule[0], { ...task.motionCommandSchedule[1], atSeconds: 1.999 }] }).success).toBe(false);
+    expect(taskSchema.safeParse({ ...task, motionCommandSchedule: Array.from({ length: 17 }, (_, index) => ({ atSeconds: index * 0.02, command: task.motionCommandSchedule[0]!.command })) }).success).toBe(false);
   });
 });

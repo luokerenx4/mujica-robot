@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "042-09ea383a4f87",
+  "sequence": 42,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "candidateControllerHash": "f28b0aea6e6e37c8e8cb595dac4d69096b833889e61a9c82ebce2b5c9225b93e",
+  "proposal": {
+    "strategy": "coordinate-cross-track-position-gain-decrease",
+    "hypothesis": "Decrease crossTrackPositionGain by one bounded step.",
+    "expectedEffect": "Test whether crossTrackPositionGain=0.5 improves the complete locked quadruped score.",
+    "values": {
+      "/config/crossTrackPositionGain": 0.5
+    }
+  },
+  "strategy": "coordinate-cross-track-position-gain-decrease",
+  "score": 63.73237172073099,
+  "delta": -0.8855268479230674,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: lateral-drift regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: lateral-drift regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 7000000005.410622,
+    "candidateViolationSeverity": 7000000004.8047085,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

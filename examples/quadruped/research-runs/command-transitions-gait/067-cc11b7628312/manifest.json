@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "067-cc11b7628312",
+  "sequence": 67,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0b6ad432436db0ac5b9425bd9fd11837d765192db5e23cd3f5d3744046988d15",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "b2f4ad87808ed4c81ddf513cf279b28c09f0b6e13d98a8f23e7e49cf3580df79",
+  "beforeControllerHash": "7b61a8f9582ab500829972ff51d04c6d4bc6039f92c3ef61468ceb8db133d4b1",
+  "candidateControllerHash": "7f4d94727f6a1a524dea2b16ddc210c1f57c20b341b2c75971990acc90b5fa1d",
+  "proposal": {
+    "strategy": "coordinate-transition-yaw-rate-gain-increase",
+    "hypothesis": "Increase transitionYawRateGain by one bounded step.",
+    "expectedEffect": "Test whether transitionYawRateGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionYawRateGain": -0.1
+    }
+  },
+  "strategy": "coordinate-transition-yaw-rate-gain-increase",
+  "score": 64.71724551995823,
+  "delta": -0.006795803034833625,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 11.444056888130586,
+    "candidateViolationSeverity": 11.472005511181601,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

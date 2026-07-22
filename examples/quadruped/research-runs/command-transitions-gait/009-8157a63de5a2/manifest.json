@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "009-8157a63de5a2",
+  "sequence": 9,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "06313f50eb63119216faa5d683ac4141ab97649a31e3369d8a1146d810f2816e",
+  "candidateControllerHash": "f165752a5535eada047def01503e5d565753fccd0e894d2ef64bd94a84139fb7",
+  "proposal": {
+    "strategy": "coordinate-yaw-command-rate-limit-rad-per-sec2-decrease",
+    "hypothesis": "Decrease yawCommandRateLimitRadPerSec2 by one bounded step.",
+    "expectedEffect": "Test whether yawCommandRateLimitRadPerSec2=90 improves the complete locked quadruped score.",
+    "values": {
+      "/config/yawCommandRateLimitRadPerSec2": 90
+    }
+  },
+  "strategy": "coordinate-yaw-command-rate-limit-rad-per-sec2-decrease",
+  "score": 64.61883751561807,
+  "delta": 0,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 7000000005.48477,
+    "candidateViolationSeverity": 7000000005.48477,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

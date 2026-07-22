@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "command-transitions-gait",
+  "name": "Transition-aware gait development",
+  "benchmark": "command-transitions",
+  "assembly": "command-conditioned-history-3dof",
+  "controller": "transition-aware-gait",
+  "program": "COMMAND_TRANSITIONS_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/transition-aware-gait/controller.json",
+    "parameters": [
+      { "path": "/config/transitionForwardVelocityGain", "minimum": 0, "maximum": 1.5, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/transitionLateralVelocityGain", "minimum": 0, "maximum": 1.5, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/transitionYawRateGain", "minimum": -0.5, "maximum": 1.5, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/transitionYawDampingGain", "minimum": 0, "maximum": 2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/planarCommandRateLimitMps2", "minimum": 0.5, "maximum": 100, "step": 10, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/yawCommandRateLimitRadPerSec2", "minimum": 1, "maximum": 100, "step": 10, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/delayedCommandRateScale", "minimum": 0.25, "maximum": 1, "step": 0.25, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/transitionDelayTwoPhaseLeadSeconds", "minimum": 0, "maximum": 0.3, "step": 0.025, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/transitionDelayThreePhaseLeadSeconds", "minimum": 0, "maximum": 0.3, "step": 0.025, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/delayedStopRateLimitMps2", "minimum": 0.05, "maximum": 2, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/yawHipDifferential", "minimum": -2, "maximum": 2, "step": 0.1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/yawAbductionDifferential", "minimum": -0.3, "maximum": 0.3, "step": 0.02, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/yawAbductionBias", "minimum": -0.2, "maximum": 0.2, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/yawPhaseDifferential", "minimum": -1.5, "maximum": 1.5, "step": 0.1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/commandLateralVelocityGain", "minimum": -0.5, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/lateralAbductionAmplitude", "minimum": -0.3, "maximum": 0.3, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/lateralCommandLean", "minimum": -0.2, "maximum": 0.2, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedLateralCommandLean", "minimum": -0.2, "maximum": 0.2, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/crossTrackPositionGain", "minimum": 0, "maximum": 2, "step": 0.1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/crossTrackVelocityGain", "minimum": 0, "maximum": 2, "step": 0.1, "directionOrder": ["decrease", "increase"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 128
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "015-a965d685df5b",
+  "sequence": 15,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "06313f50eb63119216faa5d683ac4141ab97649a31e3369d8a1146d810f2816e",
+  "candidateControllerHash": "99e598128fc6c92e4d403ad65c27da8a403d118c6149d66d1414cb11c2414ab4",
+  "proposal": {
+    "strategy": "coordinate-yaw-phase-differential-decrease",
+    "hypothesis": "Decrease yawPhaseDifferential by one bounded step.",
+    "expectedEffect": "Test whether yawPhaseDifferential=0.2 improves the complete locked quadruped score.",
+    "values": {
+      "/config/yawPhaseDifferential": 0.2
+    }
+  },
+  "strategy": "coordinate-yaw-phase-differential-decrease",
+  "score": 63.23278237999173,
+  "delta": -1.3860551356263358,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+    "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral-redirection: transition-terminal-yaw regressed from passing to failing",
+      "disturbed-lateral-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 14,
+    "previousViolationSeverity": 7000000005.48477,
+    "candidateViolationSeverity": 9000000007.283442,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

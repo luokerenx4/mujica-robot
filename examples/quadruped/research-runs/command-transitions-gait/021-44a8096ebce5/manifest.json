@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "021-44a8096ebce5",
+  "sequence": 21,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0963d50a20528da2e7e952a3af837ea7a7b175d1598e78752adede0b29aff3de",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "528942c9fbb3f24533671b227cc17e371fe543bf196db6810726bcb9f6ccbaa5",
+  "beforeControllerHash": "06313f50eb63119216faa5d683ac4141ab97649a31e3369d8a1146d810f2816e",
+  "candidateControllerHash": "f350bb6b2f77bd93d4ec5459e8eed137b95bec0f879e50700552fc3dadba122a",
+  "proposal": {
+    "strategy": "coordinate-lateral-command-lean-increase",
+    "hypothesis": "Increase lateralCommandLean by one bounded step.",
+    "expectedEffect": "Test whether lateralCommandLean=0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralCommandLean": 0.1
+    }
+  },
+  "strategy": "coordinate-lateral-command-lean-increase",
+  "score": 64.61789856865406,
+  "delta": -0.0009389469640126435,
+  "verdict": "KEEP",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 7000000005.48477,
+    "candidateViolationSeverity": 7000000005.410622,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": false,
+    "selectionReason": "lower-gate-violation-severity"
+  },
+  "error": null,
+  "revisionId": "quadruped-r-4abce28c53c1",
+  "completed": true
+}

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "074-96fa1f1a0d65",
+  "sequence": 74,
+  "researchId": "command-transitions-gait",
+  "researchHash": "0b6ad432436db0ac5b9425bd9fd11837d765192db5e23cd3f5d3744046988d15",
+  "programHash": "ffd8a6492df4d7bea1cadb4e3289ced9023f4abe5705e5146008bc56baf58ac8",
+  "benchmarkLockHash": "b2f4ad87808ed4c81ddf513cf279b28c09f0b6e13d98a8f23e7e49cf3580df79",
+  "beforeControllerHash": "7b61a8f9582ab500829972ff51d04c6d4bc6039f92c3ef61468ceb8db133d4b1",
+  "candidateControllerHash": "34db1d1fdc80ae15dc417d6982696a2975ee694d06ffdc577cd1c307dbf0f6bb",
+  "proposal": {
+    "strategy": "coordinate-transition-delay-two-phase-lead-seconds-decrease",
+    "hypothesis": "Decrease transitionDelayTwoPhaseLeadSeconds by one bounded step.",
+    "expectedEffect": "Test whether transitionDelayTwoPhaseLeadSeconds=0.075 improves the complete locked quadruped score.",
+    "values": {
+      "/config/transitionDelayTwoPhaseLeadSeconds": 0.075
+    }
+  },
+  "strategy": "coordinate-transition-delay-two-phase-lead-seconds-decrease",
+  "score": 64.92533093711285,
+  "delta": 0.20128961411978707,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 11.444056888130586,
+    "candidateViolationSeverity": 17.789607014583787,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

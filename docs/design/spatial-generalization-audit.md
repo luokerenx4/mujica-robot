@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The promoted spatial policy is proven on its locked seven-case Benchmark. This audit deliberately evaluates outside that distribution: two new reset seeds, a mirrored 50 N push, 20 ms and 60 ms actuator delays, delay plus push, and delay plus reset. Every held-out case is gating in `spatial-generalization`.
+The promoted spatial policy was accepted on its locked seven-case Benchmark in the original Runtime context. A later friction correction showed that one authored low-friction case had been physically inert, reopening that specific capability. This audit deliberately evaluates a different held-out distribution: two new reset seeds, a mirrored 50 N push, 20 ms and 60 ms actuator delays, delay plus push, and delay plus reset. Every held-out case is gating in `spatial-generalization`.
 
 ## Findings
 
@@ -36,4 +36,4 @@ The kept robot survives all seven held-out cases. Pure-delay progress is `0.3525
 
 ## Governance decision
 
-The prior default `force-sensing-3dof` plus `spatial-residual-gait` and Policy Revision `quadruped-p-7423506a0965` remains valid evidence for the earlier promotion Benchmark. The held-out improvement is a separate Robot Revision using the history Assembly and calibrated Program Controller; it does not retroactively rewrite completed policy evidence.
+The prior default `force-sensing-3dof` plus `spatial-residual-gait` and Policy Revision `quadruped-p-7423506a0965` remains immutable evidence for the earlier Runtime context, not a current claim that corrected low-friction locomotion passes. The held-out improvement is a separate Robot Revision using the history Assembly and calibrated Program Controller; it does not retroactively rewrite completed policy evidence.
