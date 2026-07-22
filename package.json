@@ -1,0 +1,21 @@
+{
+  "name": "mujica",
+  "version": "0.1.0",
+  "description": "AI-native robot development harness built on MuJoCo",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "mujica": "bun packages/mujica-cli/src/bin.ts",
+    "typecheck": "bunx tsc -p packages/mujica-core/tsconfig.json --noEmit && bunx tsc -p packages/mujica-cli/tsconfig.json --noEmit",
+    "test:ts": "bun test packages/mujica-core packages/mujica-cli",
+    "test:py": "PYTHONPATH=runtime/src uv run --project runtime python -m unittest discover -s runtime/tests -v",
+    "test": "bun run typecheck && bun run test:ts && bun run test:py"
+  },
+  "devDependencies": {
+    "@mujica/cli": "workspace:*",
+    "@mujica/core": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

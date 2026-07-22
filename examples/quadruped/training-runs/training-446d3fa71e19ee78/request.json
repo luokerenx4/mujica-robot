@@ -1,0 +1,197 @@
+{
+  "runtimeVersion": "0.1.0",
+  "projectDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+  "modelPath": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e/model.xml",
+  "compiled": {
+    "version": 1,
+    "id": "baseline",
+    "assemblyHash": "f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e",
+    "baseHash": "b0834875813d25904920f291dcca5f074ce4a45d842183980c11e284dbfd6e81",
+    "catalogHash": "ada241ff5da5bc6f75babd67ee3370fb4991f65d7e5e031752183547f62e1ef8",
+    "totalMassKg": 5.63,
+    "componentCost": 1,
+    "components": [
+      {
+        "instanceId": "body-imu",
+        "componentId": "body-imu",
+        "mount": "torso-sensor",
+        "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+        "massKg": 0.03,
+        "cost": 1
+      }
+    ],
+    "observationContract": {
+      "version": 1,
+      "assembly": "baseline",
+      "channels": [
+        {
+          "name": "joint-position",
+          "kind": "joint-position",
+          "size": 8,
+          "source": "qpos:joints",
+          "unit": "rad"
+        },
+        {
+          "name": "joint-velocity",
+          "kind": "joint-velocity",
+          "size": 8,
+          "source": "qvel:joints",
+          "unit": "rad-s"
+        },
+        {
+          "name": "base-height",
+          "kind": "body-state",
+          "size": 1,
+          "source": "qpos:root-height",
+          "unit": "m"
+        },
+        {
+          "name": "base-orientation",
+          "kind": "body-state",
+          "size": 4,
+          "source": "qpos:root-quaternion",
+          "unit": "quaternion"
+        },
+        {
+          "name": "base-velocity",
+          "kind": "body-state",
+          "size": 6,
+          "source": "qvel:root",
+          "unit": "mixed"
+        },
+        {
+          "name": "imu-angular-velocity",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-gyro",
+          "unit": "rad-s"
+        },
+        {
+          "name": "imu-linear-acceleration",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-accelerometer",
+          "unit": "m-s2"
+        }
+      ],
+      "size": 33
+    },
+    "actionContract": {
+      "version": 1,
+      "assembly": "baseline",
+      "channels": [
+        {
+          "name": "joint-torque",
+          "kind": "actuator",
+          "size": 8,
+          "source": "actuator:all",
+          "unit": "nm",
+          "low": -6,
+          "high": 6
+        }
+      ],
+      "size": 8
+    },
+    "observationContractHash": "1112f8e5b16b5ff0f380d1f4b53725cd936f4d3fe6c6d67a8e4cd7e73fd3b518",
+    "actionContractHash": "58cf37195016ca65c9857e53b96fe526346d77c2df70b593dcee84e4a72b36a7",
+    "actionLow": [
+      -6,
+      -6,
+      -6,
+      -6,
+      -6,
+      -6,
+      -6,
+      -6
+    ],
+    "actionHigh": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "sensorChannelCount": 6
+  },
+  "training": {
+    "version": 1,
+    "id": "baseline-locomotion",
+    "name": "Baseline velocity tracking PPO",
+    "assembly": "baseline",
+    "trainer": "locomotion-ppo",
+    "task": "velocity-track",
+    "scenarios": [
+      "nominal",
+      "low-friction"
+    ],
+    "totalSteps": 1024,
+    "rolloutSteps": 128,
+    "epochs": 4,
+    "minibatchSize": 64,
+    "learningRate": 0.0003,
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+    "clipRatio": 0.2,
+    "entropyCoefficient": 0.01
+  },
+  "trainer": {
+    "version": 1,
+    "id": "locomotion-ppo",
+    "name": "Minimal CPU PPO",
+    "kind": "ppo",
+    "entry": "trainer.py",
+    "model": "model.py"
+  },
+  "trainerRoot": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/trainers/locomotion-ppo",
+  "trainerHash": "099233379d39c0b39b7fac9ec5005f5b1657f63c576ff88ac95d376b0bb17bd3",
+  "task": {
+    "version": 1,
+    "id": "velocity-track",
+    "name": "Track a modest forward velocity",
+    "durationSeconds": 3,
+    "controlHz": 50,
+    "targetVelocity": [
+      0.2,
+      0,
+      0
+    ],
+    "healthyHeight": [
+      0.19,
+      0.7
+    ],
+    "terminateOnFall": true
+  },
+  "scenarios": [
+    {
+      "version": 1,
+      "id": "nominal",
+      "name": "Nominal laboratory floor",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0
+    },
+    {
+      "version": 1,
+      "id": "low-friction",
+      "name": "Low-friction floor",
+      "friction": 0.35,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0
+    }
+  ],
+  "seed": 42,
+  "dependencyLockHash": "88efbb88deae98bb1604d209cfa4d0f6ac2499faeacfdf9c54b07b119c0d56cb",
+  "sourceHashes": {
+    "trainer": "099233379d39c0b39b7fac9ec5005f5b1657f63c576ff88ac95d376b0bb17bd3",
+    "assembly": "f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e",
+    "catalog": "ada241ff5da5bc6f75babd67ee3370fb4991f65d7e5e031752183547f62e1ef8",
+    "training": "207ae90f492d14bafda7a087abc3c1347635c6a86a0d88a91f5ba45edfb2704d"
+  }
+}

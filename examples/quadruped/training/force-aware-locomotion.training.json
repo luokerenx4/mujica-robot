@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "force-aware-locomotion",
+  "name": "Force-aware velocity tracking PPO",
+  "assembly": "force-sensing",
+  "trainer": "locomotion-ppo",
+  "task": "velocity-track",
+  "scenarios": ["nominal", "low-friction", "lateral-push"],
+  "totalSteps": 1024,
+  "rolloutSteps": 128,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0003,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.2,
+  "entropyCoefficient": 0.01
+}
+

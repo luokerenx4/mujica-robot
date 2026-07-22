@@ -1,0 +1,32 @@
+import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
+import { compareAssemblies, compileAssembly, validateProject } from "./index";
+
+const project = resolve(import.meta.dir, "../../../examples/quadruped");
+
+describe("Robot Assembly compiler", () => {
+  test("component addition evolves the observation ABI without changing actions", async () => {
+    const comparison = await compareAssemblies(project, "baseline", "force-sensing");
+    expect(comparison.components.added.map((item) => item.componentId)).toEqual(["foot-force-sensor"]);
+    expect(comparison.observations.added.map((item) => item.name)).toEqual(["foot-contact-force"]);
+    expect(comparison.actions.added).toEqual([]);
+    expect(comparison.from.observationContract.size).toBe(33);
+    expect(comparison.to.observationContract.size).toBe(37);
+    expect(comparison.to.actionContract.size).toBe(8);
+    expect(comparison.massDeltaKg).toBeCloseTo(0.08);
+  });
+
+  test("identical source compiles to an identical content address", async () => {
+    const first = await compileAssembly(project, "baseline");
+    const second = await compileAssembly(project, "baseline");
+    expect(second.assemblyHash).toBe(first.assemblyHash);
+    expect(second.modelPath).toBe(first.modelPath);
+  });
+
+  test("the complete example project resolves", async () => {
+    const result = await validateProject(project);
+    expect(result.project.manifest.id).toBe("quadruped");
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing"]);
+  });
+});
+

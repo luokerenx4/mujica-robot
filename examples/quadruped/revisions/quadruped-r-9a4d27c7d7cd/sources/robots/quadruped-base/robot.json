@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "quadruped-base",
+  "name": "Eight-actuator educational quadruped",
+  "mjcf": "model.xml",
+  "mounts": [
+    { "id": "torso-sensor", "type": "sensor-bus", "site": "imu-site", "exclusive": false },
+    { "id": "foot-array", "type": "foot-array", "site": "foot-array-site", "exclusive": true }
+  ],
+  "observations": [
+    { "name": "joint-position", "kind": "joint-position", "size": 8, "source": "qpos:joints", "unit": "rad" },
+    { "name": "joint-velocity", "kind": "joint-velocity", "size": 8, "source": "qvel:joints", "unit": "rad-s" },
+    { "name": "base-height", "kind": "body-state", "size": 1, "source": "qpos:root-height", "unit": "m" },
+    { "name": "base-orientation", "kind": "body-state", "size": 4, "source": "qpos:root-quaternion", "unit": "quaternion" },
+    { "name": "base-velocity", "kind": "body-state", "size": 6, "source": "qvel:root", "unit": "mixed" }
+  ],
+  "actions": [
+    { "name": "joint-torque", "kind": "actuator", "size": 8, "source": "actuator:all", "unit": "nm", "low": -6, "high": 6 }
+  ],
+  "massKg": 5.6,
+  "license": "Apache-2.0",
+  "attribution": "Original minimal model created for Mujica"
+}
+

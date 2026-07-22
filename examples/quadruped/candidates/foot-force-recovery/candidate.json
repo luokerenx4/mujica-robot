@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "foot-force-recovery",
+  "name": "Add foot-force sensing and contact-aware recovery",
+  "kind": "development",
+  "benchmark": "sensor-development",
+  "baseRevision": null,
+  "baseline": { "assembly": "baseline", "controller": "baseline-gait" },
+  "proposed": { "assembly": "force-sensing", "controller": "force-aware-gait" },
+  "addedComponents": ["foot-force-sensor"],
+  "removedComponents": [],
+  "allowedChanges": [
+    "assemblies/force-sensing.robot.json",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "controllers/force-aware-gait/controller.json",
+    "controllers/force-aware-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/sensor-development.benchmark.json",
+    "tasks/stand.task.json",
+    "tasks/velocity-track.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/lateral-push.scenario.json",
+    "objectives/locomotion.objective.json"
+  ],
+  "hypothesis": "Direct foot contact measurements let the controller extend loaded legs during disturbances instead of inferring contact only from body motion.",
+  "expectedEffect": "Improve survival and upright recovery in low-friction and lateral-push cases at a visible mass, sensor-count, and complexity cost."
+}
+

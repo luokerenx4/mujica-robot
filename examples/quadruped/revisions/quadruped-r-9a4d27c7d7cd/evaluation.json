@@ -1,0 +1,531 @@
+{
+  "candidate": {
+    "version": 1,
+    "id": "foot-force-recovery",
+    "name": "Add foot-force sensing and contact-aware recovery",
+    "kind": "development",
+    "benchmark": "sensor-development",
+    "baseRevision": null,
+    "baseline": {
+      "assembly": "baseline",
+      "controller": "baseline-gait"
+    },
+    "proposed": {
+      "assembly": "force-sensing",
+      "controller": "force-aware-gait"
+    },
+    "addedComponents": [
+      "foot-force-sensor"
+    ],
+    "removedComponents": [],
+    "allowedChanges": [
+      "assemblies/force-sensing.robot.json",
+      "components/foot-force-sensor/component.json",
+      "components/foot-force-sensor/model.xml",
+      "controllers/force-aware-gait/controller.json",
+      "controllers/force-aware-gait/controller.py"
+    ],
+    "fixedInputs": [
+      "benchmarks/sensor-development.benchmark.json",
+      "tasks/stand.task.json",
+      "tasks/velocity-track.task.json",
+      "scenarios/nominal.scenario.json",
+      "scenarios/low-friction.scenario.json",
+      "scenarios/lateral-push.scenario.json",
+      "objectives/locomotion.objective.json"
+    ],
+    "hypothesis": "Direct foot contact measurements let the controller extend loaded legs during disturbances instead of inferring contact only from body motion.",
+    "expectedEffect": "Improve survival and upright recovery in low-friction and lateral-push cases at a visible mass, sensor-count, and complexity cost."
+  },
+  "candidateHash": "eb4c1334e1c8150b188036694b04dcc1ccbb5b0266f9ef10f02f84b2911cc517",
+  "allowedChangeHashes": {
+    "assemblies/force-sensing.robot.json": "8369ef8adcb019ba9e16c3a95d700360be927dd75e486dacd6e65a9b533173ce",
+    "components/foot-force-sensor/component.json": "95e2c6dbc683bfc2bd9df042079dcdd2aed3cf2a809cec57c7153152a862f1dc",
+    "components/foot-force-sensor/model.xml": "cbb2ed82a3536ba8ecc51d824dd35901099a0e970a7186d623d8012b65c6c0b4",
+    "controllers/force-aware-gait/controller.json": "347965103146fb6da7fec4d570ae4741c4a59609f783e4cde4704ba4ae5e5588",
+    "controllers/force-aware-gait/controller.py": "82e46268c0fd72ace7bc622839a5c16cc72ff04d11c174d8e5d1cfde41930cb9"
+  },
+  "benchmarkLockHash": "4c250439bbb0b0f65de0f1ff58dbbf81a30a6e83e4083b987e8d1ad830e40f12",
+  "comparison": {
+    "from": {
+      "version": 1,
+      "id": "baseline",
+      "name": "Baseline quadruped with body IMU",
+      "projectId": "quadruped",
+      "rootDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+      "artifactDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e",
+      "modelPath": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e/model.xml",
+      "assemblyHash": "f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e",
+      "baseHash": "b0834875813d25904920f291dcca5f074ce4a45d842183980c11e284dbfd6e81",
+      "catalogHash": "ada241ff5da5bc6f75babd67ee3370fb4991f65d7e5e031752183547f62e1ef8",
+      "totalMassKg": 5.63,
+      "componentCost": 1,
+      "components": [
+        {
+          "instanceId": "body-imu",
+          "componentId": "body-imu",
+          "mount": "torso-sensor",
+          "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+          "massKg": 0.03,
+          "cost": 1
+        }
+      ],
+      "observationContract": {
+        "version": 1,
+        "assembly": "baseline",
+        "channels": [
+          {
+            "name": "joint-position",
+            "kind": "joint-position",
+            "size": 8,
+            "source": "qpos:joints",
+            "unit": "rad"
+          },
+          {
+            "name": "joint-velocity",
+            "kind": "joint-velocity",
+            "size": 8,
+            "source": "qvel:joints",
+            "unit": "rad-s"
+          },
+          {
+            "name": "base-height",
+            "kind": "body-state",
+            "size": 1,
+            "source": "qpos:root-height",
+            "unit": "m"
+          },
+          {
+            "name": "base-orientation",
+            "kind": "body-state",
+            "size": 4,
+            "source": "qpos:root-quaternion",
+            "unit": "quaternion"
+          },
+          {
+            "name": "base-velocity",
+            "kind": "body-state",
+            "size": 6,
+            "source": "qvel:root",
+            "unit": "mixed"
+          },
+          {
+            "name": "imu-angular-velocity",
+            "kind": "sensor",
+            "size": 3,
+            "source": "sensor:body-gyro",
+            "unit": "rad-s"
+          },
+          {
+            "name": "imu-linear-acceleration",
+            "kind": "sensor",
+            "size": 3,
+            "source": "sensor:body-accelerometer",
+            "unit": "m-s2"
+          }
+        ],
+        "size": 33
+      },
+      "actionContract": {
+        "version": 1,
+        "assembly": "baseline",
+        "channels": [
+          {
+            "name": "joint-torque",
+            "kind": "actuator",
+            "size": 8,
+            "source": "actuator:all",
+            "unit": "nm",
+            "low": -6,
+            "high": 6
+          }
+        ],
+        "size": 8
+      },
+      "sourceFiles": [
+        "assemblies/baseline.robot.json",
+        "robots/quadruped-base/robot.json",
+        "robots/quadruped-base/model.xml",
+        "components/body-imu/component.json",
+        "components/body-imu/model.xml"
+      ]
+    },
+    "to": {
+      "version": 1,
+      "id": "force-sensing",
+      "name": "Quadruped with body IMU and foot contact sensing",
+      "projectId": "quadruped",
+      "rootDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+      "artifactDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+      "modelPath": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea/model.xml",
+      "assemblyHash": "d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+      "baseHash": "b0834875813d25904920f291dcca5f074ce4a45d842183980c11e284dbfd6e81",
+      "catalogHash": "12015b2edc43f87c9a56a8336859d68e10cf44f3de401b82fdc9dd52ed51d6a5",
+      "totalMassKg": 5.71,
+      "componentCost": 5,
+      "components": [
+        {
+          "instanceId": "body-imu",
+          "componentId": "body-imu",
+          "mount": "torso-sensor",
+          "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+          "massKg": 0.03,
+          "cost": 1
+        },
+        {
+          "instanceId": "foot-force-kit",
+          "componentId": "foot-force-sensor",
+          "mount": "foot-array",
+          "hash": "76341a477884a41a2bea80b531b44f735ef65823f4482cccd977229963041869",
+          "massKg": 0.08,
+          "cost": 4
+        }
+      ],
+      "observationContract": {
+        "version": 1,
+        "assembly": "force-sensing",
+        "channels": [
+          {
+            "name": "joint-position",
+            "kind": "joint-position",
+            "size": 8,
+            "source": "qpos:joints",
+            "unit": "rad"
+          },
+          {
+            "name": "joint-velocity",
+            "kind": "joint-velocity",
+            "size": 8,
+            "source": "qvel:joints",
+            "unit": "rad-s"
+          },
+          {
+            "name": "base-height",
+            "kind": "body-state",
+            "size": 1,
+            "source": "qpos:root-height",
+            "unit": "m"
+          },
+          {
+            "name": "base-orientation",
+            "kind": "body-state",
+            "size": 4,
+            "source": "qpos:root-quaternion",
+            "unit": "quaternion"
+          },
+          {
+            "name": "base-velocity",
+            "kind": "body-state",
+            "size": 6,
+            "source": "qvel:root",
+            "unit": "mixed"
+          },
+          {
+            "name": "imu-angular-velocity",
+            "kind": "sensor",
+            "size": 3,
+            "source": "sensor:body-gyro",
+            "unit": "rad-s"
+          },
+          {
+            "name": "imu-linear-acceleration",
+            "kind": "sensor",
+            "size": 3,
+            "source": "sensor:body-accelerometer",
+            "unit": "m-s2"
+          },
+          {
+            "name": "foot-contact-force",
+            "kind": "sensor",
+            "size": 4,
+            "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+            "unit": "n"
+          }
+        ],
+        "size": 37
+      },
+      "actionContract": {
+        "version": 1,
+        "assembly": "force-sensing",
+        "channels": [
+          {
+            "name": "joint-torque",
+            "kind": "actuator",
+            "size": 8,
+            "source": "actuator:all",
+            "unit": "nm",
+            "low": -6,
+            "high": 6
+          }
+        ],
+        "size": 8
+      },
+      "sourceFiles": [
+        "assemblies/force-sensing.robot.json",
+        "robots/quadruped-base/robot.json",
+        "robots/quadruped-base/model.xml",
+        "components/body-imu/component.json",
+        "components/body-imu/model.xml",
+        "components/foot-force-sensor/component.json",
+        "components/foot-force-sensor/model.xml"
+      ]
+    },
+    "components": {
+      "added": [
+        {
+          "instanceId": "foot-force-kit",
+          "componentId": "foot-force-sensor",
+          "mount": "foot-array",
+          "hash": "76341a477884a41a2bea80b531b44f735ef65823f4482cccd977229963041869",
+          "massKg": 0.08,
+          "cost": 4
+        }
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "observations": {
+      "added": [
+        {
+          "name": "foot-contact-force",
+          "kind": "sensor",
+          "size": 4,
+          "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+          "unit": "n"
+        }
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "massDeltaKg": 0.08000000000000007,
+    "costDelta": 4
+  },
+  "baseline": {
+    "assembly": "baseline",
+    "controller": "baseline-gait",
+    "assemblyHash": "f33de41dfd3aa872124494e32a085b4ec15f34b78375c484e04c485a167acc2e",
+    "aggregateScore": 80.67494753099388,
+    "cases": [
+      {
+        "case": {
+          "id": "nominal",
+          "task": "velocity-track",
+          "scenario": "nominal",
+          "seed": 42,
+          "weight": 1
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.27735378471399397,
+          "meanUpright": 0.8208720190563081,
+          "meanEnergy": 4.336324119164124,
+          "meanSmoothness": 0.11968387104810536,
+          "peakActuator": 6
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 15.657369351653898,
+            "upright": 16.417440381126163,
+            "energy": -0.08672648238328248,
+            "smoothness": -0.0011968387104810537,
+            "componentMass": -1.4075,
+            "sensorChannels": -0.30000000000000004,
+            "trainingSteps": 0
+          },
+          "total": 80.2793864116863
+        },
+        "resultHash": "4a57e288b1dd8c0b2828d8178a814246711f303cb6e99faf58867b2be1ccacd5"
+      },
+      {
+        "case": {
+          "id": "low-friction",
+          "task": "velocity-track",
+          "scenario": "low-friction",
+          "seed": 43,
+          "weight": 1.2
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.27735378471399397,
+          "meanUpright": 0.8208720190563081,
+          "meanEnergy": 4.336324119164124,
+          "meanSmoothness": 0.11968387104810536,
+          "peakActuator": 6
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 15.657369351653898,
+            "upright": 16.417440381126163,
+            "energy": -0.08672648238328248,
+            "smoothness": -0.0011968387104810537,
+            "componentMass": -1.4075,
+            "sensorChannels": -0.30000000000000004,
+            "trainingSteps": 0
+          },
+          "total": 80.2793864116863
+        },
+        "resultHash": "7995696a4ab314bccf58f9e12491909d9c436f56eec628b17bfadc3ece830afd"
+      },
+      {
+        "case": {
+          "id": "lateral-push",
+          "task": "stand",
+          "scenario": "lateral-push",
+          "seed": 44,
+          "weight": 1.5
+        },
+        "metrics": {
+          "durationSeconds": 2.0000000000000013,
+          "steps": 100,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.2056856587681671,
+          "meanUpright": 0.8248119264594707,
+          "meanEnergy": 6.001251223498357,
+          "meanSmoothness": 0.1681236594698208,
+          "peakActuator": 6
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.588071571186916,
+            "upright": 16.496238529189412,
+            "energy": -0.12002502446996713,
+            "smoothness": -0.001681236594698208,
+            "componentMass": -1.4075,
+            "sensorChannels": -0.30000000000000004,
+            "trainingSteps": 0
+          },
+          "total": 81.25510383931166
+        },
+        "resultHash": "21e4f203ff35902a1409e9b84895812a6d3c9bfb28397a84b1d439c608aee428"
+      }
+    ]
+  },
+  "proposed": {
+    "assembly": "force-sensing",
+    "controller": "force-aware-gait",
+    "assemblyHash": "d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+    "aggregateScore": 83.35985271738677,
+    "cases": [
+      {
+        "case": {
+          "id": "nominal",
+          "task": "velocity-track",
+          "scenario": "nominal",
+          "seed": 42,
+          "weight": 1
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.2091650087599326,
+          "meanUpright": 0.9344946089846909,
+          "meanEnergy": 0.9719637340322476,
+          "meanSmoothness": 0.356554691381689,
+          "peakActuator": 5.280594666689113
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.540339701453266,
+            "upright": 18.689892179693818,
+            "energy": -0.019439274680644953,
+            "smoothness": -0.00356554691381689,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.27972705955263
+        },
+        "resultHash": "6f0e2c4e16ff722e97e56b32508872b44a1d6a65863a43708ce76a4792cc3c4c"
+      },
+      {
+        "case": {
+          "id": "low-friction",
+          "task": "velocity-track",
+          "scenario": "low-friction",
+          "seed": 43,
+          "weight": 1.2
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.2091650087599326,
+          "meanUpright": 0.9344946089846909,
+          "meanEnergy": 0.9719637340322476,
+          "meanSmoothness": 0.356554691381689,
+          "peakActuator": 5.280594666689113
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.540339701453266,
+            "upright": 18.689892179693818,
+            "energy": -0.019439274680644953,
+            "smoothness": -0.00356554691381689,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.27972705955263
+        },
+        "resultHash": "167471b9ce1e2fd1b72b5accd6ca9585d71368b90883fcf5ef64a7f9e6e8f48c"
+      },
+      {
+        "case": {
+          "id": "lateral-push",
+          "task": "stand",
+          "scenario": "lateral-push",
+          "seed": 44,
+          "weight": 1.5
+        },
+        "metrics": {
+          "durationSeconds": 2.0000000000000013,
+          "steps": 100,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.14273157172814563,
+          "meanUpright": 0.898369294175336,
+          "meanEnergy": 2.9455922404290775,
+          "meanSmoothness": 0.5526709025247795,
+          "peakActuator": 6
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 17.501923019204,
+            "upright": 17.96738588350672,
+            "energy": -0.058911844808581554,
+            "smoothness": -0.005526709025247795,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.47737034887689
+        },
+        "resultHash": "7982287ab925a0c4d7817c067edc1854a33fca14977d9c2ffb75facde0f2a824"
+      }
+    ]
+  },
+  "scoreDelta": 2.6849051863928963,
+  "gateReasons": [],
+  "verdict": "KEEP"
+}
