@@ -1,0 +1,231 @@
+{
+  "proposal": {
+    "strategy": "coordinate-kp-increase",
+    "hypothesis": "Increase kp by one bounded step.",
+    "expectedEffect": "Test whether kp=28 improves the complete locked quadruped score.",
+    "values": {
+      "/config/kp": 28
+    }
+  },
+  "previous": {
+    "assembly": "force-sensing",
+    "controller": "force-aware-gait",
+    "assemblyHash": "d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+    "aggregateScore": 83.76731575084696,
+    "cases": [
+      {
+        "case": {
+          "id": "nominal",
+          "task": "velocity-track",
+          "scenario": "nominal",
+          "seed": 42,
+          "weight": 1
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.2068578514615405,
+          "meanUpright": 0.9366657943964841,
+          "meanEnergy": 0.9629147704325379,
+          "meanSmoothness": 0.34336871925141355,
+          "peakActuator": 5.199999999999999
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.57195996676776,
+            "upright": 18.73331588792968,
+            "energy": -0.019258295408650757,
+            "smoothness": -0.0034336871925141356,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.35508387209627
+        },
+        "resultHash": "e6f4cabecbe2b9c895eb77d6d0aa5fd87d58fd01c52c74d302f7c2f9e0ee020a"
+      },
+      {
+        "case": {
+          "id": "low-friction",
+          "task": "velocity-track",
+          "scenario": "low-friction",
+          "seed": 43,
+          "weight": 1.2
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.2068578514615405,
+          "meanUpright": 0.9366657943964841,
+          "meanEnergy": 0.9629147704325379,
+          "meanSmoothness": 0.34336871925141355,
+          "peakActuator": 5.199999999999999
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.57195996676776,
+            "upright": 18.73331588792968,
+            "energy": -0.019258295408650757,
+            "smoothness": -0.0034336871925141356,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.35508387209627
+        },
+        "resultHash": "b2f9f57d8e845a6a744eb31f61c155b3d69cbe10cd1e541ebc15bdf90c72a408"
+      },
+      {
+        "case": {
+          "id": "lateral-push",
+          "task": "stand",
+          "scenario": "lateral-push",
+          "seed": 44,
+          "weight": 1.5
+        },
+        "metrics": {
+          "durationSeconds": 2.0000000000000013,
+          "steps": 100,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.10447551688245574,
+          "meanUpright": 0.9123713686098179,
+          "meanEnergy": 2.5403591853588963,
+          "meanSmoothness": 0.534013916272607,
+          "peakActuator": 5.501278516450031
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 18.108142457021533,
+            "upright": 18.24742737219636,
+            "energy": -0.050807183707177926,
+            "smoothness": -0.005340139162726069,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 84.37192250634799
+        },
+        "resultHash": "618bd932e05aa69bea79bde823d1eb13630622b04c05611a41b0e9e00c4c68c5"
+      }
+    ]
+  },
+  "candidate": {
+    "assembly": "force-sensing",
+    "controller": "force-aware-gait",
+    "assemblyHash": "d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+    "aggregateScore": 83.88756383453581,
+    "cases": [
+      {
+        "case": {
+          "id": "nominal",
+          "task": "velocity-track",
+          "scenario": "nominal",
+          "seed": 42,
+          "weight": 1
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.20523508292003026,
+          "meanUpright": 0.9382299255749118,
+          "meanEnergy": 1.0342395049736128,
+          "meanSmoothness": 0.37956790354516445,
+          "peakActuator": 5.599999999999999
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.594273004021936,
+            "upright": 18.764598511498235,
+            "energy": -0.02068479009947226,
+            "smoothness": -0.003795679035451645,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.40689104638524
+        },
+        "resultHash": "41b0eef7166d09a357cc50bfa864e7805e9e34447cdd73a8269c1a1e4fdb3932"
+      },
+      {
+        "case": {
+          "id": "low-friction",
+          "task": "velocity-track",
+          "scenario": "low-friction",
+          "seed": 43,
+          "weight": 1.2
+        },
+        "metrics": {
+          "durationSeconds": 2.999999999999891,
+          "steps": 150,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.20523508292003026,
+          "meanUpright": 0.9382299255749118,
+          "meanEnergy": 1.0342395049736128,
+          "meanSmoothness": 0.37956790354516445,
+          "peakActuator": 5.599999999999999
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 16.594273004021936,
+            "upright": 18.764598511498235,
+            "energy": -0.02068479009947226,
+            "smoothness": -0.003795679035451645,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 83.40689104638524
+        },
+        "resultHash": "178fa8bba3ba3f8ba44db8617987087234323701e6bf9f6b1bc12715405f4663"
+      },
+      {
+        "case": {
+          "id": "lateral-push",
+          "task": "stand",
+          "scenario": "lateral-push",
+          "seed": 44,
+          "weight": 1.5
+        },
+        "metrics": {
+          "durationSeconds": 2.0000000000000013,
+          "steps": 100,
+          "survivalRate": 1,
+          "fell": false,
+          "meanVelocityTrackingError": 0.09989910086689079,
+          "meanUpright": 0.9197895116771901,
+          "meanEnergy": 2.666634830066838,
+          "meanSmoothness": 0.589303552821172,
+          "peakActuator": 5.599999999999999
+        },
+        "score": {
+          "terms": {
+            "survival": 50,
+            "velocityTracking": 18.18348608907572,
+            "upright": 18.395790233543803,
+            "energy": -0.053332696601336764,
+            "smoothness": -0.00589303552821172,
+            "componentMass": -1.4275,
+            "sensorChannels": -0.5,
+            "trainingSteps": 0
+          },
+          "total": 84.59255059048998
+        },
+        "resultHash": "a4207a35d156921d25d2e77e351807e1526e633756f775c4bb43482070ca912a"
+      }
+    ]
+  },
+  "scoreDelta": 0.12024808368884976
+}

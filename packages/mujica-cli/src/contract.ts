@@ -1,7 +1,7 @@
 import type { MujicaValidationError, ProjectContext } from "@mujica/core";
 
 export const CLI_SCHEMA_VERSION = 1 as const;
-export interface Artifact { kind: "compiled-assembly" | "simulation-run" | "training-run" | "policy" | "benchmark-lock" | "revision"; id: string; path: string; immutable: boolean }
+export interface Artifact { kind: "compiled-assembly" | "simulation-run" | "training-run" | "policy" | "benchmark-lock" | "research-experiment" | "revision"; id: string; path: string; immutable: boolean }
 export interface NextAction { id: string; description: string; argv: string[]; effect: "read-only" | "creates-artifact" | "mutates-project" }
 
 export function success<T>(command: string, data: T, project?: ProjectContext, artifacts: Artifact[] = [], nextActions: NextAction[] = []) {
@@ -12,4 +12,3 @@ export function failure(command: string, error: unknown) {
   const validation = error && typeof error === "object" && (error as { name?: string }).name === "MujicaValidationError" ? error as MujicaValidationError : undefined;
   return { schemaVersion: CLI_SCHEMA_VERSION, ok: false as const, command, context: { scope: "global" as const }, error: { code: validation ? "validation.failed" : "operation.failed", message: error instanceof Error ? error.message : String(error), retryable: false, issues: validation?.issues ?? [] } };
 }
-

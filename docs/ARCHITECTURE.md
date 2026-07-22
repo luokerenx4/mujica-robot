@@ -24,8 +24,10 @@ mujica.json + Robot Base + Component packages + Robot Assembly
   -> episode events + trajectory + metrics
   -> immutable Simulation Run or Policy Artifact
   -> locked multi-case evaluation
-  -> KEEP/REVERT and optional child Robot Revision
+  -> Candidate review or bounded Research proposal
+  -> KEEP/REVERT/CRASH evidence and optional child Robot Revision
 ```
 
-See [the harness design](design/robot-development-harness.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+The autonomous path borrows autoresearch's small loop—human program, one editable surface, fixed evaluator, compact memory, keep/discard—but keeps authority in Core. The proposer may suggest bounded numeric controller values; it cannot write project files, change the evaluator, waive gates, or publish revisions.
 
+See [the harness design](design/robot-development-harness.md), [research-loop design](design/robot-research-loop.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

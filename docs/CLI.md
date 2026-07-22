@@ -15,9 +15,11 @@ mujica policy inspect <project> --policy ID [--json]
 mujica benchmark lock <project> --benchmark ID [--json]
 mujica evaluate <project> --assembly ID --controller ID --benchmark ID [--json]
 mujica candidate <project> --candidate ID [--apply] [--json]
+mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica revisions <project> [--json]
 mujica revision inspect <project> --revision ID [--json]
 ```
 
 JSON mode emits one schema-versioned value on stdout. Validation/runtime failures use exit code 1; invalid CLI usage uses exit code 2. Artifact-producing commands identify each path and whether it is immutable.
 
+`research` is intentionally mutating. Without `--agent-command`, it uses the deterministic bounded proposer. An external command receives one JSON object on stdin and must return one proposal on stdout. Core validates the proposal, runs the complete locked Benchmark, records an immutable experiment, and advances the controller plus Revision lineage only for KEEP.

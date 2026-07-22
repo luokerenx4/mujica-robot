@@ -1,27 +1,36 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { appendFile, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import {
   atomicDirectory, compareAssemblies, compileAssembly, confined, hashDirectory, hashJson, listAssemblyIds, listComponentIds, loadAssembly, loadBenchmark, loadCandidate, loadComponent,
-  loadController, loadObjective, loadProject, loadScenario, loadTask, loadTrainer, loadTraining, readJson, sha256, stableJson, validateProject, writeJson,
-  type BenchmarkDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext,
+  loadController, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, researchProposalSchema, sha256, stableJson, validateProject, writeJson,
+  type BenchmarkDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
 import { dependencyLockHash, invokeRuntime, runtimeCompiled, runtimeVersion } from "./runtime";
 
 function projectArtifact(kind: Artifact["kind"], id: string, path: string, immutable: boolean): Artifact { return { kind, id, path, immutable }; }
-async function exists(path: string): Promise<boolean> { return Bun.file(path).exists(); }
-
-async function controllerIdentity(projectDir: string, id: string): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string }> {
-  const controller = await loadController(projectDir, id);
-  if (controller.definition.kind === "program") return { ...controller, hash: await hashDirectory(controller.rootDir) };
-  const policyDir = confined(resolve(projectDir), `policies/${controller.definition.policy}`);
-  if (!(await exists(join(policyDir, "manifest.json")))) throw new Error(`Frozen policy '${controller.definition.policy}' does not exist`);
-  return { ...controller, hash: await hashDirectory(policyDir) };
+async function exists(path: string): Promise<boolean> {
+  try { await stat(path); return true; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
 }
 
-async function baseRequest(project: ProjectContext, assembly: CompiledAssembly, controllerId: string, taskId: string, scenarioId: string, objectiveId: string, seed: number) {
-  const controller = await controllerIdentity(project.rootDir, controllerId);
+async function controllerIdentity(projectDir: string, id: string, override?: ControllerDefinition): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string }> {
+  const controller = await loadController(projectDir, id);
+  const definition = override ?? controller.definition;
+  if (definition.id !== id || definition.kind !== controller.definition.kind) throw new Error(`Controller override must preserve id and kind for '${id}'`);
+  if (definition.kind === "program") {
+    const entryHash = sha256(await readFile(confined(controller.rootDir, definition.entry)));
+    return { definition, rootDir: controller.rootDir, hash: hashJson({ definition, entryHash }) };
+  }
+  if (override) throw new Error("Policy Controller overrides are not supported");
+  const policyDir = confined(resolve(projectDir), `policies/${definition.policy}`);
+  if (!(await exists(join(policyDir, "manifest.json")))) throw new Error(`Frozen policy '${definition.policy}' does not exist`);
+  return { definition, rootDir: controller.rootDir, hash: await hashDirectory(policyDir) };
+}
+
+async function baseRequest(project: ProjectContext, assembly: CompiledAssembly, controllerId: string, taskId: string, scenarioId: string, objectiveId: string, seed: number, override?: ControllerDefinition) {
+  const controller = await controllerIdentity(project.rootDir, controllerId, override);
   return {
     request: {
       runtimeVersion, projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), controller: controller.definition, controllerRoot: controller.rootDir,
@@ -129,10 +138,10 @@ async function requireBenchmarkLock(project: ProjectContext, benchmark: Benchmar
   return stored;
 }
 
-async function evaluatePair(project: ProjectContext, benchmark: BenchmarkDefinition, assemblyId: string, controllerId: string) {
+async function evaluatePair(project: ProjectContext, benchmark: BenchmarkDefinition, assemblyId: string, controllerId: string, override?: ControllerDefinition) {
   const assembly = await compileAssembly(project.rootDir, assemblyId); const results = []; let weighted = 0; let totalWeight = 0;
   for (const item of benchmark.cases) {
-    const { request } = await baseRequest(project, assembly, controllerId, item.task, item.scenario, benchmark.objective, item.seed); const result = await invokeRuntime("evaluate-case", request);
+    const { request } = await baseRequest(project, assembly, controllerId, item.task, item.scenario, benchmark.objective, item.seed, override); const result = await invokeRuntime("evaluate-case", request);
     results.push({ case: item, metrics: result.metrics, score: result.score, resultHash: result.resultHash }); weighted += result.score.total * item.weight; totalWeight += item.weight;
   }
   return { assembly: assemblyId, controller: controllerId, assemblyHash: assembly.assemblyHash, aggregateScore: weighted / totalWeight, cases: results };
@@ -174,6 +183,183 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     await writeJson(join(directory, "manifest.json"), { version: 1, id: revisionId, parent: candidate.baseRevision, candidateId: candidate.id, candidateHash, benchmarkId: benchmark.id, benchmarkLockHash: lock.lockHash, assembly: candidate.proposed.assembly, assemblyHash: proposed.assemblyHash, controller: candidate.proposed.controller, aggregateScore: proposed.aggregateScore, scoreDelta: delta, exactChangedFiles: candidate.allowedChanges, sourceClosure, appliedAt: new Date().toISOString() });
   });
   return success("candidate.apply", { ...result, revisionId, revisionPath: target }, project, [projectArtifact("revision", revisionId, target, true)]);
+}
+
+type EvaluationResult = Awaited<ReturnType<typeof evaluatePair>>;
+
+function researchValue(definition: ControllerDefinition, path: string): number {
+  if (definition.kind !== "program") throw new Error("Research requires a program Controller");
+  const key = path.slice("/config/".length); const value = definition.config[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`Research path '${path}' does not name a finite numeric config value`);
+  return value;
+}
+
+function applyResearchValues(definition: ControllerDefinition, values: Record<string, number>): ControllerDefinition {
+  if (definition.kind !== "program") throw new Error("Research requires a program Controller");
+  const next = structuredClone(definition); const config = next.config;
+  for (const [path, value] of Object.entries(values)) config[path.slice("/config/".length)] = value;
+  return next;
+}
+
+export function validateResearchProposal(research: ResearchDefinition, definition: ControllerDefinition, input: unknown): ResearchProposal {
+  const proposal = researchProposalSchema.parse(input); const parameters = new Map(research.editable.parameters.map((parameter) => [parameter.path, parameter]));
+  for (const [path, value] of Object.entries(proposal.values)) {
+    const parameter = parameters.get(path); if (!parameter) throw new Error(`Proposal path '${path}' is not editable`);
+    if (value < parameter.minimum || value > parameter.maximum) throw new Error(`Proposal '${path}'=${value} is outside [${parameter.minimum}, ${parameter.maximum}]`);
+    if (value === researchValue(definition, path)) throw new Error(`Proposal '${path}' does not change its current value`);
+  }
+  return proposal;
+}
+
+function builtinResearchProposal(research: ResearchDefinition, definition: ControllerDefinition, seenCandidateHashes: Set<string>): ResearchProposal | null {
+  for (const parameter of research.editable.parameters) {
+    const current = researchValue(definition, parameter.path);
+    for (const direction of parameter.directionOrder) {
+      const sign = direction === "increase" ? 1 : -1; const raw = current + sign * parameter.step;
+      const value = Math.min(parameter.maximum, Math.max(parameter.minimum, Number(raw.toFixed(12))));
+      if (value === current) continue;
+      const key = parameter.path.slice("/config/".length); const strategyKey = key.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+      const proposal: ResearchProposal = { strategy: `coordinate-${strategyKey}-${direction}`, hypothesis: `${direction === "increase" ? "Increase" : "Decrease"} ${key} by one bounded step.`, expectedEffect: `Test whether ${key}=${value} improves the complete locked quadruped score.`, values: { [parameter.path]: value } };
+      const candidate = applyResearchValues(definition, proposal.values); if (!seenCandidateHashes.has(hashJson(candidate))) return proposal;
+    }
+  }
+  return null;
+}
+
+function externalResearchProposal(command: string, input: unknown): unknown {
+  const child = Bun.spawnSync(["/bin/sh", "-lc", command], { stdin: Buffer.from(JSON.stringify(input)), stdout: "pipe", stderr: "pipe" });
+  if (child.exitCode !== 0) throw new Error(`Research agent command failed with exit ${child.exitCode}: ${child.stderr.toString().trim()}`);
+  const stdout = child.stdout.toString().trim();
+  try { return JSON.parse(stdout); } catch { throw new Error(`Research agent command returned invalid JSON: ${stdout.slice(0, 500)}`); }
+}
+
+function researchGateReasons(objective: Awaited<ReturnType<typeof loadObjective>>, baseline: EvaluationResult, candidate: EvaluationResult): string[] {
+  const reasons: string[] = [];
+  for (let index = 0; index < candidate.cases.length; index++) {
+    const candidateCase = candidate.cases[index]; const baselineCase = baseline.cases[index];
+    if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate) reasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate`);
+    if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) reasons.push(`${candidateCase.case.id}: score regression exceeds locked baseline gate`);
+  }
+  return reasons;
+}
+
+async function atomicWriteJsonFile(path: string, value: unknown): Promise<void> {
+  const temporary = `${path}.partial-${process.pid}-${Date.now()}`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`); await rename(temporary, path);
+}
+
+async function latestRevision(projectDir: string): Promise<string | null> {
+  const revisions = [];
+  for (const id of await listManifestDirectories(join(projectDir, "revisions"))) revisions.push(JSON.parse(await readFile(join(projectDir, "revisions", id, "manifest.json"), "utf8")));
+  revisions.sort((a, b) => String(a.appliedAt).localeCompare(String(b.appliedAt)) || String(a.id).localeCompare(String(b.id)));
+  return revisions.length ? String(revisions[revisions.length - 1].id) : null;
+}
+
+async function publishResearchRevision(options: {
+  project: ProjectContext; research: ResearchDefinition; benchmark: BenchmarkDefinition; lockHash: string; assembly: CompiledAssembly; proposal: ResearchProposal;
+  experimentId: string; experimentHash: string; previous: EvaluationResult; candidate: EvaluationResult; scoreDelta: number; controller: ControllerDefinition;
+}): Promise<{ id: string; path: string }> {
+  const parent = await latestRevision(options.project.rootDir);
+  const revisionHash = hashJson({ parent, research: options.research.id, experimentHash: options.experimentHash, assemblyHash: options.assembly.assemblyHash, controller: options.controller, results: options.candidate.cases.map((item) => item.resultHash) });
+  const id = `${options.project.manifest.id}-r-${revisionHash.slice(0, 12)}`; const target = join(options.project.rootDir, "revisions", id);
+  if (await exists(target)) throw new Error(`Research Revision already exists: ${id}`);
+  const controllerRoot = `controllers/${options.research.controller}`;
+  const sourceClosure = [...new Set([
+    ...options.assembly.sourceFiles, options.research.editable.path, `${controllerRoot}/${options.controller.kind === "program" ? options.controller.entry : "controller.json"}`,
+    `research/${options.research.id}.research.json`, options.research.program, `benchmarks/${options.benchmark.id}.benchmark.json`, `benchmarks/${options.benchmark.id}.lock.json`,
+    `objectives/${options.benchmark.objective}.objective.json`, ...options.benchmark.cases.flatMap((item) => [`tasks/${item.task}.task.json`, `scenarios/${item.scenario}.scenario.json`]),
+  ])].sort();
+  await atomicDirectory(target, async (directory) => {
+    for (const path of sourceClosure) {
+      const destination = join(directory, "sources", path); await mkdir(dirname(destination), { recursive: true }); await writeFile(destination, await readFile(confined(options.project.rootDir, path)));
+    }
+    const compiledDirectory = join(directory, "compiled"); await mkdir(compiledDirectory, { recursive: true });
+    for (const name of ["model.xml", "observation-contract.json", "action-contract.json", "compiled-assembly.json"]) await writeFile(join(compiledDirectory, name), await readFile(join(options.assembly.artifactDir, name)));
+    await writeJson(join(directory, "evaluation.json"), { proposal: options.proposal, previous: options.previous, candidate: options.candidate, scoreDelta: options.scoreDelta });
+    await writeJson(join(directory, "manifest.json"), { version: 1, id, kind: "research-optimization", parent, researchId: options.research.id, experimentId: options.experimentId, experimentHash: options.experimentHash, benchmarkId: options.benchmark.id, benchmarkLockHash: options.lockHash, assembly: options.research.assembly, assemblyHash: options.assembly.assemblyHash, controller: options.research.controller, controllerHash: hashJson(options.controller), aggregateScore: options.candidate.aggregateScore, scoreDelta: options.scoreDelta, sourceClosure, appliedAt: new Date().toISOString() });
+  });
+  return { id, path: target };
+}
+
+export async function researchCommand(projectDir: string, researchId: string, requestedIterations: number, agentCommand?: string) {
+  const project = await loadProject(projectDir); const research = await loadResearch(project.rootDir, researchId); const benchmark = await loadBenchmark(project.rootDir, research.benchmark); const lock = await requireBenchmarkLock(project, benchmark);
+  const assembly = await compileAssembly(project.rootDir, research.assembly); const objective = await loadObjective(project.rootDir, benchmark.objective); const controllerPath = confined(project.rootDir, research.editable.path);
+  const loaded = await loadController(project.rootDir, research.controller); if (loaded.definition.kind !== "program") throw new Error("Research requires a program Controller");
+  if (research.editable.path !== `controllers/${research.controller}/controller.json`) throw new Error("Research editable path does not match selected Controller manifest");
+  if (!Number.isInteger(requestedIterations) || requestedIterations <= 0) throw new Error("--iterations must be a positive integer");
+  const iterations = Math.min(requestedIterations, research.maxIterations); const program = await readFile(confined(project.rootDir, research.program), "utf8"); const programHash = sha256(program); const researchHash = hashJson(research);
+  const researchRoot = join(project.rootDir, "research-runs", research.id); await mkdir(researchRoot, { recursive: true });
+  const history = [];
+  for (const id of await listManifestDirectories(researchRoot)) history.push(JSON.parse(await readFile(join(researchRoot, id, "manifest.json"), "utf8")));
+  history.sort((a, b) => Number(a.sequence) - Number(b.sequence)); const seen = new Set<string>(history.flatMap((item) => typeof item.candidateControllerHash === "string" ? [item.candidateControllerHash] : []));
+  let sequence = history.reduce((maximum, item) => Math.max(maximum, Number(item.sequence) || 0), 0) + 1; let definition: ControllerDefinition = loaded.definition;
+  const lockedBaseline = await evaluatePair(project, benchmark, benchmark.baseline.assembly, benchmark.baseline.controller); let current = await evaluatePair(project, benchmark, research.assembly, research.controller);
+  const initialScore = current.aggregateScore; const experiments: any[] = []; const artifacts: Artifact[] = []; let exhausted = false;
+  const ledgerPath = join(researchRoot, "results.tsv"); if (!(await exists(ledgerPath))) await writeFile(ledgerPath, "sequence\texperiment\tscore\tdelta\tstatus\tstrategy\tdescription\n");
+
+  for (let iteration = 0; iteration < iterations; iteration++) {
+    const beforeDefinition = definition; const previousEvaluation = current; let proposalInput: unknown;
+    try {
+      proposalInput = agentCommand ? externalResearchProposal(agentCommand, { version: 1, program, research, lockHash: lock.lockHash, currentController: beforeDefinition, currentControllerHash: hashJson(beforeDefinition), currentBest: previousEvaluation, parameters: research.editable.parameters, history: history.map((item) => ({ sequence: item.sequence, score: item.score, delta: item.delta, verdict: item.verdict, strategy: item.strategy, proposal: item.proposal })) }) : builtinResearchProposal(research, beforeDefinition, seen);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error); const beforeControllerHash = hashJson(beforeDefinition);
+      const experimentHash = hashJson({ researchHash, programHash, lockHash: lock.lockHash, beforeControllerHash, proposalInput: null, verdict: "CRASH", errorMessage }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(researchRoot, experimentId);
+      await atomicDirectory(artifactPath, async (directory) => {
+        await writeJson(join(directory, "proposal-input.json"), null); await writeJson(join(directory, "before-controller.json"), beforeDefinition); await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
+        await writeFile(join(directory, "report.md"), `# Research experiment ${experimentId}\n\n- Strategy: \`proposal-error\`\n- Verdict: **CRASH**\n- Score: \`${previousEvaluation.aggregateScore}\`\n- Delta: \`0\`\n`);
+        await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, beforeControllerHash, candidateControllerHash: null, proposal: null, strategy: "proposal-error", score: previousEvaluation.aggregateScore, delta: 0, verdict: "CRASH", gateReasons: [], error: errorMessage, revisionId: null, completed: true });
+      });
+      await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${previousEvaluation.aggregateScore}\t0\tcrash\tproposal-error\t${errorMessage.replace(/[\t\r\n]+/g, " ")}\n`);
+      const summary = { sequence, experimentId, proposal: null, candidateControllerHash: null, score: previousEvaluation.aggregateScore, delta: 0, verdict: "CRASH" as const, gateReasons: [], error: errorMessage, revisionId: null, artifactPath };
+      experiments.push(summary); history.push(summary); artifacts.push(projectArtifact("research-experiment", experimentId, artifactPath, true)); sequence++; continue;
+    }
+    if (proposalInput === null) { exhausted = true; break; }
+    let proposal: ResearchProposal | undefined; let candidateDefinition: ControllerDefinition | undefined; let candidateControllerHash: string | undefined;
+    try {
+      proposal = validateResearchProposal(research, beforeDefinition, proposalInput); candidateDefinition = applyResearchValues(beforeDefinition, proposal.values); candidateControllerHash = hashJson(candidateDefinition);
+      if (seen.has(candidateControllerHash)) throw new Error(`Research proposal repeats candidate Controller ${candidateControllerHash.slice(0, 12)}`);
+    }
+    catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error); const beforeControllerHash = hashJson(beforeDefinition);
+      const experimentHash = hashJson({ researchHash, programHash, lockHash: lock.lockHash, beforeControllerHash, proposalInput, verdict: "CRASH", errorMessage }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(researchRoot, experimentId);
+      await atomicDirectory(artifactPath, async (directory) => {
+        await writeJson(join(directory, "proposal-input.json"), proposalInput); await writeJson(join(directory, "before-controller.json"), beforeDefinition); await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
+        await writeFile(join(directory, "report.md"), `# Research experiment ${experimentId}\n\n- Strategy: \`proposal-invalid\`\n- Verdict: **CRASH**\n- Score: \`${previousEvaluation.aggregateScore}\`\n- Delta: \`0\`\n`);
+        await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, beforeControllerHash, candidateControllerHash: candidateControllerHash ?? null, proposal: proposal ?? null, strategy: proposal?.strategy ?? "proposal-invalid", score: previousEvaluation.aggregateScore, delta: 0, verdict: "CRASH", gateReasons: [], error: errorMessage, revisionId: null, completed: true });
+      });
+      await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${previousEvaluation.aggregateScore}\t0\tcrash\tproposal-invalid\t${errorMessage.replace(/[\t\r\n]+/g, " ")}\n`);
+      const summary = { sequence, experimentId, proposal: proposal ?? null, candidateControllerHash: candidateControllerHash ?? null, score: previousEvaluation.aggregateScore, delta: 0, verdict: "CRASH" as const, gateReasons: [], error: errorMessage, revisionId: null, artifactPath };
+      experiments.push(summary); history.push(summary); artifacts.push(projectArtifact("research-experiment", experimentId, artifactPath, true)); sequence++; continue;
+    }
+    if (!proposal || !candidateDefinition || !candidateControllerHash) throw new Error("Research proposal validation did not produce a candidate");
+    seen.add(candidateControllerHash);
+    const beforeControllerHash = hashJson(beforeDefinition); const beforeFileHash = sha256(await readFile(controllerPath)); let candidate: EvaluationResult | undefined; let errorMessage: string | undefined; let gateReasons: string[] = []; let delta = 0; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH";
+    try {
+      candidate = await evaluatePair(project, benchmark, research.assembly, research.controller, candidateDefinition); delta = candidate.aggregateScore - previousEvaluation.aggregateScore; gateReasons = researchGateReasons(objective, lockedBaseline, candidate);
+      verdict = gateReasons.length === 0 && delta >= research.minimumImprovement ? "KEEP" : "REVERT";
+    } catch (error) { errorMessage = error instanceof Error ? error.message : String(error); }
+    const experimentHash = hashJson({ researchHash, programHash, lockHash: lock.lockHash, beforeControllerHash, proposal, candidateControllerHash, verdict, results: candidate?.cases.map((item) => item.resultHash), errorMessage });
+    const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; let revision: { id: string; path: string } | undefined;
+    if (verdict === "KEEP" && candidate) {
+      if (sha256(await readFile(controllerPath)) !== beforeFileHash) throw new Error("Research Controller changed during evaluation; refusing stale KEEP");
+      const original = beforeDefinition;
+      await atomicWriteJsonFile(controllerPath, candidateDefinition);
+      try { revision = await publishResearchRevision({ project, research, benchmark, lockHash: lock.lockHash, assembly, proposal, experimentId, experimentHash, previous: previousEvaluation, candidate, scoreDelta: delta, controller: candidateDefinition }); }
+      catch (error) { await atomicWriteJsonFile(controllerPath, original); throw error; }
+      definition = candidateDefinition; current = candidate;
+    }
+    const artifactPath = join(researchRoot, experimentId);
+    await atomicDirectory(artifactPath, async (directory) => {
+      await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-controller.json"), beforeDefinition); await writeJson(join(directory, "candidate-controller.json"), candidateDefinition);
+      if (candidate) await writeJson(join(directory, "evaluation.json"), { previous: previousEvaluation, candidate, delta, gateReasons });
+      if (errorMessage) await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
+      await writeFile(join(directory, "report.md"), `# Research experiment ${experimentId}\n\n- Strategy: \`${proposal.strategy}\`\n- Verdict: **${verdict}**\n- Score: \`${candidate?.aggregateScore ?? 0}\`\n- Delta: \`${delta}\`\n${revision ? `- Revision: \`${revision.id}\`\n` : ""}`);
+      await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, beforeControllerHash, candidateControllerHash, proposal, strategy: proposal.strategy, score: candidate?.aggregateScore ?? 0, delta, verdict, gateReasons, error: errorMessage ?? null, revisionId: revision?.id ?? null, completed: true });
+    });
+    const description = proposal.hypothesis.replace(/[\t\r\n]+/g, " "); await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${candidate?.aggregateScore ?? 0}\t${delta}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${description}\n`);
+    const summary = { sequence, experimentId, proposal, candidateControllerHash, score: candidate?.aggregateScore ?? 0, delta, verdict, gateReasons, error: errorMessage ?? null, revisionId: revision?.id ?? null, artifactPath };
+    experiments.push(summary); history.push({ ...summary, candidateControllerHash }); artifacts.push(projectArtifact("research-experiment", experimentId, artifactPath, true)); if (revision) artifacts.push(projectArtifact("revision", revision.id, revision.path, true)); sequence++;
+  }
+  return success("research", { research: research.id, programHash, benchmark: benchmark.id, lockHash: lock.lockHash, initialScore, finalScore: current.aggregateScore, scoreDelta: current.aggregateScore - initialScore, iterationsRequested: requestedIterations, iterationsCompleted: experiments.length, exhausted, experiments, controller: definition, revisionHead: await latestRevision(project.rootDir), ledgerPath }, project, artifacts);
 }
 
 export async function revisionsCommand(projectDir: string) {

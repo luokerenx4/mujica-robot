@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { compareAssemblies, compileAssembly, validateProject } from "./index";
+import { compareAssemblies, compileAssembly, loadResearch, researchProposalSchema, validateProject } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -28,5 +28,11 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing"]);
   });
-});
 
+  test("research definitions expose a bounded editable surface", async () => {
+    const research = await loadResearch(project, "support-controller");
+    expect(research.editable.path).toBe("controllers/force-aware-gait/controller.json");
+    expect(research.editable.parameters.map((item) => item.path)).toContain("/config/contactGain");
+    expect(researchProposalSchema.safeParse({ strategy: "badStrategy", hypothesis: "x", expectedEffect: "y", values: { "/config/kp": 26 } }).success).toBe(false);
+  });
+});

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "support-controller",
+  "name": "Force-aware support controller research",
+  "benchmark": "sensor-development",
+  "assembly": "force-sensing",
+  "controller": "force-aware-gait",
+  "program": "AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/force-aware-gait/controller.json",
+    "parameters": [
+      { "path": "/config/kp", "minimum": 16, "maximum": 32, "step": 2, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/kd", "minimum": 0.4, "maximum": 2.0, "step": 0.2, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/neutralHip", "minimum": 0.15, "maximum": 0.35, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/neutralKnee", "minimum": -0.75, "maximum": -0.45, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/contactGain", "minimum": 0.005, "maximum": 0.04, "step": 0.005, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/rollGain", "minimum": 0, "maximum": 0.06, "step": 0.005, "directionOrder": ["decrease", "increase"] }
+    ]
+  },
+  "minimumImprovement": 0.02,
+  "maxIterations": 24
+}
+
