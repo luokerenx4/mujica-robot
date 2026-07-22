@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "traction-recovery",
+  "name": "Low-friction traction and completed locomotion regressions",
+  "objective": "traction-recovery",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait"
+  },
+  "cases": [
+    { "id": "nominal", "task": "forward-walk", "scenario": "nominal", "seed": 1501, "weight": 1 },
+    { "id": "low-friction", "task": "forward-walk", "scenario": "low-friction", "seed": 1502, "weight": 2 },
+    { "id": "low-friction-reset", "task": "forward-walk", "scenario": "low-friction-reset", "seed": 1503, "weight": 2 },
+    { "id": "low-friction-delay", "task": "forward-walk", "scenario": "low-friction-delay", "seed": 1504, "weight": 2 },
+    { "id": "payload", "task": "forward-walk", "scenario": "payload-variation", "seed": 1505, "weight": 1 },
+    { "id": "strong-lateral-push", "task": "forward-walk", "scenario": "strong-lateral-push", "seed": 1506, "weight": 1.5 },
+    { "id": "actuator-delay", "task": "forward-walk", "scenario": "actuator-delay-three-step", "seed": 1507, "weight": 1 },
+    { "id": "severe-low-friction", "task": "forward-walk", "scenario": "severe-low-friction", "seed": 1508, "weight": 1 },
+    { "id": "extreme-low-friction", "task": "forward-walk", "scenario": "extreme-low-friction", "seed": 1509, "weight": 0.5, "gating": false }
+  ]
+}

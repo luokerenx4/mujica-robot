@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "id": "traction-aware-gait",
+  "name": "Traction-aware world-command gait",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {
+        "name": "joint-position",
+        "size": 12
+      },
+      {
+        "name": "joint-velocity",
+        "size": 12
+      },
+      {
+        "name": "base-velocity",
+        "size": 6
+      },
+      {
+        "name": "base-orientation",
+        "size": 4
+      },
+      {
+        "name": "imu-angular-velocity",
+        "size": 3
+      },
+      {
+        "name": "foot-contact-force",
+        "size": 4
+      },
+      {
+        "name": "actuator-delay-steps",
+        "size": 1
+      },
+      {
+        "name": "motion-command",
+        "size": 3
+      }
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 12,
+        "low": -8,
+        "high": 8
+      }
+    ]
+  },
+  "config": {
+    "kpAbduction": 16.82265,
+    "kdAbduction": 3.27295,
+    "kpSagittal": 30.53877,
+    "kdSagittal": 2.16306,
+    "frequencyHz": 1.01295,
+    "nominalForwardSpeedMps": 0.25,
+    "nominalLateralSpeedMps": 0.12,
+    "nominalYawRateRadPerSec": 0.5,
+    "commandDeadband": 0.02,
+    "planarCommandRateLimitMps2": 100,
+    "yawCommandRateLimitRadPerSec2": 100,
+    "delayedCommandRateScale": 0.75,
+    "transitionDelayTwoPhaseLeadSeconds": 0.1,
+    "transitionDelayThreePhaseLeadSeconds": 0.125,
+    "delayedStopRateLimitMps2": 0.15,
+    "transitionForwardVelocityGain": 0.3,
+    "delayedTransitionForwardVelocityGain": 0.1,
+    "tractionRecoveryAssessmentSeconds": 1.5,
+    "tractionRecoveryProgressDeficitM": 0.18,
+    "tractionRecoveryHipScale": 2,
+    "delayedTractionRecoveryMinimumSeconds": 0,
+    "delayedTractionRecoveryAssessmentSeconds": 5,
+    "delayedTractionRecoveryProgressDeficitM": 0,
+    "delayedTractionRecoveryHipScale": 1.6,
+    "delayedTractionRecoveryRampSeconds": 0.05,
+    "delayedTractionRecoveryPhaseLeadSeconds": 0,
+    "delayedTractionRecoveryFrequencyScale": 1.2,
+    "transitionLateralVelocityGain": 0.3,
+    "transitionYawRateGain": -0.2,
+    "transitionYawDampingGain": 0.2,
+    "forwardVelocityGain": 0,
+    "lateralVelocityGain": 0,
+    "commandLateralVelocityGain": -0.1,
+    "crossTrackPositionGain": 0.6,
+    "crossTrackVelocityGain": 0.4,
+    "yawRateCommandGain": 0,
+    "reverseHipScale": 0.5,
+    "lateralAbductionAmplitude": 0.08,
+    "lateralCommandLean": 0.1,
+    "delayedLateralCommandLean": 0.05,
+    "yawAbductionDifferential": 0.12,
+    "yawAbductionBias": 0,
+    "yawHipDifferential": 1.3,
+    "yawPhaseDifferential": 0.3,
+    "negativeYawAbductionDifferential": 0.12,
+    "negativeYawAbductionBias": -0.02,
+    "negativeYawHipDifferential": -1.6,
+    "negativeYawPhaseDifferential": 0.3,
+    "phaseLeadByDelaySteps": [
+      0.12,
+      0.0075,
+      0.02,
+      0.225
+    ],
+    "disturbancePhaseLeadSeconds": 0.01,
+    "transitionDisturbancePhaseLeadSeconds": 0.1,
+    "disturbanceRollRateThreshold": 1,
+    "rollLateralVelocityGain": 0,
+    "lateralPositionGain": 0,
+    "maximumRollCorrection": 0.16,
+    "statePredictionSeconds": 0.01973,
+    "neutralAbduction": 0.19944,
+    "neutralHip": 0.3409,
+    "neutralKnee": -0.36902,
+    "hipAmplitude": 0.16,
+    "kneeAmplitude": 0.05614,
+    "frontRearPhase": 3.141592653589793,
+    "contactGain": 0.02,
+    "rollPositionGain": 0.31249,
+    "rollRateGain": 0.12693
+  }
+}

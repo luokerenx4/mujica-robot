@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "traction-recovery-gait",
+  "name": "Traction recovery gait development",
+  "benchmark": "traction-recovery",
+  "assembly": "command-conditioned-history-3dof",
+  "controller": "traction-aware-gait",
+  "program": "TRACTION_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/traction-aware-gait/controller.json",
+    "parameters": [
+      { "path": "/config/tractionRecoveryProgressDeficitM", "minimum": 0.05, "maximum": 0.3, "step": 0.025, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/tractionRecoveryHipScale", "minimum": 1, "maximum": 2.5, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionPostContactLossMeanN", "minimum": 0, "maximum": 8, "step": 1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionRecoveryHipScale", "minimum": 1, "maximum": 2.2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionKdSagittalScale", "minimum": 1, "maximum": 2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionLateralPositionGain", "minimum": 0, "maximum": 0.1, "step": 0.005, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionTransitionReleaseSeconds", "minimum": 0.05, "maximum": 0.5, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionTransitionForwardVelocityGain", "minimum": 0, "maximum": 0.6, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionBrakingForwardVelocityGain", "minimum": 0, "maximum": 0.8, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionTransitionYawDampingGain", "minimum": 0, "maximum": 0.3, "step": 0.025, "directionOrder": ["increase", "decrease"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 96
+}

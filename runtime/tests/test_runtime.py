@@ -75,6 +75,9 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(stationary["forwardProgress"], 0.05)
         self.assertAlmostEqual(walking["forwardProgress"], 1.0)
         self.assertAlmostEqual(walking["lateralDrift"], 0.02)
+        slipping = motion_metrics(np.zeros(3), np.array([-0.2, 0.01, 0.0]), 0.25, task, 3.0)
+        self.assertAlmostEqual(slipping["signedForwardProgress"], -1.0 / 3.0)
+        self.assertAlmostEqual(slipping["backwardDisplacement"], 0.2)
         objective = {"weights": {"survival": 0, "velocityTracking": 0, "forwardProgress": 35, "upright": 0, "lateralDrift": 5, "energy": 0, "smoothness": 0, "componentMass": 0, "sensorChannels": 0, "trainingSteps": 0}}
         base = {"survivalRate": 1, "meanVelocityTrackingError": 0, "meanUpright": 1, "meanEnergy": 0, "meanSmoothness": 0}
         compiled = {"totalMassKg": 0, "sensorChannelCount": 0}
@@ -132,6 +135,41 @@ class RuntimeContractTest(unittest.TestCase):
             "actuator-delay-steps": np.array([2.0]), "motion-command": np.array([0.25, 0, 0]),
         }
         for time_seconds in [0.0, 0.02, 0.04]: np.testing.assert_array_equal(transition.act(observation, time_seconds), baseline.act(observation, time_seconds))
+
+    def test_traction_controller_classifies_contact_loss_and_keeps_transition_yaw_damping_reachable(self):
+        root = PROJECT / "controllers" / "traction-aware-gait"
+        definition = json.loads((root / "controller.json").read_text())
+
+        def observation(contact_force, command=(0.25, 0.0, 0.0), yaw_rate=0.0):
+            return {
+                "joint-position": np.linspace(-0.2, 0.2, 12), "joint-velocity": np.linspace(0.1, -0.1, 12),
+                "base-velocity": np.array([0.1, 0.0, 0.0, 0.0, 0.0, yaw_rate]), "base-orientation": np.array([1.0, 0.0, 0.0, 0.0]),
+                "imu-angular-velocity": np.zeros(3), "foot-contact-force": np.asarray(contact_force, dtype=np.float64),
+                "actuator-delay-steps": np.array([3.0]), "motion-command": np.asarray(command, dtype=np.float64),
+            }
+
+        normal = load_program_controller(root, definition); normal.reset(7)
+        slipping = load_program_controller(root, definition); slipping.reset(7)
+        for controller in (normal, slipping):
+            controller.act(observation(np.zeros(4)), 0.0)
+            controller.act(observation(np.full(4, 12.0)), 0.02)
+        normal.act(observation(np.full(4, 5.0)), 0.04)
+        slipping.act(observation(np.zeros(4)), 0.04)
+        self.assertTrue(normal.traction_classification_complete); self.assertFalse(normal.traction_recovery)
+        self.assertTrue(slipping.traction_classification_complete); self.assertTrue(slipping.traction_recovery)
+        self.assertEqual(normal.traction_control_blend, 1.0)
+        self.assertEqual(slipping.traction_control_blend, 1.0)
+
+        def transition_action(yaw_rate):
+            controller = load_program_controller(root, definition); controller.reset(7)
+            controller.act(observation(np.zeros(4)), 0.0)
+            controller.act(observation(np.full(4, 12.0)), 0.02)
+            controller.act(observation(np.zeros(4)), 0.04)
+            action = controller.act(observation(np.zeros(4), (-0.15, 0.0, 0.0), yaw_rate), 0.06)
+            self.assertAlmostEqual(controller.traction_transition_started_at, 0.06)
+            return action
+
+        self.assertFalse(np.allclose(transition_action(0.0), transition_action(0.2)))
 
     def test_motion_command_is_explicit_controller_input_and_tracks_yaw_not_height(self):
         model, compiled = compiled_assembly("command-conditioned-history-3dof")

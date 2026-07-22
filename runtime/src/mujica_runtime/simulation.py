@@ -25,10 +25,12 @@ def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, dis
         forward_displacement = float(np.dot(displacement[:2], direction))
         lateral_vector = displacement[:2] - forward_displacement * direction
         forward_progress = float(np.clip(forward_displacement / target_distance, 0.0, 1.0))
+        signed_forward_progress = forward_displacement / target_distance
     else:
         forward_displacement = 0.0
         lateral_vector = displacement[:2]
         forward_progress = 1.0
+        signed_forward_progress = 1.0
     return {
         "initialBasePosition": np.asarray(initial_position, dtype=np.float64).tolist(),
         "finalBasePosition": np.asarray(final_position, dtype=np.float64).tolist(),
@@ -37,6 +39,8 @@ def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, dis
         "forwardDisplacement": forward_displacement,
         "targetDistance": target_distance,
         "forwardProgress": forward_progress,
+        "signedForwardProgress": signed_forward_progress,
+        "backwardDisplacement": max(0.0, -forward_displacement),
         "meanForwardVelocity": forward_displacement / max(float(duration_seconds), 1e-9),
         "lateralDrift": float(np.linalg.norm(lateral_vector)),
         "distanceTraveled": float(distance_traveled),
@@ -166,7 +170,8 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         for key in totals: totals[key] += float(info[key])
         measured_motion_total += np.asarray(info["measuredMotion"], dtype=np.float64)
         motion_command_total += np.asarray(info["motionCommand"], dtype=np.float64)
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        foot_contact_force = result.observation.get("foot-contact-force")
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "id": "traction-recovery",
+  "name": "Promote deployable low-friction traction recovery",
+  "kind": "development",
+  "benchmark": "traction-recovery",
+  "baseRevision": "quadruped-r-d7f3f01c8faa",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait"
+  },
+  "proposed": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "traction-aware-gait"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "transition-aware-gait",
+      "to": "traction-aware-gait",
+      "files": [
+        "controllers/traction-aware-gait/controller.json",
+        "controllers/traction-aware-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/traction-aware-gait/controller.json",
+    "controllers/traction-aware-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/traction-recovery.benchmark.json",
+    "benchmarks/traction-recovery.lock.json",
+    "objectives/traction-recovery.objective.json",
+    "tasks/forward-walk.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/low-friction-reset.scenario.json",
+    "scenarios/low-friction-delay.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/strong-lateral-push.scenario.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/severe-low-friction.scenario.json",
+    "scenarios/extreme-low-friction.scenario.json"
+  ],
+  "hypothesis": "Signed slip evidence, deployable contact-loss classification, conservative delay-aware traction authority, and governed release into transition control can recover low-friction forward motion without previewing Scenario friction or future commands.",
+  "expectedEffect": "Eliminate every hard traction violation, retain command-tracking, command-transition, and spatial-generalization gates, and preserve friction 0.1 as explicit non-gating stress evidence."
+}

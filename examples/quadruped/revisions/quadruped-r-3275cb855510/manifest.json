@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "id": "quadruped-r-3275cb855510",
+  "parent": "quadruped-r-d7f3f01c8faa",
+  "candidateId": "traction-recovery",
+  "candidateHash": "68316f51c0a8406636a0ef168812e652a2e435a229cf8ce08bba48468bb57bb9",
+  "benchmarkId": "traction-recovery",
+  "benchmarkLockHash": "3046ef7c6241ccfacc58ef5c47d8594f980c10462ff3b8483115029ff89e48a6",
+  "assembly": "command-conditioned-history-3dof",
+  "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+  "componentHashes": {
+    "body-imu": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+    "actuator-history": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+    "motion-command-input": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+    "foot-force-kit": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c"
+  },
+  "observationContractHash": "37b9663cd7106e269da55f0e7a2a5f8c4b4c68e3100cbb5544dbcbdcf36f5f38",
+  "actionContractHash": "130b3327995e6142afe6396b23fcaab97502e3feb265b44426d5c8ae0698e010",
+  "controller": "traction-aware-gait",
+  "controllerHash": "fb627036ee6ec1d03916958a871db2a888ee282376e8501827958a156ef5a42e",
+  "policyId": null,
+  "policyHash": null,
+  "verifiedChanges": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "aggregateScore": 64.17430097965989,
+  "scoreDelta": 13.727522705908186,
+  "exactChangedFiles": [
+    "controllers/traction-aware-gait/controller.json",
+    "controllers/traction-aware-gait/controller.py"
+  ],
+  "sourceClosure": [
+    "assemblies/command-conditioned-history-3dof.robot.json",
+    "benchmarks/traction-recovery.benchmark.json",
+    "benchmarks/traction-recovery.lock.json",
+    "components/actuator-history/component.json",
+    "components/actuator-history/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "controllers/traction-aware-gait/controller.json",
+    "controllers/traction-aware-gait/controller.py",
+    "objectives/traction-recovery.objective.json",
+    "robots/quadruped-3dof/model.xml",
+    "robots/quadruped-3dof/robot.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/extreme-low-friction.scenario.json",
+    "scenarios/low-friction-delay.scenario.json",
+    "scenarios/low-friction-reset.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/severe-low-friction.scenario.json",
+    "scenarios/strong-lateral-push.scenario.json",
+    "tasks/forward-walk.task.json"
+  ],
+  "appliedAt": "2026-07-22T23:00:13.988Z"
+}

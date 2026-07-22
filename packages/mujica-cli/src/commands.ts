@@ -226,6 +226,8 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     if (candidateCase && candidateCase.case.gating === false) continue;
     if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate) gateReasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate`);
     if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress) gateReasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate`);
+    if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.signedForwardProgress < objective.gates.minimumSignedForwardProgress) gateReasons.push(`${candidateCase.case.id}: signed forward progress ${candidateCase.metrics.signedForwardProgress.toFixed(3)} below gate`);
+    if (candidateCase && candidateCase.metrics.backwardDisplacement > objective.gates.maximumBackwardDisplacement) gateReasons.push(`${candidateCase.case.id}: backward displacement ${candidateCase.metrics.backwardDisplacement.toFixed(3)} exceeds gate`);
     if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift) gateReasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate`);
     if (candidateCase && candidateCase.metrics.planarVelocityTrackingError > objective.gates.maximumPlanarVelocityTrackingError) gateReasons.push(`${candidateCase.case.id}: planar velocity tracking error ${candidateCase.metrics.planarVelocityTrackingError.toFixed(3)} exceeds gate`);
     if (candidateCase && candidateCase.metrics.yawRateTrackingError > objective.gates.maximumYawRateTrackingError) gateReasons.push(`${candidateCase.case.id}: yaw rate tracking error ${candidateCase.metrics.yawRateTrackingError.toFixed(3)} exceeds gate`);
@@ -288,7 +290,7 @@ export function candidateSelection(gateReasons: string[], scoreDelta: number, ba
 }
 
 type GateAssessment = {
-  id: "survival" | "forward-progress" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "score-regression";
+  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
 
@@ -303,6 +305,8 @@ function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, c
   const upper = (id: GateAssessment["id"], metric: string, value: number, threshold: number, normalization?: number): GateAssessment => { const margin = threshold - value; return { id, metric, comparator: "<=", threshold, value, margin, passed: margin >= 0, enforced, severity: upperViolationSeverity(value, threshold, normalization) }; };
   gates.push(lower("survival", "survivalRate", candidate.metrics.survivalRate, objective.gates.minimumSurvivalRate));
   if (candidate.metrics.targetDistance > 0) gates.push(lower("forward-progress", "forwardProgress", candidate.metrics.forwardProgress, objective.gates.minimumForwardProgress));
+  if (candidate.metrics.targetDistance > 0) gates.push(lower("signed-forward-progress", "signedForwardProgress", candidate.metrics.signedForwardProgress ?? candidate.metrics.forwardProgress, objective.gates.minimumSignedForwardProgress));
+  gates.push(upper("backward-displacement", "backwardDisplacement", candidate.metrics.backwardDisplacement ?? 0, objective.gates.maximumBackwardDisplacement, 0.1));
   gates.push(upper("lateral-drift", "lateralDrift", candidate.metrics.lateralDrift, objective.gates.maximumLateralDrift));
   gates.push(upper("planar-velocity-tracking", "planarVelocityTrackingError", candidate.metrics.planarVelocityTrackingError, objective.gates.maximumPlanarVelocityTrackingError));
   gates.push(upper("yaw-rate-tracking", "yawRateTrackingError", candidate.metrics.yawRateTrackingError, objective.gates.maximumYawRateTrackingError));
@@ -322,7 +326,7 @@ function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, c
 function diagnosticHypotheses(violations: GateAssessment[]) {
   const hypotheses: Array<{ kind: "hypothesis"; surface: "controller" | "assembly" | "training"; description: string; rationale: string }> = [];
   if (violations.some((gate) => gate.id === "survival")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect the fall event and pre-fall trajectory before changing task performance terms.", rationale: "The measured survival gate failed; stability is prerequisite evidence." });
-  if (violations.some((gate) => gate.id === "forward-progress")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test gait timing, target generation, or longitudinal authority on this fixed case.", rationale: "Survival alone did not produce the required net target-direction displacement." });
+  if (violations.some((gate) => gate.id === "forward-progress" || gate.id === "signed-forward-progress" || gate.id === "backward-displacement")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.", rationale: "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance." });
   if (violations.some((gate) => gate.id === "lateral-drift")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.", rationale: "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response." });
   if (violations.some((gate) => gate.id === "planar-velocity-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.", rationale: "The measured planar velocity error exceeded the locked command-tracking gate." });
   if (violations.some((gate) => gate.id === "yaw-rate-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test a bounded left-right or front-rear steering differential against measured body yaw rate.", rationale: "The measured yaw-rate error exceeded the locked command-tracking gate." });

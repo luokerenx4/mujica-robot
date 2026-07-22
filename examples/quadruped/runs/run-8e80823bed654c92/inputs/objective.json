@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "spatial-locomotion",
+  "name": "Spatial locomotion capability expansion",
+  "weights": {
+    "survival": 25,
+    "velocityTracking": 15,
+    "forwardProgress": 40,
+    "upright": 15,
+    "lateralDrift": 10,
+    "transitionTracking": 0,
+    "energy": 0.01,
+    "smoothness": 0.005,
+    "componentMass": 0.25,
+    "sensorChannels": 0.05,
+    "trainingSteps": 5e-06
+  },
+  "transientMeasurement": {
+    "planarToleranceMps": 0.12,
+    "yawRateToleranceRadPerSec": 0.25,
+    "holdSeconds": 0.2
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0.25,
+    "minimumSignedForwardProgress": -1000000,
+    "maximumBackwardDisplacement": 1000000,
+    "maximumLateralDrift": 0.2,
+    "maximumPlanarVelocityTrackingError": 1000000,
+    "maximumYawRateTrackingError": 1000000,
+    "maximumTransitionTerminalPlanarTrackingError": 1000000,
+    "maximumTransitionTerminalYawRateTrackingError": 1000000,
+    "maximumPlanarSettlingTimeSeconds": 1000000,
+    "maximumPlanarBrakingSettlingTimeSeconds": 1000000,
+    "maximumYawRateSettlingTimeSeconds": 1000000,
+    "maximumPlanarOvershootMps": 1000000,
+    "maximumYawRateOvershootRadPerSec": 1000000,
+    "maximumUnsettledPlanarTransitions": 1000000,
+    "maximumUnsettledYawRateTransitions": 1000000,
+    "maximumRegression": 20
+  }
+}

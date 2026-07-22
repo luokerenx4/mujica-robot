@@ -101,6 +101,7 @@ export const objectiveSchema = z.object({
   }).strict().default({ planarToleranceMps: 0.12, yawRateToleranceRadPerSec: 0.25, holdSeconds: 0.2 }),
   gates: z.object({
     minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
+    minimumSignedForwardProgress: z.number().finite().default(-1_000_000), maximumBackwardDisplacement: z.number().nonnegative().default(1_000_000),
     maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumPlanarVelocityTrackingError: z.number().nonnegative().default(1_000_000),
     maximumYawRateTrackingError: z.number().nonnegative().default(1_000_000),
     maximumTransitionTerminalPlanarTrackingError: z.number().nonnegative().default(1_000_000), maximumTransitionTerminalYawRateTrackingError: z.number().nonnegative().default(1_000_000),
