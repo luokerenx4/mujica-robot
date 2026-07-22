@@ -39,6 +39,18 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_latency_controller_integrates_lateral_velocity_from_reset(self):
+        root = PROJECT / "controllers" / "latency-aware-spatial-gait"
+        definition = json.loads((root / "controller.json").read_text())
+        controller = load_program_controller(root, definition); controller.reset(7)
+        observation = {
+            "joint-position": np.zeros(12), "joint-velocity": np.zeros(12), "base-velocity": np.array([0.0, 0.25, 0.0, 0.0, 0.0, 0.0]),
+            "base-orientation": np.array([1.0, 0.0, 0.0, 0.0]), "imu-angular-velocity": np.zeros(3), "foot-contact-force": np.zeros(4), "actuator-delay-steps": np.array([2.0]),
+        }
+        controller.act(observation, 0.0); controller.act(observation, 0.02)
+        self.assertAlmostEqual(controller.lateral_position, 0.005)
+        controller.reset(8); self.assertEqual(controller.lateral_position, 0.0); self.assertIsNone(controller.last_time)
+
     def test_bounded_history_gru_is_a_stateless_replayable_policy_encoder(self):
         architecture = {"kind": "history-gru-actor-critic", "observationSize": 141, "actionSize": 12, "hiddenSizes": [16], "history": {"commandStart": 41, "appliedStart": 89, "steps": 4, "actionSize": 12, "recurrentSize": 8}}
         network = create_policy_network(architecture); observation = torch.linspace(-1, 1, 141).unsqueeze(0)

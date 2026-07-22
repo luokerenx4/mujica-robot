@@ -47,7 +47,14 @@ export const assemblySchema = z.object({
 }).strict();
 
 export const controllerSchema = z.discriminatedUnion("kind", [
-  z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("program"), entry: relativeFileSchema, config: z.record(z.unknown()).default({}) }).strict(),
+  z.object({
+    version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("program"), entry: relativeFileSchema,
+    interface: z.object({
+      requiredObservations: z.array(z.object({ name: idSchema, size: z.number().int().positive() }).strict()).min(1).refine((channels) => new Set(channels.map((channel) => channel.name)).size === channels.length, "required Observation names must be unique"),
+      actionChannels: z.array(z.object({ name: idSchema, size: z.number().int().positive(), low: z.number().finite(), high: z.number().finite() }).strict().refine((value) => value.low <= value.high, "low must not exceed high")).min(1).refine((channels) => new Set(channels.map((channel) => channel.name)).size === channels.length, "Action channel names must be unique"),
+    }).strict(),
+    config: z.record(z.unknown()).default({}),
+  }).strict(),
   z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("policy"), policy: idSchema, deterministic: z.boolean().default(true) }).strict(),
 ]);
 

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "006-12f975f992e1",
+  "sequence": 6,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "e45e89791062f9e0344fc19f9246840e9b85909a6f5cd3f9c9f7d6703b5a5fec",
+  "candidateControllerHash": "85c7bad6c4f408d28d38b79b3ee373900f60d1d04dc0e012c18d137582068b15",
+  "proposal": {
+    "strategy": "coordinate-lateral-velocity-gain-increase",
+    "hypothesis": "Increase lateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether lateralVelocityGain=0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralVelocityGain": 0.1
+    }
+  },
+  "strategy": "coordinate-lateral-velocity-gain-increase",
+  "score": 54.975732931584176,
+  "delta": -4.255647120332867,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delay-plus-push: lateral drift 0.369 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

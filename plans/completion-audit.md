@@ -1,6 +1,8 @@
 # Complete harness audit
 
-Status: active
+Status: completed
+
+Updated: 2026-07-23
 
 ## Objective
 
@@ -36,3 +38,7 @@ bun run mujica candidate examples/quadruped --candidate foot-force-recovery --js
 bun run mujica assembly compile examples/quadruped --assembly force-sensing-3dof --json
 bun run test
 ```
+
+## Completion
+
+The repository-level harness audit is complete. Remaining work is capability growth: improve the quadruped, make legal development combinations easier to discover, and use real HIL or physical evidence when a device becomes available.

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "026-1c61c2f91510",
+  "sequence": 26,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "cd8e049df29b5c1288d2e8c57af0afeb2b5cc913080bfeff563f99264fb76b0a",
+  "candidateControllerHash": "483dc6ef0825761e6cd5f7be535b08ced301fe9fbedb238064b92dcf840d8f36",
+  "proposal": {
+    "strategy": "coordinate-kp-abduction-increase",
+    "hypothesis": "Increase kpAbduction by one bounded step.",
+    "expectedEffect": "Test whether kpAbduction=17.82265 improves the complete locked quadruped score.",
+    "values": {
+      "/config/kpAbduction": 17.82265
+    }
+  },
+  "strategy": "coordinate-kp-abduction-increase",
+  "score": 50.25893470793594,
+  "delta": -9.819576183299588,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delay-60ms: survival 0.352 below gate without improving the current best",
+    "delay-60ms: forward progress 0.000 below gate without improving the current best",
+    "delay-60ms: score regression exceeds locked baseline gate",
+    "delay-plus-push: lateral drift 0.249 exceeds gate without improving the current best",
+    "delay-plus-reset: lateral drift 0.896 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

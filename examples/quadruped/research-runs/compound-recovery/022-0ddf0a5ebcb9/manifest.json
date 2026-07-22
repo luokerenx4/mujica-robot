@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "022-0ddf0a5ebcb9",
+  "sequence": 22,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "cd8e049df29b5c1288d2e8c57af0afeb2b5cc913080bfeff563f99264fb76b0a",
+  "candidateControllerHash": "e5038de915191151327e1eb1832d75c20091198eaab0104178fd52b755bff6ec",
+  "proposal": {
+    "strategy": "coordinate-state-prediction-seconds-decrease",
+    "hypothesis": "Decrease statePredictionSeconds by one bounded step.",
+    "expectedEffect": "Test whether statePredictionSeconds=0.01473 improves the complete locked quadruped score.",
+    "values": {
+      "/config/statePredictionSeconds": 0.01473
+    }
+  },
+  "strategy": "coordinate-state-prediction-seconds-decrease",
+  "score": 47.07367795664206,
+  "delta": -13.004832934593473,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "reset-c: forward progress 0.065 below gate without improving the current best",
+    "reset-c: score regression exceeds locked baseline gate",
+    "reset-d: forward progress 0.068 below gate without improving the current best",
+    "reverse-strong-push: forward progress 0.098 below gate without improving the current best",
+    "delay-20ms: survival 0.716 below gate without improving the current best",
+    "delay-60ms: forward progress 0.110 below gate without improving the current best",
+    "delay-60ms: lateral drift 0.499 exceeds gate without improving the current best",
+    "delay-plus-push: lateral drift 0.295 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

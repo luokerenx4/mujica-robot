@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
 import { benchmarkSchema, candidateSchema, controllerSchema, hardwareTargetSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import type { CompiledAssembly } from "./types";
 import { confined, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
 
@@ -9,6 +10,37 @@ export async function loadController(projectDir: string, id: string): Promise<{ 
   const rootDir = confined(resolve(projectDir), `controllers/${id}`); const definition = await readJson(join(rootDir, "controller.json"), controllerSchema) as ControllerDefinition;
   if (definition.id !== id) throw new Error(`Controller id '${definition.id}' must match directory '${id}'`);
   return { definition, rootDir };
+}
+
+export interface ControllerInterfaceIssue {
+  code: "observation.missing" | "observation.size" | "action.count" | "action.name" | "action.size" | "action.bounds";
+  channel: string | null;
+  message: string;
+}
+
+export function programControllerInterfaceIssues(controller: ControllerDefinition, assembly: CompiledAssembly): ControllerInterfaceIssue[] {
+  if (controller.kind !== "program") return [];
+  const issues: ControllerInterfaceIssue[] = [];
+  const observations = new Map(assembly.observationContract.channels.map((channel) => [channel.name, channel]));
+  for (const requirement of controller.interface.requiredObservations) {
+    const actual = observations.get(requirement.name);
+    if (!actual) issues.push({ code: "observation.missing", channel: requirement.name, message: `Program Controller '${controller.id}' requires Observation '${requirement.name}' (size ${requirement.size}), but Assembly '${assembly.id}' does not provide it` });
+    else if (actual.size !== requirement.size) issues.push({ code: "observation.size", channel: requirement.name, message: `Program Controller '${controller.id}' requires Observation '${requirement.name}' size ${requirement.size}, but Assembly '${assembly.id}' provides size ${actual.size}` });
+  }
+  const expected = controller.interface.actionChannels; const actual = assembly.actionContract.channels;
+  if (expected.length !== actual.length) issues.push({ code: "action.count", channel: null, message: `Program Controller '${controller.id}' produces ${expected.length} Action channels, but Assembly '${assembly.id}' requires ${actual.length}` });
+  for (let index = 0; index < Math.min(expected.length, actual.length); index++) {
+    const produced = expected[index]!; const required = actual[index]!;
+    if (produced.name !== required.name) issues.push({ code: "action.name", channel: produced.name, message: `Program Controller '${controller.id}' Action ${index} is '${produced.name}', but Assembly '${assembly.id}' requires '${required.name}'` });
+    if (produced.size !== required.size) issues.push({ code: "action.size", channel: produced.name, message: `Program Controller '${controller.id}' Action '${produced.name}' has size ${produced.size}, but Assembly '${assembly.id}' requires size ${required.size}` });
+    if (produced.low !== required.low || produced.high !== required.high) issues.push({ code: "action.bounds", channel: produced.name, message: `Program Controller '${controller.id}' Action '${produced.name}' bounds [${produced.low}, ${produced.high}] do not match Assembly '${assembly.id}' bounds [${required.low ?? "unbounded"}, ${required.high ?? "unbounded"}]` });
+  }
+  return issues;
+}
+
+export function assertProgramControllerCompatible(controller: ControllerDefinition, assembly: CompiledAssembly): void {
+  const issues = programControllerInterfaceIssues(controller, assembly);
+  if (issues.length) throw new Error(issues.map((issue) => issue.message).join("\n"));
 }
 export const loadTask = async (projectDir: string, id: string): Promise<TaskDefinition> => await readJson(confined(resolve(projectDir), `tasks/${id}.task.json`), taskSchema) as TaskDefinition;
 export const loadScenario = async (projectDir: string, id: string): Promise<ScenarioDefinition> => await readJson(confined(resolve(projectDir), `scenarios/${id}.scenario.json`), scenarioSchema) as ScenarioDefinition;
@@ -28,6 +60,10 @@ export async function loadTrainer(projectDir: string, id: string): Promise<{ def
 async function directoryIds(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true });
   return entries.filter((entry) => entry.isDirectory() && !entry.isSymbolicLink() && !entry.name.startsWith(".")).map((entry) => entry.name).sort();
+}
+
+export async function listControllerIds(projectDir: string): Promise<string[]> {
+  return await directoryIds(confined(resolve(projectDir), "controllers"));
 }
 
 async function fileIds(root: string, suffix: string): Promise<string[]> {
@@ -57,6 +93,7 @@ export async function verifyCandidateChanges(projectDir: string, candidate: Cand
   }
   if (candidate.changes.controller.from !== candidate.baseline.controller || candidate.changes.controller.to !== candidate.proposed.controller) throw new Error(`Candidate '${candidate.id}' Controller change must match baseline/proposed Controllers`);
   const baselineController = await loadController(root, candidate.baseline.controller); const proposedController = await loadController(root, candidate.proposed.controller);
+  assertProgramControllerCompatible(baselineController.definition, comparison.from); assertProgramControllerCompatible(proposedController.definition, comparison.to);
   const actualPolicy = {
     from: baselineController.definition.kind === "policy" ? baselineController.definition.policy : null,
     to: proposedController.definition.kind === "policy" ? proposedController.definition.policy : null,
@@ -94,7 +131,7 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   }
   const benchmarkIds = await fileIds(join(root, "benchmarks"), ".benchmark.json");
   for (const id of benchmarkIds) {
-    const benchmark = await loadBenchmark(root, id); await loadObjective(root, benchmark.objective); await compileAssembly(root, benchmark.baseline.assembly); await loadController(root, benchmark.baseline.controller); for (const item of benchmark.cases) { await loadTask(root, item.task); await loadScenario(root, item.scenario); }
+    const benchmark = await loadBenchmark(root, id); await loadObjective(root, benchmark.objective); const assembly = await compileAssembly(root, benchmark.baseline.assembly); const controller = await loadController(root, benchmark.baseline.controller); assertProgramControllerCompatible(controller.definition, assembly); for (const item of benchmark.cases) { await loadTask(root, item.task); await loadScenario(root, item.scenario); }
   }
   const candidateIds = await directoryIds(join(root, "candidates"));
   for (const id of candidateIds) {
@@ -107,13 +144,13 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     const revisionPath = confined(root, `revisions/${target.revision}`); await requireFile(join(revisionPath, "manifest.json"), `Hardware Target '${id}' Revision`);
     const revision = JSON.parse(await Bun.file(join(revisionPath, "manifest.json")).text());
     if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target '${id}' must match its Robot Revision Assembly and Controller`);
-    const compiled = await compileAssembly(root, target.assembly); if (target.safety.emergencyStopAction.length !== compiled.actionContract.size) throw new Error(`Hardware Target '${id}' emergency stop Action size does not match contract`);
+    const compiled = await compileAssembly(root, target.assembly); const controller = await loadController(root, target.controller); assertProgramControllerCompatible(controller.definition, compiled); if (target.safety.emergencyStopAction.length !== compiled.actionContract.size) throw new Error(`Hardware Target '${id}' emergency stop Action size does not match contract`);
     const lows = compiled.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.low ?? Number.NEGATIVE_INFINITY)); const highs = compiled.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.high ?? Number.POSITIVE_INFINITY));
     for (let index = 0; index < target.safety.emergencyStopAction.length; index++) if (target.safety.emergencyStopAction[index]! < lows[index]! || target.safety.emergencyStopAction[index]! > highs[index]!) throw new Error(`Hardware Target '${id}' emergency stop Action exceeds channel bounds`);
   }
   const researchIds = await fileIds(join(root, "research"), ".research.json");
   for (const id of researchIds) {
-    const research = await loadResearch(root, id); await loadBenchmark(root, research.benchmark); await compileAssembly(root, research.assembly); const controller = await loadController(root, research.controller);
+    const research = await loadResearch(root, id); await loadBenchmark(root, research.benchmark); const assembly = await compileAssembly(root, research.assembly); const controller = await loadController(root, research.controller); assertProgramControllerCompatible(controller.definition, assembly);
     if (controller.definition.kind !== "program") throw new Error(`Research '${id}' requires a program Controller`);
     const expectedPath = `controllers/${research.controller}/controller.json`; if (research.editable.path !== expectedPath) throw new Error(`Research '${id}' editable path must be '${expectedPath}'`);
     await requireFile(confined(root, research.program), `Research '${id}' program`);
@@ -141,6 +178,6 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
       if (parameter.integer && (!Number.isInteger(value) || !Number.isInteger(parameter.minimum) || !Number.isInteger(parameter.maximum) || !Number.isInteger(parameter.step))) throw new Error(`Training Research '${id}' parameter '${parameter.path}' requires integer bounds and values`);
     }
   }
-  await loadController(root, project.manifest.defaults.controller); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
+  const defaultAssembly = await compileAssembly(root, project.manifest.defaults.assembly); const defaultController = await loadController(root, project.manifest.defaults.controller); assertProgramControllerCompatible(defaultController.definition, defaultAssembly); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
   return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length };
 }

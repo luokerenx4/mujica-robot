@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadTraining, loadTrainingResearch } from "@mujica/core";
-import { validateResearchProposal, validateTrainingProposal } from "./commands";
+import { researchDecision, researchGateReasons, validateResearchProposal, validateTrainingProposal } from "./commands";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -27,6 +27,23 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.export")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.verify")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.requalify")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
+  });
+
+  test("Controller discovery exposes legal Assembly combinations", () => {
+    const result = invoke(["controller", "inspect", "examples/quadruped", "--controller", "latency-aware-spatial-gait", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0); expect(envelope.data.definition.interface.requiredObservations.at(-1)).toEqual({ name: "actuator-delay-steps", size: 1 });
+    expect(envelope.data.compatibleAssemblies).toEqual(["force-sensing-history-3dof"]);
+    expect(envelope.nextActions[0].argv.slice(0, 5)).toEqual(["simulate", resolve(root, "examples/quadruped"), "--assembly", "force-sensing-history-3dof", "--controller"]);
+    const ordinary = envelope.data.incompatibleAssemblies.find((item: any) => item.assembly === "force-sensing-3dof");
+    expect(ordinary.issues).toEqual([{ code: "observation.missing", channel: "actuator-delay-steps", message: "Program Controller 'latency-aware-spatial-gait' requires Observation 'actuator-delay-steps' (size 1), but Assembly 'force-sensing-3dof' does not provide it" }]);
+  });
+
+  test("an incompatible Program Controller fails before Python Runtime invocation", () => {
+    const result = invoke(["simulate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "latency-aware-spatial-gait", "--task", "forward-walk", "--scenario", "nominal", "--json"]); const envelope = JSON.parse(result.stderr);
+    expect(result.code).toBe(1); expect(envelope.error.message).toContain("requires Observation 'actuator-delay-steps'"); expect(envelope.error.message).not.toContain("Python Runtime"); expect(envelope.error.message).not.toContain("KeyError");
   });
 
   test("Studio is a read-only projection of a completed quadruped run", () => {
@@ -44,13 +61,13 @@ describe("agent CLI contract", () => {
     expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 2, 2, 6, 6, 6, 6, 2]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
-    expect(envelope.data.definitions.research).toBe(3);
+    expect(envelope.data.definitions.research).toBe(4);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
-  });
+  }, 10_000);
 
   test("hardware dry-run evidence cannot masquerade as physical verification", () => {
     const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "spatial-dry-run", "--json"]); const bundle = JSON.parse(exported.stdout); expect(exported.code).toBe(0);
@@ -101,8 +118,8 @@ describe("agent CLI contract", () => {
     const revisions = envelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt));
     expect(revisions.length).toBeGreaterThan(1);
     for (let index = 1; index < revisions.length; index++) expect(revisions[index].parent).toBe(revisions[index - 1].id);
-    expect(revisions.at(-1).candidateId).toBe("spatial-quadruped");
-    expect(revisions.at(-1).aggregateScore).toBeCloseTo(62.616999752834296);
+    const spatial = revisions.find((item: any) => item.candidateId === "spatial-quadruped"); expect(spatial.aggregateScore).toBeCloseTo(62.616999752834296);
+    expect(revisions.at(-1)).toMatchObject({ id: "quadruped-r-cb6b31bc8f4a", kind: "research-optimization", researchId: "compound-recovery", previousViolationCount: 1, candidateViolationCount: 0, selectionReason: "fewer-gate-violations" });
   });
 
   test("Policy requalification requires byte-identical MJCF and contracts", () => {
@@ -121,10 +138,29 @@ describe("agent CLI contract", () => {
     expect(delay.metrics.forwardProgress).toBeGreaterThan(0.69);
   }, 15_000);
 
+  test("diagnosis ranks measured gate failures separately from hypotheses", () => {
+    const result = invoke(["diagnose", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-forward-gait", "--benchmark", "spatial-generalization", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0); expect(envelope.data.status).toBe("FAIL"); expect(envelope.data.violationCount).toBe(5); expect(envelope.data.worstCase).toBe("delay-plus-reset");
+    expect(envelope.data.violations.map((item: any) => [item.case, item.id])).toContainEqual(["delay-plus-reset", "lateral-drift"]);
+    const worst = envelope.data.cases[0]; const drift = worst.findings.find((item: any) => item.code === "gate.lateral-drift"); expect(drift).toMatchObject({ kind: "evidence", code: "gate.lateral-drift", comparator: "<=", threshold: 0.2 }); expect(drift.margin).toBeLessThan(-0.59);
+    expect(worst.hypotheses[0]).toMatchObject({ kind: "hypothesis", surface: "controller" }); expect(worst.reproduceArgv).toContain("delayed-reset-perturbation");
+    expect(envelope.nextActions[0]).toMatchObject({ id: "reproduce-worst-case", effect: "creates-artifact", argv: worst.reproduceArgv });
+  }, 20_000);
+
   test("agent research proposals cannot escape declared values or bounds", async () => {
     const project = resolve(root, "examples/quadruped"); const research = await loadResearch(project, "support-controller"); const controller = await loadController(project, research.controller);
     expect(() => validateResearchProposal(research, controller.definition, { strategy: "escape", hypothesis: "edit hidden gain", expectedEffect: "unsafe", values: { "/config/frequencyHz": 2 } })).toThrow("not editable");
     expect(() => validateResearchProposal(research, controller.definition, { strategy: "out-of-bounds", hypothesis: "too stiff", expectedEffect: "unsafe", values: { "/config/kp": 100 } })).toThrow("outside");
+  });
+
+  test("research may approach an unmet gate only by improving the current best", () => {
+    const result = (drift: number, score: number) => ({ aggregateScore: score, cases: [{ case: { id: "compound", gating: true }, metrics: { survivalRate: 1, targetDistance: 1, forwardProgress: 0.4, lateralDrift: drift }, score: { total: score } }] });
+    const objective = { gates: { minimumSurvivalRate: 0.8, minimumForwardProgress: 0.25, maximumLateralDrift: 0.2, maximumRegression: 20 } };
+    expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.7, 56) as any)).toEqual([]);
+    expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.8, 56) as any)).toEqual(["compound: lateral drift 0.800 exceeds gate without improving the current best"]);
+    const feasibility = researchDecision(objective as any, result(0.4, 50) as any, result(0.4, 60) as any, result(0.1, 57) as any, 0.01);
+    expect(feasibility).toMatchObject({ verdict: "KEEP", previousViolationCount: 1, candidateViolationCount: 0, feasibilityImproved: true, scoreImproved: false, selectionReason: "fewer-gate-violations" });
+    expect(researchDecision(objective as any, result(0.4, 50) as any, result(0.1, 60) as any, result(0.1, 57) as any, 0.01).verdict).toBe("REVERT");
   });
 
   test("training proposals are confined and preserve integer parameters", async () => {

@@ -4,6 +4,14 @@
   "name": "Readable PD trot controller",
   "kind": "program",
   "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 8 },
+      { "name": "joint-velocity", "size": 8 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 8, "low": -6, "high": 6 }
+    ]
+  },
   "config": { "kp": 18.0, "kd": 1.2, "frequencyHz": 1.4, "hipAmplitude": 0.10, "kneeAmplitude": 0.14 }
 }
-

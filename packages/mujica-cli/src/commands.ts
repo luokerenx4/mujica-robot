@@ -1,8 +1,8 @@
 import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
-  atomicDirectory, compareAssemblies, compileAssembly, confined, hashDirectory, hashJson, listAssemblyIds, listComponentIds, loadAssembly, loadBenchmark, loadCandidate, loadComponent,
-  loadController, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
+  assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, hashDirectory, hashJson, listAssemblyIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCandidate, loadComponent,
+  loadController, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
   type BenchmarkDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
@@ -32,6 +32,7 @@ async function controllerIdentity(projectDir: string, id: string, override?: Con
 
 async function baseRequest(project: ProjectContext, assembly: CompiledAssembly, controllerId: string, taskId: string, scenarioId: string, objectiveId: string, seed: number, override?: ControllerDefinition) {
   const controller = await controllerIdentity(project.rootDir, controllerId, override);
+  assertProgramControllerCompatible(controller.definition, assembly);
   return {
     request: {
       runtimeVersion, runtimeSourceHash: await runtimeSourceHash(), harnessSourceHash: await harnessSourceHash(), projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), controller: controller.definition, controllerRoot: controller.rootDir,
@@ -48,10 +49,10 @@ export async function validateCommand(projectDir: string) {
 }
 
 export async function inspectCommand(projectDir: string) {
-  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir);
+  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
   const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications"));
-  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
+  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
 }
 
 export async function studioCommand(projectDir: string, run?: string) {
@@ -68,6 +69,38 @@ export async function componentListCommand(projectDir: string) {
 export async function componentInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const component = await loadComponent(project.rootDir, id);
   return success("component.inspect", { ...component.manifest, hash: component.hash, rootDir: component.rootDir }, project);
+}
+
+async function controllerCompatibility(project: ProjectContext, definition: ControllerDefinition) {
+  const compatibleAssemblies: string[] = []; const incompatibleAssemblies: Array<{ assembly: string; issues: Array<{ code: string; channel: string | null; message: string }> }> = [];
+  const policyManifest = definition.kind === "policy" ? JSON.parse(await readFile(confined(project.rootDir, `policies/${definition.policy}/manifest.json`), "utf8")) : null;
+  for (const assemblyId of await listAssemblyIds(project.rootDir)) {
+    const assembly = await compileAssembly(project.rootDir, assemblyId); let issues: Array<{ code: string; channel: string | null; message: string }>;
+    if (definition.kind === "program") issues = programControllerInterfaceIssues(definition, assembly);
+    else {
+      issues = [];
+      if (policyManifest.executionHash ? policyManifest.executionHash !== assembly.executionHash : policyManifest.assemblyHash !== assembly.assemblyHash || policyManifest.catalogHash !== assembly.catalogHash) issues.push({ code: "policy.execution", channel: null, message: `Policy '${definition.policy}' executable identity does not match Assembly '${assembly.id}'` });
+      if (policyManifest.observationContractHash !== hashJson(assembly.observationContract)) issues.push({ code: "policy.observations", channel: null, message: `Policy '${definition.policy}' Observation Contract does not match Assembly '${assembly.id}'` });
+      if (policyManifest.actionContractHash !== hashJson(assembly.actionContract)) issues.push({ code: "policy.actions", channel: null, message: `Policy '${definition.policy}' Action Contract does not match Assembly '${assembly.id}'` });
+    }
+    if (issues.length) incompatibleAssemblies.push({ assembly: assembly.id, issues }); else compatibleAssemblies.push(assembly.id);
+  }
+  return { compatibleAssemblies, incompatibleAssemblies };
+}
+
+export async function controllerListCommand(projectDir: string) {
+  const project = await loadProject(projectDir); const controllers = [];
+  for (const id of await listControllerIds(project.rootDir)) {
+    const controller = await controllerIdentity(project.rootDir, id); const compatibility = await controllerCompatibility(project, controller.definition);
+    controllers.push({ id, name: controller.definition.name, kind: controller.definition.kind, hash: controller.hash, ...(controller.definition.kind === "program" ? { interface: controller.definition.interface } : { policy: controller.definition.policy }), compatibleAssemblies: compatibility.compatibleAssemblies });
+  }
+  return success("controller.list", { controllers }, project);
+}
+
+export async function controllerInspectCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir); const controller = await controllerIdentity(project.rootDir, id); const compatibility = await controllerCompatibility(project, controller.definition);
+  const first = compatibility.compatibleAssemblies[0];
+  return success("controller.inspect", { definition: controller.definition, hash: controller.hash, rootDir: controller.rootDir, ...compatibility }, project, [], first ? [{ id: "simulate-compatible", description: "Run this Controller with its first compatible Assembly and project-default test inputs", argv: ["simulate", project.rootDir, "--assembly", first, "--controller", id, "--task", project.manifest.defaults.task, "--scenario", project.manifest.defaults.scenario], effect: "creates-artifact" }] : []);
 }
 
 export async function assemblyCompileCommand(projectDir: string, id: string) {
@@ -235,6 +268,45 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
 
 type EvaluationResult = Awaited<ReturnType<typeof evaluatePair>>;
 
+type GateAssessment = {
+  id: "survival" | "forward-progress" | "lateral-drift" | "score-regression";
+  metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
+};
+
+function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, candidate: EvaluationResult["cases"][number], baseline: EvaluationResult["cases"][number] | undefined): GateAssessment[] {
+  const enforced = candidate.case.gating !== false; const gates: GateAssessment[] = [];
+  const lower = (id: GateAssessment["id"], metric: string, value: number, threshold: number): GateAssessment => { const margin = value - threshold; return { id, metric, comparator: ">=", threshold, value, margin, passed: margin >= 0, enforced, severity: margin < 0 ? -margin / Math.max(Math.abs(threshold), 1e-9) : 0 }; };
+  const upper = (id: GateAssessment["id"], metric: string, value: number, threshold: number): GateAssessment => { const margin = threshold - value; return { id, metric, comparator: "<=", threshold, value, margin, passed: margin >= 0, enforced, severity: margin < 0 ? -margin / Math.max(Math.abs(threshold), 1e-9) : 0 }; };
+  gates.push(lower("survival", "survivalRate", candidate.metrics.survivalRate, objective.gates.minimumSurvivalRate));
+  if (candidate.metrics.targetDistance > 0) gates.push(lower("forward-progress", "forwardProgress", candidate.metrics.forwardProgress, objective.gates.minimumForwardProgress));
+  gates.push(upper("lateral-drift", "lateralDrift", candidate.metrics.lateralDrift, objective.gates.maximumLateralDrift));
+  if (baseline) gates.push(lower("score-regression", "scoreDelta", candidate.score.total - baseline.score.total, -objective.gates.maximumRegression));
+  return gates;
+}
+
+function diagnosticHypotheses(violations: GateAssessment[]) {
+  const hypotheses: Array<{ kind: "hypothesis"; surface: "controller" | "assembly" | "training"; description: string; rationale: string }> = [];
+  if (violations.some((gate) => gate.id === "survival")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect the fall event and pre-fall trajectory before changing task performance terms.", rationale: "The measured survival gate failed; stability is prerequisite evidence." });
+  if (violations.some((gate) => gate.id === "forward-progress")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test gait timing, target generation, or longitudinal authority on this fixed case.", rationale: "Survival alone did not produce the required net target-direction displacement." });
+  if (violations.some((gate) => gate.id === "lateral-drift")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.", rationale: "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response." });
+  if (violations.some((gate) => gate.id === "score-regression")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.", rationale: "The case regressed beyond the locked baseline allowance." });
+  return hypotheses;
+}
+
+export async function diagnoseCommand(projectDir: string, options: { assembly: string; controller: string; benchmark: string }) {
+  const project = await loadProject(projectDir); const benchmark = await loadBenchmark(project.rootDir, options.benchmark); const lock = await requireBenchmarkLock(project, benchmark); const objective = await loadObjective(project.rootDir, benchmark.objective);
+  const baseline = await evaluatePair(project, benchmark, benchmark.baseline.assembly, benchmark.baseline.controller); const evaluation = options.assembly === benchmark.baseline.assembly && options.controller === benchmark.baseline.controller ? baseline : await evaluatePair(project, benchmark, options.assembly, options.controller);
+  const cases = evaluation.cases.map((item, index) => {
+    const gates = diagnosticGates(objective, item, baseline.cases[index]); const violations = gates.filter((gate) => gate.enforced && !gate.passed); const severity = violations.reduce((sum, gate) => sum + gate.severity, 0);
+    const reproduceArgv = ["simulate", project.rootDir, "--assembly", options.assembly, "--controller", options.controller, "--task", item.case.task, "--scenario", item.case.scenario, "--objective", benchmark.objective, "--seed", String(item.case.seed)];
+    return { id: item.case.id, task: item.case.task, scenario: item.case.scenario, seed: item.case.seed, gating: item.case.gating, score: item.score.total, scoreDelta: item.score.total - (baseline.cases[index]?.score.total ?? item.score.total), metrics: item.metrics, gates, violations, violationSeverity: severity, findings: violations.map((gate) => ({ kind: "evidence" as const, code: `gate.${gate.id}`, metric: gate.metric, value: gate.value, comparator: gate.comparator, threshold: gate.threshold, margin: gate.margin })), hypotheses: diagnosticHypotheses(violations), reproduceArgv };
+  });
+  const ranked = [...cases].sort((left, right) => right.violationSeverity - left.violationSeverity || left.scoreDelta - right.scoreDelta || left.id.localeCompare(right.id)); const violations = cases.flatMap((item) => item.violations.map((gate) => ({ case: item.id, ...gate }))); const worst = ranked[0] ?? null;
+  const result = { benchmark: benchmark.id, lockHash: lock.lockHash, subject: { assembly: options.assembly, controller: options.controller }, baseline: { assembly: baseline.assembly, controller: baseline.controller, aggregateScore: baseline.aggregateScore }, aggregateScore: evaluation.aggregateScore, aggregateDelta: evaluation.aggregateScore - baseline.aggregateScore, status: violations.length ? "FAIL" as const : "PASS" as const, violationCount: violations.length, violations, worstCase: worst?.id ?? null, cases: ranked };
+  const nextActions = worst ? [{ id: "reproduce-worst-case", description: `Persist the worst diagnosed case '${worst.id}' for event and trajectory inspection`, argv: worst.reproduceArgv, effect: "creates-artifact" as const }, { id: "inspect-controller", description: "Inspect the Controller interface and compatible Assemblies", argv: ["controller", "inspect", project.rootDir, "--controller", options.controller], effect: "read-only" as const }] : [];
+  return success("diagnose", result, project, [], nextActions);
+}
+
 function researchValue(definition: ControllerDefinition, path: string): number {
   if (definition.kind !== "program") throw new Error("Research requires a program Controller");
   const key = path.slice("/config/".length); const value = definition.config[key];
@@ -281,19 +353,39 @@ function externalResearchProposal(command: string, input: unknown): unknown {
   try { return JSON.parse(stdout); } catch { throw new Error(`Research agent command returned invalid JSON: ${stdout.slice(0, 500)}`); }
 }
 
-function researchGateReasons(objective: Awaited<ReturnType<typeof loadObjective>>, baseline: EvaluationResult, candidate: EvaluationResult): string[] {
+export function researchGateReasons(objective: Awaited<ReturnType<typeof loadObjective>>, lockedBaseline: EvaluationResult, previous: EvaluationResult, candidate: EvaluationResult): string[] {
   const reasons: string[] = [];
   for (let index = 0; index < candidate.cases.length; index++) {
-    const candidateCase = candidate.cases[index]; const baselineCase = baseline.cases[index];
+    const candidateCase = candidate.cases[index]; const previousCase = previous.cases[index]; const baselineCase = lockedBaseline.cases[index];
     if (candidateCase && candidateCase.case.gating === false) continue;
-    // A research loop may start from an infeasible baseline. Permit a monotonic move
-    // toward an unmet gate so several small, reviewable changes can cross it.
-    if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate && (!baselineCase || candidateCase.metrics.survivalRate <= baselineCase.metrics.survivalRate)) reasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate without improving the locked baseline`);
-    if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress && (!baselineCase || candidateCase.metrics.forwardProgress <= baselineCase.metrics.forwardProgress)) reasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate without improving the locked baseline`);
-    if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift && (!baselineCase || candidateCase.metrics.lateralDrift >= baselineCase.metrics.lateralDrift)) reasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate without improving the locked baseline`);
+    // An infeasible current best may approach a gate through small attributable
+    // steps. Each accepted step must improve that exact metric; score regression
+    // remains anchored to the immutable Benchmark baseline below.
+    if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate && (!previousCase || candidateCase.metrics.survivalRate <= previousCase.metrics.survivalRate)) reasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate without improving the current best`);
+    if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress && (!previousCase || candidateCase.metrics.forwardProgress <= previousCase.metrics.forwardProgress)) reasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate without improving the current best`);
+    if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift && (!previousCase || candidateCase.metrics.lateralDrift >= previousCase.metrics.lateralDrift)) reasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate without improving the current best`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) reasons.push(`${candidateCase.case.id}: score regression exceeds locked baseline gate`);
   }
   return reasons;
+}
+
+function researchViolationCount(objective: Awaited<ReturnType<typeof loadObjective>>, lockedBaseline: EvaluationResult, evaluation: EvaluationResult): number {
+  let count = 0;
+  for (let index = 0; index < evaluation.cases.length; index++) {
+    const item = evaluation.cases[index]; const baseline = lockedBaseline.cases[index]; if (!item || item.case.gating === false) continue;
+    if (item.metrics.survivalRate < objective.gates.minimumSurvivalRate) count++;
+    if (item.metrics.targetDistance > 0 && item.metrics.forwardProgress < objective.gates.minimumForwardProgress) count++;
+    if (item.metrics.lateralDrift > objective.gates.maximumLateralDrift) count++;
+    if (baseline && item.score.total - baseline.score.total < -objective.gates.maximumRegression) count++;
+  }
+  return count;
+}
+
+export function researchDecision(objective: Awaited<ReturnType<typeof loadObjective>>, lockedBaseline: EvaluationResult, previous: EvaluationResult, candidate: EvaluationResult, minimumImprovement: number) {
+  const gateReasons = researchGateReasons(objective, lockedBaseline, previous, candidate); const previousViolationCount = researchViolationCount(objective, lockedBaseline, previous); const candidateViolationCount = researchViolationCount(objective, lockedBaseline, candidate); const scoreDelta = candidate.aggregateScore - previous.aggregateScore;
+  const feasibilityImproved = candidateViolationCount < previousViolationCount; const sameFeasibility = candidateViolationCount === previousViolationCount; const scoreImproved = scoreDelta >= minimumImprovement;
+  const keep = gateReasons.length === 0 && (feasibilityImproved || (sameFeasibility && scoreImproved));
+  return { verdict: keep ? "KEEP" as const : "REVERT" as const, gateReasons, previousViolationCount, candidateViolationCount, feasibilityImproved, scoreImproved, selectionReason: keep ? (feasibilityImproved ? "fewer-gate-violations" as const : "score-improvement-within-feasibility-tier" as const) : gateReasons.length ? "gate-regression" as const : "no-lexicographic-improvement" as const };
 }
 
 async function atomicWriteJsonFile(path: string, value: unknown): Promise<void> {
@@ -309,7 +401,7 @@ async function latestRevision(projectDir: string): Promise<string | null> {
 
 async function publishResearchRevision(options: {
   project: ProjectContext; research: ResearchDefinition; benchmark: BenchmarkDefinition; lockHash: string; assembly: CompiledAssembly; proposal: ResearchProposal;
-  experimentId: string; experimentHash: string; previous: EvaluationResult; candidate: EvaluationResult; scoreDelta: number; controller: ControllerDefinition;
+  experimentId: string; experimentHash: string; previous: EvaluationResult; candidate: EvaluationResult; scoreDelta: number; controller: ControllerDefinition; decision: ReturnType<typeof researchDecision>;
 }): Promise<{ id: string; path: string }> {
   const parent = await latestRevision(options.project.rootDir);
   const revisionHash = hashJson({ parent, research: options.research.id, experimentHash: options.experimentHash, assemblyHash: options.assembly.assemblyHash, controller: options.controller, results: options.candidate.cases.map((item) => item.resultHash) });
@@ -327,8 +419,8 @@ async function publishResearchRevision(options: {
     }
     const compiledDirectory = join(directory, "compiled"); await mkdir(compiledDirectory, { recursive: true });
     for (const name of ["model.xml", "observation-contract.json", "action-contract.json", "compiled-assembly.json"]) await writeFile(join(compiledDirectory, name), await readFile(join(options.assembly.artifactDir, name)));
-    await writeJson(join(directory, "evaluation.json"), { proposal: options.proposal, previous: options.previous, candidate: options.candidate, scoreDelta: options.scoreDelta });
-    await writeJson(join(directory, "manifest.json"), { version: 1, id, kind: "research-optimization", parent, researchId: options.research.id, experimentId: options.experimentId, experimentHash: options.experimentHash, benchmarkId: options.benchmark.id, benchmarkLockHash: options.lockHash, assembly: options.research.assembly, assemblyHash: options.assembly.assemblyHash, controller: options.research.controller, controllerHash: hashJson(options.controller), aggregateScore: options.candidate.aggregateScore, scoreDelta: options.scoreDelta, sourceClosure, appliedAt: new Date().toISOString() });
+    await writeJson(join(directory, "evaluation.json"), { proposal: options.proposal, previous: options.previous, candidate: options.candidate, scoreDelta: options.scoreDelta, decision: options.decision });
+    await writeJson(join(directory, "manifest.json"), { version: 1, id, kind: "research-optimization", parent, researchId: options.research.id, experimentId: options.experimentId, experimentHash: options.experimentHash, benchmarkId: options.benchmark.id, benchmarkLockHash: options.lockHash, assembly: options.research.assembly, assemblyHash: options.assembly.assemblyHash, controller: options.research.controller, controllerHash: hashJson(options.controller), aggregateScore: options.candidate.aggregateScore, scoreDelta: options.scoreDelta, previousViolationCount: options.decision.previousViolationCount, candidateViolationCount: options.decision.candidateViolationCount, selectionReason: options.decision.selectionReason, sourceClosure, appliedAt: new Date().toISOString() });
   });
   return { id, path: target };
 }
@@ -385,10 +477,9 @@ export async function researchCommand(projectDir: string, researchId: string, re
     }
     if (!proposal || !candidateDefinition || !candidateControllerHash) throw new Error("Research proposal validation did not produce a candidate");
     seen.add(candidateControllerHash);
-    const beforeControllerHash = hashJson(beforeDefinition); const beforeFileHash = sha256(await readFile(controllerPath)); let candidate: EvaluationResult | undefined; let errorMessage: string | undefined; let gateReasons: string[] = []; let delta = 0; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH";
+    const beforeControllerHash = hashJson(beforeDefinition); const beforeFileHash = sha256(await readFile(controllerPath)); let candidate: EvaluationResult | undefined; let errorMessage: string | undefined; let decision: ReturnType<typeof researchDecision> | undefined; let gateReasons: string[] = []; let delta = 0; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH";
     try {
-      candidate = await evaluatePair(project, benchmark, research.assembly, research.controller, candidateDefinition); delta = candidate.aggregateScore - previousEvaluation.aggregateScore; gateReasons = researchGateReasons(objective, lockedBaseline, candidate);
-      verdict = gateReasons.length === 0 && delta >= research.minimumImprovement ? "KEEP" : "REVERT";
+      candidate = await evaluatePair(project, benchmark, research.assembly, research.controller, candidateDefinition); delta = candidate.aggregateScore - previousEvaluation.aggregateScore; decision = researchDecision(objective, lockedBaseline, previousEvaluation, candidate, research.minimumImprovement); gateReasons = decision.gateReasons; verdict = decision.verdict;
     } catch (error) { errorMessage = error instanceof Error ? error.message : String(error); }
     const experimentHash = hashJson({ researchHash, programHash, lockHash: lock.lockHash, beforeControllerHash, proposal, candidateControllerHash, verdict, results: candidate?.cases.map((item) => item.resultHash), errorMessage });
     const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; let revision: { id: string; path: string } | undefined;
@@ -396,20 +487,20 @@ export async function researchCommand(projectDir: string, researchId: string, re
       if (sha256(await readFile(controllerPath)) !== beforeFileHash) throw new Error("Research Controller changed during evaluation; refusing stale KEEP");
       const original = beforeDefinition;
       await atomicWriteJsonFile(controllerPath, candidateDefinition);
-      try { revision = await publishResearchRevision({ project, research, benchmark, lockHash: lock.lockHash, assembly, proposal, experimentId, experimentHash, previous: previousEvaluation, candidate, scoreDelta: delta, controller: candidateDefinition }); }
+      try { if (!decision) throw new Error("Research KEEP is missing its selection decision"); revision = await publishResearchRevision({ project, research, benchmark, lockHash: lock.lockHash, assembly, proposal, experimentId, experimentHash, previous: previousEvaluation, candidate, scoreDelta: delta, controller: candidateDefinition, decision }); }
       catch (error) { await atomicWriteJsonFile(controllerPath, original); throw error; }
       definition = candidateDefinition; current = candidate;
     }
     const artifactPath = join(researchRoot, experimentId);
     await atomicDirectory(artifactPath, async (directory) => {
       await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-controller.json"), beforeDefinition); await writeJson(join(directory, "candidate-controller.json"), candidateDefinition);
-      if (candidate) await writeJson(join(directory, "evaluation.json"), { previous: previousEvaluation, candidate, delta, gateReasons });
+      if (candidate) await writeJson(join(directory, "evaluation.json"), { previous: previousEvaluation, candidate, delta, gateReasons, decision });
       if (errorMessage) await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
-      await writeFile(join(directory, "report.md"), `# Research experiment ${experimentId}\n\n- Strategy: \`${proposal.strategy}\`\n- Verdict: **${verdict}**\n- Score: \`${candidate?.aggregateScore ?? 0}\`\n- Delta: \`${delta}\`\n${revision ? `- Revision: \`${revision.id}\`\n` : ""}`);
-      await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, beforeControllerHash, candidateControllerHash, proposal, strategy: proposal.strategy, score: candidate?.aggregateScore ?? 0, delta, verdict, gateReasons, error: errorMessage ?? null, revisionId: revision?.id ?? null, completed: true });
+      await writeFile(join(directory, "report.md"), `# Research experiment ${experimentId}\n\n- Strategy: \`${proposal.strategy}\`\n- Verdict: **${verdict}**\n- Score: \`${candidate?.aggregateScore ?? 0}\`\n- Delta: \`${delta}\`\n${decision ? `- Gate violations: \`${decision.previousViolationCount} -> ${decision.candidateViolationCount}\`\n- Selection: \`${decision.selectionReason}\`\n` : ""}${revision ? `- Revision: \`${revision.id}\`\n` : ""}`);
+      await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, beforeControllerHash, candidateControllerHash, proposal, strategy: proposal.strategy, score: candidate?.aggregateScore ?? 0, delta, verdict, gateReasons, decision: decision ?? null, error: errorMessage ?? null, revisionId: revision?.id ?? null, completed: true });
     });
     const description = proposal.hypothesis.replace(/[\t\r\n]+/g, " "); await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${candidate?.aggregateScore ?? 0}\t${delta}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${description}\n`);
-    const summary = { sequence, experimentId, proposal, candidateControllerHash, score: candidate?.aggregateScore ?? 0, delta, verdict, gateReasons, error: errorMessage ?? null, revisionId: revision?.id ?? null, artifactPath };
+    const summary = { sequence, experimentId, proposal, candidateControllerHash, score: candidate?.aggregateScore ?? 0, delta, verdict, gateReasons, decision: decision ?? null, error: errorMessage ?? null, revisionId: revision?.id ?? null, artifactPath };
     experiments.push(summary); history.push({ ...summary, candidateControllerHash }); artifacts.push(projectArtifact("research-experiment", experimentId, artifactPath, true)); if (revision) artifacts.push(projectArtifact("revision", revision.id, revision.path, true)); sequence++;
   }
   return success("research", { research: research.id, programHash, benchmark: benchmark.id, lockHash: lock.lockHash, initialScore, finalScore: current.aggregateScore, scoreDelta: current.aggregateScore - initialScore, iterationsRequested: requestedIterations, iterationsCompleted: experiments.length, exhausted, experiments, controller: definition, revisionHead: await latestRevision(project.rootDir), ledgerPath }, project, artifacts);
@@ -463,7 +554,7 @@ async function latestPolicyRevision(projectDir: string, researchId: string): Pro
 
 async function publishPolicyRevision(options: {
   project: ProjectContext; research: TrainingResearchDefinition; benchmark: BenchmarkDefinition; lockHash: string; assembly: CompiledAssembly; training: TrainingDefinition;
-  controller: ControllerDefinition; proposal: ResearchProposal; experimentId: string; experimentHash: string; previous: EvaluationResult; candidate: EvaluationResult; scoreDelta: number; policyId: string;
+  controller: ControllerDefinition; proposal: ResearchProposal; experimentId: string; experimentHash: string; previous: EvaluationResult; candidate: EvaluationResult; scoreDelta: number; policyId: string; decision: ReturnType<typeof researchDecision>;
 }): Promise<{ id: string; path: string }> {
   const parent = await latestPolicyRevision(options.project.rootDir, options.research.id); const policyPath = confined(options.project.rootDir, `policies/${options.policyId}`); const policyHash = await hashDirectory(policyPath);
   const revisionHash = hashJson({ parent, research: options.research.id, experimentHash: options.experimentHash, training: options.training, policyHash, results: options.candidate.cases.map((item) => item.resultHash) });
@@ -480,8 +571,8 @@ async function publishPolicyRevision(options: {
     await cp(policyPath, join(directory, "policy"), { recursive: true });
     const compiledDirectory = join(directory, "compiled"); await mkdir(compiledDirectory, { recursive: true });
     for (const name of ["model.xml", "observation-contract.json", "action-contract.json", "compiled-assembly.json"]) await writeFile(join(compiledDirectory, name), await readFile(join(options.assembly.artifactDir, name)));
-    await writeJson(join(directory, "evaluation.json"), { proposal: options.proposal, previous: options.previous, candidate: options.candidate, scoreDelta: options.scoreDelta });
-    await writeJson(join(directory, "manifest.json"), { version: 1, id, kind: "policy-optimization", parent, researchId: options.research.id, experimentId: options.experimentId, experimentHash: options.experimentHash, benchmarkId: options.benchmark.id, benchmarkLockHash: options.lockHash, assembly: options.training.assembly, assemblyHash: options.assembly.assemblyHash, controller: options.research.controller, policyId: options.policyId, policyHash, trainingHash: hashJson(options.training), aggregateScore: options.candidate.aggregateScore, scoreDelta: options.scoreDelta, sourceClosure, appliedAt: new Date().toISOString() });
+    await writeJson(join(directory, "evaluation.json"), { proposal: options.proposal, previous: options.previous, candidate: options.candidate, scoreDelta: options.scoreDelta, decision: options.decision });
+    await writeJson(join(directory, "manifest.json"), { version: 1, id, kind: "policy-optimization", parent, researchId: options.research.id, experimentId: options.experimentId, experimentHash: options.experimentHash, benchmarkId: options.benchmark.id, benchmarkLockHash: options.lockHash, assembly: options.training.assembly, assemblyHash: options.assembly.assemblyHash, controller: options.research.controller, policyId: options.policyId, policyHash, trainingHash: hashJson(options.training), aggregateScore: options.candidate.aggregateScore, scoreDelta: options.scoreDelta, previousViolationCount: options.decision.previousViolationCount, candidateViolationCount: options.decision.candidateViolationCount, selectionReason: options.decision.selectionReason, sourceClosure, appliedAt: new Date().toISOString() });
   });
   return { id, path: target };
 }
@@ -512,10 +603,10 @@ export async function trainingResearchCommand(projectDir: string, researchId: st
       const summary = { sequence, experimentId, proposal: proposal ?? null, candidateTrainingHash: candidateTrainingHash ?? null, policyId: null, score: previous.aggregateScore, delta: 0, verdict: "CRASH", error: message, policyRevisionId: null, artifactPath }; experiments.push(summary); history.push(summary); artifacts.push(projectArtifact("training-research-experiment", experimentId, artifactPath, true)); sequence++; continue;
     }
     if (!proposal || !candidateTraining || !candidateTrainingHash) throw new Error("Training proposal did not produce a candidate"); seen.add(candidateTrainingHash);
-    let trainingResult: any; let candidate: EvaluationResult | undefined; let candidateController: ControllerDefinition | undefined; let errorMessage: string | undefined; let gateReasons: string[] = []; let delta = 0; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH";
+    let trainingResult: any; let candidate: EvaluationResult | undefined; let candidateController: ControllerDefinition | undefined; let errorMessage: string | undefined; let decision: ReturnType<typeof researchDecision> | undefined; let gateReasons: string[] = []; let delta = 0; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH";
     try {
       trainingResult = await executeTraining(project, candidateTraining, research.seed); candidateController = { ...beforeController, policy: trainingResult.policyId } as ControllerDefinition;
-      candidate = await evaluatePair(project, benchmark, candidateTraining.assembly, research.controller, candidateController); delta = candidate.aggregateScore - previous.aggregateScore; gateReasons = researchGateReasons(objective, lockedBaseline, candidate); verdict = gateReasons.length === 0 && delta >= research.minimumImprovement ? "KEEP" : "REVERT";
+      candidate = await evaluatePair(project, benchmark, candidateTraining.assembly, research.controller, candidateController); delta = candidate.aggregateScore - previous.aggregateScore; decision = researchDecision(objective, lockedBaseline, previous, candidate, research.minimumImprovement); gateReasons = decision.gateReasons; verdict = decision.verdict;
     } catch (error) { errorMessage = error instanceof Error ? error.message : String(error); }
     const experimentHash = hashJson({ researchHash, programHash, lockHash: lock.lockHash, beforeTraining: hashJson(beforeTraining), proposal, candidateTrainingHash, policyId: trainingResult?.policyId, verdict, results: candidate?.cases.map((item) => item.resultHash), errorMessage }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; let revision: { id: string; path: string } | undefined;
     if (verdict === "KEEP" && candidate && candidateController && trainingResult) {
@@ -523,17 +614,17 @@ export async function trainingResearchCommand(projectDir: string, researchId: st
       await atomicWriteJsonFile(trainingPath, candidateTraining); await atomicWriteJsonFile(controllerPath, candidateController);
       try {
         if (sha256(await readFile(trainingPath)) === beforeTrainingFileHash || sha256(await readFile(controllerPath)) === beforeControllerFileHash) throw new Error("Training Research KEEP did not change both promoted files");
-        revision = await publishPolicyRevision({ project, research, benchmark, lockHash: lock.lockHash, assembly, training: candidateTraining, controller: candidateController, proposal, experimentId, experimentHash, previous, candidate, scoreDelta: delta, policyId: trainingResult.policyId });
+        if (!decision) throw new Error("Training Research KEEP is missing its selection decision"); revision = await publishPolicyRevision({ project, research, benchmark, lockHash: lock.lockHash, assembly, training: candidateTraining, controller: candidateController, proposal, experimentId, experimentHash, previous, candidate, scoreDelta: delta, policyId: trainingResult.policyId, decision });
       } catch (error) { await atomicWriteJsonFile(trainingPath, beforeTraining); await atomicWriteJsonFile(controllerPath, beforeController); throw error; }
       training = candidateTraining; controller = candidateController; current = candidate;
     }
     const artifactPath = join(root, experimentId); await atomicDirectory(artifactPath, async (directory) => {
       await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-training.json"), beforeTraining); await writeJson(join(directory, "candidate-training.json"), candidateTraining); if (trainingResult) await writeJson(join(directory, "training-result.json"), trainingResult);
-      if (candidate) await writeJson(join(directory, "evaluation.json"), { previous, candidate, delta, gateReasons }); if (errorMessage) await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
-      await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, trainerHash, dependencyLockHash: dependencyHash, candidateTrainingHash, proposal, strategy: proposal.strategy, policyId: trainingResult?.policyId ?? null, score: candidate?.aggregateScore ?? previous.aggregateScore, delta, verdict, gateReasons, error: errorMessage ?? null, policyRevisionId: revision?.id ?? null, completed: true });
+      if (candidate) await writeJson(join(directory, "evaluation.json"), { previous, candidate, delta, gateReasons, decision }); if (errorMessage) await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
+      await writeJson(join(directory, "manifest.json"), { version: 1, id: experimentId, sequence, researchId: research.id, researchHash, programHash, benchmarkLockHash: lock.lockHash, trainerHash, dependencyLockHash: dependencyHash, candidateTrainingHash, proposal, strategy: proposal.strategy, policyId: trainingResult?.policyId ?? null, score: candidate?.aggregateScore ?? previous.aggregateScore, delta, verdict, gateReasons, decision: decision ?? null, error: errorMessage ?? null, policyRevisionId: revision?.id ?? null, completed: true });
     });
     const description = proposal.hypothesis.replace(/[\t\r\n]+/g, " "); await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${trainingResult?.policyId ?? "-"}\t${candidate?.aggregateScore ?? previous.aggregateScore}\t${delta}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${description}\n`);
-    const summary = { sequence, experimentId, proposal, candidateTrainingHash, policyId: trainingResult?.policyId ?? null, score: candidate?.aggregateScore ?? previous.aggregateScore, delta, verdict, gateReasons, error: errorMessage ?? null, policyRevisionId: revision?.id ?? null, artifactPath }; experiments.push(summary); history.push(summary);
+    const summary = { sequence, experimentId, proposal, candidateTrainingHash, policyId: trainingResult?.policyId ?? null, score: candidate?.aggregateScore ?? previous.aggregateScore, delta, verdict, gateReasons, decision: decision ?? null, error: errorMessage ?? null, policyRevisionId: revision?.id ?? null, artifactPath }; experiments.push(summary); history.push(summary);
     artifacts.push(projectArtifact("training-research-experiment", experimentId, artifactPath, true)); if (trainingResult) { artifacts.push(projectArtifact("training-run", trainingResult.trainingRunId, trainingResult.artifactPath, true)); artifacts.push(projectArtifact("policy", trainingResult.policyId, trainingResult.policyPath, true)); } if (revision) artifacts.push(projectArtifact("policy-revision", revision.id, revision.path, true)); sequence++;
   }
   return success("train-research", { research: research.id, programHash, benchmark: benchmark.id, lockHash: lock.lockHash, initialScore, finalScore: current.aggregateScore, scoreDelta: current.aggregateScore - initialScore, iterationsRequested: requestedIterations, iterationsCompleted: experiments.length, exhausted, experiments, training, controller, policyRevisionHead: await latestPolicyRevision(project.rootDir, research.id), ledgerPath }, project, artifacts);

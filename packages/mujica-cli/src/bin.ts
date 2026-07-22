@@ -4,7 +4,7 @@ import { resolveProjectDirectory } from "@mujica/core";
 import { failure } from "./contract";
 import { hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
-  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, candidateCommand, componentInspectCommand, componentListCommand, evaluateCommand, inspectCommand,
+  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 
@@ -14,6 +14,8 @@ USAGE
   mujica validate|inspect <project> [--json]
   mujica component list <project> [--json]
   mujica component inspect <project> --component ID [--json]
+  mujica controller list <project> [--json]
+  mujica controller inspect <project> --controller ID [--json]
   mujica assembly inspect|compile <project> --assembly ID [--json]
   mujica assembly compare <project> --from ID --to ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
@@ -29,6 +31,7 @@ USAGE
   mujica policy-revision inspect <project> --revision ID [--json]
   mujica benchmark lock <project> --benchmark ID [--json]
   mujica evaluate <project> --assembly ID --controller ID --benchmark ID [--json]
+  mujica diagnose <project> --assembly ID --controller ID --benchmark ID [--json]
   mujica candidate <project> --candidate ID [--apply] [--json]
   mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
   mujica revisions <project> [--json]
@@ -40,6 +43,8 @@ const CAPABILITIES = [
   { id: "inspect", usage: "mujica inspect <project> [--json]", effect: "read-only" },
   { id: "component.list", usage: "mujica component list <project> [--json]", effect: "read-only" },
   { id: "component.inspect", usage: "mujica component inspect <project> --component ID [--json]", effect: "read-only" },
+  { id: "controller.list", usage: "mujica controller list <project> [--json]", effect: "read-only" },
+  { id: "controller.inspect", usage: "mujica controller inspect <project> --controller ID [--json]", effect: "read-only" },
   { id: "assembly.inspect", usage: "mujica assembly inspect <project> --assembly ID [--json]", effect: "read-only" },
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
@@ -56,6 +61,7 @@ const CAPABILITIES = [
   { id: "policy-revision.inspect", usage: "mujica policy-revision inspect <project> --revision ID [--json]", effect: "read-only" },
   { id: "benchmark.lock", usage: "mujica benchmark lock <project> --benchmark ID [--json]", effect: "mutates-project" },
   { id: "evaluate", usage: "mujica evaluate <project> --assembly ID --controller ID --benchmark ID [--json]", effect: "read-only" },
+  { id: "diagnose", usage: "mujica diagnose <project> --assembly ID --controller ID --benchmark ID [--json]", effect: "read-only" },
   { id: "candidate", usage: "mujica candidate <project> --candidate ID [--apply] [--json]", effect: "mode-dependent" },
   { id: "research", usage: "mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]", effect: "mutates-project" },
   { id: "revisions", usage: "mujica revisions <project> [--json]", effect: "read-only" },
@@ -66,6 +72,8 @@ function required(value: string | undefined, option: string): string { if (!valu
 function one(positionals: string[], usage: string): string { if (positionals.length !== 1 || !positionals[0]) throw new Error(`Usage: ${usage}`); return positionals[0]; }
 function printHuman(command: string, data: any): void {
   if (command === "validate") process.stdout.write(`Valid Mujica project '${data.project.id}'\nassemblies=${data.assemblies.length} components=${data.components.length}\n`);
+  else if (command === "controller.list") process.stdout.write(`${data.controllers.map((controller: any) => `${controller.id}\t${controller.kind}\tcompatible=${controller.compatibleAssemblies.join(",") || "none"}`).join("\n")}\n`);
+  else if (command === "controller.inspect") process.stdout.write(`controller=${data.definition.id}\nkind=${data.definition.kind}\nhash=${data.hash}\ncompatible=${data.compatibleAssemblies.join(",") || "none"}\nincompatible=${data.incompatibleAssemblies.length}\n`);
   else if (command === "assembly.compare") process.stdout.write(`Assembly ${data.from.id} -> ${data.to.id}\ncomponents +${data.components.added.length} -${data.components.removed.length} ~${data.components.changed.length}\nobservations +${data.observations.added.length} -${data.observations.removed.length}\nmass_delta_kg=${data.massDeltaKg}\ncost_delta=${data.costDelta}\n`);
   else if (command === "simulate") process.stdout.write(`run=${data.runId}\nscore=${data.score.total}\nsurvival=${data.metrics.survivalRate}\nartifact=${data.artifactPath}\n`);
   else if (command === "studio") process.stdout.write(`studio=${data.id}\nrun=${data.selectedRun ?? "none"}\nopen=${data.indexPath}\n`);
@@ -74,6 +82,10 @@ function printHuman(command: string, data: any): void {
   else if (command === "train") process.stdout.write(`training_run=${data.trainingRunId}\npolicy=${data.policyId}\nsteps=${data.trainingMetrics.totalSteps}\nartifact=${data.policyPath}\n`);
   else if (command === "policy.requalify") process.stdout.write(`policy=${data.id}\nsource=${data.sourcePolicyId}\nassembly=${data.assembly}\nartifact=${data.path}\n`);
   else if (command === "evaluate") process.stdout.write(`benchmark=${data.benchmark}\nscore=${data.evaluation.aggregateScore}\nlock=${data.lockHash}\n`);
+  else if (command === "diagnose") {
+    const worst = data.cases[0]; const violationLines = worst?.violations.map((gate: any) => `${gate.id}: ${gate.metric}=${gate.value} ${gate.comparator} ${gate.threshold} margin=${gate.margin}`).join("\n") ?? ""; const hypotheses = worst?.hypotheses.map((item: any) => `hypothesis[${item.surface}]=${item.description}`).join("\n") ?? "";
+    process.stdout.write(`benchmark=${data.benchmark}\nstatus=${data.status}\nscore=${data.aggregateScore}\ndelta=${data.aggregateDelta}\nviolations=${data.violationCount}\nworst_case=${data.worstCase ?? "none"}\n${violationLines}${violationLines ? "\n" : ""}${hypotheses}${hypotheses ? "\n" : ""}${worst ? `reproduce=mujica ${worst.reproduceArgv.map((value: string) => JSON.stringify(value)).join(" ")}\n` : ""}`);
+  }
   else if (command.startsWith("candidate")) process.stdout.write(`candidate=${data.candidate.id}\nbaseline_score=${data.baseline.aggregateScore}\ncandidate_score=${data.proposed.aggregateScore}\nscore_delta=${data.scoreDelta}\nverdict=${data.verdict}\n${data.revisionId ? `revision=${data.revisionId}\n` : ""}`);
   else if (command === "research") process.stdout.write(`research=${data.research}\ninitial_score=${data.initialScore}\nfinal_score=${data.finalScore}\nscore_delta=${data.scoreDelta}\niterations=${data.iterationsCompleted}\nexhausted=${data.exhausted}\nrevision_head=${data.revisionHead ?? "none"}\nledger=${data.ledgerPath}\n`);
   else if (command === "train-research") process.stdout.write(`training_research=${data.research}\ninitial_score=${data.initialScore}\nfinal_score=${data.finalScore}\nscore_delta=${data.scoreDelta}\niterations=${data.iterationsCompleted}\nexhausted=${data.exhausted}\npolicy_revision_head=${data.policyRevisionHead ?? "none"}\nledger=${data.ledgerPath}\n`);
@@ -96,6 +108,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "component") {
       const action = args.shift(); commandId = `component.${action}`; const { values, positionals } = parseArgs({ args, options: { component: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica component ${action} <project>`), values.project);
       if (action === "list") envelope = await componentListCommand(project); else if (action === "inspect") envelope = await componentInspectCommand(project, required(values.component, "component")); else throw new Error("Usage: mujica component list|inspect ...");
+    } else if (command === "controller") {
+      const action = args.shift(); commandId = `controller.${action}`; const { values, positionals } = parseArgs({ args, options: { controller: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica controller ${action} <project>`), values.project);
+      if (action === "list") envelope = await controllerListCommand(project); else if (action === "inspect") envelope = await controllerInspectCommand(project, required(values.controller, "controller")); else throw new Error("Usage: mujica controller list|inspect ...");
     } else if (command === "assembly") {
       const action = args.shift(); commandId = `assembly.${action}`; const { values, positionals } = parseArgs({ args, options: { assembly: { type: "string" }, from: { type: "string" }, to: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica assembly ${action} <project>`), values.project);
       if (action === "compile") envelope = await assemblyCompileCommand(project, required(values.assembly, "assembly")); else if (action === "inspect") envelope = await assemblyInspectCommand(project, required(values.assembly, "assembly")); else if (action === "compare") envelope = await assemblyCompareCommand(project, required(values.from, "from"), required(values.to, "to")); else throw new Error("Usage: mujica assembly inspect|compile|compare ...");
@@ -115,6 +130,8 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       const action = args.shift(); commandId = `benchmark.${action}`; if (action !== "lock") throw new Error("Usage: mujica benchmark lock ..."); const { values, positionals } = parseArgs({ args, options: { benchmark: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica benchmark lock <project>"), values.project); envelope = await benchmarkLockCommand(project, required(values.benchmark, "benchmark"));
     } else if (command === "evaluate") {
       const { values, positionals } = parseArgs({ args, options: { assembly: { type: "string" }, controller: { type: "string" }, benchmark: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica evaluate <project>"), values.project); envelope = await evaluateCommand(project, { assembly: required(values.assembly, "assembly"), controller: required(values.controller, "controller"), benchmark: required(values.benchmark, "benchmark") });
+    } else if (command === "diagnose") {
+      const { values, positionals } = parseArgs({ args, options: { assembly: { type: "string" }, controller: { type: "string" }, benchmark: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica diagnose <project>"), values.project); envelope = await diagnoseCommand(project, { assembly: required(values.assembly, "assembly"), controller: required(values.controller, "controller"), benchmark: required(values.benchmark, "benchmark") });
     } else if (command === "candidate") {
       const { values, positionals } = parseArgs({ args, options: { candidate: { type: "string" }, apply: { type: "boolean", default: false }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica candidate <project>"), values.project); envelope = await candidateCommand(project, required(values.candidate, "candidate"), values.apply);
     } else if (command === "research") {

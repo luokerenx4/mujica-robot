@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "016-499fb6470240",
+  "sequence": 16,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "cd8e049df29b5c1288d2e8c57af0afeb2b5cc913080bfeff563f99264fb76b0a",
+  "candidateControllerHash": "a7e97aedeef998ea1a7964aec6f0dcaef34f28baff5d77690b440a1d627f38c8",
+  "proposal": {
+    "strategy": "coordinate-disturbance-roll-rate-threshold-increase",
+    "hypothesis": "Increase disturbanceRollRateThreshold by one bounded step.",
+    "expectedEffect": "Test whether disturbanceRollRateThreshold=1.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/disturbanceRollRateThreshold": 1.1
+    }
+  },
+  "strategy": "coordinate-disturbance-roll-rate-threshold-increase",
+  "score": 55.413900703807414,
+  "delta": -4.664610187428117,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delay-plus-reset: lateral drift 0.817 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

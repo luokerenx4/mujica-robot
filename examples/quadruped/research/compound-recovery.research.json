@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "compound-recovery",
+  "name": "Delay-aware compound lateral recovery",
+  "benchmark": "spatial-generalization",
+  "assembly": "force-sensing-history-3dof",
+  "controller": "latency-aware-spatial-gait",
+  "program": "COMPOUND_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/latency-aware-spatial-gait/controller.json",
+    "parameters": [
+      { "path": "/config/lateralPositionGain", "minimum": -1, "maximum": 1, "step": 0.1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/disturbancePhaseLeadSeconds", "minimum": -0.1, "maximum": 0.3, "step": 0.01, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/disturbanceRollRateThreshold", "minimum": 0.1, "maximum": 2, "step": 0.1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/lateralVelocityGain", "minimum": -1, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/maximumRollCorrection", "minimum": 0.08, "maximum": 0.3, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/statePredictionSeconds", "minimum": 0, "maximum": 0.08, "step": 0.005, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/rollPositionGain", "minimum": 0.1, "maximum": 0.6, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/rollRateGain", "minimum": 0.02, "maximum": 0.4, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/kpAbduction", "minimum": 12, "maximum": 32, "step": 1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/kdAbduction", "minimum": 1.5, "maximum": 6, "step": 0.2, "directionOrder": ["increase", "decrease"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 48
+}

@@ -4,6 +4,18 @@
   "name": "Roll-stabilized spatial forward bound",
   "kind": "program",
   "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 12 },
+      { "name": "joint-velocity", "size": 12 },
+      { "name": "base-orientation", "size": 4 },
+      { "name": "imu-angular-velocity", "size": 3 },
+      { "name": "foot-contact-force", "size": 4 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 12, "low": -8, "high": 8 }
+    ]
+  },
   "config": {
     "kpAbduction": 16.82265,
     "kdAbduction": 3.27295,

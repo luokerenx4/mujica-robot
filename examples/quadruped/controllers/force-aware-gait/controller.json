@@ -4,6 +4,17 @@
   "name": "Foot-contact-aware recovery trot",
   "kind": "program",
   "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 8 },
+      { "name": "joint-velocity", "size": 8 },
+      { "name": "imu-angular-velocity", "size": 3 },
+      { "name": "foot-contact-force", "size": 4 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 8, "low": -6, "high": 6 }
+    ]
+  },
   "config": {
     "kp": 32,
     "kd": 1.4,

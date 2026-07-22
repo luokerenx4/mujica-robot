@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "009-579deac8b1e1",
+  "sequence": 9,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "e45e89791062f9e0344fc19f9246840e9b85909a6f5cd3f9c9f7d6703b5a5fec",
+  "candidateControllerHash": "09c9fafa2cf3846de1db9b1ce7629694d5c26b08e1738a3a3966400d173e64a1",
+  "proposal": {
+    "strategy": "coordinate-maximum-roll-correction-decrease",
+    "hypothesis": "Decrease maximumRollCorrection by one bounded step.",
+    "expectedEffect": "Test whether maximumRollCorrection=0.14 improves the complete locked quadruped score.",
+    "values": {
+      "/config/maximumRollCorrection": 0.14
+    }
+  },
+  "strategy": "coordinate-maximum-roll-correction-decrease",
+  "score": 55.09459190361715,
+  "delta": -4.1367881482998925,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delay-plus-push: lateral drift 0.405 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

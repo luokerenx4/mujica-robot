@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "018-691ecc2c284f",
+  "sequence": 18,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "cd8e049df29b5c1288d2e8c57af0afeb2b5cc913080bfeff563f99264fb76b0a",
+  "candidateControllerHash": "64eb818dda6e60d9df49910be545def0cd406797f0c10c1cdbf86a207892c4ba",
+  "proposal": {
+    "strategy": "coordinate-lateral-velocity-gain-decrease",
+    "hypothesis": "Decrease lateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether lateralVelocityGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralVelocityGain": -0.1
+    }
+  },
+  "strategy": "coordinate-lateral-velocity-gain-decrease",
+  "score": 51.606983002217035,
+  "delta": -8.471527889018496,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "reverse-strong-push: survival 0.644 below gate without improving the current best",
+    "delay-plus-push: lateral drift 0.520 exceeds gate without improving the current best",
+    "delay-plus-reset: survival 0.780 below gate without improving the current best",
+    "delay-plus-reset: lateral drift 0.783 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

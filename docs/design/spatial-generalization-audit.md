@@ -22,8 +22,18 @@ A feed-forward MLP still cannot reliably infer arbitrary delay from a single tel
 
 Increasing a history MLP to 32768 steps regressed 5.0694 points. The GRU policies also failed the complete gate, including attempts with 0.25 residual scale and residual-mean penalties of 0.05 and 0.2. These results rule out missing observation history, training budget, and unconstrained residual magnitude as single-factor explanations.
 
-The calibrated-latency program controller is the strongest diagnostic result. It completes both held-out pure-delay cases with full survival, progress above 0.35, and effectively zero drift. This proves the actuator model and 3-DOF mechanics can handle 20–60 ms when the analytic phase prior is correct. Compound delay-plus-disturbance remains unsolved, so neither the program controller nor any generalized policy is promoted.
+The calibrated-latency program controller first completed both held-out pure-delay cases with full survival, progress above 0.35, and effectively zero drift. This proved the actuator model and 3-DOF mechanics could handle 20–60 ms when the analytic phase prior was correct, while compound delay-plus-disturbance remained unsolved at that audit point.
+
+## Evidence-guided compound recovery
+
+Executable Program Controller interfaces made the calibrated Controller legal only with `force-sensing-history-3dof`. `mujica diagnose` then localized the remaining failures without treating heuristics as evidence: delay-plus-push drifted `0.28099 m` and delay-plus-reset drifted `0.79888 m` against the locked `0.2 m` gate, although both survived and made progress.
+
+The governed `compound-recovery` loop recorded 34 immutable experiments. A `0.01 s` disturbance phase lead and stronger roll-position gain first raised aggregate score from `54.66510` to `60.07851` and reduced violations from two to one. Instantaneous lateral-velocity and integrated episode-relative position feedback failed in both directions and remain negative evidence rather than selected mechanisms.
+
+One experiment exposed a governance error: `rollPositionGain=0.31249` passed every gate but was reverted because its `56.98227` aggregate was below the infeasible current best. Research selection is now lexicographic—fewer enforced gate violations first, then score inside the same feasibility tier—while every fixed-case score regression remains anchored to the immutable Benchmark baseline. Replaying the candidate under the renewed lock produced KEEP Experiment `034-410a436d4428` and Robot Revision `quadruped-r-cb6b31bc8f4a`.
+
+The kept robot survives all seven held-out cases. Pure-delay progress is `0.35256` at 20 ms and `0.35420` at 60 ms with effectively zero drift. Delay-plus-push reaches full progress with `0.10133 m` drift; delay-plus-reset reaches `0.40626` progress with `0.06757 m` drift. Aggregate score is `4.47582` above the locked baseline. The held-out gate is now solved in MuJoCo, not claimed as HIL or physical-robot evidence.
 
 ## Governance decision
 
-The current default remains `force-sensing-3dof` plus `spatial-residual-gait` and Policy Revision `quadruped-p-7423506a0965`. The held-out Benchmark is a new research gate, not a retroactive rewrite of the completed promotion evidence.
+The prior default `force-sensing-3dof` plus `spatial-residual-gait` and Policy Revision `quadruped-p-7423506a0965` remains valid evidence for the earlier promotion Benchmark. The held-out improvement is a separate Robot Revision using the history Assembly and calibrated Program Controller; it does not retroactively rewrite completed policy evidence.

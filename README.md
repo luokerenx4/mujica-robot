@@ -15,6 +15,7 @@ bun install
 uv sync --project runtime
 
 bun run mujica validate examples/quadruped
+bun run mujica controller inspect examples/quadruped --controller spatial-forward-gait
 bun run mujica assembly compare examples/quadruped --from baseline --to force-sensing
 bun run mujica simulate examples/quadruped \
   --assembly force-sensing --controller forward-gait \
@@ -27,6 +28,9 @@ bun run mujica simulate examples/quadruped \
 bun run mujica evaluate examples/quadruped \
   --assembly force-sensing --controller forward-gait \
   --benchmark forward-locomotion
+bun run mujica diagnose examples/quadruped \
+  --assembly force-sensing-history-3dof --controller latency-aware-spatial-gait \
+  --benchmark spatial-generalization
 bun run mujica train examples/quadruped --training forward-residual-locomotion --seed 42
 bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
@@ -53,7 +57,7 @@ Native PPO then learns a governed half-scale residual over that predictive contr
 
 A separate held-out audit tests mirrored pushes, unseen delay durations, and compound disturbances. It exposes delay-duration overfitting and adds an explicit 69-value actuator-telemetry Assembly without falsely promoting the unsuccessful generalized policies; see [the spatial generalization audit](docs/design/spatial-generalization-audit.md).
 
-The follow-up adds a replayable four-step history contract, a bounded GRU history encoder, calibrated-latency priors, and governed residual regularization. Pure 20–60 ms latency is solved analytically; compound latency plus disturbance remains an explicit unsolved research gate.
+The follow-up adds a replayable four-step history contract, a bounded GRU history encoder, calibrated-latency priors, and governed residual regularization. Pure 20–60 ms latency was solved analytically. Evidence-guided compound research then reduced held-out violations from two to zero: all seven cases survive and progress, delay-plus-push drifts `0.1013 m`, and delay-plus-reset drifts `0.0676 m`, producing Robot Revision `quadruped-r-cb6b31bc8f4a`.
 
 `mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The checked-in spatial-policy Run travels `0.668 m`; Studio replays its top-down trajectory and exposes metrics, semantic events, Assembly contracts, Benchmarks, Candidates, training artifacts, and Revision lineage without becoming an editor or evaluator.
 
@@ -65,4 +69,8 @@ Component instance parameters are executable too: closed primitive schemas bind 
 
 Mounts now compose physical structure, not only validate labels. Base-owned structural slots accept a Component `mountFragment`; the payload example adds a real 0.2 kg torso geom, and Python MuJoCo validation independently observes the extra geometry and mass while the control ABI stays fixed.
 
-Read [the architecture](docs/ARCHITECTURE.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [read-only Studio design](docs/design/read-only-studio.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Program Controllers now declare the named Observation subset they consume and the complete ordered Action contract they produce. `mujica controller list|inspect` exposes legal Assembly combinations to humans and Agents, and an invalid pair fails before MuJoCo starts with the missing or mismatched channel instead of a late Python `KeyError`.
+
+`mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; on the held-out spatial Benchmark it correctly localizes the remaining capability gap to lateral drift under delay-plus-push and delay-plus-reset.
+
+Read [the architecture](docs/ARCHITECTURE.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [read-only Studio design](docs/design/read-only-studio.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

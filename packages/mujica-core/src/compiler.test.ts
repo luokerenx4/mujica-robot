@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
+import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadController, loadResearch, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -77,6 +77,25 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.massDeltaKg).toBe(0);
   });
 
+  test("Program Controller interfaces reject missing observations before runtime", async () => {
+    const controller = await loadController(project, "latency-aware-spatial-gait");
+    const ordinary = await compileAssembly(project, "force-sensing-3dof"); const history = await compileAssembly(project, "force-sensing-history-3dof");
+    expect(programControllerInterfaceIssues(controller.definition, ordinary)).toEqual([{
+      code: "observation.missing", channel: "actuator-delay-steps",
+      message: "Program Controller 'latency-aware-spatial-gait' requires Observation 'actuator-delay-steps' (size 1), but Assembly 'force-sensing-3dof' does not provide it",
+    }]);
+    expect(programControllerInterfaceIssues(controller.definition, history)).toEqual([]);
+  });
+
+  test("checked-in Program Controller declarations cover their direct Observation reads", async () => {
+    for (const id of ["baseline-gait", "force-aware-gait", "forward-gait", "spatial-forward-gait", "latency-aware-spatial-gait"]) {
+      const controller = await loadController(project, id); if (controller.definition.kind !== "program") throw new Error(`${id} is not a Program Controller`);
+      const source = await readFile(join(controller.rootDir, controller.definition.entry), "utf8");
+      const reads = [...source.matchAll(/observation\["([a-z0-9-]+)"\]/g)].map((match) => match[1]!).sort();
+      expect(controller.definition.interface.requiredObservations.map((channel) => channel.name).sort()).toEqual([...new Set(reads)]);
+    }
+  });
+
   test("identical source compiles to an identical content address", async () => {
     const first = await compileAssembly(project, "baseline");
     const second = await compileAssembly(project, "baseline");
@@ -106,6 +125,7 @@ describe("Robot Assembly compiler", () => {
     expect(research.editable.path).toBe("controllers/force-aware-gait/controller.json");
     expect(research.editable.parameters.map((item) => item.path)).toContain("/config/contactGain");
     expect(researchProposalSchema.safeParse({ strategy: "badStrategy", hypothesis: "x", expectedEffect: "y", values: { "/config/kp": 26 } }).success).toBe(false);
+    const compound = await loadResearch(project, "compound-recovery"); expect(compound.assembly).toBe("force-sensing-history-3dof"); expect(compound.editable.parameters.map((item) => item.path)).toContain("/config/lateralVelocityGain");
   });
 
   test("training research names one bounded Training definition", async () => {

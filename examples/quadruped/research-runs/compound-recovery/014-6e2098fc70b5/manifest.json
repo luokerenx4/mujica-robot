@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "014-6e2098fc70b5",
+  "sequence": 14,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "cd8e049df29b5c1288d2e8c57af0afeb2b5cc913080bfeff563f99264fb76b0a",
+  "candidateControllerHash": "cae3d8c8da1718c6dfec587453ae0f22f526a52b469977fc26dff3817f13d719",
+  "proposal": {
+    "strategy": "coordinate-disturbance-phase-lead-seconds-decrease",
+    "hypothesis": "Decrease disturbancePhaseLeadSeconds by one bounded step.",
+    "expectedEffect": "Test whether disturbancePhaseLeadSeconds=0 improves the complete locked quadruped score.",
+    "values": {
+      "/config/disturbancePhaseLeadSeconds": 0
+    }
+  },
+  "strategy": "coordinate-disturbance-phase-lead-seconds-decrease",
+  "score": 54.98279489793856,
+  "delta": -5.09571599329697,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delay-plus-push: lateral drift 0.419 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

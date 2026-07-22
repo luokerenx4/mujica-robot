@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "029-7514b2c28bda",
+  "sequence": 29,
+  "researchId": "compound-recovery",
+  "researchHash": "2ff247d78409e3d5d875ab6d6f8e62ac9bcccbc156587afa278df2a42c5373c3",
+  "programHash": "35a8821fb886d9b3880235a25c04f3713ee260d34cb069d1b90a0c19fd72bf5e",
+  "benchmarkLockHash": "e04389c0bfa9606e2772a26a076ebde1ff84aa4c2e59d8f3e1d392cac226c53c",
+  "beforeControllerHash": "cd8e049df29b5c1288d2e8c57af0afeb2b5cc913080bfeff563f99264fb76b0a",
+  "candidateControllerHash": "455d250e6d219553c02b3403945738c59560e0e8e7e961a041f26058f49fd81d",
+  "proposal": {
+    "strategy": "coordinate-kd-abduction-decrease",
+    "hypothesis": "Decrease kdAbduction by one bounded step.",
+    "expectedEffect": "Test whether kdAbduction=3.07295 improves the complete locked quadruped score.",
+    "values": {
+      "/config/kdAbduction": 3.07295
+    }
+  },
+  "strategy": "coordinate-kd-abduction-decrease",
+  "score": 54.36647690475773,
+  "delta": -5.712033986477799,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "reset-d: survival 0.704 below gate without improving the current best",
+    "delay-60ms: survival 0.640 below gate without improving the current best",
+    "delay-plus-push: lateral drift 0.515 exceeds gate without improving the current best",
+    "delay-plus-reset: lateral drift 0.805 exceeds gate without improving the current best"
+  ],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}
