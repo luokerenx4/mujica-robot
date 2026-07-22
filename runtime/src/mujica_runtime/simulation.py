@@ -12,6 +12,12 @@ from .environment import RobotEnvironment, compile_motion_command_schedule
 from .io import atomic_directory, hash_json, sha256_bytes, write_json
 
 
+def quaternion_pitch(quaternion: np.ndarray) -> float:
+    """Return intrinsic Y pitch in radians for a MuJoCo wxyz quaternion."""
+    w, x, y, z = np.asarray(quaternion, dtype=np.float64)
+    return float(np.arcsin(np.clip(2.0 * (w * y - z * x), -1.0, 1.0)))
+
+
 def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
     schedule = compile_motion_command_schedule(task)
@@ -153,6 +159,11 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     totals = {"velocityError": 0.0, "planarVelocityError": 0.0, "yawRateError": 0.0, "upright": 0.0, "energy": 0.0, "smoothness": 0.0}
     measured_motion_total = np.zeros(3, dtype=np.float64)
     motion_command_total = np.zeros(3, dtype=np.float64)
+    absolute_pitch_total = 0.0
+    maximum_absolute_pitch = 0.0
+    maximum_absolute_pitch_rate = 0.0
+    minimum_pitch = float("inf")
+    maximum_pitch = float("-inf")
     survived_steps = 0
     fell = False
     previous_pushing = False
@@ -170,8 +181,15 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         for key in totals: totals[key] += float(info[key])
         measured_motion_total += np.asarray(info["measuredMotion"], dtype=np.float64)
         motion_command_total += np.asarray(info["motionCommand"], dtype=np.float64)
+        pitch = quaternion_pitch(environment.data.qpos[3:7])
+        pitch_rate = float(environment.data.qvel[4])
+        absolute_pitch_total += abs(pitch)
+        maximum_absolute_pitch = max(maximum_absolute_pitch, abs(pitch))
+        maximum_absolute_pitch_rate = max(maximum_absolute_pitch_rate, abs(pitch_rate))
+        minimum_pitch = min(minimum_pitch, pitch)
+        maximum_pitch = max(maximum_pitch, pitch)
         foot_contact_force = result.observation.get("foot-contact-force")
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -186,6 +204,8 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "fell": fell, "motionCommand": mean_motion_command.tolist(), "meanMotionCommand": mean_motion_command.tolist(), "meanMeasuredMotion": mean_measured_motion.tolist(),
         "planarVelocityTrackingError": float(np.linalg.norm(mean_measured_motion[:2] - mean_motion_command[:2])), "yawRateTrackingError": abs(float(mean_measured_motion[2] - mean_motion_command[2])),
         "meanVelocityTrackingError": totals["velocityError"] / steps, "meanPlanarVelocityTrackingError": totals["planarVelocityError"] / steps, "meanYawRateTrackingError": totals["yawRateError"] / steps, "meanUpright": totals["upright"] / steps,
+        "meanAbsolutePitchRad": absolute_pitch_total / steps, "minimumPitchRad": minimum_pitch, "maximumPitchRad": maximum_pitch, "maximumBackwardPitchRad": max(0.0, -minimum_pitch),
+        "maximumAbsolutePitchRad": maximum_absolute_pitch, "maximumAbsolutePitchRateRadPerSec": maximum_absolute_pitch_rate,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
         **transition_metrics,

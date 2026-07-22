@@ -15,7 +15,7 @@ bun install
 uv sync --project runtime
 
 bun run mujica validate examples/quadruped
-bun run mujica controller inspect examples/quadruped --controller traction-aware-gait
+bun run mujica controller inspect examples/quadruped --controller bounded-traction-gait
 bun run mujica assembly compare examples/quadruped --from baseline --to force-sensing
 bun run mujica simulate examples/quadruped \
   --assembly force-sensing --controller forward-gait \
@@ -75,7 +75,7 @@ Task motion intent is now an executable ABI. Task v2 names bounded world planar 
 
 Task v3 extends that ABI with exact, bounded intra-episode schedules while exposing only the active command to the Controller. The promoted `transition-aware-gait` removes all six baseline transition violations across stop, reversal, lateral/yaw redirection, three-step delayed braking, and payload variation, retains zero violations on both `command-tracking` and `spatial-generalization`, and publishes Robot Revision `quadruped-r-d7f3f01c8faa`. Its transition score is `68.1943` versus the infeasible baseline's `69.3280`; Mujica records the lower score and selects KEEP for reaching the zero-violation feasibility tier, with per-case regression gates still enforced. A 35 N delayed-push case remains visible as non-gating stress evidence.
 
-The traction slice closes the friction-correct Runtime gap without exposing Scenario identity to the Controller. Runs now distinguish clipped progress from signed target-direction progress and explicit backward displacement, and trajectory rows preserve per-foot contact force for diagnosis. `traction-aware-gait` passes nominal, `friction = 0.35`, reset, delay, payload, push, and hard `friction = 0.2` gates while retaining zero violations on `command-tracking`, `command-transitions`, and `spatial-generalization`. Candidate KEEP improves the traction score from `50.4468` to `64.1743` and publishes Robot Revision `quadruped-r-3275cb855510`. The `friction = 0.1` case still falls and moves backward; it remains explicit non-gating stress evidence. See [traction recovery](docs/design/traction-recovery.md).
+The traction lane now reaches `friction = 0.1` without exposing Scenario identity to the Controller. Runs distinguish clipped and signed progress, backward displacement, signed pitch/pitch rate, and per-foot contact force. `bounded-traction-gait` preserves the proven mild-slip authority, then latches a lower severe mode only after measured backward pitch crosses `0.15 rad`. The expanded eleven-case Benchmark includes three hard seeded extreme reset cases; all ten hard cases pass with zero backward displacement, while `friction = 0.05` remains honest non-gating failure evidence. Candidate KEEP removes 20 baseline violations, improves `47.5783 → 66.0074`, retains zero violations on four prior capability suites, and publishes Robot Revision `quadruped-r-1101a73a0752`. See [traction recovery](docs/design/traction-recovery.md).
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 

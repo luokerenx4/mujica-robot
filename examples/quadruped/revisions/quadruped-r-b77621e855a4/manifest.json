@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "id": "quadruped-r-b77621e855a4",
+  "parent": "quadruped-r-3275cb855510",
+  "candidateId": "extreme-traction",
+  "candidateHash": "0144c8ec2e6071f9a3d580f3d399e38178111b6d146b08923c39078f5683cb71",
+  "benchmarkId": "extreme-traction",
+  "benchmarkLockHash": "ddca7d7c9e0628024c9dd3335ee817514ee80f5488e451cf2f74a628e8033b0f",
+  "assembly": "command-conditioned-history-3dof",
+  "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+  "componentHashes": {
+    "body-imu": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+    "actuator-history": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+    "motion-command-input": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+    "foot-force-kit": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c"
+  },
+  "observationContractHash": "37b9663cd7106e269da55f0e7a2a5f8c4b4c68e3100cbb5544dbcbdcf36f5f38",
+  "actionContractHash": "130b3327995e6142afe6396b23fcaab97502e3feb265b44426d5c8ae0698e010",
+  "controller": "bounded-traction-gait",
+  "controllerHash": "e745ab5dce2a841fd3c782940512bee6d5a3759bac1729fe1bb05351009a1554",
+  "policyId": null,
+  "policyHash": null,
+  "verifiedChanges": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "aggregateScore": 63.599500538228,
+  "scoreDelta": 12.323364838718021,
+  "exactChangedFiles": [
+    "controllers/bounded-traction-gait/controller.json",
+    "controllers/bounded-traction-gait/controller.py"
+  ],
+  "sourceClosure": [
+    "assemblies/command-conditioned-history-3dof.robot.json",
+    "benchmarks/extreme-traction.benchmark.json",
+    "benchmarks/extreme-traction.lock.json",
+    "components/actuator-history/component.json",
+    "components/actuator-history/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "controllers/bounded-traction-gait/controller.json",
+    "controllers/bounded-traction-gait/controller.py",
+    "objectives/extreme-traction.objective.json",
+    "robots/quadruped-3dof/model.xml",
+    "robots/quadruped-3dof/robot.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/extreme-low-friction-reset.scenario.json",
+    "scenarios/extreme-low-friction.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/severe-low-friction.scenario.json",
+    "scenarios/strong-lateral-push.scenario.json",
+    "scenarios/ultra-low-friction.scenario.json",
+    "tasks/forward-walk.task.json"
+  ],
+  "appliedAt": "2026-07-22T23:30:57.442Z"
+}

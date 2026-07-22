@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "traction-recovery",
+  "name": "Measured low-friction traction recovery",
+  "weights": {
+    "survival": 25,
+    "velocityTracking": 20,
+    "forwardProgress": 50,
+    "upright": 15,
+    "lateralDrift": 10,
+    "transitionTracking": 0,
+    "energy": 0.01,
+    "smoothness": 0.005,
+    "componentMass": 0.25,
+    "sensorChannels": 0.05,
+    "trainingSteps": 5e-06
+  },
+  "transientMeasurement": {
+    "planarToleranceMps": 0.12,
+    "yawRateToleranceRadPerSec": 0.25,
+    "holdSeconds": 0.2
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0.25,
+    "minimumSignedForwardProgress": 0.25,
+    "maximumBackwardDisplacement": 0.02,
+    "maximumAbsolutePitchRad": 1000000,
+    "maximumAbsolutePitchRateRadPerSec": 1000000,
+    "maximumLateralDrift": 0.2,
+    "maximumPlanarVelocityTrackingError": 0.4,
+    "maximumYawRateTrackingError": 0.6,
+    "maximumTransitionTerminalPlanarTrackingError": 1000000,
+    "maximumTransitionTerminalYawRateTrackingError": 1000000,
+    "maximumPlanarSettlingTimeSeconds": 1000000,
+    "maximumPlanarBrakingSettlingTimeSeconds": 1000000,
+    "maximumYawRateSettlingTimeSeconds": 1000000,
+    "maximumPlanarOvershootMps": 1000000,
+    "maximumYawRateOvershootRadPerSec": 1000000,
+    "maximumUnsettledPlanarTransitions": 1000000,
+    "maximumUnsettledYawRateTransitions": 1000000,
+    "maximumRegression": 20
+  }
+}

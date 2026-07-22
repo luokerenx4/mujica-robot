@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "id": "extreme-traction",
+  "name": "Promote pitch-bounded extreme traction recovery",
+  "kind": "development",
+  "benchmark": "extreme-traction",
+  "baseRevision": "quadruped-r-b77621e855a4",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "traction-aware-gait"
+  },
+  "proposed": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "bounded-traction-gait"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "traction-aware-gait",
+      "to": "bounded-traction-gait",
+      "files": [
+        "controllers/bounded-traction-gait/controller.json",
+        "controllers/bounded-traction-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/bounded-traction-gait/controller.json",
+    "controllers/bounded-traction-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/extreme-traction.benchmark.json",
+    "benchmarks/extreme-traction.lock.json",
+    "objectives/extreme-traction.objective.json",
+    "tasks/forward-walk.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/severe-low-friction.scenario.json",
+    "scenarios/extreme-low-friction.scenario.json",
+    "scenarios/extreme-low-friction-reset.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/strong-lateral-push.scenario.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/ultra-low-friction.scenario.json"
+  ],
+  "hypothesis": "The prior 2.0 traction recovery hip scale crosses a sagittal pitch-divergence boundary during severe slip. Latching severity from a signed 0.15 rad backward-pitch excursion, then bounding only the severe response at 1.74, should preserve mild-slip traction authority while preventing backward tumble without phase-sensitive velocity classification.",
+  "expectedEffect": "Eliminate all ten extreme-traction baseline violations, retain every completed regression gate, and keep friction 0.05 as honest non-gating stress evidence."
+}

@@ -16,12 +16,14 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 ## Active plans
 
-- [Command transitions and braking](plans/command-transitions-and-braking.md) — make time-varying motion intent executable and gate transient response, stopping, reversal, and delayed recovery.
+- [Extreme traction and pitch stability](plans/extreme-traction-pitch-stability.md) — make `friction = 0.1` a hard multi-seed capability without converting traction recovery into a backward sagittal tumble.
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Low-friction traction recovery](plans/low-friction-traction-recovery.md) | Added signed slip/contact evidence and published deployable recovery through hard `friction = 0.2` while retaining completed command and spatial gates. | 2026-07-23 |
+| [Command transitions and braking](plans/command-transitions-and-braking.md) | Made scheduled commands executable and gated stopping, reversal, settling, overshoot, and delayed braking without regressing prior locomotion. | 2026-07-23 |
 | [Command-conditioned locomotion](plans/command-conditioned-locomotion.md) | Made Task motion intent executable and published a zero-violation controller across stop, forward, reverse, lateral, yaw, delay, and disturbance without regressing spatial robustness. | 2026-07-23 |
 | [Evidence-guided compound recovery](plans/evidence-guided-compound-recovery.md) | Added evidence-ranked diagnosis, fixed gate-first research governance, and published an all-gate-passing delay/disturbance recovery Robot Revision. | 2026-07-23 |
 | [Executable Controller interfaces](plans/executable-controller-interfaces.md) | Added explicit Program Controller I/O contracts, pre-Runtime compatibility enforcement, and human/Agent discovery of legal Assembly combinations. | 2026-07-23 |

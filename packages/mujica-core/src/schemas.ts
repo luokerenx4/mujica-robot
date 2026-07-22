@@ -102,6 +102,7 @@ export const objectiveSchema = z.object({
   gates: z.object({
     minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
     minimumSignedForwardProgress: z.number().finite().default(-1_000_000), maximumBackwardDisplacement: z.number().nonnegative().default(1_000_000),
+    maximumBackwardPitchRad: z.number().nonnegative().default(1_000_000), maximumAbsolutePitchRad: z.number().nonnegative().default(1_000_000), maximumAbsolutePitchRateRadPerSec: z.number().nonnegative().default(1_000_000),
     maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumPlanarVelocityTrackingError: z.number().nonnegative().default(1_000_000),
     maximumYawRateTrackingError: z.number().nonnegative().default(1_000_000),
     maximumTransitionTerminalPlanarTrackingError: z.number().nonnegative().default(1_000_000), maximumTransitionTerminalYawRateTrackingError: z.number().nonnegative().default(1_000_000),

@@ -1,0 +1,7 @@
+# Extreme traction autoresearch
+
+Improve `bounded-traction-gait` against the locked `extreme-traction` Benchmark while retaining the separately locked traction-recovery, command-tracking, command-transitions, and spatial-generalization capabilities.
+
+The Scenario friction value and Scenario identity are evaluator inputs and may never enter the Controller. Use only the declared command, body motion, joint, contact-force, orientation, and actuator-delay Observation channels. Both `friction = 0.1` cases are hard gates. Keep `friction = 0.05` visible as non-gating stress evidence; do not weaken, remove, or relabel a hard case after observing a result.
+
+The current evidence isolates non-delayed recovery hip authority as the controlling surface: `2.0` tumbles backward under extreme slip, while applying the lower authority to every recovery can miss completed low-friction progress. Severe mode latches only from a signed backward-pitch excursion; instantaneous forward velocity is deliberately excluded because gait-phase oscillation caused false severity classification. Change only one declared severe-slip scale or pitch boundary at a time, and retain immutable Runs for failed probes. KEEP requires zero enforced extreme-traction violations, then zero violations on every locked regression Benchmark. Aggregate score cannot compensate for backward displacement, a fall, or backward pitch beyond the gate.

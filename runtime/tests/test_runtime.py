@@ -10,7 +10,7 @@ import torch
 
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import episode_survival_rate, motion_metrics, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
 
 
@@ -67,6 +67,14 @@ class RuntimeContractTest(unittest.TestCase):
     def test_survival_is_measured_against_the_requested_episode(self):
         self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
+
+    def test_pitch_uses_mujoco_wxyz_sign_and_radian_conventions(self):
+        angle = 0.4
+        positive = np.array([np.cos(angle / 2), 0.0, np.sin(angle / 2), 0.0])
+        negative = np.array([np.cos(angle / 2), 0.0, -np.sin(angle / 2), 0.0])
+        self.assertAlmostEqual(quaternion_pitch(np.array([1.0, 0.0, 0.0, 0.0])), 0.0)
+        self.assertAlmostEqual(quaternion_pitch(positive), angle)
+        self.assertAlmostEqual(quaternion_pitch(negative), -angle)
 
     def test_locomotion_score_requires_net_forward_progress(self):
         task = {"version": 2, "motionCommand": {"frame": "world", "linearVelocityMps": [0.2, 0.0], "yawRateRadPerSec": 0.0}, "durationSeconds": 3.0, "controlHz": 50}
@@ -170,6 +178,27 @@ class RuntimeContractTest(unittest.TestCase):
             return action
 
         self.assertFalse(np.allclose(transition_action(0.0), transition_action(0.2)))
+
+    def test_bounded_traction_controller_latches_severity_from_deployable_pitch(self):
+        root = PROJECT / "controllers" / "bounded-traction-gait"
+        definition = json.loads((root / "controller.json").read_text())
+
+        def observation(forward_velocity, pitch=0.0):
+            return {
+                "joint-position": np.linspace(-0.2, 0.2, 12), "joint-velocity": np.linspace(0.1, -0.1, 12),
+                "base-velocity": np.array([forward_velocity, 0.0, 0.0, 0.0, 0.0, 0.0]),
+                "base-orientation": np.array([np.cos(pitch / 2), 0.0, np.sin(pitch / 2), 0.0]),
+                "imu-angular-velocity": np.zeros(3), "foot-contact-force": np.full(4, 5.0),
+                "actuator-delay-steps": np.array([0.0]), "motion-command": np.array([0.25, 0.0, 0.0]),
+            }
+
+        mild = load_program_controller(root, definition); mild.reset(7)
+        mild.act(observation(0.1), 0.0); mild.act(observation(0.1), 1.3)
+        self.assertTrue(mild.traction_recovery); self.assertFalse(mild.traction_recovery_severe)
+        mild.act(observation(0.1, -0.21), 1.32)
+        self.assertTrue(mild.traction_recovery_severe)
+
+        self.assertLess(definition["config"]["tractionRecoverySevereHipScale"], definition["config"]["tractionRecoveryHipScale"])
 
     def test_motion_command_is_explicit_controller_input_and_tracks_yaw_not_height(self):
         model, compiled = compiled_assembly("command-conditioned-history-3dof")

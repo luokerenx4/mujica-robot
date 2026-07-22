@@ -110,7 +110,7 @@ describe("Robot Assembly compiler", () => {
     const result = await validateProject(project);
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("command-conditioned-history-3dof");
-    expect(result.project.manifest.defaults.controller).toBe("traction-aware-gait");
+    expect(result.project.manifest.defaults.controller).toBe("bounded-traction-gait");
     expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);

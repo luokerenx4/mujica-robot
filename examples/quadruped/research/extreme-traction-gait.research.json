@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "extreme-traction-gait",
+  "name": "Pitch-bounded extreme traction development",
+  "benchmark": "extreme-traction",
+  "assembly": "command-conditioned-history-3dof",
+  "controller": "bounded-traction-gait",
+  "program": "EXTREME_TRACTION_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/bounded-traction-gait/controller.json",
+    "parameters": [
+      {
+        "path": "/config/tractionRecoverySevereHipScale",
+        "minimum": 1.5,
+        "maximum": 1.9,
+        "step": 0.01,
+        "directionOrder": ["decrease", "increase"]
+      },
+      {
+        "path": "/config/tractionRecoverySevereBackwardPitchRad",
+        "minimum": 0.15,
+        "maximum": 0.4,
+        "step": 0.025,
+        "directionOrder": ["decrease", "increase"]
+      }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 32
+}
