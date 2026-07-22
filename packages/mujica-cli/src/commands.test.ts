@@ -35,8 +35,8 @@ describe("agent CLI contract", () => {
   test("Controller discovery exposes legal Assembly combinations", () => {
     const result = invoke(["controller", "inspect", "examples/quadruped", "--controller", "latency-aware-spatial-gait", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0); expect(envelope.data.definition.interface.requiredObservations.at(-1)).toEqual({ name: "actuator-delay-steps", size: 1 });
-    expect(envelope.data.compatibleAssemblies).toEqual(["force-sensing-history-3dof"]);
-    expect(envelope.nextActions[0].argv.slice(0, 5)).toEqual(["simulate", resolve(root, "examples/quadruped"), "--assembly", "force-sensing-history-3dof", "--controller"]);
+    expect(envelope.data.compatibleAssemblies).toEqual(["command-conditioned-history-3dof", "force-sensing-history-3dof"]);
+    expect(envelope.nextActions[0].argv.slice(0, 5)).toEqual(["simulate", resolve(root, "examples/quadruped"), "--assembly", "command-conditioned-history-3dof", "--controller"]);
     const ordinary = envelope.data.incompatibleAssemblies.find((item: any) => item.assembly === "force-sensing-3dof");
     expect(ordinary.issues).toEqual([{ code: "observation.missing", channel: "actuator-delay-steps", message: "Program Controller 'latency-aware-spatial-gait' requires Observation 'actuator-delay-steps' (size 1), but Assembly 'force-sensing-3dof' does not provide it" }]);
   });
@@ -57,8 +57,8 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8, 8, 8, 12, 12, 12, 8]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 2, 2, 6, 6, 6, 6, 2]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(4);
@@ -131,7 +131,7 @@ describe("agent CLI contract", () => {
   test("the promoted spatial policy passes every locked gate", () => {
     const result = invoke(["evaluate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-residual-gait", "--benchmark", "spatial-robustness", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.evaluation.aggregateScore).toBeCloseTo(63.03496530081226);
+    expect(envelope.data.evaluation.aggregateScore).toBeCloseTo(63.143887669660515);
     expect(envelope.data.evaluation.cases.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.forwardProgress >= 0.25 && item.metrics.lateralDrift <= 0.2)).toBe(true);
     const delay = envelope.data.evaluation.cases.find((item: any) => item.case.id === "actuator-delay");
     expect(delay.metrics.survivalRate).toBe(1);

@@ -85,6 +85,9 @@ class RobotEnvironment:
             elif source == "control:command-history-4": value = np.concatenate(tuple(self.command_history))
             elif source == "control:applied-history-4": value = np.concatenate(tuple(self.applied_history))
             elif source == "control:actuator-delay-steps": value = np.array([float(self.scenario["actuatorDelaySteps"])])
+            elif source == "task:motion-command":
+                command = self.task["motionCommand"]
+                value = np.array([*command["linearVelocityMps"], command["yawRateRadPerSec"]], dtype=np.float64)
             elif source.startswith("sensor:"):
                 sensor_name = source.split(":", 1)[1]
                 sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, sensor_name)
@@ -134,8 +137,12 @@ class RobotEnvironment:
         height = float(self.data.qpos[2])
         healthy_min, healthy_max = self.task["healthyHeight"]
         healthy = float(healthy_min) <= height <= float(healthy_max)
-        target = np.asarray(self.task["targetVelocity"], dtype=np.float64)
-        velocity_error = float(np.linalg.norm(self.data.qvel[:3] - target))
+        command = self.task["motionCommand"]
+        target = np.asarray([*command["linearVelocityMps"], command["yawRateRadPerSec"]], dtype=np.float64)
+        measured_motion = np.asarray([self.data.qvel[0], self.data.qvel[1], self.data.qvel[5]], dtype=np.float64)
+        planar_velocity_error = float(np.linalg.norm(measured_motion[:2] - target[:2]))
+        yaw_rate_error = abs(float(measured_motion[2] - target[2]))
+        velocity_error = float(np.linalg.norm(measured_motion - target))
         target_speed = float(np.linalg.norm(target[:2]))
         if target_speed > 1e-9:
             direction = target[:2] / target_speed
@@ -155,4 +162,4 @@ class RobotEnvironment:
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()
-        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})
+        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})

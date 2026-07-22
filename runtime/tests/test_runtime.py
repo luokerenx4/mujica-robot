@@ -69,7 +69,7 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
 
     def test_locomotion_score_requires_net_forward_progress(self):
-        task = {"targetVelocity": [0.2, 0.0, 0.0], "durationSeconds": 3.0}
+        task = {"motionCommand": {"frame": "world", "linearVelocityMps": [0.2, 0.0], "yawRateRadPerSec": 0.0}, "durationSeconds": 3.0}
         stationary = motion_metrics(np.zeros(3), np.array([0.03, 0.0, 0.0]), 0.1, task, 3.0)
         walking = motion_metrics(np.zeros(3), np.array([0.6, 0.02, 0.0]), 0.65, task, 3.0)
         self.assertAlmostEqual(stationary["forwardProgress"], 0.05)
@@ -81,6 +81,18 @@ class RuntimeContractTest(unittest.TestCase):
         stationary_score = score_metrics({**base, **stationary}, objective, compiled)["total"]
         walking_score = score_metrics({**base, **walking}, objective, compiled)["total"]
         self.assertGreater(walking_score - stationary_score, 30)
+
+    def test_motion_command_is_explicit_controller_input_and_tracks_yaw_not_height(self):
+        model, compiled = compiled_assembly("command-conditioned-history-3dof")
+        task = {**json.loads((PROJECT / "tasks" / "stand.task.json").read_text()), "motionCommand": {"frame": "world", "linearVelocityMps": [0.1, -0.2], "yawRateRadPerSec": 0.3}}
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 7)
+        observation = environment.reset()
+        np.testing.assert_allclose(observation["motion-command"], np.array([0.1, -0.2, 0.3]))
+        environment.data.qvel[0] = 0.1; environment.data.qvel[1] = -0.2; environment.data.qvel[2] = 9.0; environment.data.qvel[5] = 0.3
+        result = environment.step(np.zeros(environment.model.nu))
+        self.assertLess(result.info["velocityError"], 0.1)
+        self.assertLess(result.info["yawRateError"], 0.1)
 
     def test_seeded_reset_perturbations_are_reproducible_and_distinct(self):
         model, compiled = compiled_assembly("baseline")

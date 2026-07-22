@@ -14,7 +14,8 @@ from .io import atomic_directory, hash_json, sha256_bytes, write_json
 
 def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
-    target = np.asarray(task["targetVelocity"], dtype=np.float64)
+    command = task["motionCommand"]
+    target = np.asarray([*command["linearVelocityMps"], command["yawRateRadPerSec"]], dtype=np.float64)
     target_speed = float(np.linalg.norm(target[:2]))
     target_distance = target_speed * float(task["durationSeconds"])
     if target_speed > 1e-9:
@@ -84,7 +85,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     previous_position = initial_position.copy()
     distance_traveled = 0.0
     trajectory: list[dict[str, Any]] = []
-    totals = {"velocityError": 0.0, "upright": 0.0, "energy": 0.0, "smoothness": 0.0}
+    totals = {"velocityError": 0.0, "planarVelocityError": 0.0, "yawRateError": 0.0, "upright": 0.0, "energy": 0.0, "smoothness": 0.0}
     survived_steps = 0
     fell = False
     previous_pushing = False
@@ -100,7 +101,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         if previous_pushing and not info["pushing"]: environment.events.append({"type": "scenario.push-end", "time": float(environment.data.time)})
         previous_pushing = bool(info["pushing"])
         for key in totals: totals[key] += float(info[key])
-        trajectory.append({"step": environment.step_index, "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -109,7 +110,8 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     steps = max(1, environment.step_index)
     metrics = {
         "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.max_steps),
-        "fell": fell, "meanVelocityTrackingError": totals["velocityError"] / steps, "meanUpright": totals["upright"] / steps,
+        "fell": fell, "motionCommand": [*request["task"]["motionCommand"]["linearVelocityMps"], request["task"]["motionCommand"]["yawRateRadPerSec"]],
+        "meanVelocityTrackingError": totals["velocityError"] / steps, "meanPlanarVelocityTrackingError": totals["planarVelocityError"] / steps, "meanYawRateTrackingError": totals["yawRateError"] / steps, "meanUpright": totals["upright"] / steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
         **motion_metrics(initial_position, environment.data.qpos[:3], distance_traveled, request["task"], float(environment.data.time)),

@@ -85,10 +85,13 @@ describe("Robot Assembly compiler", () => {
       message: "Program Controller 'latency-aware-spatial-gait' requires Observation 'actuator-delay-steps' (size 1), but Assembly 'force-sensing-3dof' does not provide it",
     }]);
     expect(programControllerInterfaceIssues(controller.definition, history)).toEqual([]);
+    const commanded = await loadController(project, "command-conditioned-spatial-gait"); const commandAssembly = await compileAssembly(project, "command-conditioned-history-3dof");
+    expect(programControllerInterfaceIssues(commanded.definition, history).map((issue) => issue.channel)).toEqual(["motion-command"]);
+    expect(programControllerInterfaceIssues(commanded.definition, commandAssembly)).toEqual([]);
   });
 
   test("checked-in Program Controller declarations cover their direct Observation reads", async () => {
-    for (const id of ["baseline-gait", "force-aware-gait", "forward-gait", "spatial-forward-gait", "latency-aware-spatial-gait"]) {
+    for (const id of ["baseline-gait", "force-aware-gait", "forward-gait", "spatial-forward-gait", "latency-aware-spatial-gait", "command-conditioned-spatial-gait"]) {
       const controller = await loadController(project, id); if (controller.definition.kind !== "program") throw new Error(`${id} is not a Program Controller`);
       const source = await readFile(join(controller.rootDir, controller.definition.entry), "utf8");
       const reads = [...source.matchAll(/observation\["([a-z0-9-]+)"\]/g)].map((match) => match[1]!).sort();
@@ -108,7 +111,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("force-sensing-3dof");
     expect(result.project.manifest.defaults.controller).toBe("spatial-residual-gait");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);
@@ -118,6 +121,10 @@ describe("Robot Assembly compiler", () => {
     const history = result.assemblies.find((item) => item.id === "force-sensing-history-3dof");
     expect(history?.observationContract.size).toBe(142);
     expect(history?.actionContract.size).toBe(12);
+    const commanded = result.assemblies.find((item) => item.id === "command-conditioned-history-3dof");
+    expect(commanded?.observationContract.channels.at(-1)).toMatchObject({ name: "foot-contact-force", size: 4 });
+    expect(commanded?.observationContract.channels.find((channel) => channel.name === "motion-command")).toMatchObject({ kind: "command", size: 3, source: "task:motion-command" });
+    expect(commanded?.observationContract.size).toBe(145);
   });
 
   test("research definitions expose a bounded editable surface", async () => {

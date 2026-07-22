@@ -5,7 +5,7 @@ const relativeFileSchema = z.string().min(1).refine((value) => !value.startsWith
 
 const channelSchema = z.object({
   name: idSchema,
-  kind: z.enum(["joint-position", "joint-velocity", "body-state", "sensor", "actuator"]),
+  kind: z.enum(["joint-position", "joint-velocity", "body-state", "sensor", "command", "actuator"]),
   size: z.number().int().positive(),
   source: z.string().min(1),
   unit: z.string().min(1),
@@ -59,8 +59,11 @@ export const controllerSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const taskSchema = z.object({
-  version: z.literal(1), id: idSchema, name: z.string().min(1), durationSeconds: z.number().positive(), controlHz: z.number().positive(),
-  targetVelocity: z.tuple([z.number(), z.number(), z.number()]), healthyHeight: z.tuple([z.number(), z.number()]), terminateOnFall: z.boolean(),
+  version: z.literal(2), id: idSchema, name: z.string().min(1), durationSeconds: z.number().positive(), controlHz: z.number().positive(),
+  motionCommand: z.object({
+    frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite(), z.number().finite()]), yawRateRadPerSec: z.number().finite(),
+  }).strict(),
+  healthyHeight: z.tuple([z.number(), z.number()]), terminateOnFall: z.boolean(),
 }).strict();
 
 export const scenarioSchema = z.object({
