@@ -26,6 +26,6 @@ The 50 N push is intentionally discriminating: the 2-DOF baseline falls after 1.
 
 The reproducible `spatial-gait` loop tested bounded one-parameter changes after promotion. Four initial coordinate experiments changed gait frequency and phase lead. None exceeded the 0.01 minimum improvement, so all were REVERT and no post-promotion source mutation occurred.
 
-## Next boundary
+## Residual-policy result
 
-The next phase is a 12-action residual policy whose analytic prior exactly matches the promoted spatial controller. It must use the 45-value Assembly contract and beat the program controller on the same locked Benchmark before policy promotion.
+The `spatial-gait-residual` transform reproduces the promoted 12-action program controller at zero residual; a contract test compares both implementations on the same observation and simulation time. An 8192-step native PPO run raised aggregate score from 62.6170 to 62.9482 and improved six cases, but failed the actuator-delay gate with 0.484 survival and 0.350 m lateral drift. Training Research tested 4096 and 12288 steps. Both were REVERT: the smaller budget still exceeded the delay drift gate, while the larger budget also regressed reset survival. The policies and immutable training evidence remain inspectable, but no Policy Revision was promoted.

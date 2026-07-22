@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mujica_runtime.controllers import transform_policy_action
+from mujica_runtime.controllers import load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics
 from mujica_runtime.training import PPOTrainer
@@ -94,6 +94,24 @@ class RuntimeContractTest(unittest.TestCase):
         np.testing.assert_allclose(start, np.zeros(8), atol=1e-9)
         np.testing.assert_allclose(quarter[[0, 2]], np.full(2, 8.0), atol=1e-9)
         np.testing.assert_allclose(quarter[[4, 6]], np.full(2, -8.0), atol=1e-9)
+
+    def test_spatial_residual_prior_matches_promoted_program_controller(self):
+        root = PROJECT / "controllers" / "spatial-forward-gait"
+        definition = json.loads((root / "controller.json").read_text())
+        controller = load_program_controller(root, definition); controller.reset(7)
+        config = definition["config"]
+        observation = {
+            "joint-position": np.array([0.1, 0.2, -0.3] * 4),
+            "joint-velocity": np.linspace(-0.2, 0.2, 12),
+            "foot-contact-force": np.array([0.0, 10.0, 20.0, 30.0]),
+            "base-orientation": np.array([0.9998, 0.02, 0.0, 0.0]),
+            "imu-angular-velocity": np.array([0.1, 0.0, 0.0]),
+        }
+        transform = {"kind": "spatial-gait-residual", **config, "orientationChannel": "base-orientation", "residualScale": 0.5}
+        prior = transform_policy_action(np.zeros(12), observation, transform, 0.37)
+        expected = controller.act(observation, 0.37)
+        np.testing.assert_allclose(np.clip(prior, -8, 8), expected, atol=1e-9)
+        np.testing.assert_allclose(transform_policy_action(np.ones(12), observation, transform, 0.37) - prior, np.full(12, 0.5), atol=1e-9)
 
     def test_force_component_is_visible_in_observation(self):
         model, compiled = compiled_assembly("force-sensing")

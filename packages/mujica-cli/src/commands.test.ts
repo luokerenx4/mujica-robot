@@ -31,7 +31,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8, 12]);
     expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 6]);
     expect(envelope.data.definitions.research).toBe(3);
-    expect(envelope.data.definitions.trainingResearch).toBe(2);
+    expect(envelope.data.definitions.trainingResearch).toBe(3);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);

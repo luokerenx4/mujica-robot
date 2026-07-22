@@ -56,11 +56,34 @@ class PolicyNetwork(torch.nn.Module):
 def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.ndarray], transform: dict[str, Any] | None, time_seconds: float = 0.0) -> np.ndarray:
     if not transform or transform.get("kind") == "identity":
         return raw_action
-    if transform.get("kind") not in {"force-aware-pd-residual", "force-aware-gait-residual"}:
+    if transform.get("kind") not in {"force-aware-pd-residual", "force-aware-gait-residual", "spatial-gait-residual"}:
         raise RuntimeError(f"Unsupported policy action transform '{transform.get('kind')}'")
     joint_position = observation[str(transform.get("jointPositionChannel", "joint-position"))]
     joint_velocity = observation[str(transform.get("jointVelocityChannel", "joint-velocity"))]
     contacts = np.tanh(observation[str(transform.get("contactChannel", "foot-contact-force"))] / float(transform.get("contactScale", 20.0)))
+    if transform["kind"] == "spatial-gait-residual":
+        joint_position = joint_position.reshape(4, 3)
+        joint_velocity = joint_velocity.reshape(4, 3)
+        prediction = float(transform["statePredictionSeconds"])
+        phase = 2.0 * np.pi * float(transform["frequencyHz"]) * (time_seconds + float(transform["phaseLeadSeconds"]))
+        offsets = np.array([0.0, 0.0, float(transform.get("frontRearPhase", np.pi)), float(transform.get("frontRearPhase", np.pi))])
+        side = np.array([1.0, -1.0, 1.0, -1.0])
+        quaternion = observation[str(transform.get("orientationChannel", "base-orientation"))]
+        w, x, y, z = quaternion
+        roll = float(np.arctan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y)))
+        roll_rate = float(observation[str(transform.get("angularVelocityChannel", "imu-angular-velocity"))][0])
+        correction = np.clip(float(transform["rollPositionGain"]) * (roll + prediction * roll_rate) + float(transform["rollRateGain"]) * roll_rate, -0.16, 0.16)
+        target = np.empty((4, 3), dtype=np.float64)
+        for leg in range(4):
+            wave = np.sin(phase + offsets[leg])
+            target[leg, 0] = side[leg] * float(transform["neutralAbduction"]) - correction
+            target[leg, 1] = float(transform["neutralHip"]) + float(transform["hipAmplitude"]) * wave
+            target[leg, 2] = float(transform["neutralKnee"]) - float(transform["kneeAmplitude"]) * max(0.0, wave) - float(transform.get("contactGain", 0.0)) * contacts[leg]
+        predicted = joint_position + prediction * joint_velocity
+        prior = np.empty((4, 3), dtype=np.float64)
+        prior[:, 0] = float(transform["kpAbduction"]) * (target[:, 0] - predicted[:, 0]) - float(transform["kdAbduction"]) * joint_velocity[:, 0]
+        prior[:, 1:] = float(transform["kpSagittal"]) * (target[:, 1:] - predicted[:, 1:]) - float(transform["kdSagittal"]) * joint_velocity[:, 1:]
+        return prior.reshape(-1) + float(transform.get("residualScale", 1.0)) * raw_action
     if transform["kind"] == "force-aware-gait-residual":
         phase = 2.0 * np.pi * float(transform["frequencyHz"]) * time_seconds
         left_right = float(transform.get("leftRightPhase", 0.0))
