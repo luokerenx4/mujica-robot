@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "034-70a10f095343",
+  "sequence": 34,
+  "researchId": "forward-gait",
+  "researchHash": "f9124eea6b845deb8253f2a9ee810a851c9f0c249438450a39e1797ce7c014ec",
+  "programHash": "9c2ee5a559ccc457a8202f17e017cacbdeaeb8cd2ac220e20e1da7806fa9b1fb",
+  "benchmarkLockHash": "8e091c975b531af30c512153c5fbc343f88a1bbb4937144300200957803f745a",
+  "beforeControllerHash": "86648f107dc76db83625f6f64f8f48fd78bac3049575a12f46327956b1f860cc",
+  "candidateControllerHash": "464c5d28932e88fab749faf8adbc0a5a22c73fbe0414aefefc7cbf8d3ed5a6f3",
+  "proposal": {
+    "strategy": "coordinate-contact-gain-decrease",
+    "hypothesis": "Decrease contactGain by one bounded step.",
+    "expectedEffect": "Test whether contactGain=0.015 improves the complete locked quadruped score.",
+    "values": {
+      "/config/contactGain": 0.015
+    }
+  },
+  "strategy": "coordinate-contact-gain-decrease",
+  "score": 66.45635169149139,
+  "delta": -6.489597415886138,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

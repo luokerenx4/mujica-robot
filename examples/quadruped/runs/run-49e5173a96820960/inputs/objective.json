@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "forward-locomotion",
+  "name": "Forward locomotion, robustness, and development cost",
+  "weights": {
+    "survival": 25,
+    "velocityTracking": 15,
+    "forwardProgress": 40,
+    "upright": 15,
+    "lateralDrift": 10,
+    "energy": 0.01,
+    "smoothness": 0.005,
+    "componentMass": 0.25,
+    "sensorChannels": 0.05,
+    "trainingSteps": 5e-06
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0.25,
+    "maximumLateralDrift": 0.2,
+    "maximumRegression": 4
+  }
+}

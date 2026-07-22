@@ -9,6 +9,7 @@ import numpy as np
 
 from mujica_runtime.controllers import transform_policy_action
 from mujica_runtime.environment import RobotEnvironment
+from mujica_runtime.simulation import motion_metrics, score_metrics
 from mujica_runtime.training import PPOTrainer
 
 
@@ -36,6 +37,31 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_locomotion_score_requires_net_forward_progress(self):
+        task = {"targetVelocity": [0.2, 0.0, 0.0], "durationSeconds": 3.0}
+        stationary = motion_metrics(np.zeros(3), np.array([0.03, 0.0, 0.0]), 0.1, task, 3.0)
+        walking = motion_metrics(np.zeros(3), np.array([0.6, 0.02, 0.0]), 0.65, task, 3.0)
+        self.assertAlmostEqual(stationary["forwardProgress"], 0.05)
+        self.assertAlmostEqual(walking["forwardProgress"], 1.0)
+        self.assertAlmostEqual(walking["lateralDrift"], 0.02)
+        objective = {"weights": {"survival": 0, "velocityTracking": 0, "forwardProgress": 35, "upright": 0, "lateralDrift": 5, "energy": 0, "smoothness": 0, "componentMass": 0, "sensorChannels": 0, "trainingSteps": 0}}
+        base = {"survivalRate": 1, "meanVelocityTrackingError": 0, "meanUpright": 1, "meanEnergy": 0, "meanSmoothness": 0}
+        compiled = {"totalMassKg": 0, "sensorChannelCount": 0}
+        stationary_score = score_metrics({**base, **stationary}, objective, compiled)["total"]
+        walking_score = score_metrics({**base, **walking}, objective, compiled)["total"]
+        self.assertGreater(walking_score - stationary_score, 30)
+
+    def test_seeded_reset_perturbations_are_reproducible_and_distinct(self):
+        model, compiled = compiled_assembly("baseline")
+        task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
+        scenario = {**json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text()), "initialJointPositionNoiseStd": 0.02, "initialJointVelocityNoiseStd": 0.05}
+        first = RobotEnvironment(model, compiled, task, scenario, 7); first.reset()
+        same = RobotEnvironment(model, compiled, task, scenario, 7); same.reset()
+        other = RobotEnvironment(model, compiled, task, scenario, 8); other.reset()
+        np.testing.assert_allclose(first.data.qpos, same.data.qpos)
+        np.testing.assert_allclose(first.data.qvel, same.data.qvel)
+        self.assertFalse(np.allclose(first.data.qpos, other.data.qpos))
+
     def test_residual_policy_transform_preserves_force_aware_pd_prior(self):
         observation = {
             "joint-position": np.array([0.28, -0.50] * 4),
@@ -48,6 +74,22 @@ class RuntimeContractTest(unittest.TestCase):
         with_residual = transform_policy_action(np.ones(8), observation, transform)
         np.testing.assert_allclose(prior, np.array([0.32, 0.96] * 4), atol=1e-9)
         np.testing.assert_allclose(with_residual - prior, np.full(8, 0.5), atol=1e-9)
+
+    def test_periodic_residual_prior_advances_with_simulation_time(self):
+        observation = {
+            "joint-position": np.array([0.29, -0.47] * 4), "joint-velocity": np.zeros(8),
+            "foot-contact-force": np.zeros(4), "imu-angular-velocity": np.zeros(3),
+        }
+        transform = {
+            "kind": "force-aware-gait-residual", "frequencyHz": 1.0, "neutralHip": 0.29, "neutralKnee": -0.47,
+            "hipAmplitude": 0.25, "kneeAmplitude": 0.04, "leftRightPhase": 0.0, "frontRearPhase": np.pi,
+            "kp": 32.0, "kd": 2.0, "contactGain": 0.02, "rollGain": 0.02, "residualScale": 0.5,
+        }
+        start = transform_policy_action(np.zeros(8), observation, transform, 0.0)
+        quarter = transform_policy_action(np.zeros(8), observation, transform, 0.25)
+        np.testing.assert_allclose(start, np.zeros(8), atol=1e-9)
+        np.testing.assert_allclose(quarter[[0, 2]], np.full(2, 8.0), atol=1e-9)
+        np.testing.assert_allclose(quarter[[4, 6]], np.full(2, -8.0), atol=1e-9)
 
     def test_force_component_is_visible_in_observation(self):
         model, compiled = compiled_assembly("force-sensing")

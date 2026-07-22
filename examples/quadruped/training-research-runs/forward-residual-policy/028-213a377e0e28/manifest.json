@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "028-213a377e0e28",
+  "sequence": 28,
+  "researchId": "forward-residual-policy",
+  "researchHash": "276fd83fcb1a2f46295ee887a87d5074c2c2a5c8010033e7d6666b3832459987",
+  "programHash": "16a179983cb54112db379fc9f3634b081ff4b0c505d0696d7ed622260d8adab3",
+  "benchmarkLockHash": "8e091c975b531af30c512153c5fbc343f88a1bbb4937144300200957803f745a",
+  "trainerHash": "cf28c4b543509dfad6db1a9b9261363257dc22d69e2b53d225843662ccb7cdfe",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "0cccb42b7e44cc1fc39e886a3465a6ebe377edfd31d448a718d5ad72de5fe26e",
+  "proposal": {
+    "strategy": "training-clip-ratio-decrease",
+    "hypothesis": "Decrease clipRatio by one bounded step.",
+    "expectedEffect": "Test whether clipRatio=0.1 improves deterministic frozen-policy evaluation.",
+    "values": {
+      "/clipRatio": 0.1
+    }
+  },
+  "strategy": "training-clip-ratio-decrease",
+  "policyId": "forward-residual-locomotion-380595367b87876a",
+  "score": 64.70125616123518,
+  "delta": -6.529458350804745,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

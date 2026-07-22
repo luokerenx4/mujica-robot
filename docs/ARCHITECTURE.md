@@ -21,8 +21,8 @@ mujica.json + Robot Base + Component packages + Robot Assembly
   -> content-addressed compiled robot directory
   -> MuJoCo load validation
   -> controller or trainer program
-  -> optional force-aware PD prior + learned residual action
-  -> episode events + trajectory + metrics
+  -> optional static or periodic force-aware PD prior + learned residual action
+  -> episode events + trajectory + net-motion/robustness metrics
   -> immutable Simulation Run or Policy Artifact
   -> locked multi-case evaluation
   -> Candidate review or bounded Research proposal
@@ -31,6 +31,6 @@ mujica.json + Robot Base + Component packages + Robot Assembly
 
 The autonomous path borrows autoresearch's small loop—human program, one editable surface, fixed evaluator, compact memory, keep/discard—but keeps authority in Core. The proposer may suggest bounded numeric controller values; it cannot write project files, change the evaluator, waive gates, or publish revisions.
 
-The training path freezes every candidate Policy before scoring it. Training reward never decides KEEP. Whole-robot Revisions and Policy Revisions are distinct lineages, so a learned-lane improvement cannot silently replace a stronger robot controller. Benchmark locks include production evaluator source and dependency locks, not only authored JSON inputs.
+The training path freezes every candidate Policy before scoring it. Training reward never decides KEEP. Whole-robot Revisions and Policy Revisions are distinct lineages, so a learned-lane improvement cannot silently replace a stronger robot controller. Benchmark locks include production evaluator source and dependency locks, not only authored JSON inputs. Locomotion evaluation uses net displacement and target distance, so standing or oscillating cannot masquerade as walking; seeded reset perturbations make multi-seed cases physically distinct.
 
-See [the harness design](design/robot-development-harness.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+See [the harness design](design/robot-development-harness.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

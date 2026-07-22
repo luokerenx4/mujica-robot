@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "forward-locomotion",
+  "name": "Promote robust symmetric forward locomotion",
+  "kind": "optimization",
+  "benchmark": "forward-locomotion",
+  "baseRevision": "quadruped-r-d91bb91ea0d4",
+  "baseline": { "assembly": "force-sensing", "controller": "force-aware-gait" },
+  "proposed": { "assembly": "force-sensing", "controller": "forward-gait" },
+  "addedComponents": [],
+  "removedComponents": [],
+  "allowedChanges": [
+    "controllers/forward-gait/controller.json",
+    "controllers/forward-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/forward-locomotion.benchmark.json",
+    "benchmarks/forward-locomotion.lock.json",
+    "objectives/forward-locomotion.objective.json",
+    "tasks/forward-walk.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/reset-perturbation.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/actuator-delay.scenario.json",
+    "scenarios/lateral-push.scenario.json"
+  ],
+  "hypothesis": "A left-right-symmetric front/rear bound will create real forward displacement while retaining seeded reset, payload, friction, and lateral-push robustness.",
+  "expectedEffect": "Exceed the stationary force-aware baseline, pass every required locomotion gate, and expose actuator delay as an explicit scored challenge."
+}

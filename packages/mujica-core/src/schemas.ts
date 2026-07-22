@@ -55,18 +55,25 @@ export const scenarioSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), friction: z.number().positive(), payloadKg: z.number().nonnegative(),
   lateralPush: z.object({ timeSeconds: z.number().nonnegative(), durationSeconds: z.number().positive(), forceNewton: z.number() }).strict().nullable(),
   observationNoiseStd: z.number().nonnegative(), actuatorDelaySteps: z.number().int().nonnegative(),
+  initialJointPositionNoiseStd: z.number().nonnegative().default(0), initialJointVelocityNoiseStd: z.number().nonnegative().default(0),
 }).strict();
 
 export const objectiveSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
-  weights: z.object({ survival: z.number(), velocityTracking: z.number(), upright: z.number(), energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number() }).strict(),
-  gates: z.object({ minimumSurvivalRate: z.number().min(0).max(1), maximumRegression: z.number().nonnegative() }).strict(),
+  weights: z.object({
+    survival: z.number(), velocityTracking: z.number(), forwardProgress: z.number().default(0), upright: z.number(), lateralDrift: z.number().default(0),
+    energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
+  }).strict(),
+  gates: z.object({
+    minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
+    maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumRegression: z.number().nonnegative(),
+  }).strict(),
 }).strict();
 
 export const benchmarkSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), objective: idSchema,
   baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(),
-  cases: z.array(z.object({ id: idSchema, task: idSchema, scenario: idSchema, seed: z.number().int(), weight: z.number().positive() }).strict()).min(1),
+  cases: z.array(z.object({ id: idSchema, task: idSchema, scenario: idSchema, seed: z.number().int(), weight: z.number().positive(), gating: z.boolean().default(true) }).strict()).min(1),
 }).strict();
 
 export const trainerSchema = z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("ppo"), entry: relativeFileSchema, model: relativeFileSchema }).strict();

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "018-cae5fbe48842",
+  "sequence": 18,
+  "researchId": "forward-residual-policy",
+  "researchHash": "c986d5f973ecb48057a7de66dc893df8611b31b06bf7b97a944da175c60ba7aa",
+  "programHash": "c2167331a626e5608e50da5bf6e09b86cce87c437863863296a52bbfa743b2b0",
+  "benchmarkLockHash": "8e091c975b531af30c512153c5fbc343f88a1bbb4937144300200957803f745a",
+  "trainerHash": "cf28c4b543509dfad6db1a9b9261363257dc22d69e2b53d225843662ccb7cdfe",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "9750981ed626da27005d8731bc42718b1e69d53b9c9d3e424b8a258d9ce9bb5a",
+  "proposal": {
+    "strategy": "training-entropy-coefficient-decrease",
+    "hypothesis": "Decrease entropyCoefficient by one bounded step.",
+    "expectedEffect": "Test whether entropyCoefficient=0 improves deterministic frozen-policy evaluation.",
+    "values": {
+      "/entropyCoefficient": 0
+    }
+  },
+  "strategy": "training-entropy-coefficient-decrease",
+  "policyId": "forward-residual-locomotion-5bf8fac2b33f1004",
+  "score": 68.94835485681476,
+  "delta": -2.2823596552251644,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

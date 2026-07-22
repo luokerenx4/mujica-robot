@@ -30,8 +30,8 @@ describe("agent CLI contract", () => {
     expect(result.code).toBe(0);
     expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8]);
     expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6]);
-    expect(envelope.data.definitions.research).toBe(1);
-    expect(envelope.data.definitions.trainingResearch).toBe(1);
+    expect(envelope.data.definitions.research).toBe(2);
+    expect(envelope.data.definitions.trainingResearch).toBe(2);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
@@ -45,13 +45,27 @@ describe("agent CLI contract", () => {
     expect(envelope.data.allowedChangeHashes["controllers/force-aware-gait/controller.py"]).toHaveLength(64);
   });
 
+  test("forward locomotion promotion requires net progress in every gating case", () => {
+    const result = invoke(["candidate", "examples/quadruped", "--candidate", "forward-locomotion", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.verdict).toBe("KEEP");
+    expect(envelope.data.scoreDelta).toBeGreaterThan(20);
+    expect(envelope.data.gateReasons).toEqual([]);
+    const required = envelope.data.proposed.cases.filter((item: any) => item.case.gating);
+    expect(required.every((item: any) => item.metrics.forwardProgress >= 0.25 && item.metrics.survivalRate >= 0.8 && item.metrics.lateralDrift <= 0.2)).toBe(true);
+    const delay = envelope.data.proposed.cases.find((item: any) => item.case.id === "actuator-delay");
+    expect(delay.case.gating).toBe(false);
+    expect(delay.metrics.forwardProgress).toBe(0);
+  }, 20_000);
+
   test("research revisions form one inspectable parent chain", () => {
     const result = invoke(["revisions", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
     const revisions = envelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt));
     expect(revisions.length).toBeGreaterThan(1);
     for (let index = 1; index < revisions.length; index++) expect(revisions[index].parent).toBe(revisions[index - 1].id);
-    expect(revisions.at(-1).kind).toBe("research-optimization");
+    expect(revisions.at(-1).candidateId).toBe("forward-locomotion");
+    expect(revisions.at(-1).aggregateScore).toBeCloseTo(72.94594910737753);
   });
 
   test("agent research proposals cannot escape declared values or bounds", async () => {

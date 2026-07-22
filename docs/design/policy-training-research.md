@@ -23,6 +23,8 @@ raw neural action
 
 The actor head is initialized to zero, so its deterministic initial behavior is exactly the stable sensor-aware prior. PPO learns only residual torque. Older identity-transform Policy Artifacts remain loadable.
 
+The forward-locomotion lane adds `force-aware-gait-residual`. The serialized transform includes gait frequency, left/right and front/rear phase, hip and knee trajectories, contact feedback, PD gains, and residual scale. Both collection and inference receive simulation time, so the neural residual wraps the exact same periodic prior instead of an approximation hidden in Trainer code.
+
 ## Authored contract
 
 `training-research/<id>.training-research.json` declares a locked Benchmark, one Training definition, one promoted policy Controller, one fixed seed, an `AUTOTRAIN.md` program, numeric parameter bounds, minimum improvement, and a per-invocation budget.
@@ -44,3 +46,9 @@ Policy Revisions are separate from whole-robot Revisions. This avoids pretending
 ## First result
 
 The checked-in run contains 11 real frozen-policy experiments: one KEEP and ten REVERT. Reducing PPO from 4096 to 2048 steps improved the budget-aware score from `84.18884075657773` to `84.23980305153188` (`+0.050962294954146614`), then the bounded neighborhood exhausted. The learned policy remains slightly below the best program controller (`84.25444528948661`) after charging the Objective's training-step cost, so it is not promoted as the whole-robot head.
+
+## Forward locomotion result
+
+The forward lane trains on nominal, seeded reset, low-friction, payload, lateral-push, and actuator-delay scenarios, then evaluates seven locked cases. Its ledger contains 29 governed attempts across the initial and corrected research-program contexts. Four KEEP decisions selected 4096 steps, learning rate `0.0002`, two epochs, and clip ratio `0.15`, improving the frozen score from `67.07651040151221` to `71.23071451203992`. A final context-correct replay exhausted all eight one-step neighbors with no further KEEP.
+
+The program gait remains stronger at `72.94594910737753`. The learned result is therefore a Policy Revision, not the whole-robot head.

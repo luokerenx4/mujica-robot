@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "forward-gait",
+  "name": "Robust forward gait autoresearch",
+  "benchmark": "forward-locomotion",
+  "assembly": "force-sensing",
+  "controller": "forward-gait",
+  "program": "FORWARD_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/forward-gait/controller.json",
+    "parameters": [
+      { "path": "/config/frequencyHz", "minimum": 0.8, "maximum": 1.8, "step": 0.1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/hipAmplitude", "minimum": 0.15, "maximum": 0.4, "step": 0.025, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/kneeAmplitude", "minimum": 0, "maximum": 0.2, "step": 0.025, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/neutralHip", "minimum": 0.15, "maximum": 0.4, "step": 0.02, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/neutralKnee", "minimum": -0.75, "maximum": -0.35, "step": 0.02, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/kp", "minimum": 20, "maximum": 40, "step": 2, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/kd", "minimum": 0.6, "maximum": 2.4, "step": 0.2, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/contactGain", "minimum": 0, "maximum": 0.06, "step": 0.005, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/rollGain", "minimum": 0, "maximum": 0.08, "step": 0.005, "directionOrder": ["increase", "decrease"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 36
+}

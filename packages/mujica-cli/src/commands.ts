@@ -164,7 +164,10 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
   const gateReasons: string[] = [];
   for (let index = 0; index < proposed.cases.length; index++) {
     const candidateCase = proposed.cases[index]; const baselineCase = baseline.cases[index];
+    if (candidateCase && candidateCase.case.gating === false) continue;
     if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate) gateReasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate`);
+    if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress) gateReasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate`);
+    if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift) gateReasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) gateReasons.push(`${candidateCase.case.id}: score regression exceeds gate`);
   }
   const allowedChangeHashes: Record<string, string> = {};
@@ -241,7 +244,12 @@ function researchGateReasons(objective: Awaited<ReturnType<typeof loadObjective>
   const reasons: string[] = [];
   for (let index = 0; index < candidate.cases.length; index++) {
     const candidateCase = candidate.cases[index]; const baselineCase = baseline.cases[index];
-    if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate) reasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate`);
+    if (candidateCase && candidateCase.case.gating === false) continue;
+    // A research loop may start from an infeasible baseline. Permit a monotonic move
+    // toward an unmet gate so several small, reviewable changes can cross it.
+    if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate && (!baselineCase || candidateCase.metrics.survivalRate <= baselineCase.metrics.survivalRate)) reasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate without improving the locked baseline`);
+    if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress && (!baselineCase || candidateCase.metrics.forwardProgress <= baselineCase.metrics.forwardProgress)) reasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate without improving the locked baseline`);
+    if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift && (!baselineCase || candidateCase.metrics.lateralDrift >= baselineCase.metrics.lateralDrift)) reasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate without improving the locked baseline`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) reasons.push(`${candidateCase.case.id}: score regression exceeds locked baseline gate`);
   }
   return reasons;

@@ -53,15 +53,26 @@ class PolicyNetwork(torch.nn.Module):
         return self.actor(latent), self.critic(latent).squeeze(-1), self.log_std.expand(observation.shape[:-1] + self.log_std.shape)
 
 
-def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.ndarray], transform: dict[str, Any] | None) -> np.ndarray:
+def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.ndarray], transform: dict[str, Any] | None, time_seconds: float = 0.0) -> np.ndarray:
     if not transform or transform.get("kind") == "identity":
         return raw_action
-    if transform.get("kind") != "force-aware-pd-residual":
+    if transform.get("kind") not in {"force-aware-pd-residual", "force-aware-gait-residual"}:
         raise RuntimeError(f"Unsupported policy action transform '{transform.get('kind')}'")
     joint_position = observation[str(transform.get("jointPositionChannel", "joint-position"))]
     joint_velocity = observation[str(transform.get("jointVelocityChannel", "joint-velocity"))]
     contacts = np.tanh(observation[str(transform.get("contactChannel", "foot-contact-force"))] / float(transform.get("contactScale", 20.0)))
-    target = np.asarray(transform["target"], dtype=np.float64).copy()
+    if transform["kind"] == "force-aware-gait-residual":
+        phase = 2.0 * np.pi * float(transform["frequencyHz"]) * time_seconds
+        left_right = float(transform.get("leftRightPhase", 0.0))
+        front_rear = float(transform.get("frontRearPhase", np.pi))
+        offsets = np.array([0.0, left_right, front_rear, front_rear + left_right])
+        target = np.empty(8, dtype=np.float64)
+        for leg in range(4):
+            wave = np.sin(phase + offsets[leg])
+            target[2 * leg] = float(transform["neutralHip"]) + float(transform["hipAmplitude"]) * wave
+            target[2 * leg + 1] = float(transform["neutralKnee"]) - float(transform["kneeAmplitude"]) * max(0.0, wave)
+    else:
+        target = np.asarray(transform["target"], dtype=np.float64).copy()
     contact_gain = float(transform.get("contactGain", 0.0))
     target[1::2] -= contact_gain * contacts
     roll_rate = float(observation[str(transform.get("angularVelocityChannel", "imu-angular-velocity"))][0])
@@ -86,7 +97,6 @@ class FrozenPolicyController:
         torch.manual_seed(seed)
 
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
-        del time_seconds
         vector = np.concatenate([observation[channel["name"]] for channel in self.observation_channels]).astype(np.float32)
         normalized = (vector - self.mean) / np.sqrt(self.variance + 1e-8)
         with torch.no_grad():
@@ -95,7 +105,7 @@ class FrozenPolicyController:
                 raw_action = mean[0]
             else:
                 raw_action = torch.distributions.Normal(mean, log_std.exp()).sample()[0]
-        action = transform_policy_action(raw_action.numpy(), observation, self.action_transform)
+        action = transform_policy_action(raw_action.numpy(), observation, self.action_transform, time_seconds)
         return np.clip(action, self.action_low, self.action_high)
 
 

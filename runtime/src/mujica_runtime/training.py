@@ -75,7 +75,7 @@ class PPOTrainer:
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
                 with torch.no_grad():
                     mean, value, log_std = network(obs_tensor); distribution = torch.distributions.Normal(mean, log_std.exp()); action_tensor = distribution.sample(); log_prob = distribution.log_prob(action_tensor).sum(-1)
-                raw_action = action_tensor[0].numpy(); action = np.clip(transform_policy_action(raw_action, observation_map, self.action_transform), lows, highs)
+                raw_action = action_tensor[0].numpy(); action = np.clip(transform_policy_action(raw_action, observation_map, self.action_transform, float(environment.data.time)), lows, highs)
                 result = environment.step(action)
                 episode_reward += result.reward
                 done = result.terminated or result.truncated

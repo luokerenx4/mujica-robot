@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "forward-residual-policy",
+  "name": "Forward locomotion policy autoresearch",
+  "benchmark": "forward-locomotion",
+  "training": "forward-residual-locomotion",
+  "controller": "forward-residual-gait",
+  "program": "FORWARD_AUTOTRAIN.md",
+  "seed": 42,
+  "editable": {
+    "path": "training/forward-residual-locomotion.training.json",
+    "parameters": [
+      { "path": "/totalSteps", "minimum": 4096, "maximum": 16384, "step": 4096, "integer": true, "directionOrder": ["decrease", "increase"] },
+      { "path": "/learningRate", "minimum": 0.0001, "maximum": 0.0005, "step": 0.0001, "integer": false, "directionOrder": ["decrease", "increase"] },
+      { "path": "/entropyCoefficient", "minimum": 0, "maximum": 0.015, "step": 0.005, "integer": false, "directionOrder": ["decrease", "increase"] },
+      { "path": "/epochs", "minimum": 2, "maximum": 6, "step": 2, "integer": true, "directionOrder": ["decrease", "increase"] },
+      { "path": "/clipRatio", "minimum": 0.1, "maximum": 0.3, "step": 0.05, "integer": false, "directionOrder": ["decrease", "increase"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 20
+}

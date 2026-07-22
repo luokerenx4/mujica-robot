@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "forward-locomotion",
+  "name": "Multi-seed robust forward locomotion",
+  "objective": "forward-locomotion",
+  "baseline": { "assembly": "force-sensing", "controller": "force-aware-gait" },
+  "cases": [
+    { "id": "nominal", "task": "forward-walk", "scenario": "nominal", "seed": 101, "weight": 1 },
+    { "id": "reset-a", "task": "forward-walk", "scenario": "reset-perturbation", "seed": 202, "weight": 1 },
+    { "id": "reset-b", "task": "forward-walk", "scenario": "reset-perturbation", "seed": 303, "weight": 1 },
+    { "id": "low-friction", "task": "forward-walk", "scenario": "low-friction", "seed": 404, "weight": 1.2 },
+    { "id": "payload", "task": "forward-walk", "scenario": "payload-variation", "seed": 505, "weight": 1.2 },
+    { "id": "actuator-delay", "task": "forward-walk", "scenario": "actuator-delay", "seed": 606, "weight": 0.4, "gating": false },
+    { "id": "lateral-push", "task": "forward-walk", "scenario": "lateral-push", "seed": 707, "weight": 1.4 }
+  ]
+}

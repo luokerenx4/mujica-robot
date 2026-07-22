@@ -12,12 +12,41 @@ from .environment import RobotEnvironment
 from .io import atomic_directory, hash_json, sha256_bytes, write_json
 
 
+def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
+    displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
+    target = np.asarray(task["targetVelocity"], dtype=np.float64)
+    target_speed = float(np.linalg.norm(target[:2]))
+    target_distance = target_speed * float(task["durationSeconds"])
+    if target_speed > 1e-9:
+        direction = target[:2] / target_speed
+        forward_displacement = float(np.dot(displacement[:2], direction))
+        lateral_vector = displacement[:2] - forward_displacement * direction
+        forward_progress = float(np.clip(forward_displacement / target_distance, 0.0, 1.0))
+    else:
+        forward_displacement = 0.0
+        lateral_vector = displacement[:2]
+        forward_progress = 1.0
+    return {
+        "initialBasePosition": np.asarray(initial_position, dtype=np.float64).tolist(),
+        "finalBasePosition": np.asarray(final_position, dtype=np.float64).tolist(),
+        "netDisplacement": displacement.tolist(),
+        "forwardDisplacement": forward_displacement,
+        "targetDistance": target_distance,
+        "forwardProgress": forward_progress,
+        "meanForwardVelocity": forward_displacement / max(float(duration_seconds), 1e-9),
+        "lateralDrift": float(np.linalg.norm(lateral_vector)),
+        "distanceTraveled": float(distance_traveled),
+    }
+
+
 def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: dict[str, Any], training_steps: int = 0) -> dict[str, Any]:
     weights = objective["weights"]
     terms = {
         "survival": weights["survival"] * metrics["survivalRate"],
         "velocityTracking": weights["velocityTracking"] * (1.0 / (1.0 + metrics["meanVelocityTrackingError"])),
+        "forwardProgress": weights.get("forwardProgress", 0.0) * metrics["forwardProgress"],
         "upright": weights["upright"] * metrics["meanUpright"],
+        "lateralDrift": -weights.get("lateralDrift", 0.0) * metrics["lateralDrift"],
         "energy": -weights["energy"] * metrics["meanEnergy"],
         "smoothness": -weights["smoothness"] * metrics["meanSmoothness"],
         "componentMass": -weights["componentMass"] * compiled["totalMassKg"],
@@ -46,6 +75,9 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     controller.reset(int(request["seed"]))
     environment = RobotEnvironment(Path(request["modelPath"]), compiled, request["task"], request["scenario"], int(request["seed"]))
     observation = environment.reset()
+    initial_position = environment.data.qpos[:3].copy()
+    previous_position = initial_position.copy()
+    distance_traveled = 0.0
     trajectory: list[dict[str, Any]] = []
     totals = {"velocityError": 0.0, "upright": 0.0, "energy": 0.0, "smoothness": 0.0}
     survived_steps = 0
@@ -54,6 +86,9 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     while True:
         action = controller.act({name: values.copy() for name, values in observation.items()}, float(environment.data.time))
         result = environment.step(action)
+        current_position = environment.data.qpos[:3].copy()
+        distance_traveled += float(np.linalg.norm(current_position[:2] - previous_position[:2]))
+        previous_position = current_position
         info = result.info
         if info["healthy"]: survived_steps += 1
         if info["pushing"] and not previous_pushing: environment.events.append({"type": "scenario.push-start", "time": float(environment.data.time), "forceNewton": request["scenario"]["lateralPush"]["forceNewton"]})
@@ -72,6 +107,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "fell": fell, "meanVelocityTrackingError": totals["velocityError"] / steps, "meanUpright": totals["upright"] / steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
+        **motion_metrics(initial_position, environment.data.qpos[:3], distance_traveled, request["task"], float(environment.data.time)),
     }
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})

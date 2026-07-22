@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject } from "./index";
+import { compareAssemblies, compileAssembly, loadBenchmark, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -41,5 +41,11 @@ describe("Robot Assembly compiler", () => {
     expect(research.editable.path).toBe("training/force-residual-locomotion.training.json");
     expect(research.editable.parameters.find((item) => item.path === "/totalSteps")?.integer).toBe(true);
     expect(research.seed).toBe(42);
+  });
+
+  test("robustness benchmarks distinguish promotion gates from scored challenges", async () => {
+    const benchmark = await loadBenchmark(project, "forward-locomotion");
+    expect(benchmark.cases.find((item) => item.id === "nominal")?.gating).toBe(true);
+    expect(benchmark.cases.find((item) => item.id === "actuator-delay")?.gating).toBe(false);
   });
 });

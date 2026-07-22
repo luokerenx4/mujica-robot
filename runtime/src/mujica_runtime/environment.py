@@ -49,6 +49,12 @@ class RobotEnvironment:
             mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
         else:
             mujoco.mj_resetData(self.model, self.data)
+        joint_position_noise = float(self.scenario.get("initialJointPositionNoiseStd", 0.0))
+        joint_velocity_noise = float(self.scenario.get("initialJointVelocityNoiseStd", 0.0))
+        if joint_position_noise:
+            self.data.qpos[7:] += self.rng.normal(0.0, joint_position_noise, size=self.model.nq - 7)
+        if joint_velocity_noise:
+            self.data.qvel[6:] += self.rng.normal(0.0, joint_velocity_noise, size=self.model.nv - 6)
         mujoco.mj_forward(self.model, self.data)
         self.step_index = 0
         self.previous_action.fill(0)
@@ -112,12 +118,19 @@ class RobotEnvironment:
         healthy = float(healthy_min) <= height <= float(healthy_max)
         target = np.asarray(self.task["targetVelocity"], dtype=np.float64)
         velocity_error = float(np.linalg.norm(self.data.qvel[:3] - target))
+        target_speed = float(np.linalg.norm(target[:2]))
+        if target_speed > 1e-9:
+            forward_velocity = float(np.dot(self.data.qvel[:2], target[:2] / target_speed))
+            normalized_progress_rate = float(np.clip(forward_velocity / target_speed, -1.0, 1.5))
+        else:
+            forward_velocity = 0.0
+            normalized_progress_rate = 0.0
         upright = float(1.0 - min(1.0, np.linalg.norm(self.data.qpos[4:6])))
         energy = float(np.sum(np.abs(applied * self.data.qvel[6:])))
         smoothness = float(np.mean(np.square(applied - self.previous_action)))
-        reward = (1.0 if healthy else -1.0) + np.exp(-2.0 * velocity_error) + upright - 0.002 * energy - 0.001 * smoothness
+        velocity_reward = float(np.exp(-10.0 * velocity_error * velocity_error))
+        reward = (1.0 if healthy else -1.0) + 1.5 * velocity_reward + 0.75 * normalized_progress_rate + upright - 0.002 * energy - 0.001 * smoothness
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()
-        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})
-
+        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "forwardVelocity": forward_velocity, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "036-a91233b66600",
+  "sequence": 36,
+  "researchId": "forward-gait",
+  "researchHash": "f9124eea6b845deb8253f2a9ee810a851c9f0c249438450a39e1797ce7c014ec",
+  "programHash": "9c2ee5a559ccc457a8202f17e017cacbdeaeb8cd2ac220e20e1da7806fa9b1fb",
+  "benchmarkLockHash": "8e091c975b531af30c512153c5fbc343f88a1bbb4937144300200957803f745a",
+  "beforeControllerHash": "86648f107dc76db83625f6f64f8f48fd78bac3049575a12f46327956b1f860cc",
+  "candidateControllerHash": "1209a2810273eb59d30e54ee8d9d1318551340a9725ac7e2d72ed1a3a214624c",
+  "proposal": {
+    "strategy": "coordinate-roll-gain-decrease",
+    "hypothesis": "Decrease rollGain by one bounded step.",
+    "expectedEffect": "Test whether rollGain=0.015 improves the complete locked quadruped score.",
+    "values": {
+      "/config/rollGain": 0.015
+    }
+  },
+  "strategy": "coordinate-roll-gain-decrease",
+  "score": 69.873734823218,
+  "delta": -3.0722142841595286,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

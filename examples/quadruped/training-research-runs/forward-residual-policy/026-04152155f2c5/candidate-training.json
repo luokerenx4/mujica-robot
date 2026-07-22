@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "forward-residual-locomotion",
+  "name": "Robust forward gait residual policy",
+  "assembly": "force-sensing",
+  "trainer": "forward-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal",
+    "reset-perturbation",
+    "low-friction",
+    "payload-variation",
+    "lateral-push",
+    "actuator-delay"
+  ],
+  "totalSteps": 4096,
+  "rolloutSteps": 512,
+  "epochs": 2,
+  "minibatchSize": 128,
+  "learningRate": 0.0002,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0.01
+}
