@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "007-ad9fb230e0b0",
+  "sequence": 7,
+  "researchId": "spatial-residual-policy",
+  "researchHash": "9f2874cf0a5e6747220473c36c7954651507f94a527ca41f483342899fdbb049",
+  "programHash": "0bc01c16bdcb9e88b7d0ec6116c860975c7c3cbffe5efde1c8ae367c8ff5bbc1",
+  "benchmarkLockHash": "7a183b58733615e9a63a680b357a757e70ad3e65725283419480db49d05b6660",
+  "trainerHash": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "4dfb2a71a8154ad0be58def123f310ac4813f4a6e79e9aa0108acef601c840d7",
+  "proposal": {
+    "strategy": "residual-scale-half",
+    "hypothesis": "Half-scale corrections may retain learned gains inside the delay-stable control envelope.",
+    "expectedEffect": "Pass every spatial gate while improving aggregate score over the frozen program prior.",
+    "values": {
+      "/residualScale": 0.5
+    }
+  },
+  "strategy": "residual-scale-half",
+  "policyId": "spatial-residual-locomotion-81df145800cc15c7",
+  "score": 63.03496530081226,
+  "delta": 0.08677925353622129,
+  "verdict": "KEEP",
+  "gateReasons": [],
+  "error": null,
+  "policyRevisionId": "quadruped-p-7423506a0965",
+  "completed": true
+}

@@ -1,0 +1,287 @@
+{
+  "runtimeVersion": "0.2.0",
+  "runtimeSourceHash": "00bc23a102bf03f1a4eee7622f3542cd38aeb6110c550eaeeb61734f4e1e7d97",
+  "harnessSourceHash": "881e5dd46b6d00080bb5ac4d5b24c0cc523b4ee2b4bab03941e02a68187b62f7",
+  "harnessDependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "projectDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+  "modelPath": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95/model.xml",
+  "compiled": {
+    "version": 1,
+    "id": "force-sensing-3dof",
+    "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+    "baseHash": "9af4ae9dc5ab4f7ba42ab05a4d71da0af0b6982686fc4ad28bc1a17bd5252fb5",
+    "catalogHash": "d055331cd9e65d93fb3711192e90110ac63a743fe18a54599af385819bbacc27",
+    "totalMassKg": 6.03,
+    "componentCost": 5,
+    "components": [
+      {
+        "instanceId": "body-imu",
+        "componentId": "body-imu",
+        "mount": "torso-sensor",
+        "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+        "massKg": 0.03,
+        "cost": 1
+      },
+      {
+        "instanceId": "foot-force-kit",
+        "componentId": "foot-force-sensor",
+        "mount": "foot-array",
+        "hash": "76341a477884a41a2bea80b531b44f735ef65823f4482cccd977229963041869",
+        "massKg": 0.08,
+        "cost": 4
+      }
+    ],
+    "observationContract": {
+      "version": 1,
+      "assembly": "force-sensing-3dof",
+      "channels": [
+        {
+          "name": "joint-position",
+          "kind": "joint-position",
+          "size": 12,
+          "source": "qpos:joints",
+          "unit": "rad"
+        },
+        {
+          "name": "joint-velocity",
+          "kind": "joint-velocity",
+          "size": 12,
+          "source": "qvel:joints",
+          "unit": "rad-s"
+        },
+        {
+          "name": "base-height",
+          "kind": "body-state",
+          "size": 1,
+          "source": "qpos:root-height",
+          "unit": "m"
+        },
+        {
+          "name": "base-orientation",
+          "kind": "body-state",
+          "size": 4,
+          "source": "qpos:root-quaternion",
+          "unit": "quaternion"
+        },
+        {
+          "name": "base-velocity",
+          "kind": "body-state",
+          "size": 6,
+          "source": "qvel:root",
+          "unit": "mixed"
+        },
+        {
+          "name": "imu-angular-velocity",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-gyro",
+          "unit": "rad-s"
+        },
+        {
+          "name": "imu-linear-acceleration",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-accelerometer",
+          "unit": "m-s2"
+        },
+        {
+          "name": "foot-contact-force",
+          "kind": "sensor",
+          "size": 4,
+          "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+          "unit": "n"
+        }
+      ],
+      "size": 45
+    },
+    "actionContract": {
+      "version": 1,
+      "assembly": "force-sensing-3dof",
+      "channels": [
+        {
+          "name": "joint-torque",
+          "kind": "actuator",
+          "size": 12,
+          "source": "actuator:all",
+          "unit": "nm",
+          "low": -8,
+          "high": 8
+        }
+      ],
+      "size": 12
+    },
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+    "actionLow": [
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8
+    ],
+    "actionHigh": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8
+    ],
+    "sensorChannelCount": 10
+  },
+  "training": {
+    "version": 1,
+    "id": "spatial-residual-locomotion",
+    "name": "Delay-tolerant spatial gait residual policy",
+    "assembly": "force-sensing-3dof",
+    "trainer": "spatial-residual-ppo",
+    "task": "forward-walk",
+    "scenarios": [
+      "nominal",
+      "reset-perturbation",
+      "low-friction",
+      "payload-variation",
+      "strong-lateral-push",
+      "actuator-delay"
+    ],
+    "totalSteps": 8192,
+    "rolloutSteps": 512,
+    "epochs": 2,
+    "minibatchSize": 128,
+    "learningRate": 0.0002,
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+    "clipRatio": 0.15,
+    "entropyCoefficient": 0.002,
+    "residualScale": 0.5
+  },
+  "trainer": {
+    "version": 1,
+    "id": "spatial-residual-ppo",
+    "name": "Predictive spatial gait residual PPO",
+    "kind": "ppo",
+    "entry": "trainer.py",
+    "model": "model.py"
+  },
+  "trainerRoot": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/trainers/spatial-residual-ppo",
+  "trainerHash": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+  "task": {
+    "version": 1,
+    "id": "forward-walk",
+    "name": "Walk forward at 0.25 metres per second",
+    "durationSeconds": 5,
+    "controlHz": 50,
+    "targetVelocity": [
+      0.25,
+      0,
+      0
+    ],
+    "healthyHeight": [
+      0.19,
+      0.7
+    ],
+    "terminateOnFall": true
+  },
+  "scenarios": [
+    {
+      "version": 1,
+      "id": "nominal",
+      "name": "Nominal laboratory floor",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "reset-perturbation",
+      "name": "Seeded joint-state and observation perturbations",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0.002,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0.025,
+      "initialJointVelocityNoiseStd": 0.08
+    },
+    {
+      "version": 1,
+      "id": "low-friction",
+      "name": "Low-friction floor",
+      "friction": 0.35,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "payload-variation",
+      "name": "Additional torso payload",
+      "friction": 0.9,
+      "payloadKg": 0.8,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "strong-lateral-push",
+      "name": "Discriminating lateral impulse for spatial recovery",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": {
+        "timeSeconds": 0.7,
+        "durationSeconds": 0.12,
+        "forceNewton": 50
+      },
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "actuator-delay",
+      "name": "Two-control-step actuator delay",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 2,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    }
+  ],
+  "seed": 42,
+  "dependencyLockHash": "31c72b7f3628fe95f426b475b75057c7c6c1ac169491ef97c28d85327ce18efd",
+  "sourceHashes": {
+    "runtime": "00bc23a102bf03f1a4eee7622f3542cd38aeb6110c550eaeeb61734f4e1e7d97",
+    "harness": "881e5dd46b6d00080bb5ac4d5b24c0cc523b4ee2b4bab03941e02a68187b62f7",
+    "harnessDependencies": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+    "trainer": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+    "assembly": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+    "catalog": "d055331cd9e65d93fb3711192e90110ac63a743fe18a54599af385819bbacc27",
+    "training": "4dfb2a71a8154ad0be58def123f310ac4813f4a6e79e9aa0108acef601c840d7"
+  }
+}

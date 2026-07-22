@@ -4,6 +4,7 @@ import json
 import random
 import shutil
 import time
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,15 @@ class RunningNormalizer:
     def normalize(self, value: np.ndarray) -> np.ndarray: return ((value - self.mean) / np.sqrt(self.variance + 1e-8)).astype(np.float32)
 
 
+def effective_action_transform(base: dict[str, Any] | None, config: dict[str, Any]) -> dict[str, Any] | None:
+    transform = deepcopy(base)
+    if "residualScale" in config:
+        if transform is None:
+            raise RuntimeError("Training residualScale requires a Trainer action transform")
+        transform["residualScale"] = float(config["residualScale"])
+    return transform
+
+
 @dataclass
 class PPOTrainer:
     hidden_sizes: list[int]
@@ -43,6 +53,7 @@ class PPOTrainer:
 
     def train(self, request: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         config = request["training"]
+        action_transform = effective_action_transform(self.action_transform, config)
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
         torch.use_deterministic_algorithms(True, warn_only=True)
@@ -75,7 +86,7 @@ class PPOTrainer:
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
                 with torch.no_grad():
                     mean, value, log_std = network(obs_tensor); distribution = torch.distributions.Normal(mean, log_std.exp()); action_tensor = distribution.sample(); log_prob = distribution.log_prob(action_tensor).sum(-1)
-                raw_action = action_tensor[0].numpy(); action = np.clip(transform_policy_action(raw_action, observation_map, self.action_transform, float(environment.data.time)), lows, highs)
+                raw_action = action_tensor[0].numpy(); action = np.clip(transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time)), lows, highs)
                 result = environment.step(action)
                 episode_reward += result.reward
                 done = result.terminated or result.truncated
@@ -110,7 +121,7 @@ class PPOTrainer:
             metrics.append({"steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
 
         torch.save(network.state_dict(), output_dir / "model.pt")
-        write_json(output_dir / "architecture.json", {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal", "actionTransform": self.action_transform})
+        write_json(output_dir / "architecture.json", {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal", "actionTransform": action_transform})
         write_json(output_dir / "normalizer.json", {"count": normalizer.count, "mean": normalizer.mean.tolist(), "variance": normalizer.variance.tolist()})
         write_json(output_dir / "training-metrics.json", {"updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
         return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}

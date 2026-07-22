@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "005-f5f5216b731b",
+  "sequence": 5,
+  "researchId": "spatial-residual-policy",
+  "researchHash": "9f2874cf0a5e6747220473c36c7954651507f94a527ca41f483342899fdbb049",
+  "programHash": "0bc01c16bdcb9e88b7d0ec6116c860975c7c3cbffe5efde1c8ae367c8ff5bbc1",
+  "benchmarkLockHash": "7a183b58733615e9a63a680b357a757e70ad3e65725283419480db49d05b6660",
+  "trainerHash": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "83249a6cc302ca6b64d2d3a714ed35387ede84c25a3fa38a5e95562978c164dd",
+  "proposal": {
+    "strategy": "training-total-steps-increase",
+    "hypothesis": "Increase totalSteps by one bounded step.",
+    "expectedEffect": "Test whether totalSteps=12288 improves deterministic frozen-policy evaluation.",
+    "values": {
+      "/totalSteps": 12288
+    }
+  },
+  "strategy": "training-total-steps-increase",
+  "policyId": "spatial-residual-locomotion-c4994fa7b1f0aa3c",
+  "score": 62.85915127468105,
+  "delta": -0.08903477259499226,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "reset-b: survival 0.664 below gate without improving the locked baseline",
+    "actuator-delay: lateral drift 0.496 exceeds gate without improving the locked baseline"
+  ],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

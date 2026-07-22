@@ -68,6 +68,16 @@ describe("agent CLI contract", () => {
     expect(revisions.at(-1).aggregateScore).toBeCloseTo(62.616999752834296);
   });
 
+  test("the promoted spatial policy passes every locked gate", () => {
+    const result = invoke(["evaluate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-residual-gait", "--benchmark", "spatial-robustness", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.evaluation.aggregateScore).toBeCloseTo(63.03496530081226);
+    expect(envelope.data.evaluation.cases.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.forwardProgress >= 0.25 && item.metrics.lateralDrift <= 0.2)).toBe(true);
+    const delay = envelope.data.evaluation.cases.find((item: any) => item.case.id === "actuator-delay");
+    expect(delay.metrics.survivalRate).toBe(1);
+    expect(delay.metrics.forwardProgress).toBeGreaterThan(0.69);
+  }, 15_000);
+
   test("agent research proposals cannot escape declared values or bounds", async () => {
     const project = resolve(root, "examples/quadruped"); const research = await loadResearch(project, "support-controller"); const controller = await loadController(project, research.controller);
     expect(() => validateResearchProposal(research, controller.definition, { strategy: "escape", hypothesis: "edit hidden gain", expectedEffect: "unsafe", values: { "/config/frequencyHz": 2 } })).toThrow("not editable");
@@ -84,6 +94,7 @@ describe("agent CLI contract", () => {
     const revisionsResult = invoke(["policy-revisions", "examples/quadruped", "--json"]); const revisionsEnvelope = JSON.parse(revisionsResult.stdout); expect(revisionsResult.code).toBe(0); expect(revisionsEnvelope.data.revisions.length).toBeGreaterThan(0);
     const head = revisionsEnvelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt)).at(-1); expect(head.kind).toBe("policy-optimization");
     const inspectResult = invoke(["policy", "inspect", "examples/quadruped", "--policy", head.policyId, "--json"]); const policy = JSON.parse(inspectResult.stdout); expect(inspectResult.code).toBe(0); expect(policy.data.manifest.runtimeVersion).toBe("0.2.0"); expect(policy.data.manifest.runtimeSourceHash).toHaveLength(64);
-    const revisionResult = invoke(["policy-revision", "inspect", "examples/quadruped", "--revision", head.id, "--json"]); const revision = JSON.parse(revisionResult.stdout); expect(revisionResult.code).toBe(0); expect(revision.data.evaluation.candidate.cases[0].score.terms.trainingSteps).toBe(-0.02048);
+    expect(policy.data.architecture.actionTransform.residualScale).toBe(0.5);
+    const revisionResult = invoke(["policy-revision", "inspect", "examples/quadruped", "--revision", head.id, "--json"]); const revision = JSON.parse(revisionResult.stdout); expect(revisionResult.code).toBe(0); expect(revision.data.evaluation.candidate.cases[0].score.terms.trainingSteps).toBe(-0.04096);
   });
 });

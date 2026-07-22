@@ -26,6 +26,8 @@ describe("Robot Assembly compiler", () => {
   test("the complete example project resolves", async () => {
     const result = await validateProject(project);
     expect(result.project.manifest.id).toBe("quadruped");
+    expect(result.project.manifest.defaults.assembly).toBe("force-sensing-3dof");
+    expect(result.project.manifest.defaults.controller).toBe("spatial-residual-gait");
     expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
@@ -44,6 +46,8 @@ describe("Robot Assembly compiler", () => {
     expect(research.editable.path).toBe("training/force-residual-locomotion.training.json");
     expect(research.editable.parameters.find((item) => item.path === "/totalSteps")?.integer).toBe(true);
     expect(research.seed).toBe(42);
+    const spatial = await loadTrainingResearch(project, "spatial-residual-policy");
+    expect(spatial.editable.parameters.find((item) => item.path === "/residualScale")?.maximum).toBe(1);
   });
 
   test("robustness benchmarks distinguish promotion gates from scored challenges", async () => {

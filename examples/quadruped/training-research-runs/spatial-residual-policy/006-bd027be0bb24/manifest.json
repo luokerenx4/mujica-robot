@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "006-bd027be0bb24",
+  "sequence": 6,
+  "researchId": "spatial-residual-policy",
+  "researchHash": "9f2874cf0a5e6747220473c36c7954651507f94a527ca41f483342899fdbb049",
+  "programHash": "0bc01c16bdcb9e88b7d0ec6116c860975c7c3cbffe5efde1c8ae367c8ff5bbc1",
+  "benchmarkLockHash": "7a183b58733615e9a63a680b357a757e70ad3e65725283419480db49d05b6660",
+  "trainerHash": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "e0f8298bebf14f33853a5cb21895124c9d5e3ddbab9571397d625523f4ad3e23",
+  "proposal": {
+    "strategy": "training-learning-rate-decrease",
+    "hypothesis": "Decrease learningRate by one bounded step.",
+    "expectedEffect": "Test whether learningRate=0.0001 improves deterministic frozen-policy evaluation.",
+    "values": {
+      "/learningRate": 0.0001
+    }
+  },
+  "strategy": "training-learning-rate-decrease",
+  "policyId": "spatial-residual-locomotion-6a0b93c82228690d",
+  "score": 63.13754438402839,
+  "delta": 0.18935833675234903,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "actuator-delay: lateral drift 0.299 exceeds gate without improving the locked baseline"
+  ],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

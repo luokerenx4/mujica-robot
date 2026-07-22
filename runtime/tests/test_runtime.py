@@ -10,7 +10,7 @@ import numpy as np
 from mujica_runtime.controllers import load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics
-from mujica_runtime.training import PPOTrainer
+from mujica_runtime.training import PPOTrainer, effective_action_transform
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,6 +37,13 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_training_residual_scale_is_frozen_into_the_effective_transform(self):
+        base = {"kind": "spatial-gait-residual", "residualScale": 1.0}
+        effective = effective_action_transform(base, {"residualScale": 0.25})
+        self.assertEqual(effective["residualScale"], 0.25)
+        self.assertEqual(base["residualScale"], 1.0)
+        with self.assertRaisesRegex(RuntimeError, "requires a Trainer action transform"):
+            effective_action_transform(None, {"residualScale": 0.25})
     def test_survival_is_measured_against_the_requested_episode(self):
         self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)

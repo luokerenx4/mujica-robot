@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "spatial-residual-locomotion",
+  "name": "Delay-tolerant spatial gait residual policy",
+  "assembly": "force-sensing-3dof",
+  "trainer": "spatial-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal",
+    "reset-perturbation",
+    "low-friction",
+    "payload-variation",
+    "strong-lateral-push",
+    "actuator-delay"
+  ],
+  "totalSteps": 8192,
+  "rolloutSteps": 512,
+  "epochs": 2,
+  "minibatchSize": 128,
+  "learningRate": 0.0002,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0.002,
+  "residualScale": 0.75
+}

@@ -45,4 +45,6 @@ The periodic residual-policy lane ran 29 governed experiments. Four KEEP decisio
 
 The spatial development slice adds abduction authority to every leg. Its 3-DOF controller passes a gating 50 N lateral push and the former 40 ms actuator-delay challenge, improving the locked development score from `59.7765` to `62.6170`. The accepted assembly is Robot Revision `quadruped-r-b1a3d1f7161a`; see [the spatial quadruped decision](docs/design/spatial-quadruped-development.md).
 
+Native PPO then learns a governed half-scale residual over that predictive controller. The frozen policy scores `63.0350`, passes all seven gates, and improves actuator-delay progress to `0.694` with `0.030 m` drift. It is promoted as Policy Revision `quadruped-p-7423506a0965` and is the example project's default controller.
+
 Read [the architecture](docs/ARCHITECTURE.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
