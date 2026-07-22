@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "actuator-telemetry",
+  "name": "Commanded and applied actuator telemetry",
+  "type": "actuator-telemetry",
+  "fragment": "model.xml",
+  "compatibleMounts": ["sensor-bus"],
+  "providesMounts": [],
+  "observations": [
+    { "name": "last-commanded-action", "kind": "sensor", "size": 12, "source": "control:last-commanded", "unit": "nm" },
+    { "name": "last-applied-action", "kind": "sensor", "size": 12, "source": "control:last-applied", "unit": "nm" }
+  ],
+  "actions": [],
+  "dependencies": [],
+  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "massKg": 0,
+  "cost": 1,
+  "license": "Apache-2.0",
+  "attribution": "Runtime-provided actuator interface telemetry"
+}

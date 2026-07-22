@@ -47,4 +47,6 @@ The spatial development slice adds abduction authority to every leg. Its 3-DOF c
 
 Native PPO then learns a governed half-scale residual over that predictive controller. The frozen policy scores `63.0350`, passes all seven gates, and improves actuator-delay progress to `0.694` with `0.030 m` drift. It is promoted as Policy Revision `quadruped-p-7423506a0965` and is the example project's default controller.
 
+A separate held-out audit tests mirrored pushes, unseen delay durations, and compound disturbances. It exposes delay-duration overfitting and adds an explicit 69-value actuator-telemetry Assembly without falsely promoting the unsuccessful generalized policies; see [the spatial generalization audit](docs/design/spatial-generalization-audit.md).
+
 Read [the architecture](docs/ARCHITECTURE.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

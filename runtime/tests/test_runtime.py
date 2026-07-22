@@ -129,6 +129,16 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(environment.vector(observation).shape, (37,))
         self.assertEqual(observation["foot-contact-force"].shape, (4,))
 
+    def test_actuator_telemetry_exposes_commanded_and_delayed_actions(self):
+        model, compiled = compiled_assembly("force-sensing-telemetry-3dof")
+        task = json.loads((PROJECT / "tasks" / "forward-walk.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "actuator-delay.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 42); observation = environment.reset()
+        self.assertEqual(environment.vector(observation).shape, (69,))
+        command = np.linspace(-1, 1, 12); result = environment.step(command)
+        np.testing.assert_allclose(result.observation["last-commanded-action"], command)
+        np.testing.assert_allclose(result.observation["last-applied-action"], np.zeros(12))
+
     def test_host_rejects_wrong_action_shape(self):
         model, compiled = compiled_assembly("baseline")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
@@ -137,6 +147,15 @@ class RuntimeContractTest(unittest.TestCase):
         environment.reset()
         with self.assertRaisesRegex(RuntimeError, "expected 8 values"):
             environment.step(np.zeros(7))
+
+    def test_training_reward_exposes_benchmark_aligned_lateral_displacement(self):
+        model, compiled = compiled_assembly("force-sensing-3dof")
+        task = json.loads((PROJECT / "tasks" / "forward-walk.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 42); environment.reset()
+        environment.data.qpos[1] += 0.1
+        result = environment.step(np.zeros(12))
+        self.assertGreater(result.info["lateralDisplacement"], 0.09)
 
     def test_ppo_performs_a_real_small_training_run(self):
         model, compiled = compiled_assembly("baseline")

@@ -16,6 +16,16 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.massDeltaKg).toBeCloseTo(0.08);
   });
 
+  test("actuator telemetry is an explicit observation-only component", async () => {
+    const comparison = await compareAssemblies(project, "force-sensing-3dof", "force-sensing-telemetry-3dof");
+    expect(comparison.components.added.map((item) => item.componentId)).toEqual(["actuator-telemetry"]);
+    expect(comparison.observations.added.map((item) => item.name)).toEqual(["last-commanded-action", "last-applied-action"]);
+    expect(comparison.from.observationContract.size).toBe(45);
+    expect(comparison.to.observationContract.size).toBe(69);
+    expect(comparison.actions.changed).toEqual([]);
+    expect(comparison.massDeltaKg).toBe(0);
+  });
+
   test("identical source compiles to an identical content address", async () => {
     const first = await compileAssembly(project, "baseline");
     const second = await compileAssembly(project, "baseline");
@@ -28,10 +38,13 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("force-sensing-3dof");
     expect(result.project.manifest.defaults.controller).toBe("spatial-residual-gait");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof", "force-sensing-telemetry-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);
+    const telemetry = result.assemblies.find((item) => item.id === "force-sensing-telemetry-3dof");
+    expect(telemetry?.observationContract.size).toBe(69);
+    expect(telemetry?.actionContract.size).toBe(12);
   });
 
   test("research definitions expose a bounded editable surface", async () => {
