@@ -39,6 +39,11 @@ def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, dis
     }
 
 
+def episode_survival_rate(healthy_steps: int, planned_steps: int) -> float:
+    """Measure survival against the requested episode, not the truncated trace."""
+    return float(healthy_steps) / max(1, int(planned_steps))
+
+
 def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: dict[str, Any], training_steps: int = 0) -> dict[str, Any]:
     weights = objective["weights"]
     terms = {
@@ -103,7 +108,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         if result.terminated or result.truncated: break
     steps = max(1, environment.step_index)
     metrics = {
-        "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": survived_steps / steps,
+        "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.max_steps),
         "fell": fell, "meanVelocityTrackingError": totals["velocityError"] / steps, "meanUpright": totals["upright"] / steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),

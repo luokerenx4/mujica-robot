@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "004-48325c745461",
+  "sequence": 4,
+  "researchId": "spatial-gait",
+  "researchHash": "8709b8ad2a3e28931db65abe317bdf3a0b26caaa2d9dd41c8e033777e434bf91",
+  "programHash": "fdc6de0ef97ff1e00dbc56e739d3f73067b1196f4815a43a7937e0a3c6e19336",
+  "benchmarkLockHash": "c78786a0a9c23bbcf145fd8851b63325b49014981b96f14b24d7fb24ea3f01af",
+  "beforeControllerHash": "62294428baeb40c4b7fb48c2b7f31ba70af79da2be627c6329f97e944f186b28",
+  "candidateControllerHash": "9b4818f4e0f4d650117edefe1ecfe17303291fe13f803aaec589444f91759665",
+  "proposal": {
+    "strategy": "coordinate-phase-lead-seconds-increase",
+    "hypothesis": "Increase phaseLeadSeconds by one bounded step.",
+    "expectedEffect": "Test whether phaseLeadSeconds=0.13 improves the complete locked quadruped score.",
+    "values": {
+      "/config/phaseLeadSeconds": 0.13
+    }
+  },
+  "strategy": "coordinate-phase-lead-seconds-increase",
+  "score": 62.485270579250496,
+  "delta": -0.13172917358379976,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

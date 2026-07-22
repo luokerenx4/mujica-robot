@@ -28,9 +28,9 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6]);
-    expect(envelope.data.definitions.research).toBe(2);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8, 12]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 6]);
+    expect(envelope.data.definitions.research).toBe(3);
     expect(envelope.data.definitions.trainingResearch).toBe(2);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
@@ -64,8 +64,8 @@ describe("agent CLI contract", () => {
     const revisions = envelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt));
     expect(revisions.length).toBeGreaterThan(1);
     for (let index = 1; index < revisions.length; index++) expect(revisions[index].parent).toBe(revisions[index - 1].id);
-    expect(revisions.at(-1).candidateId).toBe("forward-locomotion");
-    expect(revisions.at(-1).aggregateScore).toBeCloseTo(72.94594910737753);
+    expect(revisions.at(-1).candidateId).toBe("spatial-quadruped");
+    expect(revisions.at(-1).aggregateScore).toBeCloseTo(62.616999752834296);
   });
 
   test("agent research proposals cannot escape declared values or bounds", async () => {

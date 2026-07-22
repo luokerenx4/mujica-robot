@@ -20,6 +20,10 @@ bun run mujica simulate examples/quadruped \
   --assembly force-sensing --controller forward-gait \
   --task forward-walk --scenario nominal --seed 101
 
+bun run mujica simulate examples/quadruped \
+  --assembly force-sensing-3dof --controller spatial-forward-gait \
+  --task forward-walk --scenario actuator-delay --seed 606
+
 bun run mujica evaluate examples/quadruped \
   --assembly force-sensing --controller forward-gait \
   --benchmark forward-locomotion
@@ -38,5 +42,7 @@ The Python/PyTorch lane uses a serialized force-aware PD residual prior instead 
 The current north-star slice closes the standing loophole. `forward-locomotion` scores net displacement toward a 1.25 m target, velocity, survival, uprightness, lateral drift, energy, model cost, and training cost across seven fixed cases. The promoted symmetric bound reaches `0.65–0.98 m` in every gating case, survives two seeded resets, low friction, payload, and a lateral push, and improves the stationary baseline by `23.5860` points. The 40 ms actuator-delay case remains visible as a scored, non-gating challenge because the current 2-DOF legs cannot yet recover it.
 
 The periodic residual-policy lane ran 29 governed experiments. Four KEEP decisions improved its frozen score from `67.0765` to `71.2307` while reducing the selected budget to 4096 steps. It remains below the program controller's `72.9459`, so the program controller is the default Robot Revision and the learned lane remains an inspectable Policy Revision.
+
+The spatial development slice adds abduction authority to every leg. Its 3-DOF controller passes a gating 50 N lateral push and the former 40 ms actuator-delay challenge, improving the locked development score from `59.7765` to `62.6170`. The accepted assembly is Robot Revision `quadruped-r-b1a3d1f7161a`; see [the spatial quadruped decision](docs/design/spatial-quadruped-development.md).
 
 Read [the architecture](docs/ARCHITECTURE.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

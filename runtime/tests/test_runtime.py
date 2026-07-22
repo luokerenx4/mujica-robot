@@ -9,7 +9,7 @@ import numpy as np
 
 from mujica_runtime.controllers import transform_policy_action
 from mujica_runtime.environment import RobotEnvironment
-from mujica_runtime.simulation import motion_metrics, score_metrics
+from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics
 from mujica_runtime.training import PPOTrainer
 
 
@@ -37,6 +37,10 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_survival_is_measured_against_the_requested_episode(self):
+        self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
+        self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
+
     def test_locomotion_score_requires_net_forward_progress(self):
         task = {"targetVelocity": [0.2, 0.0, 0.0], "durationSeconds": 3.0}
         stationary = motion_metrics(np.zeros(3), np.array([0.03, 0.0, 0.0]), 0.1, task, 3.0)

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "spatial-quadruped",
+  "name": "Promote delay-tolerant spatial quadruped",
+  "kind": "development",
+  "benchmark": "spatial-robustness",
+  "baseRevision": "quadruped-r-5c96344630e7",
+  "baseline": { "assembly": "force-sensing", "controller": "forward-gait" },
+  "proposed": { "assembly": "force-sensing-3dof", "controller": "spatial-forward-gait" },
+  "addedComponents": [],
+  "removedComponents": [],
+  "allowedChanges": [
+    "assemblies/force-sensing-3dof.robot.json",
+    "robots/quadruped-3dof/robot.json",
+    "robots/quadruped-3dof/model.xml",
+    "controllers/spatial-forward-gait/controller.json",
+    "controllers/spatial-forward-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/spatial-robustness.benchmark.json",
+    "benchmarks/spatial-robustness.lock.json",
+    "objectives/spatial-locomotion.objective.json",
+    "tasks/forward-walk.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/reset-perturbation.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/actuator-delay.scenario.json",
+    "scenarios/strong-lateral-push.scenario.json"
+  ],
+  "hypothesis": "Adding one abduction actuator per leg and a short-horizon predictive gait gives the robot real lateral authority while retaining forward locomotion under actuator delay.",
+  "expectedEffect": "Beat the 2-DOF baseline, pass every spatial locomotion gate, keep lateral drift below 0.2 m, and survive the two-control-step actuator delay."
+}

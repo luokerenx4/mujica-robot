@@ -26,7 +26,10 @@ describe("Robot Assembly compiler", () => {
   test("the complete example project resolves", async () => {
     const result = await validateProject(project);
     expect(result.project.manifest.id).toBe("quadruped");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof"]);
+    const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
+    expect(spatial?.observationContract.size).toBe(45);
+    expect(spatial?.actionContract.size).toBe(12);
   });
 
   test("research definitions expose a bounded editable surface", async () => {
@@ -47,5 +50,8 @@ describe("Robot Assembly compiler", () => {
     const benchmark = await loadBenchmark(project, "forward-locomotion");
     expect(benchmark.cases.find((item) => item.id === "nominal")?.gating).toBe(true);
     expect(benchmark.cases.find((item) => item.id === "actuator-delay")?.gating).toBe(false);
+    const spatial = await loadBenchmark(project, "spatial-robustness");
+    expect(spatial.cases.find((item) => item.id === "actuator-delay")?.gating).toBe(true);
+    expect(spatial.cases.find((item) => item.id === "strong-lateral-push")?.gating).toBe(true);
   });
 });

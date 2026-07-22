@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "spatial-gait",
+  "name": "Delay-tolerant spatial gait autoresearch",
+  "benchmark": "spatial-robustness",
+  "assembly": "force-sensing-3dof",
+  "controller": "spatial-forward-gait",
+  "program": "SPATIAL_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/spatial-forward-gait/controller.json",
+    "parameters": [
+      { "path": "/config/frequencyHz", "minimum": 0.8, "maximum": 1.2, "step": 0.01, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/phaseLeadSeconds", "minimum": 0.06, "maximum": 0.16, "step": 0.01, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/statePredictionSeconds", "minimum": 0, "maximum": 0.05, "step": 0.005, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/neutralAbduction", "minimum": 0.16, "maximum": 0.23, "step": 0.005, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/neutralHip", "minimum": 0.3, "maximum": 0.4, "step": 0.005, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/neutralKnee", "minimum": -0.45, "maximum": -0.33, "step": 0.005, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/hipAmplitude", "minimum": 0.12, "maximum": 0.25, "step": 0.01, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/kneeAmplitude", "minimum": 0, "maximum": 0.12, "step": 0.005, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/kpAbduction", "minimum": 12, "maximum": 28, "step": 1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/kdAbduction", "minimum": 2, "maximum": 5, "step": 0.2, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/kpSagittal", "minimum": 22, "maximum": 38, "step": 1, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/kdSagittal", "minimum": 1.2, "maximum": 4, "step": 0.2, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/rollPositionGain", "minimum": 0.15, "maximum": 0.38, "step": 0.01, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/rollRateGain", "minimum": 0.05, "maximum": 0.22, "step": 0.01, "directionOrder": ["decrease", "increase"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 28
+}
