@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "id": "quadruped-r-d193b01b53f1",
+  "parent": "quadruped-r-f7a1b498acac",
+  "candidateId": "command-conditioned-locomotion",
+  "candidateHash": "c766e0de09d5d17cb632d86f7686bde57e91e5e5093098fd2deb60f056d9c1ea",
+  "benchmarkId": "command-tracking",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "assembly": "command-conditioned-history-3dof",
+  "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+  "componentHashes": {
+    "body-imu": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+    "actuator-history": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+    "motion-command-input": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+    "foot-force-kit": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c"
+  },
+  "observationContractHash": "37b9663cd7106e269da55f0e7a2a5f8c4b4c68e3100cbb5544dbcbdcf36f5f38",
+  "actionContractHash": "130b3327995e6142afe6396b23fcaab97502e3feb265b44426d5c8ae0698e010",
+  "controller": "command-tracking-gait",
+  "controllerHash": "f69691f5d204c1e48ae59a146b6fadb36fd28f0b54ad13a343fc468fa84ee15c",
+  "policyId": null,
+  "policyHash": null,
+  "verifiedChanges": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "aggregateScore": 76.38090494637152,
+  "scoreDelta": 5.106433907197967,
+  "exactChangedFiles": [
+    "controllers/command-tracking-gait/controller.json",
+    "controllers/command-tracking-gait/controller.py"
+  ],
+  "sourceClosure": [
+    "assemblies/command-conditioned-history-3dof.robot.json",
+    "benchmarks/command-tracking.benchmark.json",
+    "benchmarks/command-tracking.lock.json",
+    "components/actuator-history/component.json",
+    "components/actuator-history/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "controllers/command-tracking-gait/controller.json",
+    "controllers/command-tracking-gait/controller.py",
+    "objectives/command-tracking.objective.json",
+    "robots/quadruped-3dof/model.xml",
+    "robots/quadruped-3dof/robot.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/delayed-lateral-push.scenario.json",
+    "scenarios/nominal.scenario.json",
+    "tasks/forward-walk.task.json",
+    "tasks/lateral-walk.task.json",
+    "tasks/reverse-walk.task.json",
+    "tasks/stand.task.json",
+    "tasks/yaw-left.task.json"
+  ],
+  "appliedAt": "2026-07-22T20:18:16.291Z"
+}

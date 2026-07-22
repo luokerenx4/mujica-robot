@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "031-ce6f7b427f8e",
+  "sequence": 31,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "ecd2d0fd9702dc046aa35c64edb3d532806760aa2c509937a4ba4e1f7e70afca",
+  "candidateControllerHash": "154b9704bd69d72492682c605b18081c32b5be4d1e2705616b541a70da9759a0",
+  "proposal": {
+    "strategy": "yaw-sign",
+    "hypothesis": "Reverse the left-right sagittal differential because the current sign produces no positive yaw tracking.",
+    "expectedEffect": "Reduce yaw-left rate error without regressing passing gates.",
+    "values": {
+      "/config/yawHipDifferential": -0.75
+    }
+  },
+  "strategy": "yaw-sign",
+  "score": 69.57675227537277,
+  "delta": -0.009544252920960616,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 10,
+    "previousViolationSeverity": 5.324882614247438,
+    "candidateViolationSeverity": 5.328959144394791,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

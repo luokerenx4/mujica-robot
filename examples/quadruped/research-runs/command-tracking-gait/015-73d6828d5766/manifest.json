@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "015-73d6828d5766",
+  "sequence": 15,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "68013edabec46ee282f0cd9e4ff0aad4bc259bd7515f54053ce6bf3d54f20ec9",
+  "candidateControllerHash": "dcc134c1097e719234de762d9d46e7a3c297e24a483173d96c7c4a279162246b",
+  "proposal": {
+    "strategy": "coordinate-lateral-abduction-amplitude-increase",
+    "hypothesis": "Increase lateralAbductionAmplitude by one bounded step.",
+    "expectedEffect": "Test whether lateralAbductionAmplitude=0.14 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralAbductionAmplitude": 0.14
+    }
+  },
+  "strategy": "coordinate-lateral-abduction-amplitude-increase",
+  "score": 64.19011720714441,
+  "delta": -3.0013628564165487,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: survival regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: survival regressed from passing to failing"
+    ],
+    "previousViolationCount": 11,
+    "candidateViolationCount": 12,
+    "previousViolationSeverity": 9.223152710203616,
+    "candidateViolationSeverity": 10.847139390737249,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

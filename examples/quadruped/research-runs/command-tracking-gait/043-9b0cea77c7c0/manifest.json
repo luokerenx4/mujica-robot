@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "043-9b0cea77c7c0",
+  "sequence": 43,
+  "researchId": "command-tracking-gait",
+  "researchHash": "0c4414f69bc3a4036a9b525360b927b879d2df0827d2a800dcf1f09407d90f7e",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "c2f15e1226331caffa5e9f2900959a2b703190ebdcb0630cd2d738f982bc7131",
+  "candidateControllerHash": "2ce9035c37f3d42f2c4f45ab4dbcc82ef177575f4bd6345b804368b7e77680e0",
+  "proposal": {
+    "strategy": "final-lateral-lean-neighbor",
+    "hypothesis": "A one-thousandth nominal lean increase may improve nominal command progress while remaining inside the 0.25 m drift gate; delayed recovery is isolated by its own fixed lean.",
+    "expectedEffect": "Retain zero violations and improve aggregate score, freezing the all-gate controller in a child Revision.",
+    "values": {
+      "/config/lateralCommandLean": 0.081
+    }
+  },
+  "strategy": "final-lateral-lean-neighbor",
+  "score": 76.34559668952886,
+  "delta": -0.03530825684265437,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 0,
+    "candidateViolationCount": 0,
+    "previousViolationSeverity": 0,
+    "candidateViolationSeverity": 0,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

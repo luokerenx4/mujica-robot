@@ -86,6 +86,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     distance_traveled = 0.0
     trajectory: list[dict[str, Any]] = []
     totals = {"velocityError": 0.0, "planarVelocityError": 0.0, "yawRateError": 0.0, "upright": 0.0, "energy": 0.0, "smoothness": 0.0}
+    measured_motion_total = np.zeros(3, dtype=np.float64)
     survived_steps = 0
     fell = False
     previous_pushing = False
@@ -101,6 +102,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         if previous_pushing and not info["pushing"]: environment.events.append({"type": "scenario.push-end", "time": float(environment.data.time)})
         previous_pushing = bool(info["pushing"])
         for key in totals: totals[key] += float(info[key])
+        measured_motion_total += np.asarray(info["measuredMotion"], dtype=np.float64)
         trajectory.append({"step": environment.step_index, "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
@@ -108,9 +110,12 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
             environment.events.append({"type": "robot.fall", "time": float(environment.data.time), "height": info["height"]})
         if result.terminated or result.truncated: break
     steps = max(1, environment.step_index)
+    mean_measured_motion = measured_motion_total / steps
+    motion_command = np.asarray([*request["task"]["motionCommand"]["linearVelocityMps"], request["task"]["motionCommand"]["yawRateRadPerSec"]], dtype=np.float64)
     metrics = {
         "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.max_steps),
-        "fell": fell, "motionCommand": [*request["task"]["motionCommand"]["linearVelocityMps"], request["task"]["motionCommand"]["yawRateRadPerSec"]],
+        "fell": fell, "motionCommand": motion_command.tolist(), "meanMeasuredMotion": mean_measured_motion.tolist(),
+        "planarVelocityTrackingError": float(np.linalg.norm(mean_measured_motion[:2] - motion_command[:2])), "yawRateTrackingError": abs(float(mean_measured_motion[2] - motion_command[2])),
         "meanVelocityTrackingError": totals["velocityError"] / steps, "meanPlanarVelocityTrackingError": totals["planarVelocityError"] / steps, "meanYawRateTrackingError": totals["yawRateError"] / steps, "meanUpright": totals["upright"] / steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),

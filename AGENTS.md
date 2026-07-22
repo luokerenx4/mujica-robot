@@ -11,7 +11,7 @@ Mujica is an AI-native robot development harness. Domain correctness, reproducib
 - Program Controllers declare their required Observation subset and complete produced Action contract; incompatible Assembly pairs fail before Runtime invocation.
 - Training and evaluation are separate operations. Evaluation consumes a frozen Policy Artifact.
 - Events are the debugging protocol. Completed runs and policies are immutable artifacts.
-- Capability gates outrank aggregate score; research compares score only within the same gate-feasibility tier.
+- Capability gates outrank aggregate score. Research preserves every passing gate, then compares violation count, normalized violation severity, and finally score.
 - A Coding Agent edits files and invokes the same CLI as a human; it does not manipulate a 3D scene as source state.
 - A kept Development Candidate creates a new Robot Revision with explicit lineage.
 

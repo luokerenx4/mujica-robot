@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "010-9c7b24c8b5db",
+  "sequence": 10,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "68013edabec46ee282f0cd9e4ff0aad4bc259bd7515f54053ce6bf3d54f20ec9",
+  "candidateControllerHash": "5446ab49df5979e14ed2c1b3c92417adb94b602900160f54425793ba6c8df6ce",
+  "proposal": {
+    "strategy": "coordinate-forward-velocity-gain-decrease",
+    "hypothesis": "Decrease forwardVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether forwardVelocityGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/forwardVelocityGain": -0.1
+    }
+  },
+  "strategy": "coordinate-forward-velocity-gain-decrease",
+  "score": 61.643114626466584,
+  "delta": -5.548365437094375,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "yaw-left: lateral-drift regressed from passing to failing",
+    "delayed-forward: survival regressed from passing to failing",
+    "delayed-forward: forward-progress regressed from passing to failing",
+    "delayed-forward: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "yaw-left: lateral-drift regressed from passing to failing",
+      "delayed-forward: survival regressed from passing to failing",
+      "delayed-forward: forward-progress regressed from passing to failing",
+      "delayed-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 11,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 9.223152710203616,
+    "candidateViolationSeverity": 16.890933825542124,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

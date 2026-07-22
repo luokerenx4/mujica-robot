@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "032-3f924588713e",
+  "sequence": 32,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "cd959116f38e7d808ff7f0abae1cc3cf34b3dcac1d461ad8723fe4b6084a9ef4",
+  "candidateControllerHash": "7c261c93664bee9ff4d1ecd3f68a24519993407ff3894532bdda1d5bc1f38176",
+  "proposal": {
+    "strategy": "cross-track-position",
+    "hypothesis": "Increase world-frame cross-track position correction after the 0.5 gain reduced disturbed drift from 0.95 m to 0.307 m.",
+    "expectedEffect": "Reduce both lateral drift violations while preserving command progress and stability.",
+    "values": {
+      "/config/crossTrackPositionGain": 0.6
+    }
+  },
+  "strategy": "cross-track-position",
+  "score": 70.38371178582958,
+  "delta": -5.384548633790615,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: survival regressed from passing to failing",
+    "disturbed-lateral: planar-velocity-tracking regressed from passing to failing",
+    "disturbed-lateral: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: survival regressed from passing to failing",
+      "disturbed-lateral: planar-velocity-tracking regressed from passing to failing",
+      "disturbed-lateral: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 5,
+    "previousViolationSeverity": 0.5403272213060407,
+    "candidateViolationSeverity": 7.324498126571113,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

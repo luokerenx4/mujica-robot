@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "041-d3823ee3ee1d",
+  "sequence": 41,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "5eee2b74fd28bf4c8233c6d819a459aa58b55c9b91ebdbf2bae361d9383179a5",
+  "candidateControllerHash": "02cbf38eb06fc107c951662a62dde29965a1079efa9a50ca125e3e00f02bf1a8",
+  "proposal": {
+    "strategy": "lateral-progress-midpoint",
+    "hypothesis": "With the stable 0.6/0.4 cross-track split, a midpoint command lean may add nominal lateral authority while the position loop preserves drift.",
+    "expectedEffect": "Cross the final nominal progress gate without regressing any passing case.",
+    "values": {
+      "/config/lateralCommandLean": 0.055
+    }
+  },
+  "strategy": "lateral-progress-midpoint",
+  "score": 75.20168121928347,
+  "delta": -0.9132195296759704,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: lateral-drift regressed from passing to failing",
+    "disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: lateral-drift regressed from passing to failing",
+      "disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+    ],
+    "previousViolationCount": 1,
+    "candidateViolationCount": 3,
+    "previousViolationSeverity": 0.2913196229444244,
+    "candidateViolationSeverity": 0.722950789822799,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

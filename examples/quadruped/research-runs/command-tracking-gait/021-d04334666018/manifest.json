@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "021-d04334666018",
+  "sequence": 21,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "b279c323a243ae7817bf82bed0d4515f341ca173d723ebfb8731fe2fcad54462",
+  "candidateControllerHash": "bb6df27e0fa821fba14f2234929a80dac7074b6c252cda0298f3ea6861485bb6",
+  "proposal": {
+    "strategy": "coordinate-lateral-velocity-gain-increase",
+    "hypothesis": "Increase lateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether lateralVelocityGain=0 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralVelocityGain": 0
+    }
+  },
+  "strategy": "coordinate-lateral-velocity-gain-increase",
+  "score": 65.47568676337701,
+  "delta": -3.9435069372183165,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: survival regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: survival regressed from passing to failing"
+    ],
+    "previousViolationCount": 11,
+    "candidateViolationCount": 11,
+    "previousViolationSeverity": 5.023616315503577,
+    "candidateViolationSeverity": 8.412276800128849,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

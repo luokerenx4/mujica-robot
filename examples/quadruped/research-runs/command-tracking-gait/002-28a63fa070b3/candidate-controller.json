@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "id": "command-tracking-gait",
+  "name": "World-command tracking spatial gait",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {
+        "name": "joint-position",
+        "size": 12
+      },
+      {
+        "name": "joint-velocity",
+        "size": 12
+      },
+      {
+        "name": "base-velocity",
+        "size": 6
+      },
+      {
+        "name": "base-orientation",
+        "size": 4
+      },
+      {
+        "name": "imu-angular-velocity",
+        "size": 3
+      },
+      {
+        "name": "foot-contact-force",
+        "size": 4
+      },
+      {
+        "name": "actuator-delay-steps",
+        "size": 1
+      },
+      {
+        "name": "motion-command",
+        "size": 3
+      }
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 12,
+        "low": -8,
+        "high": 8
+      }
+    ]
+  },
+  "config": {
+    "kpAbduction": 16.82265,
+    "kdAbduction": 3.27295,
+    "kpSagittal": 30.53877,
+    "kdSagittal": 2.16306,
+    "frequencyHz": 0.91295,
+    "nominalForwardSpeedMps": 0.25,
+    "nominalLateralSpeedMps": 0.12,
+    "nominalYawRateRadPerSec": 0.5,
+    "commandDeadband": 0.02,
+    "forwardVelocityGain": 0,
+    "lateralVelocityGain": 0,
+    "yawRateCommandGain": 0,
+    "lateralAbductionAmplitude": 0.12,
+    "yawHipDifferential": 0.75,
+    "phaseLeadByDelaySteps": [
+      0.12,
+      0.0075,
+      0.02,
+      0.225
+    ],
+    "disturbancePhaseLeadSeconds": 0.01,
+    "disturbanceRollRateThreshold": 1,
+    "rollLateralVelocityGain": 0,
+    "lateralPositionGain": 0,
+    "maximumRollCorrection": 0.16,
+    "statePredictionSeconds": 0.01973,
+    "neutralAbduction": 0.19944,
+    "neutralHip": 0.3409,
+    "neutralKnee": -0.36902,
+    "hipAmplitude": 0.16,
+    "kneeAmplitude": 0.05614,
+    "frontRearPhase": 3.141592653589793,
+    "contactGain": 0.02,
+    "rollPositionGain": 0.31249,
+    "rollRateGain": 0.12693
+  }
+}

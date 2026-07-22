@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "id": "020-3aee26fcd248",
+  "sequence": 20,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "b279c323a243ae7817bf82bed0d4515f341ca173d723ebfb8731fe2fcad54462",
+  "candidateControllerHash": "29889b1ded46ef56a5c41ca7f9dbcfcb4cbca171307afa2e6c591d0caa9d9fc9",
+  "proposal": {
+    "strategy": "coordinate-forward-velocity-gain-decrease",
+    "hypothesis": "Decrease forwardVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether forwardVelocityGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/forwardVelocityGain": -0.1
+    }
+  },
+  "strategy": "coordinate-forward-velocity-gain-decrease",
+  "score": 60.40696453717627,
+  "delta": -9.012229163419057,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "yaw-left: lateral-drift regressed from passing to failing",
+    "delayed-forward: survival regressed from passing to failing",
+    "delayed-forward: forward-progress regressed from passing to failing",
+    "delayed-forward: score-regression regressed from passing to failing",
+    "disturbed-lateral: survival regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "yaw-left: lateral-drift regressed from passing to failing",
+      "delayed-forward: survival regressed from passing to failing",
+      "delayed-forward: forward-progress regressed from passing to failing",
+      "delayed-forward: score-regression regressed from passing to failing",
+      "disturbed-lateral: survival regressed from passing to failing"
+    ],
+    "previousViolationCount": 11,
+    "candidateViolationCount": 14,
+    "previousViolationSeverity": 5.023616315503577,
+    "candidateViolationSeverity": 14.890117744664845,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

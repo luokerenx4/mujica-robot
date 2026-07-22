@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "command-tracking-gait",
+  "name": "Planar command tracking gait development",
+  "benchmark": "command-tracking",
+  "assembly": "command-conditioned-history-3dof",
+  "controller": "command-tracking-gait",
+  "program": "COMMAND_TRACKING_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/command-tracking-gait/controller.json",
+    "parameters": [
+      { "path": "/config/frequencyHz", "minimum": 0.6, "maximum": 1.8, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/forwardVelocityGain", "minimum": -0.5, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/commandLateralVelocityGain", "minimum": -0.5, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/crossTrackPositionGain", "minimum": 0, "maximum": 2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/crossTrackVelocityGain", "minimum": 0, "maximum": 2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/yawRateCommandGain", "minimum": -0.5, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/reverseHipScale", "minimum": 0.5, "maximum": 2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/lateralAbductionAmplitude", "minimum": -0.3, "maximum": 0.3, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/lateralCommandLean", "minimum": -0.2, "maximum": 0.2, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedLateralCommandLean", "minimum": -0.2, "maximum": 0.2, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/yawAbductionDifferential", "minimum": -0.3, "maximum": 0.3, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/yawHipDifferential", "minimum": -2, "maximum": 2, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/yawPhaseDifferential", "minimum": -1.5, "maximum": 1.5, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/rollLateralVelocityGain", "minimum": -1, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/lateralPositionGain", "minimum": -1, "maximum": 1, "step": 0.1, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/maximumRollCorrection", "minimum": 0.08, "maximum": 0.3, "step": 0.02, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/statePredictionSeconds", "minimum": 0, "maximum": 0.08, "step": 0.005, "directionOrder": ["increase", "decrease"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 64
+}

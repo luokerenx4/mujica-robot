@@ -13,8 +13,8 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
-    expect(first.snapshot.benchmarks).toHaveLength(6);
-    expect(first.snapshot.candidates).toHaveLength(4);
+    expect(first.snapshot.benchmarks).toHaveLength(7);
+    expect(first.snapshot.candidates).toHaveLength(5);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
     const html = await readFile(first.indexPath, "utf8");

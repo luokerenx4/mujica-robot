@@ -1,0 +1,942 @@
+{
+  "previous": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "command-tracking-gait",
+    "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+    "aggregateScore": 69.58629652829373,
+    "cases": [
+      {
+        "case": {
+          "id": "stop",
+          "task": "stand",
+          "scenario": "nominal",
+          "seed": 1101,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 2.0000000000000013,
+          "steps": 100,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.0810172478324569,
+          "meanPlanarVelocityTrackingError": 0.0810172478324569,
+          "meanYawRateTrackingError": 3.656794099438838e-15,
+          "meanUpright": 0.9475483029642793,
+          "meanEnergy": 196.31407577809176,
+          "meanSmoothness": 138.77083236823887,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.08972642110276942,
+            1.1632488424711546e-15,
+            0.41969361704342906
+          ],
+          "netDisplacement": [
+            -0.08972642110276942,
+            1.1632488424711546e-15,
+            -0.020306382956570945
+          ],
+          "forwardDisplacement": 0,
+          "targetDistance": 0,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0,
+          "lateralDrift": 0.08972642110276942,
+          "distanceTraveled": 0.10154140295491194
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 27.751638616453967,
+            "forwardProgress": 25,
+            "upright": 14.21322454446419,
+            "lateralDrift": -0.8972642110276942,
+            "energy": -0.9815703788904588,
+            "smoothness": -0.13877083236823887,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 92.67125773863177
+        },
+        "resultHash": "f7b0636d2348deab500a2432ef74b0e6af299c656271c34bae3bf5a7bb30af11"
+      },
+      {
+        "case": {
+          "id": "forward",
+          "task": "forward-walk",
+          "scenario": "nominal",
+          "seed": 1102,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.25,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.24466624283751706,
+          "meanPlanarVelocityTrackingError": 0.23288731466365287,
+          "meanYawRateTrackingError": 0.03955223440047031,
+          "meanUpright": 0.6462729902886282,
+          "meanEnergy": 195.73178559467664,
+          "meanSmoothness": 133.18752384507945,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.6657196127668945,
+            0.0369535278579861,
+            0.2552941875613789
+          ],
+          "netDisplacement": [
+            0.6657196127668945,
+            0.0369535278579861,
+            -0.1847058124386211
+          ],
+          "forwardDisplacement": 0.6657196127668945,
+          "targetDistance": 1.25,
+          "forwardProgress": 0.5325756902135156,
+          "meanForwardVelocity": 0.13314392255338764,
+          "lateralDrift": 0.0369535278579861,
+          "distanceTraveled": 1.2033557571888525
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 24.102846986199097,
+            "forwardProgress": 13.31439225533789,
+            "upright": 9.694094854329423,
+            "lateralDrift": -0.369535278579861,
+            "energy": -0.9786589279733832,
+            "smoothness": -0.13318752384507945,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 73.35395236546809
+        },
+        "resultHash": "016d58a2f232594c24753be3a76d9a92344d84a656c280cf2edbc6ee19c2c6d6"
+      },
+      {
+        "case": {
+          "id": "reverse",
+          "task": "reverse-walk",
+          "scenario": "nominal",
+          "seed": 1103,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            -0.15,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.14794178760020943,
+          "meanPlanarVelocityTrackingError": 0.14794178760020943,
+          "meanYawRateTrackingError": 4.051465061533372e-15,
+          "meanUpright": 0.9467159119391256,
+          "meanEnergy": 193.81653125113283,
+          "meanSmoothness": 137.1467911525479,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.12450807869356381,
+            -2.2970802196664185e-15,
+            0.41787039268601694
+          ],
+          "netDisplacement": [
+            -0.12450807869356381,
+            -2.2970802196664185e-15,
+            -0.022129607313983057
+          ],
+          "forwardDisplacement": 0.12450807869356381,
+          "targetDistance": 0.75,
+          "forwardProgress": 0.16601077159141842,
+          "meanForwardVelocity": 0.0249016157387144,
+          "lateralDrift": 2.2970802196664185e-15,
+          "distanceTraveled": 0.4755486609284748
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 26.133729361586774,
+            "forwardProgress": 4.15026928978546,
+            "upright": 14.200738679086884,
+            "lateralDrift": -2.2970802196664185e-14,
+            "energy": -0.9690826562556641,
+            "smoothness": -0.1371467911525479,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 71.10250788305088
+        },
+        "resultHash": "2ded10fa9425e901e94b7479760abae376323c1310a499fcb1c3aa17bf5db936"
+      },
+      {
+        "case": {
+          "id": "lateral",
+          "task": "lateral-walk",
+          "scenario": "nominal",
+          "seed": 1104,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.12,
+            0
+          ],
+          "meanVelocityTrackingError": 0.18558602450717668,
+          "meanPlanarVelocityTrackingError": 0.15341770350756714,
+          "meanYawRateTrackingError": 0.08877852482883987,
+          "meanUpright": 0.9447100472165587,
+          "meanEnergy": 197.06210660983913,
+          "meanSmoothness": 140.5582101408941,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.2890956047471335,
+            0.038183186897819674,
+            0.419640856160902
+          ],
+          "netDisplacement": [
+            -0.2890956047471335,
+            0.038183186897819674,
+            -0.020359143839097982
+          ],
+          "forwardDisplacement": 0.038183186897819674,
+          "targetDistance": 0.6,
+          "forwardProgress": 0.06363864482969946,
+          "meanForwardVelocity": 0.007636637379564436,
+          "lateralDrift": 0.2890956047471335,
+          "distanceTraveled": 0.332489502698033
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 25.30394199988176,
+            "forwardProgress": 1.5909661207424863,
+            "upright": 14.170650708248381,
+            "lateralDrift": -2.8909560474713354,
+            "energy": -0.9853105330491957,
+            "smoothness": -0.1405582101408941,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 64.7727340382112
+        },
+        "resultHash": "59e103a4318bbda083fd64627c1eef4766a7e3c6a5c6e0b19801ef3cc4f558d2"
+      },
+      {
+        "case": {
+          "id": "yaw-left",
+          "task": "yaw-left",
+          "scenario": "nominal",
+          "seed": 1105,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0,
+            0.5
+          ],
+          "meanVelocityTrackingError": 0.5154981951950797,
+          "meanPlanarVelocityTrackingError": 0.0868784196474174,
+          "meanYawRateTrackingError": 0.4997251778187463,
+          "meanUpright": 0.9468286922777698,
+          "meanEnergy": 195.55904007777016,
+          "meanSmoothness": 138.61876355416024,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.24215094874481793,
+            0.03309860643602939,
+            0.42250703512768417
+          ],
+          "netDisplacement": [
+            -0.24215094874481793,
+            0.03309860643602939,
+            -0.01749296487231583
+          ],
+          "forwardDisplacement": 0,
+          "targetDistance": 0,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0,
+          "lateralDrift": 0.24440253625120711,
+          "distanceTraveled": 0.32067604494523394
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 19.795470621552475,
+            "forwardProgress": 25,
+            "upright": 14.202430384166547,
+            "lateralDrift": -2.444025362512071,
+            "energy": -0.9777952003888508,
+            "smoothness": -0.13861876355416025,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 83.16146167926394
+        },
+        "resultHash": "4725bdf3bee44164feb304b1d64c74a0f9719d3c64829d009f946f3618e4929d"
+      },
+      {
+        "case": {
+          "id": "delayed-forward",
+          "task": "forward-walk",
+          "scenario": "actuator-delay-three-step",
+          "seed": 1106,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.25,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.2963150756290491,
+          "meanPlanarVelocityTrackingError": 0.29631507562904885,
+          "meanYawRateTrackingError": 1.2376486687177156e-9,
+          "meanUpright": 0.6757590444701781,
+          "meanEnergy": 591.0839857929756,
+          "meanSmoothness": 28.228588069355695,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.4427503942565356,
+            8.969291826274342e-11,
+            0.2564050747029135
+          ],
+          "netDisplacement": [
+            0.4427503942565356,
+            8.969291826274342e-11,
+            -0.1835949252970865
+          ],
+          "forwardDisplacement": 0.4427503942565356,
+          "targetDistance": 1.25,
+          "forwardProgress": 0.3542003154052285,
+          "meanForwardVelocity": 0.08855007885131294,
+          "lateralDrift": 8.969291826274342e-11,
+          "distanceTraveled": 1.1146534461232331
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 23.142521879136687,
+            "forwardProgress": 8.855007885130712,
+            "upright": 10.136385667052672,
+            "lateralDrift": -8.969291826274342e-10,
+            "energy": -2.955419928964878,
+            "smoothness": -0.028228588069355694,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 66.87426691338891
+        },
+        "resultHash": "3bb0c1ae4515f65f95e99db19c40203c66fbeb4d6cef87132adc3a5f93f5676e"
+      },
+      {
+        "case": {
+          "id": "disturbed-lateral",
+          "task": "lateral-walk",
+          "scenario": "delayed-lateral-push",
+          "seed": 1107,
+          "weight": 2,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.12,
+            0
+          ],
+          "meanVelocityTrackingError": 1.0139326393457886,
+          "meanPlanarVelocityTrackingError": 0.4673003601742306,
+          "meanYawRateTrackingError": 0.8035011358148152,
+          "meanUpright": 0.8380973001296337,
+          "meanEnergy": 513.5584410013786,
+          "meanSmoothness": 40.48000871558676,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.17187128585943348,
+            -0.950903358155681,
+            0.22367921713914451
+          ],
+          "netDisplacement": [
+            -0.17187128585943348,
+            -0.950903358155681,
+            -0.2163207828608555
+          ],
+          "forwardDisplacement": -0.950903358155681,
+          "targetDistance": 0.6,
+          "forwardProgress": 0,
+          "meanForwardVelocity": -0.1901806716311487,
+          "lateralDrift": 0.17187128585943348,
+          "distanceTraveled": 2.0633754911000306
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 14.896228113044181,
+            "forwardProgress": 0,
+            "upright": 12.571459501944505,
+            "lateralDrift": -1.7187128585943348,
+            "energy": -2.567792205006893,
+            "smoothness": -0.04048000871558676,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 50.86470254267187
+        },
+        "resultHash": "f7b36ab197c3692c4c13a05233f628fd43053a5a0644503f349a4a2e4271d4fd"
+      }
+    ]
+  },
+  "candidate": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "command-tracking-gait",
+    "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+    "aggregateScore": 69.57675227537277,
+    "cases": [
+      {
+        "case": {
+          "id": "stop",
+          "task": "stand",
+          "scenario": "nominal",
+          "seed": 1101,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 2.0000000000000013,
+          "steps": 100,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.0810172478324569,
+          "meanPlanarVelocityTrackingError": 0.0810172478324569,
+          "meanYawRateTrackingError": 3.656794099438838e-15,
+          "meanUpright": 0.9475483029642793,
+          "meanEnergy": 196.31407577809176,
+          "meanSmoothness": 138.77083236823887,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.08972642110276942,
+            1.1632488424711546e-15,
+            0.41969361704342906
+          ],
+          "netDisplacement": [
+            -0.08972642110276942,
+            1.1632488424711546e-15,
+            -0.020306382956570945
+          ],
+          "forwardDisplacement": 0,
+          "targetDistance": 0,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0,
+          "lateralDrift": 0.08972642110276942,
+          "distanceTraveled": 0.10154140295491194
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 27.751638616453967,
+            "forwardProgress": 25,
+            "upright": 14.21322454446419,
+            "lateralDrift": -0.8972642110276942,
+            "energy": -0.9815703788904588,
+            "smoothness": -0.13877083236823887,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 92.67125773863177
+        },
+        "resultHash": "3242ab52e63ec4156e75dda4ffb7a62f77f94e3a8afc46b3b66658b28d060346"
+      },
+      {
+        "case": {
+          "id": "forward",
+          "task": "forward-walk",
+          "scenario": "nominal",
+          "seed": 1102,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.25,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.24466624283751706,
+          "meanPlanarVelocityTrackingError": 0.23288731466365287,
+          "meanYawRateTrackingError": 0.03955223440047031,
+          "meanUpright": 0.6462729902886282,
+          "meanEnergy": 195.73178559467664,
+          "meanSmoothness": 133.18752384507945,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.6657196127668945,
+            0.0369535278579861,
+            0.2552941875613789
+          ],
+          "netDisplacement": [
+            0.6657196127668945,
+            0.0369535278579861,
+            -0.1847058124386211
+          ],
+          "forwardDisplacement": 0.6657196127668945,
+          "targetDistance": 1.25,
+          "forwardProgress": 0.5325756902135156,
+          "meanForwardVelocity": 0.13314392255338764,
+          "lateralDrift": 0.0369535278579861,
+          "distanceTraveled": 1.2033557571888525
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 24.102846986199097,
+            "forwardProgress": 13.31439225533789,
+            "upright": 9.694094854329423,
+            "lateralDrift": -0.369535278579861,
+            "energy": -0.9786589279733832,
+            "smoothness": -0.13318752384507945,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 73.35395236546809
+        },
+        "resultHash": "c43c42961ce5f22ffef3efa46d30e2091d37721f5de103c76519f9103c61f048"
+      },
+      {
+        "case": {
+          "id": "reverse",
+          "task": "reverse-walk",
+          "scenario": "nominal",
+          "seed": 1103,
+          "weight": 1,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            -0.15,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.14794178760020943,
+          "meanPlanarVelocityTrackingError": 0.14794178760020943,
+          "meanYawRateTrackingError": 4.051465061533372e-15,
+          "meanUpright": 0.9467159119391256,
+          "meanEnergy": 193.81653125113283,
+          "meanSmoothness": 137.1467911525479,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.12450807869356381,
+            -2.2970802196664185e-15,
+            0.41787039268601694
+          ],
+          "netDisplacement": [
+            -0.12450807869356381,
+            -2.2970802196664185e-15,
+            -0.022129607313983057
+          ],
+          "forwardDisplacement": 0.12450807869356381,
+          "targetDistance": 0.75,
+          "forwardProgress": 0.16601077159141842,
+          "meanForwardVelocity": 0.0249016157387144,
+          "lateralDrift": 2.2970802196664185e-15,
+          "distanceTraveled": 0.4755486609284748
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 26.133729361586774,
+            "forwardProgress": 4.15026928978546,
+            "upright": 14.200738679086884,
+            "lateralDrift": -2.2970802196664185e-14,
+            "energy": -0.9690826562556641,
+            "smoothness": -0.1371467911525479,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 71.10250788305088
+        },
+        "resultHash": "c5f698f3f27ae98591864d4de11c88ffa3b8b4faa2ab8778400a0c85b395a832"
+      },
+      {
+        "case": {
+          "id": "lateral",
+          "task": "lateral-walk",
+          "scenario": "nominal",
+          "seed": 1104,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.12,
+            0
+          ],
+          "meanVelocityTrackingError": 0.18558602450717668,
+          "meanPlanarVelocityTrackingError": 0.15341770350756714,
+          "meanYawRateTrackingError": 0.08877852482883987,
+          "meanUpright": 0.9447100472165587,
+          "meanEnergy": 197.06210660983913,
+          "meanSmoothness": 140.5582101408941,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.2890956047471335,
+            0.038183186897819674,
+            0.419640856160902
+          ],
+          "netDisplacement": [
+            -0.2890956047471335,
+            0.038183186897819674,
+            -0.020359143839097982
+          ],
+          "forwardDisplacement": 0.038183186897819674,
+          "targetDistance": 0.6,
+          "forwardProgress": 0.06363864482969946,
+          "meanForwardVelocity": 0.007636637379564436,
+          "lateralDrift": 0.2890956047471335,
+          "distanceTraveled": 0.332489502698033
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 25.30394199988176,
+            "forwardProgress": 1.5909661207424863,
+            "upright": 14.170650708248381,
+            "lateralDrift": -2.8909560474713354,
+            "energy": -0.9853105330491957,
+            "smoothness": -0.1405582101408941,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 64.7727340382112
+        },
+        "resultHash": "4cdb38de9d25f4572bf9e9d62675c1eee504dab8ce18d726468347b01049b22b"
+      },
+      {
+        "case": {
+          "id": "yaw-left",
+          "task": "yaw-left",
+          "scenario": "nominal",
+          "seed": 1105,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0,
+            0.5
+          ],
+          "meanVelocityTrackingError": 0.520140055402863,
+          "meanPlanarVelocityTrackingError": 0.08687841964741444,
+          "meanYawRateTrackingError": 0.5011519633703196,
+          "meanUpright": 0.9468286922777704,
+          "meanEnergy": 195.55904007777016,
+          "meanSmoothness": 138.61876355416018,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.24215094874480758,
+            -0.033098606436050275,
+            0.42250703512768384
+          ],
+          "netDisplacement": [
+            -0.24215094874480758,
+            -0.033098606436050275,
+            -0.017492964872316163
+          ],
+          "forwardDisplacement": 0,
+          "targetDistance": 0,
+          "forwardProgress": 1,
+          "meanForwardVelocity": 0,
+          "lateralDrift": 0.24440253625119968,
+          "distanceTraveled": 0.3206760449452041
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 19.735023686386242,
+            "forwardProgress": 25,
+            "upright": 14.202430384166556,
+            "lateralDrift": -2.4440253625119968,
+            "energy": -0.9777952003888508,
+            "smoothness": -0.1386187635541602,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 83.1010147440978
+        },
+        "resultHash": "8ccfea74457311cef4f1793a509f96d045ed44ebf86ca4e68d926725d06a0a45"
+      },
+      {
+        "case": {
+          "id": "delayed-forward",
+          "task": "forward-walk",
+          "scenario": "actuator-delay-three-step",
+          "seed": 1106,
+          "weight": 1.5,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0.25,
+            0,
+            0
+          ],
+          "meanVelocityTrackingError": 0.2963150756290491,
+          "meanPlanarVelocityTrackingError": 0.29631507562904885,
+          "meanYawRateTrackingError": 1.2376486687177156e-9,
+          "meanUpright": 0.6757590444701781,
+          "meanEnergy": 591.0839857929756,
+          "meanSmoothness": 28.228588069355695,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            0.4427503942565356,
+            8.969291826274342e-11,
+            0.2564050747029135
+          ],
+          "netDisplacement": [
+            0.4427503942565356,
+            8.969291826274342e-11,
+            -0.1835949252970865
+          ],
+          "forwardDisplacement": 0.4427503942565356,
+          "targetDistance": 1.25,
+          "forwardProgress": 0.3542003154052285,
+          "meanForwardVelocity": 0.08855007885131294,
+          "lateralDrift": 8.969291826274342e-11,
+          "distanceTraveled": 1.1146534461232331
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 23.142521879136687,
+            "forwardProgress": 8.855007885130712,
+            "upright": 10.136385667052672,
+            "lateralDrift": -8.969291826274342e-10,
+            "energy": -2.955419928964878,
+            "smoothness": -0.028228588069355694,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 66.87426691338891
+        },
+        "resultHash": "ebf4c7f5e8170cff199128c3f170eaaab9da949060f86cb1d937f510fdca73a0"
+      },
+      {
+        "case": {
+          "id": "disturbed-lateral",
+          "task": "lateral-walk",
+          "scenario": "delayed-lateral-push",
+          "seed": 1107,
+          "weight": 2,
+          "gating": true
+        },
+        "metrics": {
+          "durationSeconds": 4.999999999999671,
+          "steps": 250,
+          "survivalRate": 1,
+          "fell": false,
+          "motionCommand": [
+            0,
+            0.12,
+            0
+          ],
+          "meanVelocityTrackingError": 1.0139326393457886,
+          "meanPlanarVelocityTrackingError": 0.4673003601742306,
+          "meanYawRateTrackingError": 0.8035011358148152,
+          "meanUpright": 0.8380973001296337,
+          "meanEnergy": 513.5584410013786,
+          "meanSmoothness": 40.48000871558676,
+          "peakActuator": 8,
+          "initialBasePosition": [
+            0,
+            0,
+            0.44
+          ],
+          "finalBasePosition": [
+            -0.17187128585943348,
+            -0.950903358155681,
+            0.22367921713914451
+          ],
+          "netDisplacement": [
+            -0.17187128585943348,
+            -0.950903358155681,
+            -0.2163207828608555
+          ],
+          "forwardDisplacement": -0.950903358155681,
+          "targetDistance": 0.6,
+          "forwardProgress": 0,
+          "meanForwardVelocity": -0.1901806716311487,
+          "lateralDrift": 0.17187128585943348,
+          "distanceTraveled": 2.0633754911000306
+        },
+        "score": {
+          "terms": {
+            "survival": 30,
+            "velocityTracking": 14.896228113044181,
+            "forwardProgress": 0,
+            "upright": 12.571459501944505,
+            "lateralDrift": -1.7187128585943348,
+            "energy": -2.567792205006893,
+            "smoothness": -0.04048000871558676,
+            "componentMass": -1.2060000000000002,
+            "sensorChannels": -1.07,
+            "trainingSteps": 0
+          },
+          "total": 50.86470254267187
+        },
+        "resultHash": "43101c1abc256a6d932f1cbb1817864ccf1d1a6245b02d56c89636de3a64cf05"
+      }
+    ]
+  },
+  "delta": -0.009544252920960616,
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 10,
+    "previousViolationSeverity": 5.324882614247438,
+    "candidateViolationSeverity": 5.328959144394791,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  }
+}

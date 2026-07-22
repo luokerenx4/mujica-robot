@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "command-conditioned-locomotion",
+  "name": "Promote safe planar command-conditioned locomotion",
+  "kind": "development",
+  "benchmark": "command-tracking",
+  "baseRevision": "quadruped-r-d193b01b53f1",
+  "baseline": { "assembly": "command-conditioned-history-3dof", "controller": "command-conditioned-spatial-gait" },
+  "proposed": { "assembly": "command-conditioned-history-3dof", "controller": "command-tracking-gait" },
+  "changes": {
+    "components": { "added": [], "removed": [], "modified": [] },
+    "observations": { "added": [], "removed": [], "changed": [] },
+    "actions": { "added": [], "removed": [], "changed": [] },
+    "controller": {
+      "from": "command-conditioned-spatial-gait",
+      "to": "command-tracking-gait",
+      "files": [
+        "controllers/command-tracking-gait/controller.json",
+        "controllers/command-tracking-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/command-tracking-gait/controller.json",
+    "controllers/command-tracking-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/command-tracking.benchmark.json",
+    "benchmarks/command-tracking.lock.json",
+    "objectives/command-tracking.objective.json",
+    "tasks/stand.task.json",
+    "tasks/forward-walk.task.json",
+    "tasks/reverse-walk.task.json",
+    "tasks/lateral-walk.task.json",
+    "tasks/yaw-left.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/delayed-lateral-push.scenario.json"
+  ],
+  "hypothesis": "World-to-body command transformation, direction-specific gait authority, delay-aware lateral lean, and world-frame cross-track feedback can cover stop, forward, reverse, lateral, yaw, delay, and disturbed lateral commands without changing the robot ABI.",
+  "expectedEffect": "Pass every locked command-tracking safety and tracking gate, improve the frozen command baseline, and preserve the solved spatial-generalization behavior on its original Controller."
+}

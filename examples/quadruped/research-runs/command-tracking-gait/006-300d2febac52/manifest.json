@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "006-300d2febac52",
+  "sequence": 6,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "32bfeb203e998acfac6db5786fa64577b193490270a6341f83c41a73f606cd5d",
+  "candidateControllerHash": "68013edabec46ee282f0cd9e4ff0aad4bc259bd7515f54053ce6bf3d54f20ec9",
+  "proposal": {
+    "strategy": "coordinate-lateral-velocity-gain-decrease",
+    "hypothesis": "Decrease lateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether lateralVelocityGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralVelocityGain": -0.1
+    }
+  },
+  "strategy": "coordinate-lateral-velocity-gain-decrease",
+  "score": 67.19148006356096,
+  "delta": 2.199864396089268,
+  "verdict": "KEEP",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 12,
+    "candidateViolationCount": 11,
+    "previousViolationSeverity": 9.385551264575925,
+    "candidateViolationSeverity": 9.223152710203616,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "fewer-gate-violations"
+  },
+  "error": null,
+  "revisionId": "quadruped-r-5e0383513fb8",
+  "completed": true
+}

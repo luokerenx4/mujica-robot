@@ -1,0 +1,9 @@
+{
+  "strategy": "cross-track-pd-position",
+  "hypothesis": "Use stronger accumulated cross-track correction with less velocity feedback to avoid the high-damping instability.",
+  "expectedEffect": "Close drift margins without regressing stability or tracking gates.",
+  "values": {
+    "/config/crossTrackPositionGain": 0.6,
+    "/config/crossTrackVelocityGain": 0.4
+  }
+}

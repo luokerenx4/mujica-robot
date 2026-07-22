@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "039-8b432ff1021e",
+  "sequence": 39,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "cd959116f38e7d808ff7f0abae1cc3cf34b3dcac1d461ad8723fe4b6084a9ef4",
+  "candidateControllerHash": "8961db00547f9e86e4330923bc9621ceaac7d08850b1775751ffddccfaef39e2",
+  "proposal": {
+    "strategy": "cross-track-pd-redistribute",
+    "hypothesis": "Shift authority from position to velocity feedback to damp the disturbed cross-track transient without the 0.6 position instability.",
+    "expectedEffect": "Pass both drift gates while recovering nominal lateral progress.",
+    "values": {
+      "/config/crossTrackPositionGain": 0.4,
+      "/config/crossTrackVelocityGain": 0.6
+    }
+  },
+  "strategy": "cross-track-pd-redistribute",
+  "score": 71.35556566490567,
+  "delta": -4.412694754714522,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: survival regressed from passing to failing",
+    "disturbed-lateral: planar-velocity-tracking regressed from passing to failing",
+    "disturbed-lateral: yaw-rate-tracking regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: survival regressed from passing to failing",
+      "disturbed-lateral: planar-velocity-tracking regressed from passing to failing",
+      "disturbed-lateral: yaw-rate-tracking regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 6,
+    "previousViolationSeverity": 0.5403272213060407,
+    "candidateViolationSeverity": 4.935463856446486,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

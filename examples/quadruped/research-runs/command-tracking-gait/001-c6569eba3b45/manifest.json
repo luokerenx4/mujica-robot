@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "001-c6569eba3b45",
+  "sequence": 1,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "32bfeb203e998acfac6db5786fa64577b193490270a6341f83c41a73f606cd5d",
+  "candidateControllerHash": "77f2093156ab7464ee31ecaa59252783f967f3b4ab4193f5f5e3d89e6ce6d4dc",
+  "proposal": {
+    "strategy": "coordinate-frequency-hz-increase",
+    "hypothesis": "Increase frequencyHz by one bounded step.",
+    "expectedEffect": "Test whether frequencyHz=1.11295 improves the complete locked quadruped score.",
+    "values": {
+      "/config/frequencyHz": 1.11295
+    }
+  },
+  "strategy": "coordinate-frequency-hz-increase",
+  "score": 58.421027068900145,
+  "delta": -6.570588598571547,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "yaw-left: lateral-drift regressed from passing to failing",
+    "delayed-forward: survival regressed from passing to failing",
+    "delayed-forward: forward-progress regressed from passing to failing",
+    "delayed-forward: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "yaw-left: lateral-drift regressed from passing to failing",
+      "delayed-forward: survival regressed from passing to failing",
+      "delayed-forward: forward-progress regressed from passing to failing",
+      "delayed-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 12,
+    "candidateViolationCount": 16,
+    "previousViolationSeverity": 9.385551264575925,
+    "candidateViolationSeverity": 18.112423545320063,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

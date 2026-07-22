@@ -61,7 +61,7 @@ export const controllerSchema = z.discriminatedUnion("kind", [
 export const taskSchema = z.object({
   version: z.literal(2), id: idSchema, name: z.string().min(1), durationSeconds: z.number().positive(), controlHz: z.number().positive(),
   motionCommand: z.object({
-    frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite(), z.number().finite()]), yawRateRadPerSec: z.number().finite(),
+    frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite().min(-1).max(1), z.number().finite().min(-1).max(1)]), yawRateRadPerSec: z.number().finite().min(-2).max(2),
   }).strict(),
   healthyHeight: z.tuple([z.number(), z.number()]), terminateOnFall: z.boolean(),
 }).strict();
@@ -81,7 +81,8 @@ export const objectiveSchema = z.object({
   }).strict(),
   gates: z.object({
     minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
-    maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumRegression: z.number().nonnegative(),
+    maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumPlanarVelocityTrackingError: z.number().nonnegative().default(1_000_000),
+    maximumYawRateTrackingError: z.number().nonnegative().default(1_000_000), maximumRegression: z.number().nonnegative(),
   }).strict(),
 }).strict();
 

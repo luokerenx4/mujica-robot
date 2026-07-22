@@ -106,7 +106,7 @@ class RobotEnvironment:
             value = np.asarray(value, dtype=np.float64).reshape(-1)
             if value.size != int(channel["size"]): raise RuntimeError(f"Observation '{channel['name']}' expected {channel['size']} values, got {value.size}")
             noise = float(self.scenario["observationNoiseStd"])
-            if noise: value = value + self.rng.normal(0.0, noise, size=value.shape)
+            if noise and channel["kind"] != "command": value = value + self.rng.normal(0.0, noise, size=value.shape)
             result[channel["name"]] = value.copy()
         return result
 

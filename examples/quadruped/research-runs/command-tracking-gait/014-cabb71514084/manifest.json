@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "014-cabb71514084",
+  "sequence": 14,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "68013edabec46ee282f0cd9e4ff0aad4bc259bd7515f54053ce6bf3d54f20ec9",
+  "candidateControllerHash": "132923c78acba34c07bbb35687f479f10da183f84ed47d574067aac791110a4e",
+  "proposal": {
+    "strategy": "coordinate-yaw-rate-command-gain-decrease",
+    "hypothesis": "Decrease yawRateCommandGain by one bounded step.",
+    "expectedEffect": "Test whether yawRateCommandGain=-0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/yawRateCommandGain": -0.1
+    }
+  },
+  "strategy": "coordinate-yaw-rate-command-gain-decrease",
+  "score": 67.4817890978904,
+  "delta": 0.29030903432943944,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "yaw-left: lateral-drift regressed from passing to failing",
+    "disturbed-lateral: survival regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "yaw-left: lateral-drift regressed from passing to failing",
+      "disturbed-lateral: survival regressed from passing to failing"
+    ],
+    "previousViolationCount": 11,
+    "candidateViolationCount": 12,
+    "previousViolationSeverity": 9.223152710203616,
+    "candidateViolationSeverity": 7.082245136408825,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

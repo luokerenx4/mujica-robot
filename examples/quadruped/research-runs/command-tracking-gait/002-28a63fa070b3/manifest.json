@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "002-28a63fa070b3",
+  "sequence": 2,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "32bfeb203e998acfac6db5786fa64577b193490270a6341f83c41a73f606cd5d",
+  "candidateControllerHash": "13d0695bf6eee5934b535ab7ed6f04233348926a6a0c9a025b38a3f66d724afa",
+  "proposal": {
+    "strategy": "coordinate-frequency-hz-decrease",
+    "hypothesis": "Decrease frequencyHz by one bounded step.",
+    "expectedEffect": "Test whether frequencyHz=0.91295 improves the complete locked quadruped score.",
+    "values": {
+      "/config/frequencyHz": 0.91295
+    }
+  },
+  "strategy": "coordinate-frequency-hz-decrease",
+  "score": 60.65979796818937,
+  "delta": -4.331817699282318,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "forward: forward-progress regressed from passing to failing",
+    "delayed-forward: forward-progress regressed from passing to failing",
+    "delayed-forward: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "forward: forward-progress regressed from passing to failing",
+      "delayed-forward: forward-progress regressed from passing to failing",
+      "delayed-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 12,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 9.385551264575925,
+    "candidateViolationSeverity": 14.480165847348555,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

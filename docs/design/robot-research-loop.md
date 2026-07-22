@@ -48,10 +48,9 @@ Each attempt follows one transaction:
 read lineage head + controller hash + Benchmark lock
   -> propose bounded values
   -> evaluate temporary controller definition on every fixed case
-  -> enforce capability gates against current-best monotonic progress
-     and score regression against the immutable Benchmark baseline
+  -> reject any passing-to-failing capability regression
   -> compare lexicographically: fewer gate violations first,
-     then aggregate score within the same feasibility tier
+     then lower normalized violation severity, then aggregate score
   -> decide KEEP / REVERT / CRASH
   -> on KEEP only: recheck controller hash, atomically write controller.json,
      then publish a child Robot Revision with source and evaluation snapshots
@@ -60,9 +59,9 @@ read lineage head + controller hash + Benchmark lock
 
 The Benchmark baseline remains immutable. "Current best" means the selected research Controller before an attempt, not the Benchmark baseline Controller. A REVERT or CRASH never changes project source or Revision lineage.
 
-When the current best is still outside a capability gate, a candidate may be kept only if it moves that exact metric monotonically toward the gate. Once a gate passes, later candidates must continue to pass it. Per-case score regression is always measured against the immutable Benchmark baseline, so incremental recovery cannot erase fixed-case behavior merely by redefining its local comparison point.
+Once a gate passes, later candidates must continue to pass it. When several gates remain infeasible, a candidate may trade movement among those still-failing metrics only when it improves the lexicographic feasibility state: first violation count, then summed normalized severity. This avoids deadlock on coupled robot behavior while forbidding regression of already solved capabilities. Score-regression is itself an ordinary locked gate measured against the immutable Benchmark baseline.
 
-Selection is lexicographic. Reducing the number of enforced gate violations outranks aggregate score, provided no monotonic or locked-baseline gate regresses. Within the same feasibility tier, the authored minimum aggregate improvement remains required. This prevents a high-scoring infeasible robot from blocking a lower-scoring candidate that actually crosses the declared capability boundary; the decision and before/after violation counts are stored in new Experiment and Revision evidence.
+Selection is lexicographic. Reducing enforced violations outranks lowering their normalized severity, which outranks aggregate score. The authored minimum aggregate improvement is required only when violation count and severity are equal. This prevents a high-scoring infeasible robot from blocking actual capability progress; the decision and before/after counts and severities are stored in new Experiment and Revision evidence.
 
 ## Memory and identity
 

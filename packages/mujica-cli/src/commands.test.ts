@@ -61,7 +61,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
-    expect(envelope.data.definitions.research).toBe(4);
+    expect(envelope.data.definitions.research).toBe(5);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
@@ -119,8 +119,16 @@ describe("agent CLI contract", () => {
     expect(revisions.length).toBeGreaterThan(1);
     for (let index = 1; index < revisions.length; index++) expect(revisions[index].parent).toBe(revisions[index - 1].id);
     const spatial = revisions.find((item: any) => item.candidateId === "spatial-quadruped"); expect(spatial.aggregateScore).toBeCloseTo(62.616999752834296);
-    expect(revisions.at(-1)).toMatchObject({ id: "quadruped-r-cb6b31bc8f4a", kind: "research-optimization", researchId: "compound-recovery", previousViolationCount: 1, candidateViolationCount: 0, selectionReason: "fewer-gate-violations" });
+    expect(revisions.at(-1)).toMatchObject({ id: "quadruped-r-45f394da4a24", candidateId: "command-conditioned-locomotion", controller: "command-tracking-gait" });
   });
+
+  test("command-conditioned locomotion passes command and legacy spatial gates", () => {
+    const candidateResult = invoke(["candidate", "examples/quadruped", "--candidate", "command-conditioned-locomotion", "--json"]); const candidate = JSON.parse(candidateResult.stdout);
+    expect(candidateResult.code).toBe(0); expect(candidate.data.verdict).toBe("KEEP"); expect(candidate.data.gateReasons).toEqual([]); expect(candidate.data.scoreDelta).toBeGreaterThan(5);
+    expect(candidate.data.proposed.cases.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.lateralDrift <= 0.25 && item.metrics.planarVelocityTrackingError <= 0.22 && item.metrics.yawRateTrackingError <= 0.35 && (item.metrics.targetDistance === 0 || item.metrics.forwardProgress >= 0.2))).toBe(true);
+    const spatialResult = invoke(["diagnose", "examples/quadruped", "--assembly", "command-conditioned-history-3dof", "--controller", "command-tracking-gait", "--benchmark", "spatial-generalization", "--json"]); const spatial = JSON.parse(spatialResult.stdout);
+    expect(spatialResult.code).toBe(0); expect(spatial.data.status).toBe("PASS"); expect(spatial.data.violationCount).toBe(0);
+  }, 30_000);
 
   test("Policy requalification requires byte-identical MJCF and contracts", () => {
     const result = invoke(["policy", "requalify", "examples/quadruped", "--policy", "spatial-residual-locomotion-81df145800cc15c7", "--assembly", "force-sensing-3dof", "--json"]); const envelope = JSON.parse(result.stdout);
@@ -153,11 +161,12 @@ describe("agent CLI contract", () => {
     expect(() => validateResearchProposal(research, controller.definition, { strategy: "out-of-bounds", hypothesis: "too stiff", expectedEffect: "unsafe", values: { "/config/kp": 100 } })).toThrow("outside");
   });
 
-  test("research may approach an unmet gate only by improving the current best", () => {
-    const result = (drift: number, score: number) => ({ aggregateScore: score, cases: [{ case: { id: "compound", gating: true }, metrics: { survivalRate: 1, targetDistance: 1, forwardProgress: 0.4, lateralDrift: drift }, score: { total: score } }] });
-    const objective = { gates: { minimumSurvivalRate: 0.8, minimumForwardProgress: 0.25, maximumLateralDrift: 0.2, maximumRegression: 20 } };
+  test("research preserves passing gates and orders infeasible candidates by severity", () => {
+    const result = (drift: number, score: number) => ({ aggregateScore: score, cases: [{ case: { id: "compound", gating: true }, metrics: { survivalRate: 1, targetDistance: 1, forwardProgress: 0.4, lateralDrift: drift, planarVelocityTrackingError: 0, yawRateTrackingError: 0 }, score: { total: score } }] });
+    const objective = { gates: { minimumSurvivalRate: 0.8, minimumForwardProgress: 0.25, maximumLateralDrift: 0.2, maximumPlanarVelocityTrackingError: 1, maximumYawRateTrackingError: 1, maximumRegression: 20 } };
     expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.7, 56) as any)).toEqual([]);
-    expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.8, 56) as any)).toEqual(["compound: lateral drift 0.800 exceeds gate without improving the current best"]);
+    expect(researchDecision(objective as any, result(0.4, 50) as any, result(0.8, 55) as any, result(0.7, 54) as any, 0.01)).toMatchObject({ verdict: "KEEP", severityImproved: true, selectionReason: "lower-gate-violation-severity" });
+    expect(researchGateReasons(objective as any, result(0.4, 50) as any, result(0.1, 55) as any, result(0.3, 56) as any)).toEqual(["compound: lateral-drift regressed from passing to failing"]);
     const feasibility = researchDecision(objective as any, result(0.4, 50) as any, result(0.4, 60) as any, result(0.1, 57) as any, 0.01);
     expect(feasibility).toMatchObject({ verdict: "KEEP", previousViolationCount: 1, candidateViolationCount: 0, feasibilityImproved: true, scoreImproved: false, selectionReason: "fewer-gate-violations" });
     expect(researchDecision(objective as any, result(0.4, 50) as any, result(0.1, 60) as any, result(0.1, 57) as any, 0.01).verdict).toBe("REVERT");

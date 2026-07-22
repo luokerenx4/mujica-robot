@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "044-5d48518bd85a",
+  "sequence": 44,
+  "researchId": "command-tracking-gait",
+  "researchHash": "0c4414f69bc3a4036a9b525360b927b879d2df0827d2a800dcf1f09407d90f7e",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "c2f15e1226331caffa5e9f2900959a2b703190ebdcb0630cd2d738f982bc7131",
+  "candidateControllerHash": "75e6d0206558ec47bc77aff0a4b3aa182956a3bad5d160b9754ba265b93ef9db",
+  "proposal": {
+    "strategy": "final-lateral-lean-lower",
+    "hypothesis": "A one-thousandth nominal lean decrease may reduce energy and drift while preserving the narrow progress gate.",
+    "expectedEffect": "Retain zero violations and improve aggregate score, freezing the all-gate controller in a child Revision.",
+    "values": {
+      "/config/lateralCommandLean": 0.079
+    }
+  },
+  "strategy": "final-lateral-lean-lower",
+  "score": 76.34270797553683,
+  "delta": -0.03819697083469009,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "lateral: forward-progress regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "lateral: forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 0,
+    "candidateViolationCount": 1,
+    "previousViolationSeverity": 0,
+    "candidateViolationSeverity": 0.0035728004635730837,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

@@ -1,0 +1,47 @@
+sequence	experiment	score	delta	status	strategy	description
+1	001-c6569eba3b45	58.421027068900145	-6.570588598571547	revert	coordinate-frequency-hz-increase	Increase frequencyHz by one bounded step.
+2	002-28a63fa070b3	60.65979796818937	-4.331817699282318	revert	coordinate-frequency-hz-decrease	Decrease frequencyHz by one bounded step.
+3	003-4839074edc11	62.11947621644688	-2.8721394510248146	revert	coordinate-forward-velocity-gain-increase	Increase forwardVelocityGain by one bounded step.
+4	004-60fc9a6a03fb	59.426101226870074	-5.565514440601618	revert	coordinate-forward-velocity-gain-decrease	Decrease forwardVelocityGain by one bounded step.
+5	005-9d19238e729e	65.18241918303377	0.19080351556208086	revert	coordinate-lateral-velocity-gain-increase	Increase lateralVelocityGain by one bounded step.
+6	006-300d2febac52	67.19148006356096	2.199864396089268	keep	coordinate-lateral-velocity-gain-decrease	Decrease lateralVelocityGain by one bounded step.
+7	007-0ee089bc3e50	58.53904254486957	-8.652437518691393	revert	coordinate-frequency-hz-increase	Increase frequencyHz by one bounded step.
+8	008-56a75b7ad7da	61.867217938617934	-5.324262124943026	revert	coordinate-frequency-hz-decrease	Decrease frequencyHz by one bounded step.
+9	009-ea7247b7ce31	63.422609266405395	-3.7688707971555644	revert	coordinate-forward-velocity-gain-increase	Increase forwardVelocityGain by one bounded step.
+10	010-9c7b24c8b5db	61.643114626466584	-5.548365437094375	revert	coordinate-forward-velocity-gain-decrease	Decrease forwardVelocityGain by one bounded step.
+11	011-f9dd944b3352	64.99161566747169	-2.199864396089268	revert	coordinate-lateral-velocity-gain-increase	Increase lateralVelocityGain by one bounded step.
+12	012-57ee616fffd7	64.31806251030157	-2.8734175532593866	revert	coordinate-lateral-velocity-gain-decrease	Decrease lateralVelocityGain by one bounded step.
+13	013-76d80694dfdc	65.27853367065897	-1.9129463929019863	revert	coordinate-yaw-rate-command-gain-increase	Increase yawRateCommandGain by one bounded step.
+14	014-cabb71514084	67.4817890978904	0.29030903432943944	revert	coordinate-yaw-rate-command-gain-decrease	Decrease yawRateCommandGain by one bounded step.
+15	015-73d6828d5766	64.19011720714441	-3.0013628564165487	revert	coordinate-lateral-abduction-amplitude-increase	Increase lateralAbductionAmplitude by one bounded step.
+16	016-0e1b0f696938	69.41919370059533	2.2277136370343698	keep	coordinate-lateral-abduction-amplitude-decrease	Decrease lateralAbductionAmplitude by one bounded step.
+17	017-8e2d045b937c	59.60828817884826	-9.810905521747067	revert	coordinate-frequency-hz-increase	Increase frequencyHz by one bounded step.
+18	018-cc874b207197	61.016377771883434	-8.402815928711895	revert	coordinate-frequency-hz-decrease	Decrease frequencyHz by one bounded step.
+19	019-3f4bf6889288	63.856323744692695	-5.5628699559026344	revert	coordinate-forward-velocity-gain-increase	Increase forwardVelocityGain by one bounded step.
+20	020-3aee26fcd248	60.40696453717627	-9.012229163419057	revert	coordinate-forward-velocity-gain-decrease	Decrease forwardVelocityGain by one bounded step.
+21	021-d04334666018	65.47568676337701	-3.9435069372183165	revert	coordinate-lateral-velocity-gain-increase	Increase lateralVelocityGain by one bounded step.
+22	022-034d12a7c65a	65.90968149978998	-3.5095122008053465	revert	coordinate-lateral-velocity-gain-decrease	Decrease lateralVelocityGain by one bounded step.
+23	023-dd713f80cea1	64.98696954492507	-4.432224155670255	revert	coordinate-yaw-rate-command-gain-increase	Increase yawRateCommandGain by one bounded step.
+24	024-32276c86d5f2	68.93162394682398	-0.4875697537713535	revert	coordinate-yaw-rate-command-gain-decrease	Decrease yawRateCommandGain by one bounded step.
+25	025-7a542a3c558c	69.58629652829373	0.16710282769840035	keep	coordinate-lateral-abduction-amplitude-decrease	Decrease lateralAbductionAmplitude by one bounded step.
+26	026-489720bb5ce4	59.50699314676997	-10.079303381523758	revert	coordinate-frequency-hz-increase	Increase frequencyHz by one bounded step.
+27	027-e1f1fb08bc07	60.65139892230835	-8.934897605985377	revert	coordinate-frequency-hz-decrease	Decrease frequencyHz by one bounded step.
+28	028-50e937c93aba	62.79218798881234	-6.7941085394813925	revert	coordinate-forward-velocity-gain-increase	Increase forwardVelocityGain by one bounded step.
+29	029-66c9ef1a202c	59.39464649879287	-10.191650029500856	revert	coordinate-forward-velocity-gain-decrease	Decrease forwardVelocityGain by one bounded step.
+30	030-3f15586ebd81	66.20422567451466	-3.3820708537790694	revert	coordinate-lateral-velocity-gain-increase	Increase lateralVelocityGain by one bounded step.
+31	031-ce6f7b427f8e	69.57675227537277	-0.009544252920960616	revert	yaw-sign	Reverse the left-right sagittal differential because the current sign produces no positive yaw tracking.
+32	032-3f924588713e	70.38371178582958	-5.384548633790615	revert	cross-track-position	Increase world-frame cross-track position correction after the 0.5 gain reduced disturbed drift from 0.95 m to 0.307 m.
+33	033-f2c3045272e0	71.2421661989029	-4.526094220717297	revert	cross-track-velocity	Increase cross-track damping while keeping the stable 0.5 position correction.
+34	034-580ce79d68c9	75.3917139141138	-0.376546505506397	revert	cross-track-velocity-down	Reduce damping to recover nominal lateral progress while retaining position correction.
+35	035-a3c1e1605f00	70.21862531356085	-5.549635106059341	revert	lateral-lean-midpoint	A midpoint lean may recover nominal progress without crossing the disturbed stability cliff seen at 0.06.
+36	036-c626dc02ac08	70.86488546771794	-4.903374951902251	revert	lateral-amplitude-midpoint	Slightly more cyclic abduction may restore nominal lateral progress while cross-track feedback limits drift.
+37	037-ef7ef980c42d	70.82342936462463	-4.944831054995561	revert	lateral-amplitude-down	Slightly less cyclic abduction may let cross-track correction pass both drift gates, leaving only nominal progress to address separately.
+38	038-e7f8c53dfd86	74.76490748748746	-1.003352932132728	revert	cross-track-position-fine	A one-percent stronger position correction may close the small drift margins without crossing the instability observed at 0.6.
+39	039-8b432ff1021e	71.35556566490567	-4.412694754714522	revert	cross-track-pd-redistribute	Shift authority from position to velocity feedback to damp the disturbed cross-track transient without the 0.6 position instability.
+40	040-45fad24d8ec5	76.11490074895944	0.3466403293392517	keep	cross-track-pd-position	Use stronger accumulated cross-track correction with less velocity feedback to avoid the high-damping instability.
+41	041-d3823ee3ee1d	75.20168121928347	-0.9132195296759704	revert	lateral-progress-midpoint	With the stable 0.6/0.4 cross-track split, a midpoint command lean may add nominal lateral authority while the position loop preserves drift.
+42	042-b96e2cacba82	72.05357794135912	-4.06132280760032	revert	lateral-amplitude-fine	A small cyclic-abduction increase may add nominal lateral displacement without the instability observed at 0.09 under the older cross-track split.
+43	043-9b0cea77c7c0	76.34559668952886	-0.03530825684265437	revert	final-lateral-lean-neighbor	A one-thousandth nominal lean increase may improve nominal command progress while remaining inside the 0.25 m drift gate; delayed recovery is isolated by its own fixed lean.
+44	044-5d48518bd85a	76.34270797553683	-0.03819697083469009	revert	final-lateral-lean-lower	A one-thousandth nominal lean decrease may reduce energy and drift while preserving the narrow progress gate.
+45	045-1bd41cfd9e8d	76.3398478535249	-0.041057092846614296	revert	final-yaw-neighbor	A small steering differential increase may improve yaw tracking without affecting the isolated lateral command surfaces.
+46	046-24ce018c83bf	76.33148271540166	-0.049422230969852876	revert	final-yaw-neighbor-down	The 1.31 result reduced score, so test the symmetric smaller steering differential while preserving all gates.

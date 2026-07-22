@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "040-45fad24d8ec5",
+  "sequence": 40,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "cd959116f38e7d808ff7f0abae1cc3cf34b3dcac1d461ad8723fe4b6084a9ef4",
+  "candidateControllerHash": "5eee2b74fd28bf4c8233c6d819a459aa58b55c9b91ebdbf2bae361d9383179a5",
+  "proposal": {
+    "strategy": "cross-track-pd-position",
+    "hypothesis": "Use stronger accumulated cross-track correction with less velocity feedback to avoid the high-damping instability.",
+    "expectedEffect": "Close drift margins without regressing stability or tracking gates.",
+    "values": {
+      "/config/crossTrackPositionGain": 0.6,
+      "/config/crossTrackVelocityGain": 0.4
+    }
+  },
+  "strategy": "cross-track-pd-position",
+  "score": 76.11490074895944,
+  "delta": 0.3466403293392517,
+  "verdict": "KEEP",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 1,
+    "previousViolationSeverity": 0.5403272213060407,
+    "candidateViolationSeverity": 0.2913196229444244,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "fewer-gate-violations"
+  },
+  "error": null,
+  "revisionId": "quadruped-r-f7a1b498acac",
+  "completed": true
+}

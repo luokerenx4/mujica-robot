@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "id": "027-e1f1fb08bc07",
+  "sequence": 27,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "ecd2d0fd9702dc046aa35c64edb3d532806760aa2c509937a4ba4e1f7e70afca",
+  "candidateControllerHash": "c142dd989020bf7e180f660c5c1e16443cddd5e68b4615bea3835109e34edf3b",
+  "proposal": {
+    "strategy": "coordinate-frequency-hz-decrease",
+    "hypothesis": "Decrease frequencyHz by one bounded step.",
+    "expectedEffect": "Test whether frequencyHz=0.91295 improves the complete locked quadruped score.",
+    "values": {
+      "/config/frequencyHz": 0.91295
+    }
+  },
+  "strategy": "coordinate-frequency-hz-decrease",
+  "score": 60.65139892230835,
+  "delta": -8.934897605985377,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "forward: forward-progress regressed from passing to failing",
+    "delayed-forward: forward-progress regressed from passing to failing",
+    "delayed-forward: score-regression regressed from passing to failing",
+    "disturbed-lateral: survival regressed from passing to failing",
+    "disturbed-lateral: lateral-drift regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "forward: forward-progress regressed from passing to failing",
+      "delayed-forward: forward-progress regressed from passing to failing",
+      "delayed-forward: score-regression regressed from passing to failing",
+      "disturbed-lateral: survival regressed from passing to failing",
+      "disturbed-lateral: lateral-drift regressed from passing to failing"
+    ],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 5.324882614247438,
+    "candidateViolationSeverity": 15.635723721756204,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

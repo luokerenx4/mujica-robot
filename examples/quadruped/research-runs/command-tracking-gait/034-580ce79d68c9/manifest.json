@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "034-580ce79d68c9",
+  "sequence": 34,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "cd959116f38e7d808ff7f0abae1cc3cf34b3dcac1d461ad8723fe4b6084a9ef4",
+  "candidateControllerHash": "4c63e1f1f5f47941e374ca43d6cafc8c6ccbb02cabd412d01cfd09a3f7542618",
+  "proposal": {
+    "strategy": "cross-track-velocity-down",
+    "hypothesis": "Reduce damping to recover nominal lateral progress while retaining position correction.",
+    "expectedEffect": "Cross the nominal progress gate without reintroducing the original disturbed drift.",
+    "values": {
+      "/config/crossTrackVelocityGain": 0.4
+    }
+  },
+  "strategy": "cross-track-velocity-down",
+  "score": 75.3917139141138,
+  "delta": -0.376546505506397,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 3,
+    "previousViolationSeverity": 0.5403272213060407,
+    "candidateViolationSeverity": 1.7883770971109552,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

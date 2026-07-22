@@ -227,6 +227,8 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate) gateReasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate`);
     if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress) gateReasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate`);
     if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift) gateReasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.planarVelocityTrackingError > objective.gates.maximumPlanarVelocityTrackingError) gateReasons.push(`${candidateCase.case.id}: planar velocity tracking error ${candidateCase.metrics.planarVelocityTrackingError.toFixed(3)} exceeds gate`);
+    if (candidateCase && candidateCase.metrics.yawRateTrackingError > objective.gates.maximumYawRateTrackingError) gateReasons.push(`${candidateCase.case.id}: yaw rate tracking error ${candidateCase.metrics.yawRateTrackingError.toFixed(3)} exceeds gate`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) gateReasons.push(`${candidateCase.case.id}: score regression exceeds gate`);
   }
   const allowedChangeHashes: Record<string, string> = {};
@@ -269,7 +271,7 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
 type EvaluationResult = Awaited<ReturnType<typeof evaluatePair>>;
 
 type GateAssessment = {
-  id: "survival" | "forward-progress" | "lateral-drift" | "score-regression";
+  id: "survival" | "forward-progress" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
 
@@ -280,6 +282,8 @@ function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, c
   gates.push(lower("survival", "survivalRate", candidate.metrics.survivalRate, objective.gates.minimumSurvivalRate));
   if (candidate.metrics.targetDistance > 0) gates.push(lower("forward-progress", "forwardProgress", candidate.metrics.forwardProgress, objective.gates.minimumForwardProgress));
   gates.push(upper("lateral-drift", "lateralDrift", candidate.metrics.lateralDrift, objective.gates.maximumLateralDrift));
+  gates.push(upper("planar-velocity-tracking", "planarVelocityTrackingError", candidate.metrics.planarVelocityTrackingError, objective.gates.maximumPlanarVelocityTrackingError));
+  gates.push(upper("yaw-rate-tracking", "yawRateTrackingError", candidate.metrics.yawRateTrackingError, objective.gates.maximumYawRateTrackingError));
   if (baseline) gates.push(lower("score-regression", "scoreDelta", candidate.score.total - baseline.score.total, -objective.gates.maximumRegression));
   return gates;
 }
@@ -289,6 +293,8 @@ function diagnosticHypotheses(violations: GateAssessment[]) {
   if (violations.some((gate) => gate.id === "survival")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect the fall event and pre-fall trajectory before changing task performance terms.", rationale: "The measured survival gate failed; stability is prerequisite evidence." });
   if (violations.some((gate) => gate.id === "forward-progress")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test gait timing, target generation, or longitudinal authority on this fixed case.", rationale: "Survival alone did not produce the required net target-direction displacement." });
   if (violations.some((gate) => gate.id === "lateral-drift")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.", rationale: "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response." });
+  if (violations.some((gate) => gate.id === "planar-velocity-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.", rationale: "The measured planar velocity error exceeded the locked command-tracking gate." });
+  if (violations.some((gate) => gate.id === "yaw-rate-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test a bounded left-right or front-rear steering differential against measured body yaw rate.", rationale: "The measured yaw-rate error exceeded the locked command-tracking gate." });
   if (violations.some((gate) => gate.id === "score-regression")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.", rationale: "The case regressed beyond the locked baseline allowance." });
   return hypotheses;
 }
@@ -358,34 +364,32 @@ export function researchGateReasons(objective: Awaited<ReturnType<typeof loadObj
   for (let index = 0; index < candidate.cases.length; index++) {
     const candidateCase = candidate.cases[index]; const previousCase = previous.cases[index]; const baselineCase = lockedBaseline.cases[index];
     if (candidateCase && candidateCase.case.gating === false) continue;
-    // An infeasible current best may approach a gate through small attributable
-    // steps. Each accepted step must improve that exact metric; score regression
-    // remains anchored to the immutable Benchmark baseline below.
-    if (candidateCase && candidateCase.metrics.survivalRate < objective.gates.minimumSurvivalRate && (!previousCase || candidateCase.metrics.survivalRate <= previousCase.metrics.survivalRate)) reasons.push(`${candidateCase.case.id}: survival ${candidateCase.metrics.survivalRate.toFixed(3)} below gate without improving the current best`);
-    if (candidateCase && candidateCase.metrics.targetDistance > 0 && candidateCase.metrics.forwardProgress < objective.gates.minimumForwardProgress && (!previousCase || candidateCase.metrics.forwardProgress <= previousCase.metrics.forwardProgress)) reasons.push(`${candidateCase.case.id}: forward progress ${candidateCase.metrics.forwardProgress.toFixed(3)} below gate without improving the current best`);
-    if (candidateCase && candidateCase.metrics.lateralDrift > objective.gates.maximumLateralDrift && (!previousCase || candidateCase.metrics.lateralDrift >= previousCase.metrics.lateralDrift)) reasons.push(`${candidateCase.case.id}: lateral drift ${candidateCase.metrics.lateralDrift.toFixed(3)} exceeds gate without improving the current best`);
-    if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) reasons.push(`${candidateCase.case.id}: score regression exceeds locked baseline gate`);
+    if (!candidateCase || !previousCase) continue;
+    const previousGates = diagnosticGates(objective, previousCase, baselineCase); const candidateGates = diagnosticGates(objective, candidateCase, baselineCase);
+    for (const gate of candidateGates) {
+      if (!gate.enforced || gate.passed) continue;
+      const previousGate = previousGates.find((item) => item.id === gate.id);
+      if (previousGate?.passed) reasons.push(`${candidateCase.case.id}: ${gate.id} regressed from passing to failing`);
+    }
   }
   return reasons;
 }
 
-function researchViolationCount(objective: Awaited<ReturnType<typeof loadObjective>>, lockedBaseline: EvaluationResult, evaluation: EvaluationResult): number {
-  let count = 0;
+function researchViolationSummary(objective: Awaited<ReturnType<typeof loadObjective>>, lockedBaseline: EvaluationResult, evaluation: EvaluationResult): { count: number; severity: number } {
+  let count = 0; let severity = 0;
   for (let index = 0; index < evaluation.cases.length; index++) {
-    const item = evaluation.cases[index]; const baseline = lockedBaseline.cases[index]; if (!item || item.case.gating === false) continue;
-    if (item.metrics.survivalRate < objective.gates.minimumSurvivalRate) count++;
-    if (item.metrics.targetDistance > 0 && item.metrics.forwardProgress < objective.gates.minimumForwardProgress) count++;
-    if (item.metrics.lateralDrift > objective.gates.maximumLateralDrift) count++;
-    if (baseline && item.score.total - baseline.score.total < -objective.gates.maximumRegression) count++;
+    const item = evaluation.cases[index]; const baseline = lockedBaseline.cases[index]; if (!item) continue;
+    for (const gate of diagnosticGates(objective, item, baseline)) if (gate.enforced && !gate.passed) { count++; severity += gate.severity; }
   }
-  return count;
+  return { count, severity };
 }
 
 export function researchDecision(objective: Awaited<ReturnType<typeof loadObjective>>, lockedBaseline: EvaluationResult, previous: EvaluationResult, candidate: EvaluationResult, minimumImprovement: number) {
-  const gateReasons = researchGateReasons(objective, lockedBaseline, previous, candidate); const previousViolationCount = researchViolationCount(objective, lockedBaseline, previous); const candidateViolationCount = researchViolationCount(objective, lockedBaseline, candidate); const scoreDelta = candidate.aggregateScore - previous.aggregateScore;
-  const feasibilityImproved = candidateViolationCount < previousViolationCount; const sameFeasibility = candidateViolationCount === previousViolationCount; const scoreImproved = scoreDelta >= minimumImprovement;
-  const keep = gateReasons.length === 0 && (feasibilityImproved || (sameFeasibility && scoreImproved));
-  return { verdict: keep ? "KEEP" as const : "REVERT" as const, gateReasons, previousViolationCount, candidateViolationCount, feasibilityImproved, scoreImproved, selectionReason: keep ? (feasibilityImproved ? "fewer-gate-violations" as const : "score-improvement-within-feasibility-tier" as const) : gateReasons.length ? "gate-regression" as const : "no-lexicographic-improvement" as const };
+  const gateReasons = researchGateReasons(objective, lockedBaseline, previous, candidate); const previousSummary = researchViolationSummary(objective, lockedBaseline, previous); const candidateSummary = researchViolationSummary(objective, lockedBaseline, candidate); const scoreDelta = candidate.aggregateScore - previous.aggregateScore;
+  const feasibilityImproved = candidateSummary.count < previousSummary.count; const sameViolationCount = candidateSummary.count === previousSummary.count; const severityImproved = sameViolationCount && candidateSummary.severity < previousSummary.severity - 1e-9; const sameSeverity = Math.abs(candidateSummary.severity - previousSummary.severity) <= 1e-9; const scoreImproved = scoreDelta >= minimumImprovement;
+  const keep = gateReasons.length === 0 && (feasibilityImproved || severityImproved || (sameViolationCount && sameSeverity && scoreImproved));
+  const selectionReason = keep ? (feasibilityImproved ? "fewer-gate-violations" as const : severityImproved ? "lower-gate-violation-severity" as const : "score-improvement-within-feasibility-tier" as const) : gateReasons.length ? "gate-regression" as const : "no-lexicographic-improvement" as const;
+  return { verdict: keep ? "KEEP" as const : "REVERT" as const, gateReasons, previousViolationCount: previousSummary.count, candidateViolationCount: candidateSummary.count, previousViolationSeverity: previousSummary.severity, candidateViolationSeverity: candidateSummary.severity, feasibilityImproved, severityImproved, scoreImproved, selectionReason };
 }
 
 async function atomicWriteJsonFile(path: string, value: unknown): Promise<void> {

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "036-c626dc02ac08",
+  "sequence": 36,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "cd959116f38e7d808ff7f0abae1cc3cf34b3dcac1d461ad8723fe4b6084a9ef4",
+  "candidateControllerHash": "2c214f65be8c5bbd4afb94d9166ae135f3933a6460f3949b3c84acaa423b5e63",
+  "proposal": {
+    "strategy": "lateral-amplitude-midpoint",
+    "hypothesis": "Slightly more cyclic abduction may restore nominal lateral progress while cross-track feedback limits drift.",
+    "expectedEffect": "Pass nominal progress and reduce remaining drift margins without destabilizing disturbance recovery.",
+    "values": {
+      "/config/lateralAbductionAmplitude": 0.09
+    }
+  },
+  "strategy": "lateral-amplitude-midpoint",
+  "score": 70.86488546771794,
+  "delta": -4.903374951902251,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: forward-progress regressed from passing to failing",
+    "disturbed-lateral: score-regression regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: forward-progress regressed from passing to failing",
+      "disturbed-lateral: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 5,
+    "previousViolationSeverity": 0.5403272213060407,
+    "candidateViolationSeverity": 1.615629771249737,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

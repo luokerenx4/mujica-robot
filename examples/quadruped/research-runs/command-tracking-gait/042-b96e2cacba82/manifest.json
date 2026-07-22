@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "042-b96e2cacba82",
+  "sequence": 42,
+  "researchId": "command-tracking-gait",
+  "researchHash": "ff0acb4bc0e9e479cf729cb63dc6caf20a21b2d14b258ac0593971bd518cb556",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "5eee2b74fd28bf4c8233c6d819a459aa58b55c9b91ebdbf2bae361d9383179a5",
+  "candidateControllerHash": "437a0f900d23012cd758b0a7ff1e07d5d8f08e735cc28f19497e14046e96c0db",
+  "proposal": {
+    "strategy": "lateral-amplitude-fine",
+    "hypothesis": "A small cyclic-abduction increase may add nominal lateral displacement without the instability observed at 0.09 under the older cross-track split.",
+    "expectedEffect": "Pass the final progress gate while preserving disturbed recovery.",
+    "values": {
+      "/config/lateralAbductionAmplitude": 0.085
+    }
+  },
+  "strategy": "lateral-amplitude-fine",
+  "score": 72.05357794135912,
+  "delta": -4.06132280760032,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "disturbed-lateral: survival regressed from passing to failing",
+    "disturbed-lateral: lateral-drift regressed from passing to failing",
+    "disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "disturbed-lateral: survival regressed from passing to failing",
+      "disturbed-lateral: lateral-drift regressed from passing to failing",
+      "disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+    ],
+    "previousViolationCount": 1,
+    "candidateViolationCount": 4,
+    "previousViolationSeverity": 0.2913196229444244,
+    "candidateViolationSeverity": 4.342972671607184,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

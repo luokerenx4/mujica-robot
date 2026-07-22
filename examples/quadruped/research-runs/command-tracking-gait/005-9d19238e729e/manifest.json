@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "005-9d19238e729e",
+  "sequence": 5,
+  "researchId": "command-tracking-gait",
+  "researchHash": "716ef155744cdd5d62c0418ed1ee0a1ce2a9b3771c41558aa5ce55214dfcb2f6",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "a31e25190613c6815a953be7d731225d0c916527aa9b7c6a5eb7b461dc135799",
+  "beforeControllerHash": "32bfeb203e998acfac6db5786fa64577b193490270a6341f83c41a73f606cd5d",
+  "candidateControllerHash": "f2cdb4607dd3548ad915ba6fa3c03b7ddcd62fda4ad63f61705f820f1176fa0c",
+  "proposal": {
+    "strategy": "coordinate-lateral-velocity-gain-increase",
+    "hypothesis": "Increase lateralVelocityGain by one bounded step.",
+    "expectedEffect": "Test whether lateralVelocityGain=0.1 improves the complete locked quadruped score.",
+    "values": {
+      "/config/lateralVelocityGain": 0.1
+    }
+  },
+  "strategy": "coordinate-lateral-velocity-gain-increase",
+  "score": 65.18241918303377,
+  "delta": 0.19080351556208086,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "yaw-left: lateral-drift regressed from passing to failing"
+  ],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "yaw-left: lateral-drift regressed from passing to failing"
+    ],
+    "previousViolationCount": 12,
+    "candidateViolationCount": 12,
+    "previousViolationSeverity": 9.385551264575925,
+    "candidateViolationSeverity": 9.010944706902972,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

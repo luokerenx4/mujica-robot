@@ -1,0 +1,9 @@
+{
+  "strategy": "cross-track-pd-redistribute",
+  "hypothesis": "Shift authority from position to velocity feedback to damp the disturbed cross-track transient without the 0.6 position instability.",
+  "expectedEffect": "Pass both drift gates while recovering nominal lateral progress.",
+  "values": {
+    "/config/crossTrackPositionGain": 0.4,
+    "/config/crossTrackVelocityGain": 0.6
+  }
+}

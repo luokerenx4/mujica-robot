@@ -94,6 +94,16 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertLess(result.info["velocityError"], 0.1)
         self.assertLess(result.info["yawRateError"], 0.1)
 
+    def test_command_channel_does_not_shift_existing_observation_noise(self):
+        legacy_model, legacy_compiled = compiled_assembly("force-sensing-history-3dof")
+        command_model, command_compiled = compiled_assembly("command-conditioned-history-3dof")
+        task = json.loads((PROJECT / "tasks" / "forward-walk.task.json").read_text())
+        scenario = {**json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text()), "observationNoiseStd": 0.01}
+        legacy = RobotEnvironment(legacy_model, legacy_compiled, task, scenario, 19); command = RobotEnvironment(command_model, command_compiled, task, scenario, 19)
+        legacy_observation = legacy.reset(); command_observation = command.reset()
+        for name, values in legacy_observation.items(): np.testing.assert_allclose(command_observation[name], values)
+        np.testing.assert_allclose(command_observation["motion-command"], np.array([0.25, 0.0, 0.0]))
+
     def test_seeded_reset_perturbations_are_reproducible_and_distinct(self):
         model, compiled = compiled_assembly("baseline")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())

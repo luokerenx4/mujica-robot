@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "id": "045-1bd41cfd9e8d",
+  "sequence": 45,
+  "researchId": "command-tracking-gait",
+  "researchHash": "0c4414f69bc3a4036a9b525360b927b879d2df0827d2a800dcf1f09407d90f7e",
+  "programHash": "22b4b2fd746e1f16400b3f6a45a66b0b0bc4c5e1aa6f1b916e38c60129db8311",
+  "benchmarkLockHash": "3e2e60923916586f907bb0ff906aed5848bc9d47b4cb4de2dbae1da5ccf5bab1",
+  "beforeControllerHash": "c2f15e1226331caffa5e9f2900959a2b703190ebdcb0630cd2d738f982bc7131",
+  "candidateControllerHash": "721c0d83e30e975740af8f3eb47353094461dc30bbbd219e63cc97f574a128f9",
+  "proposal": {
+    "strategy": "final-yaw-neighbor",
+    "hypothesis": "A small steering differential increase may improve yaw tracking without affecting the isolated lateral command surfaces.",
+    "expectedEffect": "Retain zero violations and improve aggregate score enough to publish the all-gate Revision.",
+    "values": {
+      "/config/yawHipDifferential": 1.31
+    }
+  },
+  "strategy": "final-yaw-neighbor",
+  "score": 76.3398478535249,
+  "delta": -0.041057092846614296,
+  "verdict": "REVERT",
+  "gateReasons": [],
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [],
+    "previousViolationCount": 0,
+    "candidateViolationCount": 0,
+    "previousViolationSeverity": 0,
+    "candidateViolationSeverity": 0,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "no-lexicographic-improvement"
+  },
+  "error": null,
+  "revisionId": null,
+  "completed": true
+}

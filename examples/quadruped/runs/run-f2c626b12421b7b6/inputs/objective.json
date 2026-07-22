@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "command-tracking",
+  "name": "Safe planar motion command tracking",
+  "weights": {
+    "survival": 30,
+    "velocityTracking": 30,
+    "forwardProgress": 25,
+    "upright": 15,
+    "lateralDrift": 10,
+    "energy": 0.005,
+    "smoothness": 0.001,
+    "componentMass": 0.2,
+    "sensorChannels": 0.01,
+    "trainingSteps": 0.0001
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0.2,
+    "maximumLateralDrift": 0.25,
+    "maximumPlanarVelocityTrackingError": 0.22,
+    "maximumYawRateTrackingError": 0.35,
+    "maximumRegression": 10
+  }
+}
