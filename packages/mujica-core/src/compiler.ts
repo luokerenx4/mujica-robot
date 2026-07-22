@@ -13,11 +13,57 @@ function assertUnique<T>(items: T[], key: (item: T) => string, path: string): vo
   for (const item of items) { const id = key(item); if (seen.has(id)) throw new MujicaValidationError([{ path, code: "duplicate.id", message: `duplicate id '${id}'` }]); seen.add(id); }
 }
 
-function validateComponentConfig(component: ComponentManifest, config: Record<string, unknown>, path: string): void {
-  const schema = component.configSchema as { properties?: Record<string, { type?: string }>; required?: string[]; additionalProperties?: boolean }; const properties = schema.properties ?? {};
-  if (schema.additionalProperties === false) for (const key of Object.keys(config)) if (!(key in properties)) throw new MujicaValidationError([{ path: `${path}/${key}`, code: "component.config.unknown", message: `unknown configuration property '${key}'` }]);
-  for (const key of schema.required ?? []) if (!(key in config)) throw new MujicaValidationError([{ path, code: "component.config.required", message: `missing required configuration property '${key}'` }]);
-  for (const [key, value] of Object.entries(config)) { const expected = properties[key]?.type; if (expected && expected !== "number" && typeof value !== expected) throw new MujicaValidationError([{ path: `${path}/${key}`, code: "component.config.type", message: `expected ${expected}` }]); if (expected === "number" && (typeof value !== "number" || !Number.isFinite(value))) throw new MujicaValidationError([{ path: `${path}/${key}`, code: "component.config.type", message: "expected finite number" }]); }
+type ComponentConfigValue = number | string | boolean;
+type ComponentConfigProperty = { type?: unknown; default?: unknown; minimum?: unknown; maximum?: unknown; enum?: unknown };
+
+function configError(path: string, code: string, message: string): never { throw new MujicaValidationError([{ path, code, message }]); }
+
+function validateConfigValue(value: unknown, property: ComponentConfigProperty, path: string): ComponentConfigValue {
+  const type = property.type;
+  if (!(["number", "integer", "string", "boolean"] as unknown[]).includes(type)) configError(path, "component.config.schema", "configuration property type must be number, integer, string, or boolean");
+  if ((type === "number" || type === "integer") && (typeof value !== "number" || !Number.isFinite(value))) configError(path, "component.config.type", `expected finite ${type}`);
+  if (type === "integer" && !Number.isInteger(value)) configError(path, "component.config.type", "expected integer");
+  if (type === "string" && typeof value !== "string") configError(path, "component.config.type", "expected string");
+  if (type === "boolean" && typeof value !== "boolean") configError(path, "component.config.type", "expected boolean");
+  if (typeof value === "number") {
+    if (property.minimum !== undefined && (typeof property.minimum !== "number" || !Number.isFinite(property.minimum))) configError(path, "component.config.schema", "minimum must be a finite number");
+    if (property.maximum !== undefined && (typeof property.maximum !== "number" || !Number.isFinite(property.maximum))) configError(path, "component.config.schema", "maximum must be a finite number");
+    if (typeof property.minimum === "number" && value < property.minimum) configError(path, "component.config.minimum", `value must be at least ${property.minimum}`);
+    if (typeof property.maximum === "number" && value > property.maximum) configError(path, "component.config.maximum", `value must be at most ${property.maximum}`);
+  }
+  if (property.enum !== undefined) {
+    if (!Array.isArray(property.enum) || property.enum.length === 0) configError(path, "component.config.schema", "enum must be a non-empty array");
+    if (!property.enum.some((candidate) => candidate === value)) configError(path, "component.config.enum", "value is not in the allowed enum");
+  }
+  return value as ComponentConfigValue;
+}
+
+function validateComponentConfig(component: ComponentManifest, config: Record<string, unknown>, path: string): Record<string, ComponentConfigValue> {
+  const schema = component.configSchema as { type?: unknown; properties?: unknown; required?: unknown; additionalProperties?: unknown };
+  if (schema.type !== "object" || schema.additionalProperties !== false || !schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) configError(path, "component.config.schema", "configSchema must be a closed object schema with properties and additionalProperties=false");
+  if (schema.required !== undefined && (!Array.isArray(schema.required) || !schema.required.every((item) => typeof item === "string"))) configError(path, "component.config.schema", "required must be an array of property names");
+  const properties = schema.properties as Record<string, ComponentConfigProperty>; const required = new Set((schema.required ?? []) as string[]); const resolved: Record<string, ComponentConfigValue> = {};
+  for (const key of Object.keys(config)) if (!Object.hasOwn(properties, key)) configError(`${path}/${key}`, "component.config.unknown", `unknown configuration property '${key}'`);
+  for (const [key, property] of Object.entries(properties)) {
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(key) || !property || typeof property !== "object" || Array.isArray(property)) configError(`${path}/${key}`, "component.config.schema", "configuration property must have a template-safe name and object schema");
+    const supplied = Object.hasOwn(config, key); const hasDefault = Object.hasOwn(property, "default");
+    if (!supplied && !hasDefault) { if (required.has(key)) configError(`${path}/${key}`, "component.config.required", `missing required configuration property '${key}'`); continue; }
+    resolved[key] = validateConfigValue(supplied ? config[key] : property.default, property, `${path}/${key}`);
+  }
+  for (const key of required) if (!Object.hasOwn(properties, key)) configError(`${path}/${key}`, "component.config.schema", `required property '${key}' is not declared`);
+  return resolved;
+}
+
+function renderComponentFragment(fragment: string, config: Record<string, ComponentConfigValue>, path: string): string {
+  const used = new Set<string>();
+  const rendered = fragment.replace(/\{\{config\.([A-Za-z][A-Za-z0-9_-]*)\}\}/g, (_token, key: string) => {
+    if (!Object.hasOwn(config, key)) configError(path, "component.config.unresolved", `MJCF template requires configuration property '${key}'`);
+    used.add(key); const value = config[key]!;
+    return typeof value === "string" ? value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("'", "&apos;").replaceAll("<", "&lt;").replaceAll(">", "&gt;") : String(value);
+  });
+  const unresolved = rendered.match(/\{\{[^}]*\}\}/)?.[0]; if (unresolved) configError(path, "component.config.template", `invalid or unresolved MJCF template '${unresolved}'`);
+  for (const key of Object.keys(config)) if (!used.has(key)) configError(path, "component.config.unused", `configuration property '${key}' is not bound in the MJCF fragment`);
+  return rendered;
 }
 
 function contractDiff(from: ContractChannel[], to: ContractChannel[]): { added: ContractChannel[]; removed: ContractChannel[]; changed: Array<{ from: ContractChannel; to: ContractChannel }> } {
@@ -73,7 +119,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const selectedIds = new Set(assembly.components.map((item) => item.component));
   for (const instance of assembly.components) {
     const component = await loadComponent(project.rootDir, instance.component);
-    validateComponentConfig(component.manifest, instance.config ?? {}, `assemblies/${assemblyId}.robot.json/components/${instance.id}/config`);
+    const config = validateComponentConfig(component.manifest, instance.config ?? {}, `assemblies/${assemblyId}.robot.json/components/${instance.id}/config`);
     const inventories: Array<Array<{ name: string }>> = [component.manifest.geometry, component.manifest.joints, component.manifest.actuators, component.manifest.sensors];
     for (const inventory of inventories) assertUnique(inventory, (item) => item.name, `components/${instance.component}/component.json/hardware-inventory`);
     const mount = mounts.get(instance.mount);
@@ -87,7 +133,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
       if (mounts.has(id)) throw new MujicaValidationError([{ path: `components/${instance.component}/component.json/providesMounts`, code: "mount.duplicate", message: `provided mount '${id}' already exists` }]);
       mounts.set(id, { ...provided, id });
     }
-    resolved.push({ manifest: component.manifest, rootDir: component.rootDir, compiled: { instanceId: instance.id, componentId: instance.component, mount: instance.mount, hash: component.hash, massKg: component.manifest.massKg, cost: component.manifest.cost, physical: component.manifest.physical, geometry: component.manifest.geometry, joints: component.manifest.joints, actuators: component.manifest.actuators, sensors: component.manifest.sensors } });
+    resolved.push({ manifest: component.manifest, rootDir: component.rootDir, compiled: { instanceId: instance.id, componentId: instance.component, mount: instance.mount, config, hash: component.hash, massKg: component.manifest.massKg, cost: component.manifest.cost, physical: component.manifest.physical, geometry: component.manifest.geometry, joints: component.manifest.joints, actuators: component.manifest.actuators, sensors: component.manifest.sensors } });
   }
 
   const observations = [...base.manifest.observations, ...resolved.flatMap((component) => component.manifest.observations)];
@@ -102,7 +148,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   if (baseXml.split(COMPONENT_MARKER).length !== 2) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.component-marker", message: `base MJCF must contain exactly one ${COMPONENT_MARKER}` }]);
   const fragments: string[] = [];
   for (const component of resolved) {
-    const fragment = await readText(confined(component.rootDir, component.manifest.fragment));
+    const fragmentPath = confined(component.rootDir, component.manifest.fragment); const fragment = renderComponentFragment(await readText(fragmentPath), component.compiled.config, `components/${component.manifest.id}/${component.manifest.fragment}`);
     for (const sensor of component.manifest.sensors) {
       if (!component.manifest.observations.some((channel) => channel.name === sensor.name || channel.source.includes(sensor.name))) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/component.json/sensors/${sensor.name}`, code: "component.sensor.channel", message: `sensor '${sensor.name}' is not represented by an Observation channel` }]);
       if (sensor.source === "mjcf" && !fragment.includes(`name="${sensor.name}"`)) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/${component.manifest.fragment}`, code: "component.sensor.mjcf", message: `declared MJCF sensor '${sensor.name}' is missing from fragment` }]);

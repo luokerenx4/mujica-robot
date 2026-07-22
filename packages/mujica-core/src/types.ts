@@ -82,6 +82,7 @@ export interface CompiledComponent {
   instanceId: string;
   componentId: string;
   mount: string;
+  config: Record<string, number | string | boolean>;
   hash: string;
   massKg: number;
   cost: number;

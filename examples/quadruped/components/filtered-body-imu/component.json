@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "id": "filtered-body-imu",
+  "name": "Configurable torso IMU",
+  "type": "imu",
+  "fragment": "model.xml",
+  "compatibleMounts": ["sensor-bus"],
+  "providesMounts": [],
+  "observations": [
+    { "name": "imu-angular-velocity", "kind": "sensor", "size": 3, "source": "sensor:body-gyro", "unit": "rad-s" },
+    { "name": "imu-linear-acceleration", "kind": "sensor", "size": 3, "source": "sensor:body-accelerometer", "unit": "m-s2" }
+  ],
+  "actions": [],
+  "dependencies": [],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "cutoffHz": { "type": "number", "minimum": 0, "maximum": 1000, "default": 50 }
+    },
+    "additionalProperties": false
+  },
+  "physical": { "centerOfMassM": [0, 0, 0], "inertiaDiagonalKgM2": [0.00001, 0.00001, 0.00001] },
+  "geometry": [],
+  "joints": [],
+  "actuators": [],
+  "sensors": [
+    { "name": "body-gyro", "kind": "gyro", "source": "mjcf" },
+    { "name": "body-accelerometer", "kind": "accelerometer", "source": "mjcf" }
+  ],
+  "massKg": 0.03,
+  "cost": 1,
+  "license": "Apache-2.0",
+  "attribution": "Original Mujica component"
+}

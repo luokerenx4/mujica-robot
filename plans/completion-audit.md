@@ -23,6 +23,7 @@ Audit the implemented Mujica repository against the complete robot-development-h
 ## Current audit state
 
 - Candidate, Revision, Component inventory, Policy compatibility, Studio, and Hardware Bundle boundaries are executable and regression-tested.
+- Component instance configuration is now a closed, typed MJCF binding: resolved defaults enter semantic diffs, and inert or invalid parameters fail compilation.
 - The checked-in dry-run proves only protocol conformance. It intentionally remains `hardwareVerified=false` until a real HIL or physical device produces evidence.
 - Further work should grow robot capability or add a real device adapter, rather than weakening the evidence model with simulated hardware claims.
 

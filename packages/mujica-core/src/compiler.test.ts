@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { resolve } from "node:path";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
@@ -24,6 +26,27 @@ describe("Robot Assembly compiler", () => {
     expect(component.manifest.sensors.map((item) => item.name)).toEqual(["body-gyro", "body-accelerometer"]);
     const assembly = await compileAssembly(project, "force-sensing-3dof");
     expect(assembly.modelHash).toBe("9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea"); expect(assembly.executionHash).toHaveLength(64);
+  });
+
+  test("typed Component config is resolved into MJCF and appears in semantic diffs", async () => {
+    const comparison = await compareAssemblies(project, "filtered-imu-default", "filtered-imu-fast");
+    expect(comparison.from.components[0]?.config).toEqual({ cutoffHz: 50 }); expect(comparison.to.components[0]?.config).toEqual({ cutoffHz: 200 });
+    expect(comparison.components.changed).toHaveLength(1); expect(comparison.observations.changed).toEqual([]); expect(comparison.actions.changed).toEqual([]);
+    expect(await readFile(comparison.from.modelPath, "utf8")).toContain('cutoff="50"'); expect(await readFile(comparison.to.modelPath, "utf8")).toContain('cutoff="200"');
+    expect(comparison.from.modelHash).not.toBe(comparison.to.modelHash); expect(comparison.from.executionHash).not.toBe(comparison.to.executionHash);
+  });
+
+  test("Component config fails closed when a value is out of range or unbound", async () => {
+    const root = await mkdtemp(join(tmpdir(), "mujica-component-config-"));
+    try {
+      await mkdir(join(root, "assemblies"), { recursive: true }); await mkdir(join(root, "components"), { recursive: true }); await mkdir(join(root, "robots"), { recursive: true });
+      await cp(join(project, "mujica.json"), join(root, "mujica.json")); await cp(join(project, "robots/quadruped-base"), join(root, "robots/quadruped-base"), { recursive: true }); await cp(join(project, "components/filtered-body-imu"), join(root, "components/filtered-body-imu"), { recursive: true });
+      await writeFile(join(root, "assemblies/invalid.robot.json"), JSON.stringify({ version: 1, id: "invalid", name: "Invalid config", base: "quadruped-base", components: [{ id: "body-imu", component: "filtered-body-imu", mount: "torso-sensor", config: { cutoffHz: 1001 } }] }));
+      await expect(compileAssembly(root, "invalid")).rejects.toThrow("value must be at most 1000");
+      await writeFile(join(root, "assemblies/invalid.robot.json"), JSON.stringify({ version: 1, id: "invalid", name: "Invalid config", base: "quadruped-base", components: [{ id: "body-imu", component: "filtered-body-imu", mount: "torso-sensor" }] }));
+      const manifestPath = join(root, "components/filtered-body-imu/component.json"); const manifest = JSON.parse(await readFile(manifestPath, "utf8")); manifest.configSchema.properties.deadParameter = { type: "number", default: 1 }; await writeFile(manifestPath, JSON.stringify(manifest));
+      await expect(compileAssembly(root, "invalid")).rejects.toThrow("configuration property 'deadParameter' is not bound");
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
 
   test("development candidates declare the compiled hardware and contract diff", async () => {
@@ -59,7 +82,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("force-sensing-3dof");
     expect(result.project.manifest.defaults.controller).toBe("spatial-residual-gait");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);
