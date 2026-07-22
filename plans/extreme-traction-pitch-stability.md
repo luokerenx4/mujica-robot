@@ -1,6 +1,6 @@
 # Extreme traction and pitch stability
 
-- Status: `active`
+- Status: `completed`
 - Updated: `2026-07-23`
 - Related design: [Traction recovery](../docs/design/traction-recovery.md)
 
@@ -35,7 +35,7 @@ Robot Revision `quadruped-r-3275cb855510` closes the `friction = 0.35` gap and p
 - [x] A locked Benchmark makes `friction = 0.1` and three seeded reset variants hard gates and retains a lower-friction non-gating stress case.
 - [x] The selected Controller survives and reaches signed forward progress `>= 0.25` with backward displacement `<= 0.02 m` on every hard extreme-traction case.
 - [x] All prior traction, command-tracking, command-transition, and spatial-generalization diagnoses retain zero violations.
-- [ ] A feasibility-first KEEP publishes a child Robot Revision; full TypeScript/Python tests pass and evidence is pushed.
+- [x] A feasibility-first KEEP publishes a child Robot Revision; full TypeScript/Python tests pass and evidence is pushed.
 
 ## Work
 
@@ -43,7 +43,7 @@ Robot Revision `quadruped-r-3275cb855510` closes the `friction = 0.35` gap and p
 - [x] Establish frozen same-seed baselines and isolate authority versus pitch-control effects.
 - [x] Develop a bounded severity-aware sagittal Controller and exhaust its immediate alternatives.
 - [x] Run every locked regression, apply the governed Candidate, and publish the Revision.
-- [ ] Update design/Plan evidence, verify the repository, commit, and push.
+- [x] Update design/Plan evidence, verify the repository, commit, and push.
 
 ## Findings and decisions
 
@@ -62,3 +62,8 @@ Robot Revision `quadruped-r-3275cb855510` closes the `friction = 0.35` gap and p
 - 2026-07-23 — Final `bounded-traction-gait` passes all ten hard cases: unperturbed extreme progress is `0.468`; reset seeds reach `0.366`, `0.497`, and `0.430`; every case survives with zero backward displacement and backward pitch below `0.5 rad`. `friction = 0.05` remains non-gating and fails.
 - 2026-07-23 — Locked regression diagnoses retain zero violations: traction recovery `65.5714` (`+15.1246`), command tracking `76.0241` (`+4.7497`), command transitions `67.1619` (`-2.1661` within gates), and spatial generalization `56.6273` (`+5.0687`).
 - 2026-07-23 — Feasibility-first KEEP improves the expanded extreme score `47.5783 → 66.0074`, removes all 20 baseline violations, and publishes child Robot Revision `quadruped-r-1101a73a0752` after intermediate Revision `quadruped-r-b77621e855a4` exposed the held-out reset gap.
+- 2026-07-23 — Final verification passed: all ten Benchmark locks are current, 37 TypeScript/CLI/Studio tests and 25 Python Runtime tests pass, project validation crosses MuJoCo successfully, refreshed dry-run evidence is `PROTOCOL-VERIFIED` with `hardwareVerified=false`, and commit `d25b1fe` is pushed to `origin/main`.
+
+## Completion
+
+Mujica's default quadruped now uses the governed `bounded-traction-gait` and `extreme-traction` Benchmark. Signed pitch evidence, three hard extreme reset seeds, phase-robust severity latching, immutable failed probes, two linked Robot Revisions, and five zero-violation capability diagnoses make the result inspectable to humans and Agents. `friction = 0.05` remains an explicit non-gating failure rather than an implied capability.
