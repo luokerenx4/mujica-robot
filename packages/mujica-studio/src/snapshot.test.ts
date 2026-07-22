@@ -15,6 +15,8 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
     expect(first.snapshot.benchmarks).toHaveLength(6);
     expect(first.snapshot.candidates).toHaveLength(4);
+    expect(first.snapshot.hardwareBundles).toHaveLength(1);
+    expect(first.snapshot.hardwareVerifications).toHaveLength(1);
     const html = await readFile(first.indexPath, "utf8");
     expect(html).toContain("read-only evidence debugger");
     expect(html).toContain("Trajectory replay");

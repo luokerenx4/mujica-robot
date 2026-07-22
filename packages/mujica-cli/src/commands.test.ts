@@ -24,6 +24,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train-research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy-revision.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.export")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.verify")).toBe(true);
   });
 
   test("Studio is a read-only projection of a completed quadruped run", () => {
@@ -41,9 +43,17 @@ describe("agent CLI contract", () => {
     expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 6, 6, 6]);
     expect(envelope.data.definitions.research).toBe(3);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
+    expect(envelope.data.definitions.hardwareTargets).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
+  });
+
+  test("hardware dry-run evidence cannot masquerade as physical verification", () => {
+    const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "spatial-dry-run", "--json"]); const bundle = JSON.parse(exported.stdout); expect(exported.code).toBe(0);
+    const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
+    expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
+    expect(result.data.evidence.samples).toBe(250); expect(result.data.reasons).toEqual([]);
   });
 
   test("a locked candidate preview is read-only and keeps its score evidence", () => {

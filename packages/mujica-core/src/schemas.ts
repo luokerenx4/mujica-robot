@@ -86,6 +86,21 @@ export const trainingSchema = z.object({
   residualPenalty: z.number().nonnegative().optional(),
 }).strict();
 
+export const hardwareTargetSchema = z.object({
+  version: z.literal(1), id: idSchema, name: z.string().min(1), revision: idSchema, assembly: idSchema, controller: idSchema,
+  environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
+  safety: z.object({ maximumLatencyMs: z.number().positive(), maximumConsecutiveMisses: z.number().int().nonnegative(), emergencyStopAction: z.array(z.number().finite()).min(1) }).strict(),
+  device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serialRequired: z.boolean() }).strict(),
+}).strict();
+
+export const hardwareEvidenceSchema = z.object({
+  version: z.literal(1), target: idSchema, bundleHash: z.string().regex(/^[0-9a-f]{64}$/), environment: z.enum(["dry-run", "hil", "real"]),
+  device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serial: z.string().min(1) }).strict(),
+  observationContractHash: z.string().regex(/^[0-9a-f]{64}$/), actionContractHash: z.string().regex(/^[0-9a-f]{64}$/), driverHash: z.string().regex(/^[0-9a-f]{64}$/),
+  startedAt: z.string().datetime(), endedAt: z.string().datetime(), samples: z.number().int().positive(), maximumObservedLatencyMs: z.number().nonnegative(),
+  missedDeadlines: z.number().int().nonnegative(), maximumConsecutiveMissesObserved: z.number().int().nonnegative(), emergencyStops: z.number().int().nonnegative(), passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
+}).strict();
+
 export const candidateSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.enum(["optimization", "development"]), benchmark: idSchema,
   baseRevision: idSchema.nullable(), baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(), proposed: z.object({ assembly: idSchema, controller: idSchema }).strict(),
@@ -139,6 +154,8 @@ export type ObjectiveDefinition = z.output<typeof objectiveSchema>;
 export type BenchmarkDefinition = z.output<typeof benchmarkSchema>;
 export type TrainerDefinition = z.output<typeof trainerSchema>;
 export type TrainingDefinition = z.output<typeof trainingSchema>;
+export type HardwareTargetDefinition = z.output<typeof hardwareTargetSchema>;
+export type HardwareEvidence = z.output<typeof hardwareEvidenceSchema>;
 export type CandidateDefinition = z.output<typeof candidateSchema>;
 export type ResearchDefinition = z.output<typeof researchSchema>;
 export type ResearchProposal = z.output<typeof researchProposalSchema>;

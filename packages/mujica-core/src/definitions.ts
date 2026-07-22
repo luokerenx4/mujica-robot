@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { benchmarkSchema, candidateSchema, controllerSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { benchmarkSchema, candidateSchema, controllerSchema, hardwareTargetSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import { confined, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
 
@@ -18,6 +18,7 @@ export const loadTraining = async (projectDir: string, id: string): Promise<Trai
 export const loadCandidate = async (projectDir: string, id: string): Promise<CandidateDefinition> => await readJson(confined(resolve(projectDir), `candidates/${id}/candidate.json`), candidateSchema) as CandidateDefinition;
 export const loadResearch = async (projectDir: string, id: string): Promise<ResearchDefinition> => await readJson(confined(resolve(projectDir), `research/${id}.research.json`), researchSchema) as ResearchDefinition;
 export const loadTrainingResearch = async (projectDir: string, id: string): Promise<TrainingResearchDefinition> => await readJson(confined(resolve(projectDir), `training-research/${id}.training-research.json`), trainingResearchSchema) as TrainingResearchDefinition;
+export const loadHardwareTarget = async (projectDir: string, id: string): Promise<HardwareTargetDefinition> => await readJson(confined(resolve(projectDir), `hardware-targets/${id}.hardware.json`), hardwareTargetSchema) as HardwareTargetDefinition;
 export async function loadTrainer(projectDir: string, id: string): Promise<{ definition: TrainerDefinition; rootDir: string }> {
   const rootDir = confined(resolve(projectDir), `trainers/${id}`); const definition = await readJson(join(rootDir, "trainer.json"), trainerSchema) as TrainerDefinition;
   if (definition.id !== id) throw new Error(`Trainer id '${definition.id}' must match directory '${id}'`);
@@ -100,6 +101,16 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     const candidate = await loadCandidate(root, id); await loadBenchmark(root, candidate.benchmark); await verifyCandidateChanges(root, candidate);
     for (const path of [...candidate.allowedChanges, ...candidate.fixedInputs]) await requireFile(confined(root, path), `Candidate '${id}' input`);
   }
+  const hardwareTargetIds = await fileIds(join(root, "hardware-targets"), ".hardware.json");
+  for (const id of hardwareTargetIds) {
+    const target = await loadHardwareTarget(root, id); if (target.id !== id) throw new Error(`Hardware Target id '${target.id}' must match filename '${id}'`);
+    const revisionPath = confined(root, `revisions/${target.revision}`); await requireFile(join(revisionPath, "manifest.json"), `Hardware Target '${id}' Revision`);
+    const revision = JSON.parse(await Bun.file(join(revisionPath, "manifest.json")).text());
+    if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target '${id}' must match its Robot Revision Assembly and Controller`);
+    const compiled = await compileAssembly(root, target.assembly); if (target.safety.emergencyStopAction.length !== compiled.actionContract.size) throw new Error(`Hardware Target '${id}' emergency stop Action size does not match contract`);
+    const lows = compiled.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.low ?? Number.NEGATIVE_INFINITY)); const highs = compiled.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.high ?? Number.POSITIVE_INFINITY));
+    for (let index = 0; index < target.safety.emergencyStopAction.length; index++) if (target.safety.emergencyStopAction[index]! < lows[index]! || target.safety.emergencyStopAction[index]! > highs[index]!) throw new Error(`Hardware Target '${id}' emergency stop Action exceeds channel bounds`);
+  }
   const researchIds = await fileIds(join(root, "research"), ".research.json");
   for (const id of researchIds) {
     const research = await loadResearch(root, id); await loadBenchmark(root, research.benchmark); await compileAssembly(root, research.assembly); const controller = await loadController(root, research.controller);
@@ -131,5 +142,5 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     }
   }
   await loadController(root, project.manifest.defaults.controller); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
-  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length };
+  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length };
 }

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "spatial-dry-run",
+  "name": "3-DOF quadruped driver protocol dry-run",
+  "revision": "quadruped-r-b1a3d1f7161a",
+  "assembly": "force-sensing-3dof",
+  "controller": "spatial-forward-gait",
+  "environment": "dry-run",
+  "protocol": "stdio-jsonl-v1",
+  "controlHz": 50,
+  "safety": {
+    "maximumLatencyMs": 10,
+    "maximumConsecutiveMisses": 2,
+    "emergencyStopAction": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  },
+  "device": { "vendor": "Mujica", "model": "Protocol simulator", "serialRequired": false }
+}

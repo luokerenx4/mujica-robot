@@ -50,7 +50,8 @@ export async function validateCommand(projectDir: string) {
 export async function inspectCommand(projectDir: string) {
   const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
-  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length }, components, assemblies, policies, runs, trainingRuns, revisions, policyRevisions }, project);
+  const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications"));
+  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
 }
 
 export async function studioCommand(projectDir: string, run?: string) {
