@@ -43,7 +43,20 @@ describe("agent CLI contract", () => {
     expect(envelope.data.verdict).toBe("KEEP");
     expect(envelope.data.scoreDelta).toBeGreaterThan(2);
     expect(envelope.data.allowedChangeHashes["controllers/force-aware-gait/controller.py"]).toHaveLength(64);
+    expect(envelope.data.verifiedChanges.observations.added).toEqual(["foot-contact-force"]);
+    expect(envelope.data.proposedRevisionHash).toHaveLength(64);
+    expect(envelope.data.proposedRevisionId).toMatch(/^quadruped-r-/);
   });
+
+  test("trained component development is judged from frozen policies, not training completion", () => {
+    const result = invoke(["candidate", "examples/quadruped", "--candidate", "trained-foot-force-recovery", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.candidate.changes.policy.from).toBe("baseline-locomotion-8c664d9168a3348a");
+    expect(envelope.data.candidate.changes.policy.to).toBe("force-aware-locomotion-cbb358d666be2408");
+    expect(envelope.data.verdict).toBe("REVERT");
+    expect(envelope.data.scoreDelta).toBeLessThan(0);
+    expect(envelope.data.gateReasons).toHaveLength(3);
+  }, 15_000);
 
   test("forward locomotion promotion requires net progress in every gating case", () => {
     const result = invoke(["candidate", "examples/quadruped", "--candidate", "forward-locomotion", "--json"]); const envelope = JSON.parse(result.stdout);

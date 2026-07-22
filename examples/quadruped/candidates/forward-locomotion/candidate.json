@@ -7,8 +7,21 @@
   "baseRevision": "quadruped-r-d91bb91ea0d4",
   "baseline": { "assembly": "force-sensing", "controller": "force-aware-gait" },
   "proposed": { "assembly": "force-sensing", "controller": "forward-gait" },
-  "addedComponents": [],
-  "removedComponents": [],
+  "changes": {
+    "components": { "added": [], "removed": [], "modified": [] },
+    "observations": { "added": [], "removed": [], "changed": [] },
+    "actions": { "added": [], "removed": [], "changed": [] },
+    "controller": {
+      "from": "force-aware-gait",
+      "to": "forward-gait",
+      "files": [
+        "controllers/forward-gait/controller.json",
+        "controllers/forward-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
   "allowedChanges": [
     "controllers/forward-gait/controller.json",
     "controllers/forward-gait/controller.py"

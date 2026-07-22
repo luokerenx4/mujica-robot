@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "trained-foot-force-recovery",
+  "name": "Audit foot-force sensing with frozen trained policies",
+  "kind": "development",
+  "benchmark": "trained-sensor-development",
+  "baseRevision": null,
+  "baseline": { "assembly": "baseline", "controller": "trained-trot" },
+  "proposed": { "assembly": "force-sensing", "controller": "force-trained-trot" },
+  "changes": {
+    "components": { "added": ["foot-force-sensor"], "removed": [], "modified": [] },
+    "observations": { "added": ["foot-contact-force"], "removed": [], "changed": [] },
+    "actions": { "added": [], "removed": [], "changed": [] },
+    "controller": {
+      "from": "trained-trot",
+      "to": "force-trained-trot",
+      "files": ["controllers/force-trained-trot/controller.json"]
+    },
+    "trainer": {
+      "from": "locomotion-ppo",
+      "to": "locomotion-ppo",
+      "files": ["training/force-aware-locomotion.training.json"]
+    },
+    "policy": {
+      "from": "baseline-locomotion-8c664d9168a3348a",
+      "to": "force-aware-locomotion-cbb358d666be2408"
+    }
+  },
+  "allowedChanges": [
+    "assemblies/force-sensing.robot.json",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "controllers/force-trained-trot/controller.json",
+    "training/force-aware-locomotion.training.json"
+  ],
+  "fixedInputs": [
+    "benchmarks/trained-sensor-development.benchmark.json",
+    "tasks/stand.task.json",
+    "tasks/velocity-track.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/low-friction.scenario.json",
+    "scenarios/lateral-push.scenario.json",
+    "objectives/locomotion.objective.json",
+    "controllers/trained-trot/controller.json",
+    "training/baseline-locomotion.training.json"
+  ],
+  "hypothesis": "A policy trained with explicit foot-force channels can use contact evidence to improve disturbance recovery over a policy trained on the baseline Assembly.",
+  "expectedEffect": "Expose the complete component-to-contract-to-training-to-frozen-policy tradeoff and keep it only if locked evaluation repays sensor mass, channels, and training cost."
+}

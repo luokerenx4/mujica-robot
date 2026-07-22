@@ -1,8 +1,8 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { compileAssembly } from "./compiler";
+import { compareAssemblies, compileAssembly } from "./compiler";
 import { benchmarkSchema, candidateSchema, controllerSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
-import { confined, readJson } from "./utils";
+import { confined, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
 
 export async function loadController(projectDir: string, id: string): Promise<{ definition: ControllerDefinition; rootDir: string }> {
@@ -38,6 +38,40 @@ async function requireFile(path: string, label: string): Promise<void> {
   if (!(await Bun.file(path).exists())) throw new Error(`${label} does not exist: ${path}`);
 }
 
+export async function verifyCandidateChanges(projectDir: string, candidate: CandidateDefinition) {
+  const root = resolve(projectDir); const comparison = await compareAssemblies(root, candidate.baseline.assembly, candidate.proposed.assembly);
+  const names = (items: Array<{ name: string }>) => items.map((item) => item.name).sort();
+  const actual = {
+    components: {
+      added: comparison.components.added.map((item) => item.componentId).sort(),
+      removed: comparison.components.removed.map((item) => item.componentId).sort(),
+      modified: comparison.components.changed.map((item) => item.to.componentId).sort(),
+    },
+    observations: { added: names(comparison.observations.added), removed: names(comparison.observations.removed), changed: comparison.observations.changed.map((item) => item.to.name).sort() },
+    actions: { added: names(comparison.actions.added), removed: names(comparison.actions.removed), changed: comparison.actions.changed.map((item) => item.to.name).sort() },
+  };
+  const normalized = (surface: Record<string, string[]>) => Object.fromEntries(Object.entries(surface).map(([key, values]) => [key, [...values].sort()]));
+  for (const surface of ["components", "observations", "actions"] as const) {
+    if (stableJson(normalized(candidate.changes[surface])) !== stableJson(actual[surface])) throw new Error(`Candidate '${candidate.id}' declared ${surface} changes do not match compiled Assembly diff`);
+  }
+  if (candidate.changes.controller.from !== candidate.baseline.controller || candidate.changes.controller.to !== candidate.proposed.controller) throw new Error(`Candidate '${candidate.id}' Controller change must match baseline/proposed Controllers`);
+  const baselineController = await loadController(root, candidate.baseline.controller); const proposedController = await loadController(root, candidate.proposed.controller);
+  const actualPolicy = {
+    from: baselineController.definition.kind === "policy" ? baselineController.definition.policy : null,
+    to: proposedController.definition.kind === "policy" ? proposedController.definition.policy : null,
+  };
+  if ((actualPolicy.from !== null || actualPolicy.to !== null) && stableJson(candidate.changes.policy) !== stableJson(actualPolicy)) throw new Error(`Candidate '${candidate.id}' Policy change must match baseline/proposed policy Controllers`);
+  if (actualPolicy.from === null && actualPolicy.to === null && candidate.changes.policy !== null) throw new Error(`Candidate '${candidate.id}' declares a Policy change for program Controllers`);
+  if (candidate.changes.controller.from !== candidate.changes.controller.to && candidate.changes.controller.files.length === 0) throw new Error(`Candidate '${candidate.id}' changes Controller without declaring files`);
+  if (candidate.changes.trainer) {
+    if (candidate.changes.trainer.from) await loadTrainer(root, candidate.changes.trainer.from);
+    if (candidate.changes.trainer.to) await loadTrainer(root, candidate.changes.trainer.to);
+  }
+  const allowed = new Set(candidate.allowedChanges);
+  for (const path of [...candidate.changes.controller.files, ...(candidate.changes.trainer?.files ?? [])]) if (!allowed.has(path)) throw new Error(`Candidate '${candidate.id}' declares changed file '${path}' outside allowedChanges`);
+  return { comparison, declared: candidate.changes, actual };
+}
+
 export async function validateProjectDefinitions(projectDir: string): Promise<Record<string, number>> {
   const project = await loadProject(projectDir); const root = project.rootDir;
   const controllerIds = await directoryIds(join(root, "controllers"));
@@ -63,7 +97,7 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   }
   const candidateIds = await directoryIds(join(root, "candidates"));
   for (const id of candidateIds) {
-    const candidate = await loadCandidate(root, id); await loadBenchmark(root, candidate.benchmark); await compileAssembly(root, candidate.baseline.assembly); await compileAssembly(root, candidate.proposed.assembly); await loadController(root, candidate.baseline.controller); await loadController(root, candidate.proposed.controller);
+    const candidate = await loadCandidate(root, id); await loadBenchmark(root, candidate.benchmark); await verifyCandidateChanges(root, candidate);
     for (const path of [...candidate.allowedChanges, ...candidate.fixedInputs]) await requireFile(confined(root, path), `Candidate '${id}' input`);
   }
   const researchIds = await fileIds(join(root, "research"), ".research.json");

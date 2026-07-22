@@ -7,8 +7,21 @@
   "baseRevision": "quadruped-r-5c96344630e7",
   "baseline": { "assembly": "force-sensing", "controller": "forward-gait" },
   "proposed": { "assembly": "force-sensing-3dof", "controller": "spatial-forward-gait" },
-  "addedComponents": [],
-  "removedComponents": [],
+  "changes": {
+    "components": { "added": [], "removed": [], "modified": [] },
+    "observations": { "added": [], "removed": [], "changed": ["joint-position", "joint-velocity"] },
+    "actions": { "added": [], "removed": [], "changed": ["joint-torque"] },
+    "controller": {
+      "from": "forward-gait",
+      "to": "spatial-forward-gait",
+      "files": [
+        "controllers/spatial-forward-gait/controller.json",
+        "controllers/spatial-forward-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
   "allowedChanges": [
     "assemblies/force-sensing-3dof.robot.json",
     "robots/quadruped-3dof/robot.json",

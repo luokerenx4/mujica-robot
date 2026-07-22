@@ -35,6 +35,8 @@ bun run mujica train-research examples/quadruped --research forward-residual-pol
 
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
+The same hardware change also has an independent frozen-policy Development Candidate. It explicitly records the Assembly, contract, training configuration, Controller, and Policy transition. That candidate is honestly REVERT: the 1024-step force-aware PPO policy scores `43.3281` versus `44.0822` and misses every survival gate. Mujica records this as evidence that a real training run is not automatically a successful robot revision.
+
 The checked-in research ledger contains 43 real MuJoCo experiments. Ten accepted controller changes improved the force-sensing quadruped from `83.3599` to `84.2544`; the built-in search then exhausted every one-step neighbor in its declared envelope without weakening the `0.02` KEEP threshold.
 
 The Python/PyTorch lane uses a serialized force-aware PD residual prior instead of starting PPO from zero torque. Its checked-in Training Research ledger contains 11 frozen-policy experiments. One KEEP reduced the sample budget from 4096 to 2048 steps and improved the budget-aware learned-policy score from `84.1888` to `84.2398`. It remains slightly below the program-controller Robot Revision, so Mujica records it as a Policy Revision without making a false whole-robot promotion claim.

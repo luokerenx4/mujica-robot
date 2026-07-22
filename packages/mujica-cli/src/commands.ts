@@ -2,7 +2,7 @@ import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } fro
 import { dirname, join, resolve } from "node:path";
 import {
   atomicDirectory, compareAssemblies, compileAssembly, confined, hashDirectory, hashJson, listAssemblyIds, listComponentIds, loadAssembly, loadBenchmark, loadCandidate, loadComponent,
-  loadController, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, writeJson,
+  loadController, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
   type BenchmarkDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
@@ -159,7 +159,7 @@ export async function evaluateCommand(projectDir: string, options: { assembly: s
 export async function candidateCommand(projectDir: string, id: string, apply: boolean) {
   const project = await loadProject(projectDir); const candidate = await loadCandidate(project.rootDir, id); const benchmark = await loadBenchmark(project.rootDir, candidate.benchmark); const lock = await requireBenchmarkLock(project, benchmark);
   if (stableJson(candidate.baseline) !== stableJson(benchmark.baseline)) throw new Error("Candidate baseline must match its locked Benchmark baseline");
-  const [comparison, baseline, proposed] = await Promise.all([compareAssemblies(project.rootDir, candidate.baseline.assembly, candidate.proposed.assembly), evaluatePair(project, benchmark, candidate.baseline.assembly, candidate.baseline.controller), evaluatePair(project, benchmark, candidate.proposed.assembly, candidate.proposed.controller)]);
+  const [{ comparison, actual: verifiedChanges }, baseline, proposed] = await Promise.all([verifyCandidateChanges(project.rootDir, candidate), evaluatePair(project, benchmark, candidate.baseline.assembly, candidate.baseline.controller), evaluatePair(project, benchmark, candidate.proposed.assembly, candidate.proposed.controller)]);
   const objective = await loadObjective(project.rootDir, benchmark.objective); const delta = proposed.aggregateScore - baseline.aggregateScore;
   const gateReasons: string[] = [];
   for (let index = 0; index < proposed.cases.length; index++) {
@@ -172,13 +172,19 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
   }
   const allowedChangeHashes: Record<string, string> = {};
   for (const path of candidate.allowedChanges) allowedChangeHashes[path] = sha256(await readFile(confined(project.rootDir, path)));
-  const verdict = gateReasons.length === 0 && delta > 0 ? "KEEP" : "REVERT"; const candidateHash = hashJson({ candidate, allowedChangeHashes }); const result = { candidate, candidateHash, allowedChangeHashes, benchmarkLockHash: lock.lockHash, comparison, baseline, proposed, scoreDelta: delta, gateReasons, verdict };
+  const verdict = gateReasons.length === 0 && delta > 0 ? "KEEP" : "REVERT"; const candidateHash = hashJson({ candidate, allowedChangeHashes });
+  const proposedRevisionHash = hashJson({ parent: candidate.baseRevision, candidateHash, lockHash: lock.lockHash, proposedHash: proposed.assemblyHash, evaluation: proposed.cases.map((item) => item.resultHash) });
+  const proposedRevisionId = `${project.manifest.id}-r-${proposedRevisionHash.slice(0, 12)}`;
+  const result = { candidate, candidateHash, allowedChangeHashes, verifiedChanges, benchmarkLockHash: lock.lockHash, comparison, baseline, proposed, scoreDelta: delta, gateReasons, verdict, proposedRevisionHash, proposedRevisionId };
   if (!apply) return success("candidate", result, project);
   if (verdict !== "KEEP") throw new Error(`Candidate verdict is ${verdict}; only KEEP may create a revision`);
   const revisions = await listManifestDirectories(join(project.rootDir, "revisions"));
   if (candidate.baseRevision === null && revisions.length) throw new Error("Candidate expected no base revision but revision history is no longer empty");
   if (candidate.baseRevision !== null && !revisions.includes(candidate.baseRevision)) throw new Error(`Base revision '${candidate.baseRevision}' does not exist`);
-  const revisionHash = hashJson({ parent: candidate.baseRevision, candidateHash, lockHash: lock.lockHash, proposedHash: proposed.assemblyHash, evaluation: proposed.cases.map((item) => item.resultHash) }); const revisionId = `${project.manifest.id}-r-${revisionHash.slice(0, 12)}`; const target = join(project.rootDir, "revisions", revisionId);
+  const revisionHash = proposedRevisionHash; const revisionId = proposedRevisionId; const target = join(project.rootDir, "revisions", revisionId);
+  const controller = await controllerIdentity(project.rootDir, candidate.proposed.controller); const policyId = controller.definition.kind === "policy" ? controller.definition.policy : null;
+  const policyHash = policyId ? await hashDirectory(confined(project.rootDir, `policies/${policyId}`)) : null;
+  const componentHashes = Object.fromEntries(comparison.to.components.map((item) => [item.instanceId, item.hash]));
   await atomicDirectory(target, async (directory) => {
     const sourceClosure = [...new Set([...comparison.to.sourceFiles, ...candidate.allowedChanges, ...candidate.fixedInputs])].sort();
     for (const path of sourceClosure) {
@@ -186,8 +192,17 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     }
     const compiledDirectory = join(directory, "compiled"); await mkdir(compiledDirectory, { recursive: true });
     for (const name of ["model.xml", "observation-contract.json", "action-contract.json", "compiled-assembly.json"]) await writeFile(join(compiledDirectory, name), await readFile(join(comparison.to.artifactDir, name)));
+    if (policyId) await cp(confined(project.rootDir, `policies/${policyId}`), join(directory, "policy"), { recursive: true });
     await writeJson(join(directory, "evaluation.json"), result);
-    await writeJson(join(directory, "manifest.json"), { version: 1, id: revisionId, parent: candidate.baseRevision, candidateId: candidate.id, candidateHash, benchmarkId: benchmark.id, benchmarkLockHash: lock.lockHash, assembly: candidate.proposed.assembly, assemblyHash: proposed.assemblyHash, controller: candidate.proposed.controller, aggregateScore: proposed.aggregateScore, scoreDelta: delta, exactChangedFiles: candidate.allowedChanges, sourceClosure, appliedAt: new Date().toISOString() });
+    await writeJson(join(directory, "manifest.json"), {
+      version: 1, id: revisionId, parent: candidate.baseRevision, candidateId: candidate.id, candidateHash,
+      benchmarkId: benchmark.id, benchmarkLockHash: lock.lockHash,
+      assembly: candidate.proposed.assembly, assemblyHash: proposed.assemblyHash, componentHashes,
+      observationContractHash: hashJson(comparison.to.observationContract), actionContractHash: hashJson(comparison.to.actionContract),
+      controller: candidate.proposed.controller, controllerHash: controller.hash, policyId, policyHash,
+      verifiedChanges, aggregateScore: proposed.aggregateScore, scoreDelta: delta,
+      exactChangedFiles: candidate.allowedChanges, sourceClosure, appliedAt: new Date().toISOString(),
+    });
   });
   return success("candidate.apply", { ...result, revisionId, revisionPath: target }, project, [projectArtifact("revision", revisionId, target, true)]);
 }

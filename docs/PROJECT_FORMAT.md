@@ -36,4 +36,8 @@ A Research definition names one locked Benchmark, one Assembly, one program Cont
 
 A Training Research definition similarly names one Training JSON file and promoted policy Controller. Candidate Training Runs and Policies are immutable even on REVERT. KEEP advances both mutable pointers and publishes an immutable Policy Revision. Policy identity includes Runtime and Harness source, dependency locks, Trainer, contracts, seed, budget, and model content.
 
+A Candidate contains a strict `changes` declaration for components, Observation channels, Action channels, Controller files, optional Trainer/training files, and an optional frozen Policy transition. Mujica compiles both Assemblies and rejects the Candidate when this declaration differs from the semantic diff. Controller and Trainer files declared as changed must also appear in `allowedChanges`. `trainer: null` and `policy: null` are explicit evidence that a Candidate did not change those surfaces.
+
+Candidate preview computes a content-derived proposed Robot Revision hash before apply. A KEEP Revision records component-package hashes, Observation/Action contract hashes, Controller identity, optional Policy identity, the verified semantic change set, exact changed files, fixed Benchmark identity, and full evaluation evidence. Policy-backed Revisions copy the referenced immutable Policy Artifact into their own snapshot so replay does not depend on a mutable pointer.
+
 `mujica-workspace.json` contains only a name, one projects directory, and an optional default project. Workspaces never provide shared components or policies.

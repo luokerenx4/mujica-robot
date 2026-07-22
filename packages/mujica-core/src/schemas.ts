@@ -89,7 +89,15 @@ export const trainingSchema = z.object({
 export const candidateSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.enum(["optimization", "development"]), benchmark: idSchema,
   baseRevision: idSchema.nullable(), baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(), proposed: z.object({ assembly: idSchema, controller: idSchema }).strict(),
-  addedComponents: z.array(idSchema), removedComponents: z.array(idSchema), allowedChanges: z.array(relativeFileSchema).min(1), fixedInputs: z.array(relativeFileSchema),
+  changes: z.object({
+    components: z.object({ added: z.array(idSchema), removed: z.array(idSchema), modified: z.array(idSchema) }).strict(),
+    observations: z.object({ added: z.array(idSchema), removed: z.array(idSchema), changed: z.array(idSchema) }).strict(),
+    actions: z.object({ added: z.array(idSchema), removed: z.array(idSchema), changed: z.array(idSchema) }).strict(),
+    controller: z.object({ from: idSchema, to: idSchema, files: z.array(relativeFileSchema) }).strict(),
+    trainer: z.object({ from: idSchema.nullable(), to: idSchema.nullable(), files: z.array(relativeFileSchema) }).strict().nullable(),
+    policy: z.object({ from: idSchema.nullable(), to: idSchema.nullable() }).strict().nullable(),
+  }).strict(),
+  allowedChanges: z.array(relativeFileSchema).min(1), fixedInputs: z.array(relativeFileSchema),
   hypothesis: z.string().min(1), expectedEffect: z.string().min(1),
 }).strict();
 

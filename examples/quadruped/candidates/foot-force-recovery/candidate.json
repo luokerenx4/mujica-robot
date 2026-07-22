@@ -7,8 +7,21 @@
   "baseRevision": null,
   "baseline": { "assembly": "baseline", "controller": "baseline-gait" },
   "proposed": { "assembly": "force-sensing", "controller": "force-aware-gait" },
-  "addedComponents": ["foot-force-sensor"],
-  "removedComponents": [],
+  "changes": {
+    "components": { "added": ["foot-force-sensor"], "removed": [], "modified": [] },
+    "observations": { "added": ["foot-contact-force"], "removed": [], "changed": [] },
+    "actions": { "added": [], "removed": [], "changed": [] },
+    "controller": {
+      "from": "baseline-gait",
+      "to": "force-aware-gait",
+      "files": [
+        "controllers/force-aware-gait/controller.json",
+        "controllers/force-aware-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
   "allowedChanges": [
     "assemblies/force-sensing.robot.json",
     "components/foot-force-sensor/component.json",
@@ -28,4 +41,3 @@
   "hypothesis": "Direct foot contact measurements let the controller extend loaded legs during disturbances instead of inferring contact only from body motion.",
   "expectedEffect": "Improve survival and upright recovery in low-friction and lateral-push cases at a visible mass, sensor-count, and complexity cost."
 }
-

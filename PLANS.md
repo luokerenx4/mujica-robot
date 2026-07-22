@@ -4,7 +4,7 @@ Plans coordinate multi-surface changes. Durable invariants live under `docs/desi
 
 ## Active plans
 
-None.
+- [Complete harness audit](plans/completion-audit.md) — close audited full-harness gaps while preserving immutable robot and policy evidence.
 
 ## Completed plans
 

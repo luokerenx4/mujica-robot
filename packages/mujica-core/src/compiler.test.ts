@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadBenchmark, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject } from "./index";
+import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -14,6 +14,17 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.to.observationContract.size).toBe(37);
     expect(comparison.to.actionContract.size).toBe(8);
     expect(comparison.massDeltaKg).toBeCloseTo(0.08);
+  });
+
+  test("development candidates declare the compiled hardware and contract diff", async () => {
+    const candidate = await loadCandidate(project, "foot-force-recovery");
+    const verified = await verifyCandidateChanges(project, candidate);
+    expect(verified.actual.components.added).toEqual(["foot-force-sensor"]);
+    expect(verified.actual.observations.added).toEqual(["foot-contact-force"]);
+    expect(verified.actual.actions.added).toEqual([]);
+    const dishonest = structuredClone(candidate);
+    dishonest.changes.observations.added = [];
+    await expect(verifyCandidateChanges(project, dishonest)).rejects.toThrow("do not match compiled Assembly diff");
   });
 
   test("actuator telemetry is an explicit observation-only component", async () => {
