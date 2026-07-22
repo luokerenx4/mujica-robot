@@ -40,8 +40,10 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8, 8, 8, 12, 12, 12]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 2, 2, 6, 6, 6, 6]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 8, 8, 8, 12, 12, 12, 8]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 2, 2, 6, 6, 6, 6, 2]);
+    const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
+    expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(3);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
@@ -105,7 +107,7 @@ describe("agent CLI contract", () => {
 
   test("Policy requalification requires byte-identical MJCF and contracts", () => {
     const result = invoke(["policy", "requalify", "examples/quadruped", "--policy", "spatial-residual-locomotion-81df145800cc15c7", "--assembly", "force-sensing-3dof", "--json"]); const envelope = JSON.parse(result.stdout);
-    expect(result.code).toBe(0); expect(envelope.data.id).toBe("spatial-residual-locomotion-q-51fcc86355fd3dc3");
+    expect(result.code).toBe(0); expect(envelope.data.id).toBe("spatial-residual-locomotion-q-d3136275b7233448");
     expect(envelope.data.proof.oldModelHash).toBe(envelope.data.proof.newModelHash); expect(envelope.data.proof.executionHash).toHaveLength(64);
   });
 

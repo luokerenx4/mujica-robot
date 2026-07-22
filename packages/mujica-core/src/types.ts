@@ -42,7 +42,8 @@ export interface ComponentManifest {
   id: string;
   name: string;
   type: string;
-  fragment: string;
+  fragment?: string;
+  mountFragment?: string;
   compatibleMounts: string[];
   providesMounts: MountDefinition[];
   observations: ContractChannel[];

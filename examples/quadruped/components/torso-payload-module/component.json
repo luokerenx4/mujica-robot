@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "torso-payload-module",
+  "name": "Torso payload module",
+  "type": "payload",
+  "mountFragment": "mount.xml",
+  "compatibleMounts": ["payload-bay"],
+  "providesMounts": [],
+  "observations": [],
+  "actions": [],
+  "dependencies": [],
+  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "physical": {
+    "centerOfMassM": [0, 0, 0.09],
+    "inertiaDiagonalKgM2": [0.0001333333, 0.0001933333, 0.0002733333]
+  },
+  "geometry": [
+    { "name": "torso-payload-geom", "kind": "box", "collision": false }
+  ],
+  "joints": [],
+  "actuators": [],
+  "sensors": [],
+  "massKg": 0.2,
+  "cost": 2,
+  "license": "Apache-2.0",
+  "attribution": "Original Mujica component"
+}

@@ -66,7 +66,7 @@ def validate_model(request: dict[str, Any]) -> dict[str, Any]:
     compiled = request["compiled"]
     if model.nu != compiled["actionContract"]["size"]:
         raise RuntimeError(f"Compiled action contract has size {compiled['actionContract']['size']}, MuJoCo model has {model.nu} controls")
-    return {"mujocoVersion": mujoco.__version__, "nq": model.nq, "nv": model.nv, "nu": model.nu, "nsensor": model.nsensor, "timestep": model.opt.timestep}
+    return {"mujocoVersion": mujoco.__version__, "nq": model.nq, "nv": model.nv, "nu": model.nu, "nsensor": model.nsensor, "ngeom": model.ngeom, "modelMassKg": float(np.sum(model.body_mass)), "timestep": model.opt.timestep}
 
 
 def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:

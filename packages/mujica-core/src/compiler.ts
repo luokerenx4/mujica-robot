@@ -7,6 +7,7 @@ import { confined, hashDirectory, hashJson, readJson, readText, sha256, stableJs
 import { loadProject } from "./workspace";
 
 const COMPONENT_MARKER = "<!-- MUJICA_COMPONENTS -->";
+const END_MARKER = "<!-- MUJICA_END -->";
 
 function assertUnique<T>(items: T[], key: (item: T) => string, path: string): void {
   const seen = new Set<string>();
@@ -54,15 +55,17 @@ function validateComponentConfig(component: ComponentManifest, config: Record<st
   return resolved;
 }
 
-function renderComponentFragment(fragment: string, config: Record<string, ComponentConfigValue>, path: string): string {
+function renderComponentFragments(fragments: Array<{ text: string; path: string }>, config: Record<string, ComponentConfigValue>): string[] {
   const used = new Set<string>();
-  const rendered = fragment.replace(/\{\{config\.([A-Za-z][A-Za-z0-9_-]*)\}\}/g, (_token, key: string) => {
-    if (!Object.hasOwn(config, key)) configError(path, "component.config.unresolved", `MJCF template requires configuration property '${key}'`);
-    used.add(key); const value = config[key]!;
-    return typeof value === "string" ? value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("'", "&apos;").replaceAll("<", "&lt;").replaceAll(">", "&gt;") : String(value);
+  const rendered = fragments.map((fragment) => fragment.text.replace(/\{\{config\.([A-Za-z][A-Za-z0-9_-]*)\}\}/g, (_token, key: string) => {
+      if (!Object.hasOwn(config, key)) configError(fragment.path, "component.config.unresolved", `MJCF template requires configuration property '${key}'`);
+      used.add(key); const value = config[key]!;
+      return typeof value === "string" ? value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("'", "&apos;").replaceAll("<", "&lt;").replaceAll(">", "&gt;") : String(value);
+    }));
+  rendered.forEach((fragment, index) => {
+    const unresolved = fragment.match(/\{\{[^}]*\}\}/)?.[0]; if (unresolved) configError(fragments[index]!.path, "component.config.template", `invalid or unresolved MJCF template '${unresolved}'`);
   });
-  const unresolved = rendered.match(/\{\{[^}]*\}\}/)?.[0]; if (unresolved) configError(path, "component.config.template", `invalid or unresolved MJCF template '${unresolved}'`);
-  for (const key of Object.keys(config)) if (!used.has(key)) configError(path, "component.config.unused", `configuration property '${key}' is not bound in the MJCF fragment`);
+  for (const key of Object.keys(config)) if (!used.has(key)) configError(fragments[0]?.path ?? "component.json/configSchema", "component.config.unused", `configuration property '${key}' is not bound in a Component MJCF fragment`);
   return rendered;
 }
 
@@ -86,7 +89,7 @@ export async function loadComponent(projectDir: string, id: string): Promise<{ m
   const rootDir = confined(resolve(projectDir), `components/${id}`);
   const manifest = await readJson(join(rootDir, "component.json"), componentSchema) as ComponentManifest;
   if (manifest.id !== id) throw new MujicaValidationError([{ path: join(rootDir, "component.json/id"), code: "component.directory-id", message: `component id '${manifest.id}' must match directory '${id}'` }]);
-  confined(rootDir, manifest.fragment);
+  if (manifest.fragment) confined(rootDir, manifest.fragment); if (manifest.mountFragment) confined(rootDir, manifest.mountFragment);
   return { manifest, rootDir, hash: await hashDirectory(rootDir) };
 }
 
@@ -146,17 +149,27 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const baseModelPath = confined(base.rootDir, base.manifest.mjcf);
   const baseXml = await readText(baseModelPath);
   if (baseXml.split(COMPONENT_MARKER).length !== 2) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.component-marker", message: `base MJCF must contain exactly one ${COMPONENT_MARKER}` }]);
-  const fragments: string[] = [];
+  const fragments: string[] = []; const mountedFragments = new Map<string, string[]>();
   for (const component of resolved) {
-    const fragmentPath = confined(component.rootDir, component.manifest.fragment); const fragment = renderComponentFragment(await readText(fragmentPath), component.compiled.config, `components/${component.manifest.id}/${component.manifest.fragment}`);
+    const sources: Array<{ text: string; path: string; kind: "root" | "mount" }> = [];
+    if (component.manifest.fragment) { const path = confined(component.rootDir, component.manifest.fragment); sources.push({ text: await readText(path), path: `components/${component.manifest.id}/${component.manifest.fragment}`, kind: "root" }); }
+    if (component.manifest.mountFragment) { const path = confined(component.rootDir, component.manifest.mountFragment); sources.push({ text: await readText(path), path: `components/${component.manifest.id}/${component.manifest.mountFragment}`, kind: "mount" }); }
+    const rendered = renderComponentFragments(sources, component.compiled.config); const combined = rendered.join("\n");
     for (const sensor of component.manifest.sensors) {
       if (!component.manifest.observations.some((channel) => channel.name === sensor.name || channel.source.includes(sensor.name))) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/component.json/sensors/${sensor.name}`, code: "component.sensor.channel", message: `sensor '${sensor.name}' is not represented by an Observation channel` }]);
-      if (sensor.source === "mjcf" && !fragment.includes(`name="${sensor.name}"`)) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/${component.manifest.fragment}`, code: "component.sensor.mjcf", message: `declared MJCF sensor '${sensor.name}' is missing from fragment` }]);
+      if (sensor.source === "mjcf" && !combined.includes(`name="${sensor.name}"`)) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/component.json`, code: "component.sensor.mjcf", message: `declared MJCF sensor '${sensor.name}' is missing from Component fragments` }]);
     }
-    for (const item of [...component.manifest.geometry, ...component.manifest.joints, ...component.manifest.actuators]) if (!fragment.includes(`name="${item.name}"`)) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/${component.manifest.fragment}`, code: "component.inventory.mjcf", message: `declared hardware '${item.name}' is missing from fragment` }]);
-    fragments.push(fragment);
+    for (const item of [...component.manifest.geometry, ...component.manifest.joints, ...component.manifest.actuators]) if (!combined.includes(`name="${item.name}"`)) throw new MujicaValidationError([{ path: `components/${component.manifest.id}/component.json`, code: "component.inventory.mjcf", message: `declared hardware '${item.name}' is missing from Component fragments` }]);
+    sources.forEach((source, index) => { if (source.kind === "root") fragments.push(rendered[index]!); else { const values = mountedFragments.get(component.compiled.mount) ?? []; values.push(rendered[index]!); mountedFragments.set(component.compiled.mount, values); } });
   }
-  const composedXml = baseXml.replace(COMPONENT_MARKER, fragments.join("\n"));
+  let composedXml = baseXml.replace(COMPONENT_MARKER, fragments.join("\n"));
+  for (const mount of mounts.values()) {
+    const marker = `<!-- MUJICA_MOUNT:${mount.id} -->`; const count = composedXml.split(marker).length - 1; const inserts = mountedFragments.get(mount.id) ?? [];
+    if (count > 1 || (inserts.length > 0 && count !== 1)) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.mount-marker", message: `mount '${mount.id}' requires exactly one ${marker}` }]);
+    if (count === 1) composedXml = composedXml.replace(marker, inserts.join("\n"));
+  }
+  const unknownMountMarker = composedXml.match(/<!-- MUJICA_MOUNT:[^>]+ -->/)?.[0]; if (unknownMountMarker) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.mount-marker", message: `unknown mount marker ${unknownMountMarker}` }]);
+  if (composedXml.split(END_MARKER).length > 2) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.end-marker", message: `base MJCF may contain at most one ${END_MARKER}` }]); composedXml = composedXml.replace(END_MARKER, "");
   const assemblySource = await readText(join(project.rootDir, "assemblies", `${assembly.id}.robot.json`));
   const modelHash = sha256(composedXml); const executionHash = hashJson({ modelHash, observationContract, actionContract });
   const catalogHash = hashJson({ base: base.hash, components: resolved.map((item) => ({ id: item.compiled.componentId, hash: item.compiled.hash })) });
@@ -167,7 +180,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   await writeFile(modelPath, composedXml);
   await writeJson(join(artifactDir, "observation-contract.json"), observationContract);
   await writeJson(join(artifactDir, "action-contract.json"), actionContract);
-  const sourceFiles = [relative(project.rootDir, join(project.rootDir, "assemblies", `${assembly.id}.robot.json`)), relative(project.rootDir, join(base.rootDir, "robot.json")), relative(project.rootDir, baseModelPath), ...resolved.flatMap((item) => [relative(project.rootDir, join(item.rootDir, "component.json")), relative(project.rootDir, confined(item.rootDir, item.manifest.fragment))])];
+  const sourceFiles = [relative(project.rootDir, join(project.rootDir, "assemblies", `${assembly.id}.robot.json`)), relative(project.rootDir, join(base.rootDir, "robot.json")), relative(project.rootDir, baseModelPath), ...resolved.flatMap((item) => [relative(project.rootDir, join(item.rootDir, "component.json")), ...[item.manifest.fragment, item.manifest.mountFragment].filter((path): path is string => path !== undefined).map((path) => relative(project.rootDir, confined(item.rootDir, path)))])];
   const result: CompiledAssembly = {
     version: 1, id: assembly.id, name: assembly.name, projectId: project.manifest.id, rootDir: project.rootDir, artifactDir, modelPath,
     assemblyHash, executionHash, modelHash, baseHash: base.hash, catalogHash, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),

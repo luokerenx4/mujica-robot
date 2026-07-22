@@ -36,6 +36,13 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.from.modelHash).not.toBe(comparison.to.modelHash); expect(comparison.from.executionHash).not.toBe(comparison.to.executionHash);
   });
 
+  test("a mount fragment adds physical geometry at an explicit Base slot", async () => {
+    const comparison = await compareAssemblies(project, "baseline", "payload-equipped"); const payload = comparison.components.added[0];
+    expect(payload?.componentId).toBe("torso-payload-module"); expect(payload?.mount).toBe("torso-payload"); expect(payload?.geometry).toEqual([{ name: "torso-payload-geom", kind: "box", collision: false }]);
+    expect(comparison.massDeltaKg).toBeCloseTo(0.2); expect(comparison.costDelta).toBe(2); expect(comparison.observations.added).toEqual([]); expect(comparison.actions.added).toEqual([]);
+    const model = await readFile(comparison.to.modelPath, "utf8"); expect(model).toContain('name="torso-payload-geom"'); expect(model).not.toContain("MUJICA_MOUNT");
+  });
+
   test("Component config fails closed when a value is out of range or unbound", async () => {
     const root = await mkdtemp(join(tmpdir(), "mujica-component-config-"));
     try {
@@ -82,7 +89,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("force-sensing-3dof");
     expect(result.project.manifest.defaults.controller).toBe("spatial-residual-gait");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);

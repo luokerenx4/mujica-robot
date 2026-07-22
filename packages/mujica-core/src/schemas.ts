@@ -29,7 +29,7 @@ export const robotSchema = z.object({
 }).strict();
 
 export const componentSchema = z.object({
-  version: z.literal(1), id: idSchema, name: z.string().min(1), type: idSchema, fragment: relativeFileSchema,
+  version: z.literal(1), id: idSchema, name: z.string().min(1), type: idSchema, fragment: relativeFileSchema.optional(), mountFragment: relativeFileSchema.optional(),
   compatibleMounts: z.array(idSchema).min(1), providesMounts: z.array(mountSchema).default([]),
   observations: z.array(channelSchema).default([]), actions: z.array(channelSchema).default([]), dependencies: z.array(idSchema).default([]),
   configSchema: z.record(z.unknown()),
@@ -39,7 +39,7 @@ export const componentSchema = z.object({
   actuators: z.array(z.object({ name: idSchema, kind: z.enum(["motor", "position", "velocity", "general"]), joint: idSchema, controlRange: z.tuple([z.number().finite(), z.number().finite()]) }).strict()),
   sensors: z.array(z.object({ name: idSchema, kind: idSchema, source: z.enum(["mjcf", "runtime"]) }).strict()),
   massKg: z.number().nonnegative(), cost: z.number().nonnegative(), license: z.string().min(1), attribution: z.string(),
-}).strict();
+}).strict().refine((value) => value.fragment !== undefined || value.mountFragment !== undefined, "fragment or mountFragment is required");
 
 export const assemblySchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), base: idSchema,

@@ -37,6 +37,8 @@ Every Component manifest explicitly declares center of mass, diagonal inertia, g
 
 V1 Component configuration uses a closed primitive JSON schema and explicit `{{config.<key>}}` bindings in the MJCF fragment. Defaults are resolved into the compiled Component. Unknown, missing, non-finite, out-of-range, unresolved, or unused values fail compilation, and strings are XML-escaped. This keeps an Assembly parameter edit both agent-readable and executable; see [Typed Component configuration](design/component-configuration.md).
 
+A Component may use top-level `fragment`, structural `mountFragment`, or both. Robot Base MJCF exposes an intentional structural slot with `<!-- MUJICA_MOUNT:<mount-id> -->`; the compiler inserts a selected Component's mount fragment there and rejects missing, duplicate, unknown, incompatible, or multiply occupied exclusive slots. See [Structural Mount slots](design/structural-mount-slots.md).
+
 Scenarios may define seeded initial joint-position and joint-velocity noise in addition to observation noise, friction, payload, lateral push, and actuator delay. Objectives may score forward progress and lateral drift and gate minimum progress or maximum drift. Benchmark cases default to `gating: true`; `gating: false` keeps a known challenge in aggregate scoring without claiming it as a release gate.
 
 A Research definition names one locked Benchmark, one Assembly, one program Controller, one Markdown instruction program, and one exact controller JSON file. V1 editable parameters are finite numeric `/config/<key>` values with explicit bounds, step size, and search order. Benchmark, task, scenario, objective, assembly, controller source, and runtime files are never delegated to the proposer.
