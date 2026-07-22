@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compileAssembly } from "./compiler";
-import { benchmarkSchema, candidateSchema, controllerSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition } from "./schemas";
+import { benchmarkSchema, candidateSchema, controllerSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import { confined, readJson } from "./utils";
 import { loadProject } from "./workspace";
 
@@ -17,6 +17,7 @@ export const loadBenchmark = async (projectDir: string, id: string): Promise<Ben
 export const loadTraining = async (projectDir: string, id: string): Promise<TrainingDefinition> => await readJson(confined(resolve(projectDir), `training/${id}.training.json`), trainingSchema) as TrainingDefinition;
 export const loadCandidate = async (projectDir: string, id: string): Promise<CandidateDefinition> => await readJson(confined(resolve(projectDir), `candidates/${id}/candidate.json`), candidateSchema) as CandidateDefinition;
 export const loadResearch = async (projectDir: string, id: string): Promise<ResearchDefinition> => await readJson(confined(resolve(projectDir), `research/${id}.research.json`), researchSchema) as ResearchDefinition;
+export const loadTrainingResearch = async (projectDir: string, id: string): Promise<TrainingResearchDefinition> => await readJson(confined(resolve(projectDir), `training-research/${id}.training-research.json`), trainingResearchSchema) as TrainingResearchDefinition;
 export async function loadTrainer(projectDir: string, id: string): Promise<{ definition: TrainerDefinition; rootDir: string }> {
   const rootDir = confined(resolve(projectDir), `trainers/${id}`); const definition = await readJson(join(rootDir, "trainer.json"), trainerSchema) as TrainerDefinition;
   if (definition.id !== id) throw new Error(`Trainer id '${definition.id}' must match directory '${id}'`);
@@ -80,6 +81,21 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
       if (value < parameter.minimum || value > parameter.maximum) throw new Error(`Research '${id}' current '${parameter.path}' value is outside bounds`);
     }
   }
+  const trainingResearchIds = await fileIds(join(root, "training-research"), ".training-research.json");
+  for (const id of trainingResearchIds) {
+    const research = await loadTrainingResearch(root, id); const training = await loadTraining(root, research.training); await loadBenchmark(root, research.benchmark); const controller = await loadController(root, research.controller);
+    if (controller.definition.kind !== "policy") throw new Error(`Training Research '${id}' requires a policy Controller`);
+    const expectedPath = `training/${research.training}.training.json`; if (research.editable.path !== expectedPath) throw new Error(`Training Research '${id}' editable path must be '${expectedPath}'`);
+    await requireFile(confined(root, research.program), `Training Research '${id}' program`); await compileAssembly(root, training.assembly);
+    const keys = new Set<string>(); const numeric = training as unknown as Record<string, unknown>;
+    for (const parameter of research.editable.parameters) {
+      if (keys.has(parameter.path)) throw new Error(`Training Research '${id}' duplicates parameter '${parameter.path}'`); keys.add(parameter.path);
+      if (parameter.minimum > parameter.maximum) throw new Error(`Training Research '${id}' parameter '${parameter.path}' minimum exceeds maximum`);
+      const value = numeric[parameter.path.slice(1)]; if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`Training Research '${id}' parameter '${parameter.path}' is not numeric`);
+      if (value < parameter.minimum || value > parameter.maximum) throw new Error(`Training Research '${id}' current '${parameter.path}' value is outside bounds`);
+      if (parameter.integer && (!Number.isInteger(value) || !Number.isInteger(parameter.minimum) || !Number.isInteger(parameter.maximum) || !Number.isInteger(parameter.step))) throw new Error(`Training Research '${id}' parameter '${parameter.path}' requires integer bounds and values`);
+    }
+  }
   await loadController(root, project.manifest.defaults.controller); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
-  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, research: researchIds.length };
+  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length };
 }

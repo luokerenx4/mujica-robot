@@ -4,7 +4,7 @@ import { resolveProjectDirectory } from "@mujica/core";
 import { failure } from "./contract";
 import {
   assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, candidateCommand, componentInspectCommand, componentListCommand, evaluateCommand, inspectCommand,
-  policiesCommand, policyInspectCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, trainCommand, validateCommand,
+  policiesCommand, policyInspectCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 
 const HELP = `mujica — AI-native robot development harness
@@ -17,8 +17,11 @@ USAGE
   mujica assembly compare <project> --from ID --to ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
   mujica train <project> --training ID [--seed N]
+  mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
   mujica policies <project> [--json]
   mujica policy inspect <project> --policy ID [--json]
+  mujica policy-revisions <project> [--json]
+  mujica policy-revision inspect <project> --revision ID [--json]
   mujica benchmark lock <project> --benchmark ID [--json]
   mujica evaluate <project> --assembly ID --controller ID --benchmark ID [--json]
   mujica candidate <project> --candidate ID [--apply] [--json]
@@ -37,8 +40,11 @@ const CAPABILITIES = [
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
   { id: "train", usage: "mujica train <project> --training ID [--seed N] [--json]", effect: "creates-artifact" },
+  { id: "train-research", usage: "mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]", effect: "mutates-project" },
   { id: "policies", usage: "mujica policies <project> [--json]", effect: "read-only" },
   { id: "policy.inspect", usage: "mujica policy inspect <project> --policy ID [--json]", effect: "read-only" },
+  { id: "policy-revisions", usage: "mujica policy-revisions <project> [--json]", effect: "read-only" },
+  { id: "policy-revision.inspect", usage: "mujica policy-revision inspect <project> --revision ID [--json]", effect: "read-only" },
   { id: "benchmark.lock", usage: "mujica benchmark lock <project> --benchmark ID [--json]", effect: "mutates-project" },
   { id: "evaluate", usage: "mujica evaluate <project> --assembly ID --controller ID --benchmark ID [--json]", effect: "read-only" },
   { id: "candidate", usage: "mujica candidate <project> --candidate ID [--apply] [--json]", effect: "mode-dependent" },
@@ -57,6 +63,7 @@ function printHuman(command: string, data: any): void {
   else if (command === "evaluate") process.stdout.write(`benchmark=${data.benchmark}\nscore=${data.evaluation.aggregateScore}\nlock=${data.lockHash}\n`);
   else if (command.startsWith("candidate")) process.stdout.write(`candidate=${data.candidate.id}\nbaseline_score=${data.baseline.aggregateScore}\ncandidate_score=${data.proposed.aggregateScore}\nscore_delta=${data.scoreDelta}\nverdict=${data.verdict}\n${data.revisionId ? `revision=${data.revisionId}\n` : ""}`);
   else if (command === "research") process.stdout.write(`research=${data.research}\ninitial_score=${data.initialScore}\nfinal_score=${data.finalScore}\nscore_delta=${data.scoreDelta}\niterations=${data.iterationsCompleted}\nexhausted=${data.exhausted}\nrevision_head=${data.revisionHead ?? "none"}\nledger=${data.ledgerPath}\n`);
+  else if (command === "train-research") process.stdout.write(`training_research=${data.research}\ninitial_score=${data.initialScore}\nfinal_score=${data.finalScore}\nscore_delta=${data.scoreDelta}\niterations=${data.iterationsCompleted}\nexhausted=${data.exhausted}\npolicy_revision_head=${data.policyRevisionHead ?? "none"}\nledger=${data.ledgerPath}\n`);
   else process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
 }
 
@@ -70,9 +77,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   let commandId = command; const wantsJson = args.includes("--json");
   try {
     let envelope: any;
-    if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions") {
+    if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions") {
       const { values, positionals } = parseArgs({ args, options: { json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
-      envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : await revisionsCommand(project);
+      envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : await revisionsCommand(project);
     } else if (command === "component") {
       const action = args.shift(); commandId = `component.${action}`; const { values, positionals } = parseArgs({ args, options: { component: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica component ${action} <project>`), values.project);
       if (action === "list") envelope = await componentListCommand(project); else if (action === "inspect") envelope = await componentInspectCommand(project, required(values.component, "component")); else throw new Error("Usage: mujica component list|inspect ...");
@@ -84,8 +91,10 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       envelope = await simulateCommand(project, { assembly: required(values.assembly, "assembly"), controller: required(values.controller, "controller"), task: required(values.task, "task"), scenario: required(values.scenario, "scenario"), ...(values.objective ? { objective: values.objective } : {}), seed: Number(values.seed) });
     } else if (command === "train") {
       const { values, positionals } = parseArgs({ args, options: { training: { type: "string" }, seed: { type: "string", default: "42" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica train <project>"), values.project); envelope = await trainCommand(project, required(values.training, "training"), Number(values.seed));
-    } else if (command === "policy" || command === "revision") {
-      const action = args.shift(); commandId = `${command}.${action}`; if (action !== "inspect") throw new Error(`Usage: mujica ${command} inspect ...`); const options = command === "policy" ? { policy: { type: "string" as const }, json: { type: "boolean" as const, default: false }, project: { type: "string" as const } } : { revision: { type: "string" as const }, json: { type: "boolean" as const, default: false }, project: { type: "string" as const } }; const { values, positionals } = parseArgs({ args, options, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} inspect <project>`), values.project); envelope = command === "policy" ? await policyInspectCommand(project, required((values as any).policy, "policy")) : await revisionInspectCommand(project, required((values as any).revision, "revision"));
+    } else if (command === "train-research") {
+      const { values, positionals } = parseArgs({ args, options: { research: { type: "string" }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica train-research <project>"), values.project); envelope = await trainingResearchCommand(project, required(values.research, "research"), Number(values.iterations), values["agent-command"]);
+    } else if (command === "policy" || command === "revision" || command === "policy-revision") {
+      const action = args.shift(); commandId = `${command}.${action}`; if (action !== "inspect") throw new Error(`Usage: mujica ${command} inspect ...`); const options = command === "policy" ? { policy: { type: "string" as const }, json: { type: "boolean" as const, default: false }, project: { type: "string" as const } } : { revision: { type: "string" as const }, json: { type: "boolean" as const, default: false }, project: { type: "string" as const } }; const { values, positionals } = parseArgs({ args, options, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} inspect <project>`), values.project); envelope = command === "policy" ? await policyInspectCommand(project, required((values as any).policy, "policy")) : command === "policy-revision" ? await policyRevisionInspectCommand(project, required((values as any).revision, "revision")) : await revisionInspectCommand(project, required((values as any).revision, "revision"));
     } else if (command === "benchmark") {
       const action = args.shift(); commandId = `benchmark.${action}`; if (action !== "lock") throw new Error("Usage: mujica benchmark lock ..."); const { values, positionals } = parseArgs({ args, options: { benchmark: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica benchmark lock <project>"), values.project); envelope = await benchmarkLockCommand(project, required(values.benchmark, "benchmark"));
     } else if (command === "evaluate") {

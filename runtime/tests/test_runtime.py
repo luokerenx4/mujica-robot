@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
+from mujica_runtime.controllers import transform_policy_action
 from mujica_runtime.environment import RobotEnvironment
 from mujica_runtime.training import PPOTrainer
 
@@ -35,6 +36,19 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_residual_policy_transform_preserves_force_aware_pd_prior(self):
+        observation = {
+            "joint-position": np.array([0.28, -0.50] * 4),
+            "joint-velocity": np.zeros(8),
+            "foot-contact-force": np.zeros(4),
+            "imu-angular-velocity": np.zeros(3),
+        }
+        transform = {"kind": "force-aware-pd-residual", "target": [0.29, -0.47] * 4, "kp": 32.0, "kd": 1.4, "contactGain": 0.02, "rollGain": 0.02, "residualScale": 0.5}
+        prior = transform_policy_action(np.zeros(8), observation, transform)
+        with_residual = transform_policy_action(np.ones(8), observation, transform)
+        np.testing.assert_allclose(prior, np.array([0.32, 0.96] * 4), atol=1e-9)
+        np.testing.assert_allclose(with_residual - prior, np.full(8, 0.5), atol=1e-9)
+
     def test_force_component_is_visible_in_observation(self):
         model, compiled = compiled_assembly("force-sensing")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
@@ -84,4 +98,3 @@ class RuntimeContractTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

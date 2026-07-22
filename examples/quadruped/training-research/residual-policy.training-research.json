@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "residual-policy",
+  "name": "Force-aware residual policy research",
+  "benchmark": "sensor-development",
+  "training": "force-residual-locomotion",
+  "controller": "force-residual-trot",
+  "program": "AUTOTRAIN.md",
+  "seed": 42,
+  "editable": {
+    "path": "training/force-residual-locomotion.training.json",
+    "parameters": [
+      { "path": "/totalSteps", "minimum": 2048, "maximum": 8192, "step": 2048, "integer": true, "directionOrder": ["increase", "decrease"] },
+      { "path": "/learningRate", "minimum": 0.0001, "maximum": 0.0009, "step": 0.0002, "integer": false, "directionOrder": ["decrease", "increase"] },
+      { "path": "/entropyCoefficient", "minimum": 0, "maximum": 0.03, "step": 0.005, "integer": false, "directionOrder": ["decrease", "increase"] },
+      { "path": "/epochs", "minimum": 2, "maximum": 8, "step": 2, "integer": true, "directionOrder": ["increase", "decrease"] },
+      { "path": "/clipRatio", "minimum": 0.1, "maximum": 0.3, "step": 0.05, "integer": false, "directionOrder": ["decrease", "increase"] }
+    ]
+  },
+  "minimumImprovement": 0.02,
+  "maxIterations": 16
+}

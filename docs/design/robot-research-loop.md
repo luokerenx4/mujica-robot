@@ -60,10 +60,12 @@ The Benchmark baseline remains immutable. "Current best" means the selected rese
 
 ## Memory and identity
 
-Experiments live under `research-runs/<research-id>/<sequence>-<experiment-hash>/`. The hash covers the Research definition, program hash, Benchmark lock, before-controller hash, proposal, candidate-controller hash, and fixed-case result hashes or crash identity. `manifest.json` is written last.
+Experiments live under `research-runs/<research-id>/<sequence>-<experiment-hash>/`. The hash covers the Research definition, program hash, Benchmark lock, before-controller hash, proposal, candidate-controller hash, and fixed-case result hashes or crash identity. `manifest.json` is written last. Seen-candidate memory is scoped to the same Research, program, and Benchmark lock, so evaluator changes reopen configurations that need new evidence.
 
 `research-runs/<research-id>/results.tsv` is a bounded human/Agent orientation index with sequence, experiment id, score, delta, verdict, strategy, and description. Immutable Experiment directories remain authoritative.
 
 ## Safety and claims
 
 Research is autonomous only inside its declared file and parameter envelope. It cannot install packages, change Runtime code, weaken a gate, relock a Benchmark, or apply an Assembly/Component change. A future source-editing mode must add syntax/test sandboxes and an equally explicit write set; it may not silently broaden V1.
+
+Benchmark locks include Runtime source, production Core/CLI evaluator source, and Python/Bun dependency locks. A version label alone is not accepted as evaluator identity.

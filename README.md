@@ -23,10 +23,13 @@ bun run mujica simulate examples/quadruped \
 bun run mujica train examples/quadruped --training baseline-locomotion --seed 42
 bun run mujica policies examples/quadruped
 bun run mujica research examples/quadruped --research support-controller --iterations 6
+bun run mujica train-research examples/quadruped --research residual-policy --iterations 6
 ```
 
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
 The checked-in research ledger contains 43 real MuJoCo experiments. Ten accepted controller changes improved the force-sensing quadruped from `83.3599` to `84.2544`; the built-in search then exhausted every one-step neighbor in its declared envelope without weakening the `0.02` KEEP threshold.
 
-Read [the architecture](docs/ARCHITECTURE.md), [project format](docs/PROJECT_FORMAT.md), [research-loop design](docs/design/robot-research-loop.md), and [CLI reference](docs/CLI.md).
+The Python/PyTorch lane uses a serialized force-aware PD residual prior instead of starting PPO from zero torque. Its checked-in Training Research ledger contains 11 frozen-policy experiments. One KEEP reduced the sample budget from 4096 to 2048 steps and improved the budget-aware learned-policy score from `84.1888` to `84.2398`. It remains slightly below the program-controller Robot Revision, so Mujica records it as a Policy Revision without making a false whole-robot promotion claim.
+
+Read [the architecture](docs/ARCHITECTURE.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

@@ -75,7 +75,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     }
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})
     result_hash = hash_json({"runKey": run_key, "events": environment.events, "trajectory": trajectory, "metrics": metrics, "score": score})
     output = {"runId": f"run-{run_key[:16]}", "runKey": run_key, "resultHash": result_hash, "metrics": metrics, "score": score, "events": environment.events}
     if not persist: return output
@@ -98,7 +98,6 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "metrics.json", metrics)
         write_json(directory / "score.json", score)
         (directory / "report.md").write_text(f"# Mujica simulation run\n\n- Run: `{output['runId']}`\n- Score: `{score['total']:.6f}`\n- Survival: `{metrics['survivalRate']:.3f}`\n- Fell: `{metrics['fell']}`\n")
-        write_json(directory / "manifest.json", {"version": 1, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
+        write_json(directory / "manifest.json", {"version": 1, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
     atomic_directory(target, writer)
     return {**output, "artifactPath": str(target), "cached": False}
-

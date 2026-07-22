@@ -53,6 +53,24 @@ class PolicyNetwork(torch.nn.Module):
         return self.actor(latent), self.critic(latent).squeeze(-1), self.log_std.expand(observation.shape[:-1] + self.log_std.shape)
 
 
+def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.ndarray], transform: dict[str, Any] | None) -> np.ndarray:
+    if not transform or transform.get("kind") == "identity":
+        return raw_action
+    if transform.get("kind") != "force-aware-pd-residual":
+        raise RuntimeError(f"Unsupported policy action transform '{transform.get('kind')}'")
+    joint_position = observation[str(transform.get("jointPositionChannel", "joint-position"))]
+    joint_velocity = observation[str(transform.get("jointVelocityChannel", "joint-velocity"))]
+    contacts = np.tanh(observation[str(transform.get("contactChannel", "foot-contact-force"))] / float(transform.get("contactScale", 20.0)))
+    target = np.asarray(transform["target"], dtype=np.float64).copy()
+    contact_gain = float(transform.get("contactGain", 0.0))
+    target[1::2] -= contact_gain * contacts
+    roll_rate = float(observation[str(transform.get("angularVelocityChannel", "imu-angular-velocity"))][0])
+    roll_correction = np.clip(float(transform.get("rollGain", 0.0)) * roll_rate, -0.08, 0.08)
+    target[[1, 5]] += roll_correction; target[[3, 7]] -= roll_correction
+    prior = float(transform["kp"]) * (target - joint_position) - float(transform["kd"]) * joint_velocity
+    return prior + float(transform.get("residualScale", 1.0)) * raw_action
+
+
 @dataclass
 class FrozenPolicyController:
     network: PolicyNetwork
@@ -62,6 +80,7 @@ class FrozenPolicyController:
     action_low: np.ndarray
     action_high: np.ndarray
     deterministic: bool
+    action_transform: dict[str, Any] | None
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
@@ -73,10 +92,11 @@ class FrozenPolicyController:
         with torch.no_grad():
             mean, _, log_std = self.network(torch.from_numpy(normalized).unsqueeze(0))
             if self.deterministic:
-                action = mean[0]
+                raw_action = mean[0]
             else:
-                action = torch.distributions.Normal(mean, log_std.exp()).sample()[0]
-        return np.clip(action.numpy(), self.action_low, self.action_high)
+                raw_action = torch.distributions.Normal(mean, log_std.exp()).sample()[0]
+        action = transform_policy_action(raw_action.numpy(), observation, self.action_transform)
+        return np.clip(action, self.action_low, self.action_high)
 
 
 def load_policy_controller(project_dir: Path, definition: dict[str, Any], compiled: dict[str, Any]) -> FrozenPolicyController:
@@ -99,4 +119,4 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
     network.eval()
     lows = np.array(compiled["actionLow"], dtype=np.float32)
     highs = np.array(compiled["actionHigh"], dtype=np.float32)
-    return FrozenPolicyController(network, compiled["observationContract"]["channels"], np.array(normalizer["mean"], dtype=np.float32), np.array(normalizer["variance"], dtype=np.float32), lows, highs, bool(definition.get("deterministic", True)))
+    return FrozenPolicyController(network, compiled["observationContract"]["channels"], np.array(normalizer["mean"], dtype=np.float32), np.array(normalizer["variance"], dtype=np.float32), lows, highs, bool(definition.get("deterministic", True)), architecture.get("actionTransform"))

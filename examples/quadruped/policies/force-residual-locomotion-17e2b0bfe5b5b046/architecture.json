@@ -1,0 +1,34 @@
+{
+  "kind": "mlp-actor-critic",
+  "observationSize": 37,
+  "actionSize": 8,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "actionTransform": {
+    "kind": "force-aware-pd-residual",
+    "jointPositionChannel": "joint-position",
+    "jointVelocityChannel": "joint-velocity",
+    "contactChannel": "foot-contact-force",
+    "angularVelocityChannel": "imu-angular-velocity",
+    "target": [
+      0.29,
+      -0.47,
+      0.29,
+      -0.47,
+      0.29,
+      -0.47,
+      0.29,
+      -0.47
+    ],
+    "kp": 32.0,
+    "kd": 1.4,
+    "contactScale": 20.0,
+    "contactGain": 0.02,
+    "rollGain": 0.02,
+    "residualScale": 1.0
+  }
+}

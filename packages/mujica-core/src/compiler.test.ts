@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadResearch, researchProposalSchema, validateProject } from "./index";
+import { compareAssemblies, compileAssembly, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -34,5 +34,12 @@ describe("Robot Assembly compiler", () => {
     expect(research.editable.path).toBe("controllers/force-aware-gait/controller.json");
     expect(research.editable.parameters.map((item) => item.path)).toContain("/config/contactGain");
     expect(researchProposalSchema.safeParse({ strategy: "badStrategy", hypothesis: "x", expectedEffect: "y", values: { "/config/kp": 26 } }).success).toBe(false);
+  });
+
+  test("training research names one bounded Training definition", async () => {
+    const research = await loadTrainingResearch(project, "residual-policy");
+    expect(research.editable.path).toBe("training/force-residual-locomotion.training.json");
+    expect(research.editable.parameters.find((item) => item.path === "/totalSteps")?.integer).toBe(true);
+    expect(research.seed).toBe(42);
   });
 });

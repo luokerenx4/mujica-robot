@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "force-residual-locomotion",
+  "name": "Force-aware residual velocity tracking PPO",
+  "assembly": "force-sensing",
+  "trainer": "force-residual-ppo",
+  "task": "velocity-track",
+  "scenarios": [
+    "nominal",
+    "low-friction",
+    "lateral-push"
+  ],
+  "totalSteps": 2048,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0005,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.2,
+  "entropyCoefficient": 0.01
+}

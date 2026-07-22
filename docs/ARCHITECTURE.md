@@ -21,6 +21,7 @@ mujica.json + Robot Base + Component packages + Robot Assembly
   -> content-addressed compiled robot directory
   -> MuJoCo load validation
   -> controller or trainer program
+  -> optional force-aware PD prior + learned residual action
   -> episode events + trajectory + metrics
   -> immutable Simulation Run or Policy Artifact
   -> locked multi-case evaluation
@@ -30,4 +31,6 @@ mujica.json + Robot Base + Component packages + Robot Assembly
 
 The autonomous path borrows autoresearch's small loop—human program, one editable surface, fixed evaluator, compact memory, keep/discard—but keeps authority in Core. The proposer may suggest bounded numeric controller values; it cannot write project files, change the evaluator, waive gates, or publish revisions.
 
-See [the harness design](design/robot-development-harness.md), [research-loop design](design/robot-research-loop.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+The training path freezes every candidate Policy before scoring it. Training reward never decides KEEP. Whole-robot Revisions and Policy Revisions are distinct lineages, so a learned-lane improvement cannot silently replace a stronger robot controller. Benchmark locks include production evaluator source and dependency locks, not only authored JSON inputs.
+
+See [the harness design](design/robot-development-harness.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

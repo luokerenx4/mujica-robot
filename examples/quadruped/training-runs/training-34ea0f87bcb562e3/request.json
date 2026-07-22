@@ -1,0 +1,233 @@
+{
+  "runtimeVersion": "0.2.0",
+  "runtimeSourceHash": "a419ee24fb3a3feb8cd3b45c5619e3201238f06b361cec4f29ce1bc730c1fb6f",
+  "harnessSourceHash": "37f49b3f5da1bb7f54ccb970095e4fdf9868c8133d05a06b8c648274995f051b",
+  "harnessDependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "projectDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+  "modelPath": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea/model.xml",
+  "compiled": {
+    "version": 1,
+    "id": "force-sensing",
+    "assemblyHash": "d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+    "baseHash": "b0834875813d25904920f291dcca5f074ce4a45d842183980c11e284dbfd6e81",
+    "catalogHash": "12015b2edc43f87c9a56a8336859d68e10cf44f3de401b82fdc9dd52ed51d6a5",
+    "totalMassKg": 5.71,
+    "componentCost": 5,
+    "components": [
+      {
+        "instanceId": "body-imu",
+        "componentId": "body-imu",
+        "mount": "torso-sensor",
+        "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+        "massKg": 0.03,
+        "cost": 1
+      },
+      {
+        "instanceId": "foot-force-kit",
+        "componentId": "foot-force-sensor",
+        "mount": "foot-array",
+        "hash": "76341a477884a41a2bea80b531b44f735ef65823f4482cccd977229963041869",
+        "massKg": 0.08,
+        "cost": 4
+      }
+    ],
+    "observationContract": {
+      "version": 1,
+      "assembly": "force-sensing",
+      "channels": [
+        {
+          "name": "joint-position",
+          "kind": "joint-position",
+          "size": 8,
+          "source": "qpos:joints",
+          "unit": "rad"
+        },
+        {
+          "name": "joint-velocity",
+          "kind": "joint-velocity",
+          "size": 8,
+          "source": "qvel:joints",
+          "unit": "rad-s"
+        },
+        {
+          "name": "base-height",
+          "kind": "body-state",
+          "size": 1,
+          "source": "qpos:root-height",
+          "unit": "m"
+        },
+        {
+          "name": "base-orientation",
+          "kind": "body-state",
+          "size": 4,
+          "source": "qpos:root-quaternion",
+          "unit": "quaternion"
+        },
+        {
+          "name": "base-velocity",
+          "kind": "body-state",
+          "size": 6,
+          "source": "qvel:root",
+          "unit": "mixed"
+        },
+        {
+          "name": "imu-angular-velocity",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-gyro",
+          "unit": "rad-s"
+        },
+        {
+          "name": "imu-linear-acceleration",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-accelerometer",
+          "unit": "m-s2"
+        },
+        {
+          "name": "foot-contact-force",
+          "kind": "sensor",
+          "size": 4,
+          "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+          "unit": "n"
+        }
+      ],
+      "size": 37
+    },
+    "actionContract": {
+      "version": 1,
+      "assembly": "force-sensing",
+      "channels": [
+        {
+          "name": "joint-torque",
+          "kind": "actuator",
+          "size": 8,
+          "source": "actuator:all",
+          "unit": "nm",
+          "low": -6,
+          "high": 6
+        }
+      ],
+      "size": 8
+    },
+    "observationContractHash": "f9bb136772b18649693902394e0196fe289cd331e74d3c2e2bc7849404532f34",
+    "actionContractHash": "02fe1e94c79cb336dcdd63258d1a9e0a931d80765f7271d6de08d2e06937703e",
+    "actionLow": [
+      -6,
+      -6,
+      -6,
+      -6,
+      -6,
+      -6,
+      -6,
+      -6
+    ],
+    "actionHigh": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "sensorChannelCount": 10
+  },
+  "training": {
+    "version": 1,
+    "id": "force-residual-locomotion",
+    "name": "Force-aware residual velocity tracking PPO",
+    "assembly": "force-sensing",
+    "trainer": "force-residual-ppo",
+    "task": "velocity-track",
+    "scenarios": [
+      "nominal",
+      "low-friction",
+      "lateral-push"
+    ],
+    "totalSteps": 2048,
+    "rolloutSteps": 256,
+    "epochs": 4,
+    "minibatchSize": 64,
+    "learningRate": 0.0005,
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+    "clipRatio": 0.2,
+    "entropyCoefficient": 0.01
+  },
+  "trainer": {
+    "version": 1,
+    "id": "force-residual-ppo",
+    "name": "Force-aware residual PPO",
+    "kind": "ppo",
+    "entry": "trainer.py",
+    "model": "model.py"
+  },
+  "trainerRoot": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/trainers/force-residual-ppo",
+  "trainerHash": "491ec1001a6ce2771fa61ed0c1cfe0cb8e5968619adccab2e72872fd20221f66",
+  "task": {
+    "version": 1,
+    "id": "velocity-track",
+    "name": "Track a modest forward velocity",
+    "durationSeconds": 3,
+    "controlHz": 50,
+    "targetVelocity": [
+      0.2,
+      0,
+      0
+    ],
+    "healthyHeight": [
+      0.19,
+      0.7
+    ],
+    "terminateOnFall": true
+  },
+  "scenarios": [
+    {
+      "version": 1,
+      "id": "nominal",
+      "name": "Nominal laboratory floor",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0
+    },
+    {
+      "version": 1,
+      "id": "low-friction",
+      "name": "Low-friction floor",
+      "friction": 0.35,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0
+    },
+    {
+      "version": 1,
+      "id": "lateral-push",
+      "name": "Timed lateral disturbance",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": {
+        "timeSeconds": 0.7,
+        "durationSeconds": 0.12,
+        "forceNewton": 32
+      },
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0
+    }
+  ],
+  "seed": 42,
+  "dependencyLockHash": "31c72b7f3628fe95f426b475b75057c7c6c1ac169491ef97c28d85327ce18efd",
+  "sourceHashes": {
+    "runtime": "a419ee24fb3a3feb8cd3b45c5619e3201238f06b361cec4f29ce1bc730c1fb6f",
+    "harness": "37f49b3f5da1bb7f54ccb970095e4fdf9868c8133d05a06b8c648274995f051b",
+    "harnessDependencies": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+    "trainer": "491ec1001a6ce2771fa61ed0c1cfe0cb8e5968619adccab2e72872fd20221f66",
+    "assembly": "d89572552c790a7256a7fe23403e257b121aab1b617e4b133032638dcb972cea",
+    "catalog": "12015b2edc43f87c9a56a8336859d68e10cf44f3de401b82fdc9dd52ed51d6a5",
+    "training": "37d051b2353b764adaa6e411be69fcb4f7eaaf33a759e6e3d30df95ff343a061"
+  }
+}

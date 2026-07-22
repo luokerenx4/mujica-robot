@@ -1,11 +1,45 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { CompiledAssembly } from "@mujica/core";
-import { hashJson } from "@mujica/core";
+import { hashDirectory, hashJson, sha256 } from "@mujica/core";
 
 const runtimeRoot = resolve(import.meta.dir, "../../../runtime");
-export const runtimeVersion = "0.1.0";
+export const runtimeVersion = "0.2.0";
+let sourceHashPromise: Promise<string> | undefined;
+let harnessHashPromise: Promise<string> | undefined;
+let harnessDependencyHashPromise: Promise<string> | undefined;
+
+export function runtimeSourceHash(): Promise<string> {
+  sourceHashPromise ??= hashDirectory(join(runtimeRoot, "src", "mujica_runtime"));
+  return sourceHashPromise;
+}
+
+async function productionTreeHash(root: string): Promise<string> {
+  const chunks: string[] = [];
+  async function walk(directory: string, prefix: string): Promise<void> {
+    const entries = (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      if (entry.name.includes(".test.") || entry.name === "__pycache__" || entry.name === ".DS_Store") continue;
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name; const absolute = join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new Error(`Harness source contains a symlink: ${absolute}`);
+      if (entry.isDirectory()) await walk(absolute, relative); else if (entry.isFile()) chunks.push(`${relative}\0${sha256(await readFile(absolute))}`);
+    }
+  }
+  await walk(root, ""); return sha256(chunks.join("\n"));
+}
+
+export function harnessSourceHash(): Promise<string> {
+  harnessHashPromise ??= Promise.all([
+    runtimeSourceHash(), productionTreeHash(resolve(runtimeRoot, "../packages/mujica-core/src")), productionTreeHash(resolve(runtimeRoot, "../packages/mujica-cli/src")),
+  ]).then(([runtime, core, cli]) => hashJson({ runtime, core, cli }));
+  return harnessHashPromise;
+}
+
+export function harnessDependencyLockHash(): Promise<string> {
+  harnessDependencyHashPromise ??= Promise.all([dependencyLockHash(), readFile(resolve(runtimeRoot, "../bun.lock"))]).then(([python, bun]) => hashJson({ python, bun: sha256(bun) }));
+  return harnessDependencyHashPromise;
+}
 
 export function runtimeCompiled(assembly: CompiledAssembly): Record<string, unknown> {
   const actionLow = assembly.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.low ?? -1));

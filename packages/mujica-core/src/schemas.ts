@@ -101,6 +101,20 @@ export const researchProposalSchema = z.object({
   strategy: idSchema, hypothesis: z.string().min(1), expectedEffect: z.string().min(1), values: z.record(z.number().finite()).refine((value) => Object.keys(value).length > 0, "proposal must change at least one value"),
 }).strict();
 
+const researchDirectionSchema = z.tuple([z.enum(["decrease", "increase"]), z.enum(["decrease", "increase"])]).refine((value) => value[0] !== value[1], "directionOrder must contain both directions");
+
+export const trainingResearchSchema = z.object({
+  version: z.literal(1), id: idSchema, name: z.string().min(1), benchmark: idSchema, training: idSchema, controller: idSchema, program: relativeFileSchema, seed: z.number().int(),
+  editable: z.object({
+    path: relativeFileSchema,
+    parameters: z.array(z.object({
+      path: z.enum(["/totalSteps", "/rolloutSteps", "/epochs", "/minibatchSize", "/learningRate", "/gamma", "/gaeLambda", "/clipRatio", "/entropyCoefficient"]),
+      minimum: z.number().finite(), maximum: z.number().finite(), step: z.number().positive(), integer: z.boolean().default(false), directionOrder: researchDirectionSchema,
+    }).strict()).min(1),
+  }).strict(),
+  minimumImprovement: z.number().nonnegative(), maxIterations: z.number().int().positive(),
+}).strict();
+
 export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
@@ -111,3 +125,4 @@ export type TrainingDefinition = z.output<typeof trainingSchema>;
 export type CandidateDefinition = z.output<typeof candidateSchema>;
 export type ResearchDefinition = z.output<typeof researchSchema>;
 export type ResearchProposal = z.output<typeof researchProposalSchema>;
+export type TrainingResearchDefinition = z.output<typeof trainingResearchSchema>;
