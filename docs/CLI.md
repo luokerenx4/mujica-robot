@@ -9,6 +9,7 @@ mujica component inspect <project> --component ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
+mujica studio <project> [--run ID] [--json]
 mujica train <project> --training ID [--seed N]
 mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica policies <project> [--json]
@@ -24,6 +25,8 @@ mujica revision inspect <project> --revision ID [--json]
 ```
 
 JSON mode emits one schema-versioned value on stdout. Validation/runtime failures use exit code 1; invalid CLI usage uses exit code 2. Artifact-producing commands identify each path and whether it is immutable.
+
+`studio` creates a content-addressed projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run for event and trajectory replay; without it, the deterministic last run id is selected. The output `index.html` is self-contained and can be opened offline.
 
 `research` is intentionally mutating. Without `--agent-command`, it uses the deterministic bounded proposer. An external command receives one JSON object on stdin and must return one proposal on stdout. Core validates the proposal, runs the complete locked Benchmark, records an immutable experiment, and advances the controller plus Revision lineage only for KEEP.
 

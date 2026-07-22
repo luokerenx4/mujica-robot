@@ -19,6 +19,7 @@
       },
       "dependencies": {
         "@mujica/core": "workspace:*",
+        "@mujica/studio": "workspace:*",
       },
     },
     "packages/mujica-core": {
@@ -28,11 +29,20 @@
         "zod": "^3.25.76",
       },
     },
+    "packages/mujica-studio": {
+      "name": "@mujica/studio",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mujica/core": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@mujica/cli": ["@mujica/cli@workspace:packages/mujica-cli"],
 
     "@mujica/core": ["@mujica/core@workspace:packages/mujica-core"],
+
+    "@mujica/studio": ["@mujica/studio@workspace:packages/mujica-studio"],
 
     "@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 

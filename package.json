@@ -7,8 +7,8 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "mujica": "bun packages/mujica-cli/src/bin.ts",
-    "typecheck": "bunx tsc -p packages/mujica-core/tsconfig.json --noEmit && bunx tsc -p packages/mujica-cli/tsconfig.json --noEmit",
-    "test:ts": "bun test packages/mujica-core packages/mujica-cli",
+    "typecheck": "bunx tsc -p packages/mujica-core/tsconfig.json --noEmit && bunx tsc -p packages/mujica-studio/tsconfig.json --noEmit && bunx tsc -p packages/mujica-cli/tsconfig.json --noEmit",
+    "test:ts": "bun test packages/mujica-core packages/mujica-studio packages/mujica-cli",
     "test:py": "PYTHONPATH=runtime/src uv run --project runtime python -m unittest discover -s runtime/tests -v",
     "test": "bun run typecheck && bun run test:ts && bun run test:py"
   },

@@ -8,6 +8,7 @@ import {
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
 import { dependencyLockHash, harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeCompiled, runtimeSourceHash, runtimeVersion } from "./runtime";
+import { writeStudioSnapshot } from "@mujica/studio";
 
 function projectArtifact(kind: Artifact["kind"], id: string, path: string, immutable: boolean): Artifact { return { kind, id, path, immutable }; }
 async function exists(path: string): Promise<boolean> {
@@ -50,6 +51,11 @@ export async function inspectCommand(projectDir: string) {
   const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
   return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length }, components, assemblies, policies, runs, trainingRuns, revisions, policyRevisions }, project);
+}
+
+export async function studioCommand(projectDir: string, run?: string) {
+  const project = await loadProject(projectDir); const result = await writeStudioSnapshot(project.rootDir, { ...(run ? { run } : {}) });
+  return success("studio", { id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun }, project, [projectArtifact("studio-snapshot", result.id, result.path, false)]);
 }
 
 export async function componentListCommand(projectDir: string) {

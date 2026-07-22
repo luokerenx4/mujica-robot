@@ -18,7 +18,7 @@ Audit the implemented Mujica repository against the complete robot-development-h
 1. Candidate manifests do not yet explicitly declare contract, Controller, Trainer, and Policy changes, and the evaluator does not compare those declarations with the compiled semantic diff.
 2. Development Revision manifests omit component, Controller, and Policy identities even though the source snapshot exists.
 3. Component manifests still lack the complete physical/kinematic inventory required for agent-readable hardware diffs. Migrating existing components changes their content-addressed Assembly identity and therefore needs an explicit frozen-Policy migration strategy.
-4. A read-only Studio and a HIL/real-verification adapter boundary remain unimplemented phases.
+4. A HIL/real-verification adapter boundary remains unimplemented. The first read-only Studio slice now projects complete file-native evidence and a real 3-DOF locomotion Run.
 
 ## Current slice
 
@@ -36,4 +36,3 @@ bun run mujica candidate examples/quadruped --candidate foot-force-recovery --js
 bun run mujica assembly compile examples/quadruped --assembly force-sensing-3dof --json
 bun run test
 ```
-

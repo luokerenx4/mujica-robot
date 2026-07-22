@@ -23,6 +23,15 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train-research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy-revision.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
+  });
+
+  test("Studio is a read-only projection of a completed quadruped run", () => {
+    const result = invoke(["studio", "examples/quadruped", "--run", "run-e8bd80892b0f0123", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.selectedRun).toBe("run-e8bd80892b0f0123");
+    expect(envelope.data.snapshotHash).toHaveLength(64);
+    expect(envelope.artifacts).toEqual([{ kind: "studio-snapshot", id: envelope.data.id, path: envelope.data.path, immutable: false }]);
   });
 
   test("validation crosses the Python MuJoCo boundary", async () => {

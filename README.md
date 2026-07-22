@@ -29,6 +29,7 @@ bun run mujica evaluate examples/quadruped \
   --benchmark forward-locomotion
 bun run mujica train examples/quadruped --training forward-residual-locomotion --seed 42
 bun run mujica policies examples/quadruped
+bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
 bun run mujica research examples/quadruped --research forward-gait --iterations 6
 bun run mujica train-research examples/quadruped --research forward-residual-policy --iterations 6
 ```
@@ -53,4 +54,6 @@ A separate held-out audit tests mirrored pushes, unseen delay durations, and com
 
 The follow-up adds a replayable four-step history contract, a bounded GRU history encoder, calibrated-latency priors, and governed residual regularization. Pure 20–60 ms latency is solved analytically; compound latency plus disturbance remains an explicit unsolved research gate.
 
-Read [the architecture](docs/ARCHITECTURE.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+`mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The checked-in spatial-policy Run travels `0.668 m`; Studio replays its top-down trajectory and exposes metrics, semantic events, Assembly contracts, Benchmarks, Candidates, training artifacts, and Revision lineage without becoming an editor or evaluator.
+
+Read [the architecture](docs/ARCHITECTURE.md), [read-only Studio design](docs/design/read-only-studio.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
