@@ -175,10 +175,14 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
     if (project_dir / "policies").resolve() not in policy_dir.parents:
         raise RuntimeError("Policy path escapes project")
     manifest = json.loads((policy_dir / "manifest.json").read_text())
-    if manifest["assemblyHash"] != compiled["assemblyHash"]:
-        raise RuntimeError("Policy assembly hash does not match compiled assembly")
-    if manifest["catalogHash"] != compiled["catalogHash"]:
-        raise RuntimeError("Policy component catalog does not match compiled assembly")
+    if "executionHash" in manifest:
+        if manifest["executionHash"] != compiled["executionHash"]:
+            raise RuntimeError("Policy execution hash does not match compiled assembly")
+    else:
+        if manifest["assemblyHash"] != compiled["assemblyHash"]:
+            raise RuntimeError("Policy assembly hash does not match compiled assembly")
+        if manifest["catalogHash"] != compiled["catalogHash"]:
+            raise RuntimeError("Policy component catalog does not match compiled assembly")
     if manifest["observationContractHash"] != compiled["observationContractHash"]:
         raise RuntimeError("Policy observation contract does not match compiled assembly")
     if manifest["actionContractHash"] != compiled["actionContractHash"]:

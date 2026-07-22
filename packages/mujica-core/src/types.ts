@@ -49,6 +49,11 @@ export interface ComponentManifest {
   actions: ContractChannel[];
   dependencies: string[];
   configSchema: Record<string, unknown>;
+  physical: { centerOfMassM: [number, number, number]; inertiaDiagonalKgM2: [number, number, number] };
+  geometry: Array<{ name: string; kind: "box" | "sphere" | "capsule" | "mesh"; collision: boolean }>;
+  joints: Array<{ name: string; kind: "hinge" | "slide" | "ball" | "free"; axis?: [number, number, number] }>;
+  actuators: Array<{ name: string; kind: "motor" | "position" | "velocity" | "general"; joint: string; controlRange: [number, number] }>;
+  sensors: Array<{ name: string; kind: string; source: "mjcf" | "runtime" }>;
   massKg: number;
   cost: number;
   license: string;
@@ -80,6 +85,11 @@ export interface CompiledComponent {
   hash: string;
   massKg: number;
   cost: number;
+  physical: ComponentManifest["physical"];
+  geometry: ComponentManifest["geometry"];
+  joints: ComponentManifest["joints"];
+  actuators: ComponentManifest["actuators"];
+  sensors: ComponentManifest["sensors"];
 }
 
 export interface CompiledAssembly {
@@ -91,6 +101,8 @@ export interface CompiledAssembly {
   artifactDir: string;
   modelPath: string;
   assemblyHash: string;
+  executionHash: string;
+  modelHash: string;
   baseHash: string;
   catalogHash: string;
   totalMassKg: number;

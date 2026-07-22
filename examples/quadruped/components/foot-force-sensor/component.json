@@ -12,6 +12,16 @@
   "actions": [],
   "dependencies": [],
   "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "physical": { "centerOfMassM": [0, 0, 0], "inertiaDiagonalKgM2": [0.00002, 0.00002, 0.00002] },
+  "geometry": [],
+  "joints": [],
+  "actuators": [],
+  "sensors": [
+    { "name": "foot-force-fl", "kind": "touch", "source": "mjcf" },
+    { "name": "foot-force-fr", "kind": "touch", "source": "mjcf" },
+    { "name": "foot-force-rl", "kind": "touch", "source": "mjcf" },
+    { "name": "foot-force-rr", "kind": "touch", "source": "mjcf" }
+  ],
   "massKg": 0.08,
   "cost": 4,
   "license": "Apache-2.0",

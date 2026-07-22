@@ -127,6 +127,25 @@ export async function policyInspectCommand(projectDir: string, id: string) {
   return success("policy.inspect", { manifest, architecture: JSON.parse(await readFile(join(root, "architecture.json"), "utf8")), metrics: JSON.parse(await readFile(join(root, "training-metrics.json"), "utf8")), rootDir: root }, project);
 }
 
+export async function policyRequalifyCommand(projectDir: string, policyId: string, assemblyId: string) {
+  const project = await loadProject(projectDir); const source = confined(project.rootDir, `policies/${policyId}`); const manifest = JSON.parse(await readFile(join(source, "manifest.json"), "utf8")); const sourcePolicyHash = await hashDirectory(source);
+  const assembly = await compileAssembly(project.rootDir, assemblyId); const oldModelPath = confined(project.rootDir, `.mujica/cache/assemblies/${manifest.assemblyHash}/model.xml`);
+  if (!(await exists(oldModelPath))) throw new Error(`Old compiled Assembly '${manifest.assemblyHash}' is unavailable; execution equivalence cannot be proven`);
+  const oldModelHash = sha256(await readFile(oldModelPath)); if (oldModelHash !== assembly.modelHash) throw new Error("Old and new compiled MJCF differ; Policy must be retrained");
+  const oldObservation = JSON.parse(await readFile(join(source, "observation-contract.json"), "utf8")); const oldAction = JSON.parse(await readFile(join(source, "action-contract.json"), "utf8"));
+  const observationContractHash = hashJson(assembly.observationContract); const actionContractHash = hashJson(assembly.actionContract);
+  if (hashJson(oldObservation) !== observationContractHash || hashJson(oldAction) !== actionContractHash) throw new Error("Old and new Controller contracts differ; Policy must be retrained");
+  const proof = { version: 1, kind: "execution-equivalent-metadata-migration", sourcePolicyId: policyId, sourcePolicyHash, oldAssemblyHash: manifest.assemblyHash, newAssemblyHash: assembly.assemblyHash, oldModelHash, newModelHash: assembly.modelHash, executionHash: assembly.executionHash, observationContractHash, actionContractHash };
+  const identity = hashJson(proof); const id = `${manifest.id.split(/-[0-9a-f]{16}$/)[0]}-q-${identity.slice(0, 16)}`; const target = confined(project.rootDir, `policies/${id}`);
+  if (!(await exists(join(target, "manifest.json")))) await atomicDirectory(target, async (directory) => {
+    await cp(source, directory, { recursive: true }); const sourceHashes = JSON.parse(await readFile(join(source, "source-hashes.json"), "utf8"));
+    await writeJson(join(directory, "source-hashes.json"), { ...sourceHashes, assembly: assembly.assemblyHash, catalog: assembly.catalogHash, requalifiedFromPolicy: sourcePolicyHash });
+    await writeJson(join(directory, "requalification.json"), proof);
+    await writeJson(join(directory, "manifest.json"), { ...manifest, id, assemblyHash: assembly.assemblyHash, executionHash: assembly.executionHash, modelXmlHash: assembly.modelHash, catalogHash: assembly.catalogHash, observationContractHash, actionContractHash, derivedFromPolicy: policyId, derivedFromPolicyHash: sourcePolicyHash, derivation: proof.kind });
+  });
+  return success("policy.requalify", { id, path: target, sourcePolicyId: policyId, assembly: assemblyId, proof }, project, [projectArtifact("policy", id, target, true)]);
+}
+
 function lockPayload(benchmark: BenchmarkDefinition, baselineAssemblyHash: string, baselineControllerHash: string, objective: unknown, cases: Array<{ task: unknown; scenario: unknown }>, sourceHash: string, harnessHash: string, dependencyHash: string) {
   return { version: 1, runtimeVersion, runtimeSourceHash: sourceHash, harnessSourceHash: harnessHash, evaluatorDependencyLockHash: dependencyHash, benchmarkId: benchmark.id, benchmarkHash: hashJson(benchmark), baselineAssemblyHash, baselineControllerHash, objectiveHash: hashJson(objective), cases: cases.map((item, index) => ({ id: benchmark.cases[index]?.id, taskHash: hashJson(item.task), scenarioHash: hashJson(item.scenario), seed: benchmark.cases[index]?.seed, weight: benchmark.cases[index]?.weight })) };
 }

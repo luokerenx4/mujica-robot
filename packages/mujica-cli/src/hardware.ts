@@ -1,6 +1,6 @@
 import { cp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { atomicDirectory, compileAssembly, confined, hardwareEvidenceSchema, hardwareTargetSchema, hashDirectory, hashJson, loadHardwareTarget, loadProject, readJson, stableJson, writeJson } from "@mujica/core";
+import { atomicDirectory, confined, hardwareEvidenceSchema, hardwareTargetSchema, hashDirectory, hashJson, loadHardwareTarget, loadProject, readJson, sha256, stableJson, writeJson } from "@mujica/core";
 import { success, type Artifact } from "./contract";
 import { harnessDependencyLockHash, harnessSourceHash } from "./runtime";
 
@@ -8,7 +8,7 @@ async function exists(path: string): Promise<boolean> { try { await stat(path); 
 const artifact = (kind: Artifact["kind"], id: string, path: string): Artifact => ({ kind, id, path, immutable: true });
 
 async function verifyBundleIntegrity(root: string, bundle: any): Promise<void> {
-  const payload = { version: bundle.version, harnessSourceHash: bundle.harnessSourceHash, harnessDependencyLockHash: bundle.harnessDependencyLockHash, target: bundle.target, revisionId: bundle.revisionId, revisionHash: bundle.revisionHash, assemblyHash: bundle.assemblyHash, controllerHash: bundle.controllerHash, observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash, protocol: bundle.protocol };
+  const payload = { version: bundle.version, harnessSourceHash: bundle.harnessSourceHash, harnessDependencyLockHash: bundle.harnessDependencyLockHash, target: bundle.target, revisionId: bundle.revisionId, revisionHash: bundle.revisionHash, assemblyHash: bundle.assemblyHash, ...(typeof bundle.modelXmlHash === "string" ? { modelXmlHash: bundle.modelXmlHash } : {}), controllerHash: bundle.controllerHash, observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash, protocol: bundle.protocol };
   if (hashJson(payload) !== bundle.bundleHash) throw new Error("Hardware Bundle manifest identity is invalid");
   if (await hashDirectory(join(root, "revision")) !== bundle.revisionHash) throw new Error("Hardware Bundle Revision snapshot was modified");
   if (await hashDirectory(join(root, "controller")) !== bundle.controllerHash) throw new Error("Hardware Bundle Controller snapshot was modified");
@@ -18,18 +18,20 @@ async function verifyBundleIntegrity(root: string, bundle: any): Promise<void> {
 }
 
 export async function hardwareExportCommand(projectDir: string, targetId: string) {
-  const project = await loadProject(projectDir); const target = await loadHardwareTarget(project.rootDir, targetId); const assembly = await compileAssembly(project.rootDir, target.assembly);
+  const project = await loadProject(projectDir); const target = await loadHardwareTarget(project.rootDir, targetId);
   const revisionRoot = confined(project.rootDir, `revisions/${target.revision}`); const revision = JSON.parse(await readFile(join(revisionRoot, "manifest.json"), "utf8"));
   if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error("Hardware Target does not match its Robot Revision");
-  if (revision.assemblyHash !== assembly.assemblyHash) throw new Error("Robot Revision Assembly is stale against current project source; export from the immutable Revision snapshot instead");
+  const compiledRoot = join(revisionRoot, "compiled"); const compiled = JSON.parse(await readFile(join(compiledRoot, "compiled-assembly.json"), "utf8"));
+  const observationContract = JSON.parse(await readFile(join(compiledRoot, "observation-contract.json"), "utf8")); const actionContract = JSON.parse(await readFile(join(compiledRoot, "action-contract.json"), "utf8"));
+  if (revision.assemblyHash !== compiled.assemblyHash) throw new Error("Robot Revision compiled snapshot identity is invalid");
   const controllerRoot = join(revisionRoot, "sources", "controllers", target.controller); if (!(await exists(join(controllerRoot, "controller.json")))) throw new Error("Robot Revision does not contain its Controller source snapshot");
   const controllerHash = await hashDirectory(controllerRoot); const [harnessHash, dependencyHash] = await Promise.all([harnessSourceHash(), harnessDependencyLockHash()]);
-  const observationContractHash = hashJson(assembly.observationContract); const actionContractHash = hashJson(assembly.actionContract);
-  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: assembly.assemblyHash, controllerHash, observationContractHash, actionContractHash, protocol: target.protocol };
+  const observationContractHash = hashJson(observationContract); const actionContractHash = hashJson(actionContract); const modelXmlHash = sha256(await readFile(join(compiledRoot, "model.xml")));
+  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, observationContractHash, actionContractHash, protocol: target.protocol };
   const bundleHash = hashJson(payload); const id = `hardware-${bundleHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-bundles", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await cp(revisionRoot, join(directory, "revision"), { recursive: true }); await cp(controllerRoot, join(directory, "controller"), { recursive: true });
-    await writeJson(join(directory, "target.json"), target); await writeJson(join(directory, "observation-contract.json"), assembly.observationContract); await writeJson(join(directory, "action-contract.json"), assembly.actionContract);
+    await writeJson(join(directory, "target.json"), target); await writeJson(join(directory, "observation-contract.json"), observationContract); await writeJson(join(directory, "action-contract.json"), actionContract);
     await writeJson(join(directory, "driver-protocol.json"), { version: 1, protocol: "stdio-jsonl-v1", handshake: { bundleHash, observationContractHash, actionContractHash }, messages: ["hello", "observation", "action", "emergency-stop", "completed"] });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
   });

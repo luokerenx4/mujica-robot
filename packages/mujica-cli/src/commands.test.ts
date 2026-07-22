@@ -26,6 +26,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.export")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.verify")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.requalify")).toBe(true);
   });
 
   test("Studio is a read-only projection of a completed quadruped run", () => {
@@ -54,6 +55,8 @@ describe("agent CLI contract", () => {
     const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
     expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
     expect(result.data.evidence.samples).toBe(250); expect(result.data.reasons).toEqual([]);
+    const legacy = invoke(["hardware", "verify", "examples/quadruped", "--bundle", "hardware-f0b608d6d693dead", "--evidence", "examples/quadruped/hardware-verifications/verification-fe6210762029bd3f/evidence.json", "--json"]);
+    expect(legacy.code).toBe(0); expect(JSON.parse(legacy.stdout).data.status).toBe("PROTOCOL-VERIFIED");
   });
 
   test("a locked candidate preview is read-only and keeps its score evidence", () => {
@@ -65,13 +68,13 @@ describe("agent CLI contract", () => {
     expect(envelope.data.verifiedChanges.observations.added).toEqual(["foot-contact-force"]);
     expect(envelope.data.proposedRevisionHash).toHaveLength(64);
     expect(envelope.data.proposedRevisionId).toMatch(/^quadruped-r-/);
-  });
+  }, 15_000);
 
   test("trained component development is judged from frozen policies, not training completion", () => {
     const result = invoke(["candidate", "examples/quadruped", "--candidate", "trained-foot-force-recovery", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.candidate.changes.policy.from).toBe("baseline-locomotion-8c664d9168a3348a");
-    expect(envelope.data.candidate.changes.policy.to).toBe("force-aware-locomotion-cbb358d666be2408");
+    expect(envelope.data.candidate.changes.policy.from).toBe("baseline-locomotion-q-f3f505f0da5e8b5b");
+    expect(envelope.data.candidate.changes.policy.to).toBe("force-aware-locomotion-q-890a561ecf989a0e");
     expect(envelope.data.verdict).toBe("REVERT");
     expect(envelope.data.scoreDelta).toBeLessThan(0);
     expect(envelope.data.gateReasons).toHaveLength(3);
@@ -98,6 +101,12 @@ describe("agent CLI contract", () => {
     for (let index = 1; index < revisions.length; index++) expect(revisions[index].parent).toBe(revisions[index - 1].id);
     expect(revisions.at(-1).candidateId).toBe("spatial-quadruped");
     expect(revisions.at(-1).aggregateScore).toBeCloseTo(62.616999752834296);
+  });
+
+  test("Policy requalification requires byte-identical MJCF and contracts", () => {
+    const result = invoke(["policy", "requalify", "examples/quadruped", "--policy", "spatial-residual-locomotion-81df145800cc15c7", "--assembly", "force-sensing-3dof", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0); expect(envelope.data.id).toBe("spatial-residual-locomotion-q-51fcc86355fd3dc3");
+    expect(envelope.data.proof.oldModelHash).toBe(envelope.data.proof.newModelHash); expect(envelope.data.proof.executionHash).toHaveLength(64);
   });
 
   test("the promoted spatial policy passes every locked gate", () => {

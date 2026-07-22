@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
+import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadResearch, loadTrainingResearch, researchProposalSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -14,6 +14,16 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.to.observationContract.size).toBe(37);
     expect(comparison.to.actionContract.size).toBe(8);
     expect(comparison.massDeltaKg).toBeCloseTo(0.08);
+    expect(comparison.to.components.find((item) => item.componentId === "foot-force-sensor")?.sensors.map((item) => item.name)).toEqual(["foot-force-fl", "foot-force-fr", "foot-force-rl", "foot-force-rr"]);
+  });
+
+  test("components expose physical and kinematic inventory without changing executable MJCF", async () => {
+    const component = await loadComponent(project, "body-imu");
+    expect(component.manifest.physical.inertiaDiagonalKgM2).toEqual([0.00001, 0.00001, 0.00001]);
+    expect(component.manifest.geometry).toEqual([]); expect(component.manifest.joints).toEqual([]); expect(component.manifest.actuators).toEqual([]);
+    expect(component.manifest.sensors.map((item) => item.name)).toEqual(["body-gyro", "body-accelerometer"]);
+    const assembly = await compileAssembly(project, "force-sensing-3dof");
+    expect(assembly.modelHash).toBe("9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea"); expect(assembly.executionHash).toHaveLength(64);
   });
 
   test("development candidates declare the compiled hardware and contract diff", async () => {

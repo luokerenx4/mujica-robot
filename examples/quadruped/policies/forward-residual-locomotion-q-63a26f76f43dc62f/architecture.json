@@ -1,0 +1,31 @@
+{
+  "kind": "mlp-actor-critic",
+  "observationSize": 37,
+  "actionSize": 8,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "actionTransform": {
+    "kind": "force-aware-gait-residual",
+    "jointPositionChannel": "joint-position",
+    "jointVelocityChannel": "joint-velocity",
+    "contactChannel": "foot-contact-force",
+    "angularVelocityChannel": "imu-angular-velocity",
+    "frequencyHz": 1.2,
+    "neutralHip": 0.29,
+    "neutralKnee": -0.47,
+    "hipAmplitude": 0.25,
+    "kneeAmplitude": 0.04,
+    "leftRightPhase": 0.0,
+    "frontRearPhase": 3.141592653589793,
+    "kp": 32.0,
+    "kd": 2.0,
+    "contactScale": 20.0,
+    "contactGain": 0.02,
+    "rollGain": 0.02,
+    "residualScale": 2.0
+  }
+}

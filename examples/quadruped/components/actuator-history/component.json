@@ -14,6 +14,15 @@
   "actions": [],
   "dependencies": [],
   "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "physical": { "centerOfMassM": [0, 0, 0], "inertiaDiagonalKgM2": [0, 0, 0] },
+  "geometry": [],
+  "joints": [],
+  "actuators": [],
+  "sensors": [
+    { "name": "command-action-history", "kind": "actuator-command-history", "source": "runtime" },
+    { "name": "applied-action-history", "kind": "actuator-applied-history", "source": "runtime" },
+    { "name": "actuator-delay-steps", "kind": "actuator-delay", "source": "runtime" }
+  ],
   "massKg": 0,
   "cost": 1,
   "license": "Apache-2.0",

@@ -16,6 +16,7 @@ mujica train <project> --training ID [--seed N]
 mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica policies <project> [--json]
 mujica policy inspect <project> --policy ID [--json]
+mujica policy requalify <project> --policy ID --assembly ID [--json]
 mujica policy-revisions <project> [--json]
 mujica policy-revision inspect <project> --revision ID [--json]
 mujica benchmark lock <project> --benchmark ID [--json]
@@ -31,6 +32,8 @@ JSON mode emits one schema-versioned value on stdout. Validation/runtime failure
 `studio` creates a content-addressed projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run for event and trajectory replay; without it, the deterministic last run id is selected. The output `index.html` is self-contained and can be opened offline.
 
 `hardware export` freezes one Hardware Target, kept Robot Revision, Controller, Observation/Action contracts, safety envelope, and `stdio-jsonl-v1` handshake into an immutable bundle. `hardware verify` validates separately collected driver Evidence and publishes an immutable verification. A `dry-run` can only become `PROTOCOL-VERIFIED`; only passing `hil` or `real` Evidence with a required device serial can become `HARDWARE-VERIFIED`.
+
+`policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
 
 `research` is intentionally mutating. Without `--agent-command`, it uses the deterministic bounded proposer. An external command receives one JSON object on stdin and must return one proposal on stdout. Core validates the proposal, runs the complete locked Benchmark, records an immutable experiment, and advances the controller plus Revision lineage only for KEEP.
 

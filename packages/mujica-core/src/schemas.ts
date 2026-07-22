@@ -33,6 +33,11 @@ export const componentSchema = z.object({
   compatibleMounts: z.array(idSchema).min(1), providesMounts: z.array(mountSchema).default([]),
   observations: z.array(channelSchema).default([]), actions: z.array(channelSchema).default([]), dependencies: z.array(idSchema).default([]),
   configSchema: z.record(z.unknown()),
+  physical: z.object({ centerOfMassM: z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]), inertiaDiagonalKgM2: z.tuple([z.number().nonnegative(), z.number().nonnegative(), z.number().nonnegative()]) }).strict(),
+  geometry: z.array(z.object({ name: idSchema, kind: z.enum(["box", "sphere", "capsule", "mesh"]), collision: z.boolean() }).strict()),
+  joints: z.array(z.object({ name: idSchema, kind: z.enum(["hinge", "slide", "ball", "free"]), axis: z.tuple([z.number(), z.number(), z.number()]).optional() }).strict()),
+  actuators: z.array(z.object({ name: idSchema, kind: z.enum(["motor", "position", "velocity", "general"]), joint: idSchema, controlRange: z.tuple([z.number().finite(), z.number().finite()]) }).strict()),
+  sensors: z.array(z.object({ name: idSchema, kind: idSchema, source: z.enum(["mjcf", "runtime"]) }).strict()),
   massKg: z.number().nonnegative(), cost: z.number().nonnegative(), license: z.string().min(1), attribution: z.string(),
 }).strict();
 
