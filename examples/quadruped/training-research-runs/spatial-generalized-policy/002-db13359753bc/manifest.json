@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "id": "002-db13359753bc",
+  "sequence": 2,
+  "researchId": "spatial-generalized-policy",
+  "researchHash": "67b2cf30c96351b148aa87d5bfb432c93e18ca1808b9b9e9edbe56914c7bf6ea",
+  "programHash": "d1aadb3ba77f36c1b0e7cfc455de3dc44089f0983af48bffc9c8de39be401706",
+  "benchmarkLockHash": "28ef4c099208e0a3a99fb38c3d998ac7003a3a12ed8681dee4935f03a6a581fe",
+  "trainerHash": "024d817e5e5903c77fdef3f89dc56cae049e1b7be1500631f0dd1f0a9f794fcd",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "5507207119e43359a0a8250cd2a6d4d19dfe818d33b22d301d4f04f1450ae473",
+  "proposal": {
+    "strategy": "calibrated-prior-quarter-residual",
+    "hypothesis": "A calibrated latency prior needs only a small learned correction to retain the 60 ms stability basin.",
+    "expectedEffect": "Pass all delay-duration and compound-disturbance gates.",
+    "values": {
+      "/residualScale": 0.25
+    }
+  },
+  "strategy": "calibrated-prior-quarter-residual",
+  "policyId": "spatial-generalized-locomotion-c45c66d31c1102a0",
+  "score": 48.83376565093375,
+  "delta": -0.34737317489097563,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "reset-d: survival 0.644 below gate without improving the locked baseline",
+    "delay-60ms: survival 0.424 below gate without improving the locked baseline",
+    "delay-60ms: forward progress 0.000 below gate without improving the locked baseline",
+    "delay-60ms: score regression exceeds locked baseline gate",
+    "delay-plus-push: lateral drift 0.417 exceeds gate without improving the locked baseline"
+  ],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

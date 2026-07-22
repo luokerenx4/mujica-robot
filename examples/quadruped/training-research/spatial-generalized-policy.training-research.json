@@ -11,6 +11,7 @@
     "path": "training/spatial-generalized-locomotion.training.json",
     "parameters": [
       { "path": "/residualScale", "minimum": 0.25, "maximum": 0.75, "step": 0.25, "integer": false, "directionOrder": ["decrease", "increase"] },
+      { "path": "/residualPenalty", "minimum": 0, "maximum": 0.2, "step": 0.05, "integer": false, "directionOrder": ["increase", "decrease"] },
       { "path": "/totalSteps", "minimum": 8192, "maximum": 32768, "step": 8192, "integer": true, "directionOrder": ["decrease", "increase"] },
       { "path": "/learningRate", "minimum": 0.0001, "maximum": 0.0004, "step": 0.0001, "integer": false, "directionOrder": ["decrease", "increase"] },
       { "path": "/entropyCoefficient", "minimum": 0, "maximum": 0.008, "step": 0.002, "integer": false, "directionOrder": ["decrease", "increase"] }

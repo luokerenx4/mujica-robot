@@ -6,8 +6,9 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import torch
 
-from mujica_runtime.controllers import load_program_controller, transform_policy_action
+from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, score_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
@@ -18,7 +19,8 @@ PROJECT = ROOT / "examples" / "quadruped"
 
 
 def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
-    for manifest_path in (PROJECT / ".mujica" / "cache" / "assemblies").glob("*/compiled-assembly.json"):
+    manifests = sorted((PROJECT / ".mujica" / "cache" / "assemblies").glob("*/compiled-assembly.json"), key=lambda path: path.stat().st_mtime_ns, reverse=True)
+    for manifest_path in manifests:
         manifest = json.loads(manifest_path.read_text())
         if manifest["id"] != assembly_id:
             continue
@@ -37,6 +39,12 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_bounded_history_gru_is_a_stateless_replayable_policy_encoder(self):
+        architecture = {"kind": "history-gru-actor-critic", "observationSize": 141, "actionSize": 12, "hiddenSizes": [16], "history": {"commandStart": 41, "appliedStart": 89, "steps": 4, "actionSize": 12, "recurrentSize": 8}}
+        network = create_policy_network(architecture); observation = torch.linspace(-1, 1, 141).unsqueeze(0)
+        first = network(observation); second = network(observation)
+        self.assertEqual(first[0].shape, (1, 12)); self.assertEqual(first[1].shape, (1,)); self.assertEqual(first[2].shape, (1, 12))
+        torch.testing.assert_close(first[0], second[0]); torch.testing.assert_close(first[1], second[1])
     def test_training_residual_scale_is_frozen_into_the_effective_transform(self):
         base = {"kind": "spatial-gait-residual", "residualScale": 1.0}
         effective = effective_action_transform(base, {"residualScale": 0.25})
@@ -120,6 +128,16 @@ class RuntimeContractTest(unittest.TestCase):
         np.testing.assert_allclose(np.clip(prior, -8, 8), expected, atol=1e-9)
         np.testing.assert_allclose(transform_policy_action(np.ones(12), observation, transform, 0.37) - prior, np.full(12, 0.5), atol=1e-9)
 
+    def test_spatial_prior_selects_phase_lead_from_calibrated_actuator_delay(self):
+        observation = {
+            "joint-position": np.zeros(12), "joint-velocity": np.zeros(12), "foot-contact-force": np.zeros(4),
+            "base-orientation": np.array([1.0, 0.0, 0.0, 0.0]), "imu-angular-velocity": np.zeros(3), "actuator-delay-steps": np.array([3.0]),
+        }
+        common = {"kind": "spatial-gait-residual", "frequencyHz": 1.0, "phaseLeadSeconds": 0.12, "statePredictionSeconds": 0.02, "neutralAbduction": 0.2, "neutralHip": 0.34, "neutralKnee": -0.37, "hipAmplitude": 0.16, "kneeAmplitude": 0.05, "frontRearPhase": np.pi, "kpAbduction": 17.0, "kdAbduction": 3.3, "kpSagittal": 30.5, "kdSagittal": 2.2, "contactGain": 0.02, "rollPositionGain": 0.27, "rollRateGain": 0.13}
+        calibrated = transform_policy_action(np.zeros(12), observation, {**common, "delayChannel": "actuator-delay-steps", "phaseLeadByDelaySteps": [0.12, 0.0075, 0.02, 0.225]}, 0.1)
+        explicit = transform_policy_action(np.zeros(12), observation, {**common, "phaseLeadSeconds": 0.225}, 0.1)
+        np.testing.assert_allclose(calibrated, explicit, atol=1e-9)
+
     def test_force_component_is_visible_in_observation(self):
         model, compiled = compiled_assembly("force-sensing")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
@@ -138,6 +156,19 @@ class RuntimeContractTest(unittest.TestCase):
         command = np.linspace(-1, 1, 12); result = environment.step(command)
         np.testing.assert_allclose(result.observation["last-commanded-action"], command)
         np.testing.assert_allclose(result.observation["last-applied-action"], np.zeros(12))
+
+    def test_actuator_history_is_oldest_to_newest_and_covers_delay_queue(self):
+        model, compiled = compiled_assembly("force-sensing-history-3dof")
+        task = json.loads((PROJECT / "tasks" / "forward-walk.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "actuator-delay.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 42); observation = environment.reset()
+        self.assertEqual(environment.vector(observation).shape, (142,))
+        np.testing.assert_allclose(observation["actuator-delay-steps"], np.array([2.0]))
+        first = np.linspace(-1, 1, 12); observation = environment.step(first).observation
+        np.testing.assert_allclose(observation["command-action-history"][-12:], first)
+        np.testing.assert_allclose(observation["applied-action-history"], np.zeros(48))
+        second = first * 2; observation = environment.step(second).observation
+        np.testing.assert_allclose(observation["command-action-history"][-24:], np.concatenate([first, second]))
 
     def test_host_rejects_wrong_action_shape(self):
         model, compiled = compiled_assembly("baseline")

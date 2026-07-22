@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "001-127d96c873ac",
+  "sequence": 1,
+  "researchId": "spatial-generalized-policy",
+  "researchHash": "67b2cf30c96351b148aa87d5bfb432c93e18ca1808b9b9e9edbe56914c7bf6ea",
+  "programHash": "d1aadb3ba77f36c1b0e7cfc455de3dc44089f0983af48bffc9c8de39be401706",
+  "benchmarkLockHash": "bc2cde9f32cf2b524cf7aaaca5ff0ce728046bc6a17471b609850b5ad4b4af7c",
+  "trainerHash": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "7e53ba155318ed69342b48554818b523ce554c20786b927c92c4f9ede177a456",
+  "proposal": {
+    "strategy": "history-long-low-rate",
+    "hypothesis": "A longer low-rate run may learn to decode the explicit four-step delay history without destabilizing the analytic prior.",
+    "expectedEffect": "Pass every held-out delay and compound-disturbance gate.",
+    "values": {
+      "/totalSteps": 32768,
+      "/learningRate": 0.0001
+    }
+  },
+  "strategy": "history-long-low-rate",
+  "policyId": "spatial-generalized-locomotion-a88bfd67b5305c44",
+  "score": 46.077179070523705,
+  "delta": -5.0693937473162975,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "reset-d: survival 0.648 below gate without improving the locked baseline",
+    "delay-20ms: forward progress 0.000 below gate without improving the locked baseline",
+    "delay-60ms: survival 0.540 below gate without improving the locked baseline",
+    "delay-60ms: lateral drift 0.524 exceeds gate without improving the locked baseline",
+    "delay-plus-push: lateral drift 0.318 exceeds gate without improving the locked baseline",
+    "delay-plus-reset: survival 0.720 below gate without improving the locked baseline",
+    "delay-plus-reset: forward progress 0.000 below gate without improving the locked baseline"
+  ],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

@@ -49,4 +49,6 @@ Native PPO then learns a governed half-scale residual over that predictive contr
 
 A separate held-out audit tests mirrored pushes, unseen delay durations, and compound disturbances. It exposes delay-duration overfitting and adds an explicit 69-value actuator-telemetry Assembly without falsely promoting the unsuccessful generalized policies; see [the spatial generalization audit](docs/design/spatial-generalization-audit.md).
 
+The follow-up adds a replayable four-step history contract, a bounded GRU history encoder, calibrated-latency priors, and governed residual regularization. Pure 20–60 ms latency is solved analytically; compound latency plus disturbance remains an explicit unsolved research gate.
+
 Read [the architecture](docs/ARCHITECTURE.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

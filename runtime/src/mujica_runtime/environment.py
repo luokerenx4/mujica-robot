@@ -34,6 +34,8 @@ class RobotEnvironment:
         self.previous_action = np.zeros(self.model.nu, dtype=np.float64)
         self.last_commanded_action = np.zeros(self.model.nu, dtype=np.float64)
         self.last_applied_action = np.zeros(self.model.nu, dtype=np.float64)
+        self.command_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
+        self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(scenario["actuatorDelaySteps"]) + 1)], maxlen=int(scenario["actuatorDelaySteps"]) + 1)
         self.events: list[dict[str, Any]] = []
         self._configure_scenario()
@@ -63,6 +65,8 @@ class RobotEnvironment:
         self.previous_action.fill(0)
         self.last_commanded_action.fill(0)
         self.last_applied_action.fill(0)
+        self.command_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
+        self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(self.scenario["actuatorDelaySteps"]) + 1)], maxlen=int(self.scenario["actuatorDelaySteps"]) + 1)
         self.events = [{"type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"]}]
         return self.observation()
@@ -78,6 +82,9 @@ class RobotEnvironment:
             elif source == "qvel:root": value = self.data.qvel[:6]
             elif source == "control:last-commanded": value = self.last_commanded_action
             elif source == "control:last-applied": value = self.last_applied_action
+            elif source == "control:command-history-4": value = np.concatenate(tuple(self.command_history))
+            elif source == "control:applied-history-4": value = np.concatenate(tuple(self.applied_history))
+            elif source == "control:actuator-delay-steps": value = np.array([float(self.scenario["actuatorDelaySteps"])])
             elif source.startswith("sensor:"):
                 sensor_name = source.split(":", 1)[1]
                 sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, sensor_name)
@@ -112,6 +119,8 @@ class RobotEnvironment:
         applied = self.delay[0]
         self.last_commanded_action = action.copy()
         self.last_applied_action = applied.copy()
+        self.command_history.append(action.copy())
+        self.applied_history.append(applied.copy())
         self.data.ctrl[:] = applied
         push = self.scenario.get("lateralPush")
         pushing = False

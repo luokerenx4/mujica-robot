@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "actuator-history",
+  "name": "Four-step commanded and applied actuator history",
+  "type": "actuator-history",
+  "fragment": "model.xml",
+  "compatibleMounts": ["sensor-bus"],
+  "providesMounts": [],
+  "observations": [
+    { "name": "command-action-history", "kind": "sensor", "size": 48, "source": "control:command-history-4", "unit": "nm" },
+    { "name": "applied-action-history", "kind": "sensor", "size": 48, "source": "control:applied-history-4", "unit": "nm" },
+    { "name": "actuator-delay-steps", "kind": "sensor", "size": 1, "source": "control:actuator-delay-steps", "unit": "control-step" }
+  ],
+  "actions": [],
+  "dependencies": [],
+  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "massKg": 0,
+  "cost": 1,
+  "license": "Apache-2.0",
+  "attribution": "Runtime-provided bounded actuator history"
+}

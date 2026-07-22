@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "003-eaffd791a4a4",
+  "sequence": 3,
+  "researchId": "spatial-generalized-policy",
+  "researchHash": "af5b0d166d4b801709746c4765efe4274d025cbab99f02e722ce578fa38a4d2c",
+  "programHash": "d1aadb3ba77f36c1b0e7cfc455de3dc44089f0983af48bffc9c8de39be401706",
+  "benchmarkLockHash": "0f2c2c05ab0ee5888e54397210cc305d291096796b2ad0334b2727ae586123d8",
+  "trainerHash": "024d817e5e5903c77fdef3f89dc56cae049e1b7be1500631f0dd1f0a9f794fcd",
+  "dependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "candidateTrainingHash": "58f355db34c3f3f27732a6dad8376f1fc09b84bfdc2187e9d75cb59e6abe39cb",
+  "proposal": {
+    "strategy": "strong-residual-regularization",
+    "hypothesis": "The maximum declared prior-deviation penalty may preserve 60 ms stability while retaining sparse compound-disturbance corrections.",
+    "expectedEffect": "Pass all held-out gates with bounded learned action.",
+    "values": {
+      "/residualPenalty": 0.2
+    }
+  },
+  "strategy": "strong-residual-regularization",
+  "policyId": "spatial-generalized-locomotion-2e924de15c2603d9",
+  "score": 46.63359816060909,
+  "delta": -4.570559194899246,
+  "verdict": "REVERT",
+  "gateReasons": [
+    "delay-20ms: lateral drift 0.291 exceeds gate without improving the locked baseline",
+    "delay-60ms: survival 0.368 below gate without improving the locked baseline",
+    "delay-60ms: forward progress 0.000 below gate without improving the locked baseline",
+    "delay-60ms: lateral drift 0.432 exceeds gate without improving the locked baseline",
+    "delay-60ms: score regression exceeds locked baseline gate",
+    "delay-plus-reset: survival 0.740 below gate without improving the locked baseline"
+  ],
+  "error": null,
+  "policyRevisionId": null,
+  "completed": true
+}

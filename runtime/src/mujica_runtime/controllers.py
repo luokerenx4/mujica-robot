@@ -53,6 +53,39 @@ class PolicyNetwork(torch.nn.Module):
         return self.actor(latent), self.critic(latent).squeeze(-1), self.log_std.expand(observation.shape[:-1] + self.log_std.shape)
 
 
+class HistoryPolicyNetwork(torch.nn.Module):
+    def __init__(self, observation_size: int, action_size: int, hidden_sizes: list[int], history: dict[str, int]):
+        super().__init__()
+        steps = int(history["steps"]); history_action_size = int(history["actionSize"])
+        self.command_start = int(history["commandStart"]); self.applied_start = int(history["appliedStart"])
+        self.steps = steps; self.history_action_size = history_action_size
+        occupied = set(range(self.command_start, self.command_start + steps * history_action_size)) | set(range(self.applied_start, self.applied_start + steps * history_action_size))
+        self.register_buffer("current_indices", torch.tensor([index for index in range(observation_size) if index not in occupied], dtype=torch.long), persistent=False)
+        recurrent_size = int(history["recurrentSize"])
+        self.history_encoder = torch.nn.GRU(2 * history_action_size, recurrent_size, batch_first=True)
+        layers: list[torch.nn.Module] = []; size = len(self.current_indices) + recurrent_size
+        for hidden in hidden_sizes:
+            layers.extend([torch.nn.Linear(size, hidden), torch.nn.Tanh()]); size = hidden
+        self.body = torch.nn.Sequential(*layers)
+        self.actor = torch.nn.Linear(size, action_size); self.critic = torch.nn.Linear(size, 1)
+        self.log_std = torch.nn.Parameter(torch.full((action_size,), -0.5))
+
+    def forward(self, observation: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        command = observation[..., self.command_start:self.command_start + self.steps * self.history_action_size].reshape(*observation.shape[:-1], self.steps, self.history_action_size)
+        applied = observation[..., self.applied_start:self.applied_start + self.steps * self.history_action_size].reshape(*observation.shape[:-1], self.steps, self.history_action_size)
+        sequence = torch.cat([command, applied], dim=-1)
+        _, hidden = self.history_encoder(sequence)
+        current = observation.index_select(-1, self.current_indices)
+        latent = self.body(torch.cat([current, hidden[-1]], dim=-1))
+        return self.actor(latent), self.critic(latent).squeeze(-1), self.log_std.expand(observation.shape[:-1] + self.log_std.shape)
+
+
+def create_policy_network(architecture: dict[str, Any]) -> torch.nn.Module:
+    if architecture.get("kind") == "history-gru-actor-critic":
+        return HistoryPolicyNetwork(architecture["observationSize"], architecture["actionSize"], architecture["hiddenSizes"], architecture["history"])
+    return PolicyNetwork(architecture["observationSize"], architecture["actionSize"], architecture["hiddenSizes"])
+
+
 def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.ndarray], transform: dict[str, Any] | None, time_seconds: float = 0.0) -> np.ndarray:
     if not transform or transform.get("kind") == "identity":
         return raw_action
@@ -65,7 +98,12 @@ def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.nd
         joint_position = joint_position.reshape(4, 3)
         joint_velocity = joint_velocity.reshape(4, 3)
         prediction = float(transform["statePredictionSeconds"])
-        phase = 2.0 * np.pi * float(transform["frequencyHz"]) * (time_seconds + float(transform["phaseLeadSeconds"]))
+        phase_lead = float(transform["phaseLeadSeconds"])
+        if "phaseLeadByDelaySteps" in transform:
+            delay_steps = int(round(float(observation[str(transform.get("delayChannel", "actuator-delay-steps"))][0])))
+            leads = transform["phaseLeadByDelaySteps"]
+            phase_lead = float(leads[min(max(delay_steps, 0), len(leads) - 1)])
+        phase = 2.0 * np.pi * float(transform["frequencyHz"]) * (time_seconds + phase_lead)
         offsets = np.array([0.0, 0.0, float(transform.get("frontRearPhase", np.pi)), float(transform.get("frontRearPhase", np.pi))])
         side = np.array([1.0, -1.0, 1.0, -1.0])
         quaternion = observation[str(transform.get("orientationChannel", "base-orientation"))]
@@ -147,7 +185,7 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
         raise RuntimeError("Policy action contract does not match compiled assembly")
     architecture = json.loads((policy_dir / "architecture.json").read_text())
     normalizer = json.loads((policy_dir / "normalizer.json").read_text())
-    network = PolicyNetwork(architecture["observationSize"], architecture["actionSize"], architecture["hiddenSizes"])
+    network = create_policy_network(architecture)
     network.load_state_dict(torch.load(policy_dir / "model.pt", map_location="cpu", weights_only=True))
     network.eval()
     lows = np.array(compiled["actionLow"], dtype=np.float32)

@@ -38,13 +38,16 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("force-sensing-3dof");
     expect(result.project.manifest.defaults.controller).toBe("spatial-residual-gait");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof", "force-sensing-telemetry-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);
     const telemetry = result.assemblies.find((item) => item.id === "force-sensing-telemetry-3dof");
     expect(telemetry?.observationContract.size).toBe(69);
     expect(telemetry?.actionContract.size).toBe(12);
+    const history = result.assemblies.find((item) => item.id === "force-sensing-history-3dof");
+    expect(history?.observationContract.size).toBe(142);
+    expect(history?.actionContract.size).toBe(12);
   });
 
   test("research definitions expose a bounded editable surface", async () => {
@@ -61,6 +64,8 @@ describe("Robot Assembly compiler", () => {
     expect(research.seed).toBe(42);
     const spatial = await loadTrainingResearch(project, "spatial-residual-policy");
     expect(spatial.editable.parameters.find((item) => item.path === "/residualScale")?.maximum).toBe(1);
+    const generalized = await loadTrainingResearch(project, "spatial-generalized-policy");
+    expect(generalized.editable.parameters.find((item) => item.path === "/residualPenalty")?.maximum).toBe(0.2);
   });
 
   test("robustness benchmarks distinguish promotion gates from scored challenges", async () => {

@@ -16,6 +16,14 @@ Adding delay variants to the PPO episode rotation did not solve the problem. Ali
 
 A feed-forward MLP still cannot reliably infer arbitrary delay from a single telemetry snapshot. The next justified controller class is recurrent or uses an explicit bounded action-history window. This should be implemented as a declared policy architecture change, not hidden state outside the Observation Contract.
 
+## Bounded-history and calibrated-latency follow-up
+
+`actuator-history` declares four commanded and four applied action frames, producing a 142-value contract after adding the driver's calibrated delay-step signal. Mujica adds a replayable `history-gru-actor-critic`: its GRU encodes only the bounded observation window and carries no hidden state between environment steps or episodes, so ordinary PPO minibatches and deterministic policy replay remain valid.
+
+Increasing a history MLP to 32768 steps regressed 5.0694 points. The GRU policies also failed the complete gate, including attempts with 0.25 residual scale and residual-mean penalties of 0.05 and 0.2. These results rule out missing observation history, training budget, and unconstrained residual magnitude as single-factor explanations.
+
+The calibrated-latency program controller is the strongest diagnostic result. It completes both held-out pure-delay cases with full survival, progress above 0.35, and effectively zero drift. This proves the actuator model and 3-DOF mechanics can handle 20–60 ms when the analytic phase prior is correct. Compound delay-plus-disturbance remains unsolved, so neither the program controller nor any generalized policy is promoted.
+
 ## Governance decision
 
 The current default remains `force-sensing-3dof` plus `spatial-residual-gait` and Policy Revision `quadruped-p-7423506a0965`. The held-out Benchmark is a new research gate, not a retroactive rewrite of the completed promotion evidence.

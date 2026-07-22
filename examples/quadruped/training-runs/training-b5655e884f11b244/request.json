@@ -1,0 +1,382 @@
+{
+  "runtimeVersion": "0.2.0",
+  "runtimeSourceHash": "17b381343f6d343421595ba60ce182626e4013ed26a2b712730a9d66dc2e5737",
+  "harnessSourceHash": "f67fba82a4dfc29227a060e2fc62676a378ec74dd0d88289a154658c88264bdb",
+  "harnessDependencyLockHash": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+  "projectDir": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+  "modelPath": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/.mujica/cache/assemblies/77bf237aa2c1bff6c39054f0b3d7e2bd65f669ab31d11632cc7d333fb1453485/model.xml",
+  "compiled": {
+    "version": 1,
+    "id": "force-sensing-history-3dof",
+    "assemblyHash": "77bf237aa2c1bff6c39054f0b3d7e2bd65f669ab31d11632cc7d333fb1453485",
+    "baseHash": "9af4ae9dc5ab4f7ba42ab05a4d71da0af0b6982686fc4ad28bc1a17bd5252fb5",
+    "catalogHash": "220f4152bfd1f43419d7f3414809824903650d4f1a992be4d6956d13662aebe3",
+    "totalMassKg": 6.03,
+    "componentCost": 6,
+    "components": [
+      {
+        "instanceId": "body-imu",
+        "componentId": "body-imu",
+        "mount": "torso-sensor",
+        "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+        "massKg": 0.03,
+        "cost": 1
+      },
+      {
+        "instanceId": "actuator-history",
+        "componentId": "actuator-history",
+        "mount": "torso-sensor",
+        "hash": "2737ceca00cc19e7b9313ff86c9ce82d15b67b120552b51ba68b95750247d1d6",
+        "massKg": 0,
+        "cost": 1
+      },
+      {
+        "instanceId": "foot-force-kit",
+        "componentId": "foot-force-sensor",
+        "mount": "foot-array",
+        "hash": "76341a477884a41a2bea80b531b44f735ef65823f4482cccd977229963041869",
+        "massKg": 0.08,
+        "cost": 4
+      }
+    ],
+    "observationContract": {
+      "version": 1,
+      "assembly": "force-sensing-history-3dof",
+      "channels": [
+        {
+          "name": "joint-position",
+          "kind": "joint-position",
+          "size": 12,
+          "source": "qpos:joints",
+          "unit": "rad"
+        },
+        {
+          "name": "joint-velocity",
+          "kind": "joint-velocity",
+          "size": 12,
+          "source": "qvel:joints",
+          "unit": "rad-s"
+        },
+        {
+          "name": "base-height",
+          "kind": "body-state",
+          "size": 1,
+          "source": "qpos:root-height",
+          "unit": "m"
+        },
+        {
+          "name": "base-orientation",
+          "kind": "body-state",
+          "size": 4,
+          "source": "qpos:root-quaternion",
+          "unit": "quaternion"
+        },
+        {
+          "name": "base-velocity",
+          "kind": "body-state",
+          "size": 6,
+          "source": "qvel:root",
+          "unit": "mixed"
+        },
+        {
+          "name": "imu-angular-velocity",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-gyro",
+          "unit": "rad-s"
+        },
+        {
+          "name": "imu-linear-acceleration",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-accelerometer",
+          "unit": "m-s2"
+        },
+        {
+          "name": "command-action-history",
+          "kind": "sensor",
+          "size": 48,
+          "source": "control:command-history-4",
+          "unit": "nm"
+        },
+        {
+          "name": "applied-action-history",
+          "kind": "sensor",
+          "size": 48,
+          "source": "control:applied-history-4",
+          "unit": "nm"
+        },
+        {
+          "name": "foot-contact-force",
+          "kind": "sensor",
+          "size": 4,
+          "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+          "unit": "n"
+        }
+      ],
+      "size": 141
+    },
+    "actionContract": {
+      "version": 1,
+      "assembly": "force-sensing-history-3dof",
+      "channels": [
+        {
+          "name": "joint-torque",
+          "kind": "actuator",
+          "size": 12,
+          "source": "actuator:all",
+          "unit": "nm",
+          "low": -8,
+          "high": 8
+        }
+      ],
+      "size": 12
+    },
+    "observationContractHash": "e4f36d0eba8a9f91808ea8dbec1367d6243d8ebc5d6b0efd9f0ea7c1d2da15f0",
+    "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+    "actionLow": [
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8
+    ],
+    "actionHigh": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8
+    ],
+    "sensorChannelCount": 106
+  },
+  "training": {
+    "version": 1,
+    "id": "spatial-generalized-locomotion",
+    "name": "Delay-domain-randomized spatial residual policy",
+    "assembly": "force-sensing-history-3dof",
+    "trainer": "spatial-residual-ppo",
+    "task": "forward-walk",
+    "scenarios": [
+      "nominal",
+      "reset-perturbation",
+      "low-friction",
+      "payload-variation",
+      "strong-lateral-push",
+      "reverse-strong-lateral-push",
+      "actuator-delay-one-step",
+      "actuator-delay",
+      "actuator-delay-three-step",
+      "delayed-lateral-push",
+      "delayed-reset-perturbation"
+    ],
+    "totalSteps": 32768,
+    "rolloutSteps": 512,
+    "epochs": 2,
+    "minibatchSize": 128,
+    "learningRate": 0.0001,
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+    "clipRatio": 0.15,
+    "entropyCoefficient": 0.002,
+    "residualScale": 0.5
+  },
+  "trainer": {
+    "version": 1,
+    "id": "spatial-residual-ppo",
+    "name": "Predictive spatial gait residual PPO",
+    "kind": "ppo",
+    "entry": "trainer.py",
+    "model": "model.py"
+  },
+  "trainerRoot": "/Users/ame/Documents/2607toydev/mujica/examples/quadruped/trainers/spatial-residual-ppo",
+  "trainerHash": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+  "task": {
+    "version": 1,
+    "id": "forward-walk",
+    "name": "Walk forward at 0.25 metres per second",
+    "durationSeconds": 5,
+    "controlHz": 50,
+    "targetVelocity": [
+      0.25,
+      0,
+      0
+    ],
+    "healthyHeight": [
+      0.19,
+      0.7
+    ],
+    "terminateOnFall": true
+  },
+  "scenarios": [
+    {
+      "version": 1,
+      "id": "nominal",
+      "name": "Nominal laboratory floor",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "reset-perturbation",
+      "name": "Seeded joint-state and observation perturbations",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0.002,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0.025,
+      "initialJointVelocityNoiseStd": 0.08
+    },
+    {
+      "version": 1,
+      "id": "low-friction",
+      "name": "Low-friction floor",
+      "friction": 0.35,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "payload-variation",
+      "name": "Additional torso payload",
+      "friction": 0.9,
+      "payloadKg": 0.8,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "strong-lateral-push",
+      "name": "Discriminating lateral impulse for spatial recovery",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": {
+        "timeSeconds": 0.7,
+        "durationSeconds": 0.12,
+        "forceNewton": 50
+      },
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "reverse-strong-lateral-push",
+      "name": "Mirrored discriminating lateral impulse",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": {
+        "timeSeconds": 0.7,
+        "durationSeconds": 0.12,
+        "forceNewton": -50
+      },
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "actuator-delay-one-step",
+      "name": "One-control-step actuator delay",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 1,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "actuator-delay",
+      "name": "Two-control-step actuator delay",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 2,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "actuator-delay-three-step",
+      "name": "Three-control-step actuator delay",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 3,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "delayed-lateral-push",
+      "name": "Actuator delay with a lateral impulse",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": {
+        "timeSeconds": 0.7,
+        "durationSeconds": 0.12,
+        "forceNewton": 35
+      },
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 2,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "delayed-reset-perturbation",
+      "name": "Actuator delay with seeded state and observation perturbations",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0.002,
+      "actuatorDelaySteps": 2,
+      "initialJointPositionNoiseStd": 0.025,
+      "initialJointVelocityNoiseStd": 0.08
+    }
+  ],
+  "seed": 42,
+  "dependencyLockHash": "31c72b7f3628fe95f426b475b75057c7c6c1ac169491ef97c28d85327ce18efd",
+  "sourceHashes": {
+    "runtime": "17b381343f6d343421595ba60ce182626e4013ed26a2b712730a9d66dc2e5737",
+    "harness": "f67fba82a4dfc29227a060e2fc62676a378ec74dd0d88289a154658c88264bdb",
+    "harnessDependencies": "4f80c2d02e1927d89265b21a2300c7ec876dbb51bcb80c5ed2be8ee362473ae8",
+    "trainer": "ce4c13b3793311c1db939222b18ac3eda4d1729aad29041769f66f5d94da1639",
+    "assembly": "77bf237aa2c1bff6c39054f0b3d7e2bd65f669ab31d11632cc7d333fb1453485",
+    "catalog": "220f4152bfd1f43419d7f3414809824903650d4f1a992be4d6956d13662aebe3",
+    "training": "7e53ba155318ed69342b48554818b523ce554c20786b927c92c4f9ede177a456"
+  }
+}

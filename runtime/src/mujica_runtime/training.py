@@ -13,7 +13,7 @@ import mujoco
 import numpy as np
 import torch
 
-from .controllers import PolicyNetwork, load_python_module, transform_policy_action
+from .controllers import PolicyNetwork, create_policy_network, load_python_module, transform_policy_action
 from .environment import RobotEnvironment
 from .io import atomic_directory, hardware_info, hash_file, hash_json, write_json
 
@@ -50,6 +50,7 @@ class PPOTrainer:
     hidden_sizes: list[int]
     action_transform: dict[str, Any] | None = None
     initial_log_std: float = -0.5
+    history_encoder: dict[str, Any] | None = None
 
     def train(self, request: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         config = request["training"]
@@ -68,7 +69,20 @@ class PPOTrainer:
         environment = make_environment()
         observation_map = environment.reset(); observation = environment.vector(observation_map)
         observation_size = observation.size; action_size = environment.model.nu
-        network = PolicyNetwork(observation_size, action_size, self.hidden_sizes)
+        architecture: dict[str, Any] = {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal"}
+        if self.history_encoder:
+            offsets: dict[str, int] = {}; offset = 0
+            for channel in request["compiled"]["observationContract"]["channels"]:
+                offsets[channel["name"]] = offset; offset += int(channel["size"])
+            architecture["kind"] = "history-gru-actor-critic"
+            architecture["history"] = {
+                "commandStart": offsets[str(self.history_encoder["commandChannel"])],
+                "appliedStart": offsets[str(self.history_encoder["appliedChannel"])],
+                "steps": int(self.history_encoder["steps"]),
+                "actionSize": action_size,
+                "recurrentSize": int(self.history_encoder["recurrentSize"]),
+            }
+        network = create_policy_network(architecture)
         if self.action_transform:
             torch.nn.init.zeros_(network.actor.weight); torch.nn.init.zeros_(network.actor.bias)
         with torch.no_grad(): network.log_std.fill_(self.initial_log_std)
@@ -116,12 +130,13 @@ class PPOTrainer:
                     mean, value, log_std = network(obs_t); distribution = torch.distributions.Normal(mean, log_std.exp()); new_log = distribution.log_prob(action_t).sum(-1); entropy = distribution.entropy().sum(-1).mean()
                     ratio = (new_log - old_log_t).exp(); clipped = torch.clamp(ratio, 1.0 - float(config["clipRatio"]), 1.0 + float(config["clipRatio"]))
                     policy_loss = -torch.min(ratio * advantage_t, clipped * advantage_t).mean(); value_loss = 0.5 * torch.square(value - return_t).mean()
-                    loss = policy_loss + value_loss - float(config["entropyCoefficient"]) * entropy
+                    residual_penalty = float(config.get("residualPenalty", 0.0)) * torch.square(mean).mean()
+                    loss = policy_loss + value_loss + residual_penalty - float(config["entropyCoefficient"]) * entropy
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
             metrics.append({"steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
 
         torch.save(network.state_dict(), output_dir / "model.pt")
-        write_json(output_dir / "architecture.json", {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal", "actionTransform": action_transform})
+        write_json(output_dir / "architecture.json", {**architecture, "actionTransform": action_transform})
         write_json(output_dir / "normalizer.json", {"count": normalizer.count, "mean": normalizer.mean.tolist(), "variance": normalizer.variance.tolist()})
         write_json(output_dir / "training-metrics.json", {"updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
         return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}

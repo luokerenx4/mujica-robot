@@ -83,6 +83,7 @@ export const trainingSchema = z.object({
   totalSteps: z.number().int().positive(), rolloutSteps: z.number().int().positive(), epochs: z.number().int().positive(), minibatchSize: z.number().int().positive(),
   learningRate: z.number().positive(), gamma: z.number().min(0).max(1), gaeLambda: z.number().min(0).max(1), clipRatio: z.number().positive(), entropyCoefficient: z.number().nonnegative(),
   residualScale: z.number().min(0).max(1).optional(),
+  residualPenalty: z.number().nonnegative().optional(),
 }).strict();
 
 export const candidateSchema = z.object({
@@ -116,7 +117,7 @@ export const trainingResearchSchema = z.object({
   editable: z.object({
     path: relativeFileSchema,
     parameters: z.array(z.object({
-      path: z.enum(["/totalSteps", "/rolloutSteps", "/epochs", "/minibatchSize", "/learningRate", "/gamma", "/gaeLambda", "/clipRatio", "/entropyCoefficient", "/residualScale"]),
+      path: z.enum(["/totalSteps", "/rolloutSteps", "/epochs", "/minibatchSize", "/learningRate", "/gamma", "/gaeLambda", "/clipRatio", "/entropyCoefficient", "/residualScale", "/residualPenalty"]),
       minimum: z.number().finite(), maximum: z.number().finite(), step: z.number().positive(), integer: z.boolean().default(false), directionOrder: researchDirectionSchema,
     }).strict()).min(1),
   }).strict(),
