@@ -181,6 +181,16 @@ async function readNdjsonWithIndices(path: string): Promise<Array<{ index: numbe
 
 type ReplayInput = { path: string; manifest: Record<string, any> };
 type ResearchReviewInput = { review: ResearchReview; reviewHash: string };
+export type ResearchTimelineInput = {
+  labId: string;
+  sessionId?: string;
+  experimentId?: string;
+  selectedKey: string;
+  entries: Array<ResearchReviewInput & {
+    acceptedReplay: ReplayInput;
+    candidateReplay: ReplayInput;
+  }>;
+};
 type HardwareCaptureInput = {
   path: string;
   manifest: Record<string, any>;
@@ -209,6 +219,7 @@ type StudioSnapshotOptions = {
   compareRun?: string;
   compareReplay?: ReplayInput;
   researchReview?: ResearchReviewInput;
+  researchTimeline?: ResearchTimelineInput;
   hardwareCapture?: HardwareCaptureInput;
   twinAudit?: TwinAuditInput;
 };
@@ -410,7 +421,7 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
   if (options.hardwareCapture && options.twinAudit) throw new Error("Studio accepts one Hardware Capture projection mode");
   const selectedCaptureInput = options.twinAudit?.hardwareCapture ?? options.hardwareCapture;
   const captureMode = Boolean(selectedCaptureInput);
-  if (captureMode && (options.run || options.replay || options.compareRun || options.compareReplay || options.researchReview)) {
+  if (captureMode && (options.run || options.replay || options.compareRun || options.compareReplay || options.researchReview || options.researchTimeline)) {
     throw new Error("A device telemetry Studio snapshot cannot mix Hardware Capture and simulation Run selectors");
   }
   const runs = await selectedRun(project.rootDir, options.run, !captureMode);
@@ -428,6 +439,50 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
     || selectedResearchReview.review.accepted.resultHash !== runs.selected?.manifest?.resultHash
     || selectedResearchReview.review.candidate.resultHash !== comparison.selected?.manifest?.resultHash
   )) throw new Error("Selected Research Review differs from its immutable Run pair");
+  const researchTimelineEntries = [];
+  if (options.researchTimeline) {
+    if (!options.researchTimeline.entries.length) throw new Error("Research Timeline requires at least one available Review");
+    for (const entry of options.researchTimeline.entries) {
+      const review = researchReviewSchema.parse(entry.review);
+      const reviewHash = entry.reviewHash;
+      const key = `${review.lineage.sessionId}/${review.lineage.experimentId}`;
+      if (
+        hashJson(review) !== reviewHash
+        || review.lineage.researchId !== options.researchTimeline.labId
+        || (options.researchTimeline.sessionId && review.lineage.sessionId !== options.researchTimeline.sessionId)
+        || (options.researchTimeline.experimentId && review.lineage.experimentId !== options.researchTimeline.experimentId)
+      ) throw new Error(`Research Timeline Review '${key}' differs from its requested scope`);
+      const accepted = await selectedRun(project.rootDir, review.accepted.id);
+      const candidate = await selectedRun(project.rootDir, review.candidate.id);
+      await verifyReplayForRun(entry.acceptedReplay, accepted.selected, `Research Timeline accepted '${key}'`);
+      await verifyReplayForRun(entry.candidateReplay, candidate.selected, `Research Timeline candidate '${key}'`);
+      if (
+        accepted.selected?.manifest?.resultHash !== review.accepted.resultHash
+        || candidate.selected?.manifest?.resultHash !== review.candidate.resultHash
+      ) throw new Error(`Research Timeline Review '${key}' differs from its immutable Run pair`);
+      researchTimelineEntries.push({
+        key,
+        review,
+        reviewHash,
+        acceptedRun: accepted.selected,
+        candidateRun: candidate.selected,
+        acceptedReplay: { ...entry.acceptedReplay.manifest, frameBase: `research-replays/${review.accepted.id}/frames` },
+        candidateReplay: { ...entry.candidateReplay.manifest, frameBase: `research-replays/${review.candidate.id}/frames` },
+      });
+    }
+    if (!researchTimelineEntries.some((entry) => entry.key === options.researchTimeline?.selectedKey)) {
+      throw new Error(`Research Timeline selected iteration '${options.researchTimeline.selectedKey}' is unavailable`);
+    }
+    const duplicateKeys = researchTimelineEntries.map((entry) => entry.key);
+    if (new Set(duplicateKeys).size !== duplicateKeys.length) throw new Error("Research Timeline contains duplicate Reviews");
+    const selectedTimelineEntry = researchTimelineEntries.find((entry) => entry.key === options.researchTimeline?.selectedKey);
+    if (
+      !selectedResearchReview
+      || selectedTimelineEntry?.reviewHash !== selectedResearchReview.reviewHash
+      || selectedTimelineEntry.acceptedRun?.id !== runs.selected?.id
+      || selectedTimelineEntry.candidateRun?.id !== comparison.selected?.id
+    ) throw new Error("Research Timeline default selection differs from the selected Research Review");
+  }
   const selectedHardwareCapture = selectedCaptureInput
     ? await validateHardwareCaptureInput(selectedCaptureInput)
     : null;
@@ -435,13 +490,20 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
     ? await validateTwinAuditInput(options.twinAudit, selectedHardwareCapture)
     : null;
   return {
-    version: 7, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-offline-v1", sourceHash: sha256(studioHtml.toString()) }, project: project.manifest,
+    version: 8, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-offline-v1", sourceHash: sha256(studioHtml.toString()) }, project: project.manifest,
     selectedAssembly: selectedHardwareCapture?.assembly ?? project.manifest.defaults.assembly, assemblies, components,
     runs: runs.summaries, selectedRun: runs.selected,
     selectedReplay: options.replay ? { ...options.replay.manifest, frameBase: "replay/frames" } : null,
     comparisonRun: comparison.selected,
     comparisonReplay: options.compareReplay ? { ...options.compareReplay.manifest, frameBase: "comparison-replay/frames" } : null,
     selectedResearchReview,
+    researchTimeline: options.researchTimeline ? {
+      labId: options.researchTimeline.labId,
+      sessionId: options.researchTimeline.sessionId ?? null,
+      experimentId: options.researchTimeline.experimentId ?? null,
+      selectedKey: options.researchTimeline.selectedKey,
+      entries: researchTimelineEntries,
+    } : null,
     selectedHardwareCapture,
     selectedHardwareReplay: selectedCaptureInput ? { ...selectedCaptureInput.replay.manifest, frameBase: "hardware-replay/frames" } : null,
     selectedTwinAudit,
@@ -469,9 +531,10 @@ function studioHtml(snapshot: Awaited<ReturnType<typeof buildStudioSnapshot>>): 
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:">
 <title>Mujica Studio — ${title}</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1015;--panel:#121a22;--line:#263442;--muted:#8ea0af;--text:#edf4f8;--a:#65d6ad;--b:#efc66b;--bad:#ff7b72}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}header{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px}h1,h2,h3{margin:0 0 10px;font-weight:600}h1{font-size:20px}h2{font-size:15px;color:var(--a)}h3{font-size:13px}.muted{color:var(--muted)}main{display:grid;grid-template-columns:minmax(360px,1.3fr) minmax(320px,.7fr);gap:14px;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}.wide{grid-column:1/-1}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.stat{border:1px solid var(--line);padding:10px;border-radius:6px}.stat strong{display:block;font-size:18px;color:var(--b)}select,input,button,textarea{font:inherit;color:var(--text);background:#0d151c;border:1px solid var(--line);border-radius:5px;padding:7px}button{cursor:pointer}button:hover{border-color:var(--a)}textarea{width:100%;min-height:76px;resize:vertical}.field{display:grid;gap:4px}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.form-grid .span-all{grid-column:1/-1}.source-chip{padding:9px;border:1px solid var(--line);border-radius:6px;background:#0d151c}.attention-row{display:grid;grid-template-columns:auto 1fr;gap:9px;padding:9px;border-bottom:1px solid var(--line);cursor:pointer}.attention-row:hover{background:#17232d}.severity-blocking{color:var(--bad);border-color:var(--bad)}.severity-investigate{color:var(--b);border-color:var(--b)}.severity-info{color:var(--a);border-color:var(--a)}canvas{width:100%;height:300px;background:#090e12;border:1px solid var(--line);border-radius:6px}.controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}.controls input{flex:1;min-width:160px}.split,.comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.replay-card{min-width:0}.replay-card h3 .tag{float:right}.list{max-height:340px;overflow:auto}.row{padding:7px 0;border-bottom:1px solid var(--line);word-break:break-word}.row.seek{cursor:pointer}.row.seek:hover{background:#17232d}.tag{display:inline-block;border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin:2px;color:var(--muted)}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:5px;border-bottom:1px solid var(--line)}code{color:var(--b)}.replay-stage{position:relative;background:#05080b;border:1px solid var(--line);border-radius:7px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center}.replay-stage img{display:block;width:100%;height:100%;object-fit:contain}.replay-stage .missing{padding:30px;text-align:center;color:var(--muted)}.live-badge{position:absolute;left:10px;top:10px;background:#07110dcc;border:1px solid var(--a);color:var(--a);border-radius:11px;padding:2px 8px}.telemetry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.telemetry .cell{border:1px solid var(--line);border-radius:5px;padding:7px}.telemetry strong{display:block;color:var(--b);font-size:12px}.ok{color:var(--a)}.bad{color:var(--bad)}.delta-good{color:var(--a)}.delta-bad{color:var(--bad)}#copy-status,#observation-status{min-height:20px}@media(max-width:850px){main{grid-template-columns:1fr}.split,.comparison-grid,.form-grid{grid-template-columns:1fr}.form-grid .span-all,.wide{grid-column:1}}
+:root{color-scheme:dark;--bg:#0b1015;--panel:#121a22;--line:#263442;--muted:#8ea0af;--text:#edf4f8;--a:#65d6ad;--b:#efc66b;--bad:#ff7b72}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}header{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px}h1,h2,h3{margin:0 0 10px;font-weight:600}h1{font-size:20px}h2{font-size:15px;color:var(--a)}h3{font-size:13px}.muted{color:var(--muted)}main{display:grid;grid-template-columns:minmax(360px,1.3fr) minmax(320px,.7fr);gap:14px;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}.wide{grid-column:1/-1}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.stat{border:1px solid var(--line);padding:10px;border-radius:6px}.stat strong{display:block;font-size:18px;color:var(--b)}select,input,button,textarea{font:inherit;color:var(--text);background:#0d151c;border:1px solid var(--line);border-radius:5px;padding:7px}button{cursor:pointer}button:hover{border-color:var(--a)}button:disabled{cursor:not-allowed;opacity:.5}textarea{width:100%;min-height:76px;resize:vertical}.field{display:grid;gap:4px}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.form-grid .span-all{grid-column:1/-1}.source-chip{padding:9px;border:1px solid var(--line);border-radius:6px;background:#0d151c}.attention-row{display:grid;grid-template-columns:auto 1fr;gap:9px;padding:9px;border-bottom:1px solid var(--line);cursor:pointer}.attention-row:hover{background:#17232d}.severity-blocking{color:var(--bad);border-color:var(--bad)}.severity-investigate{color:var(--b);border-color:var(--b)}.severity-info{color:var(--a);border-color:var(--a)}.timeline-layout{display:grid;grid-template-columns:minmax(310px,.85fr) minmax(360px,1.15fr);gap:12px;margin-top:10px}.timeline-list{max-height:430px;overflow:auto}.iteration{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px;border:1px solid var(--line);border-radius:6px;margin:7px 0;background:#0d151c}.iteration.active{border-color:var(--a);box-shadow:inset 3px 0 var(--a)}.iteration .sequence{font-size:18px;color:var(--b);min-width:32px}.iteration button{white-space:nowrap}.timeline-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.timeline-detail{min-height:160px}.verdict-KEEP{color:var(--a)}.verdict-REVERT{color:var(--b)}.verdict-CRASH{color:var(--bad)}canvas{width:100%;height:300px;background:#090e12;border:1px solid var(--line);border-radius:6px}.controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}.controls input{flex:1;min-width:160px}.split,.comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.replay-card{min-width:0}.replay-card h3 .tag{float:right}.list{max-height:340px;overflow:auto}.row{padding:7px 0;border-bottom:1px solid var(--line);word-break:break-word}.row.seek{cursor:pointer}.row.seek:hover{background:#17232d}.tag{display:inline-block;border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin:2px;color:var(--muted)}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:5px;border-bottom:1px solid var(--line)}code{color:var(--b)}.replay-stage{position:relative;background:#05080b;border:1px solid var(--line);border-radius:7px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center}.replay-stage img{display:block;width:100%;height:100%;object-fit:contain}.replay-stage .missing{padding:30px;text-align:center;color:var(--muted)}.live-badge{position:absolute;left:10px;top:10px;background:#07110dcc;border:1px solid var(--a);color:var(--a);border-radius:11px;padding:2px 8px}.telemetry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.telemetry .cell{border:1px solid var(--line);border-radius:5px;padding:7px}.telemetry strong{display:block;color:var(--b);font-size:12px}.ok{color:var(--a)}.bad{color:var(--bad)}.delta-good{color:var(--a)}.delta-bad{color:var(--bad)}#copy-status,#observation-status{min-height:20px}@media(max-width:850px){main{grid-template-columns:1fr}.split,.comparison-grid,.form-grid,.timeline-layout,.timeline-filters{grid-template-columns:1fr}.form-grid .span-all,.wide{grid-column:1}}
 </style></head><body><header><div><h1>Mujica Studio</h1><div>${title} · read-only evidence debugger</div></div><div class="muted">Source of truth: project files and immutable artifacts<br>No editing or evaluation occurs in Studio</div></header>
-<main><section class="panel wide"><div class="stats" id="stats"></div></section>
+<main><section class="panel wide" id="research-cockpit" hidden><h2>Training Cockpit · Research Timeline</h2><div class="muted">Choose an iteration by outcome and training meaning. Reviewed iterations load synchronized accepted ↔ candidate MuJoCo evidence; legacy iterations remain metrics-only.</div><div class="stats" id="research-progress-stats"></div><div class="timeline-layout"><div><div class="timeline-filters"><label class="field">Session<select id="timeline-session"></select></label><label class="field">Outcome<select id="timeline-outcome"><option value="ALL">All outcomes</option><option>KEEP</option><option>REVERT</option><option>CRASH</option></select></label><label class="field">Sort<select id="timeline-sort"><option value="chronological">Chronological</option><option value="latest">Latest first</option><option value="score">Best score Δ</option><option value="violations">Fewest violations</option></select></label></div><div class="timeline-list" id="timeline-list"></div></div><div><h3>Selected iteration</h3><div class="source-chip timeline-detail" id="timeline-detail"></div><div class="muted" id="timeline-guidance">Selection changes only this read-only evidence view.</div></div></div></section>
+<section class="panel wide" id="artifact-stats"><div class="stats" id="stats"></div></section>
 <section class="panel wide"><h2>Attention queue</h2><div class="muted" id="attention-guidance">Measured failures first, then human hypotheses. Click a Run event to seek; click a Capture to bind an observation draft to its exact protocol event.</div><div class="list" id="attention"></div></section>
 <section class="panel wide"><h2 id="replay-heading">Authoritative MuJoCo replay comparison</h2><div class="comparison-grid" id="replay-grid"><div class="replay-card"><h3 id="primary-heading">Baseline <span class="tag">A</span></h3><div class="replay-stage"><img id="replay-image" alt="Baseline MuJoCo robot replay"><div class="missing" id="replay-missing">No authoritative visual replay.</div><span class="live-badge" id="health">—</span></div><div id="frame-a">—</div><div class="telemetry" id="telemetry-a"></div></div><div class="replay-card" id="comparison-card"><h3 id="comparison-heading">Subject <span class="tag">B</span></h3><div class="replay-stage"><img id="comparison-image" alt="Subject MuJoCo robot replay"><div class="missing" id="comparison-missing">Choose --compare-run to add a subject.</div><span class="live-badge" id="comparison-health">—</span></div><div id="frame-b">—</div><div class="telemetry" id="telemetry-b"></div></div></div><div class="controls"><button id="previous" title="Previous shared time">◀</button><button id="play">Play</button><button id="next" title="Next shared time">▶</button><input id="scrub" type="range" min="0" value="0"><select id="speed" title="Playback speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><div id="frame">—</div><div class="muted" id="replay-status"></div><div class="controls"><button id="copy-frame">Copy comparison context for Agent</button></div><div class="muted" id="copy-status"></div></section>
 <section class="panel wide" id="device-provenance" hidden><h2>Device telemetry projection boundary</h2><div class="source-chip" id="device-provenance-detail"></div><div class="muted">This view is reconstructed from device-reported kinematics through the exact frozen Hardware Bundle. It is not camera footage, motion capture, physical contact truth, or proof of calibration. Hardware verification and actuation authority do not change.</div></section>
@@ -505,15 +568,50 @@ document.querySelectorAll('[data-event-index]').forEach(node=>node.onclick=()=>{
 q('#copy-frame').onclick=async()=>{const row=trajectory[trajectoryIndex(currentFrame)]??null,events=(selected?.events.rows??[]).filter(event=>Math.abs(Number(event.time??0)-Number(row?.time??0))<=.011),context={kind:'mujica-frame-context',runId:selected?.id,resultHash:selected?.manifest?.resultHash,replayId:replay?.id??null,replayFrame:currentFrame,simulationStep:row?.step??null,timeSeconds:row?.time??null,healthy:row?.healthy??null,pitchRad:row?.pitchRad??null,bodyTiltRad:row?.bodyTiltRad??null,motionCommand:row?.motionCommand??null,measuredMotion:row?.measuredMotion??null,footContactForce:row?.footContactForce??null,action:row?.action??null,events};const text=JSON.stringify(context,null,2);try{await navigator.clipboard.writeText(text);q('#copy-status').textContent='Copied exact Run/frame context. Paste it to your Coding Agent.'}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();q('#copy-status').textContent='Copied frame context.'}};
 q('#replay-status').textContent=replay?replay.renderer+' · MuJoCo '+replay.mujocoVersion+' · '+replay.frameCount+' exact qpos frames · '+replay.settings.width+'×'+replay.settings.height:'Generate this Run again with mujica studio to add an authoritative MuJoCo replay.';q('#sampling').textContent=selected?'trajectory '+selected.trajectory.total+' rows · displayed '+trajectory.length+' · stride '+selected.trajectory.stride:'';render(0);}
 
+const RT=S.researchTimeline??null,timelineEntries=RT?.entries??[],timelineParams=new URLSearchParams(location.hash.slice(1));
+const activeTimelineEntry=timelineEntries.find(entry=>entry.key===timelineParams.get('iteration'))??timelineEntries.find(entry=>entry.key===RT?.selectedKey)??null;
 const H=S.selectedHardwareCapture??null,T=S.selectedTwinAudit??null;
 const A=H
   ? {run:null,hardware:H,replay:S.selectedHardwareReplay,trajectory:H.trajectory.rows}
+  : activeTimelineEntry
+  ? {run:activeTimelineEntry.acceptedRun,hardware:null,replay:activeTimelineEntry.acceptedReplay}
   : {run:S.selectedRun,hardware:null,replay:S.selectedReplay};
 const B=T
   ? {run:null,hardware:null,twin:T,replay:S.selectedTwinReplay,trajectory:T.prediction.rows}
+  : activeTimelineEntry
+  ? {run:activeTimelineEntry.candidateRun,hardware:null,twin:null,replay:activeTimelineEntry.candidateReplay}
   : {run:S.comparisonRun,hardware:null,twin:null,replay:S.comparisonReplay};
-const selectedReview=S.selectedResearchReview?.review??null;
+const selectedReview=activeTimelineEntry?.review??S.selectedResearchReview?.review??null;
 const researchReviewEntries=S.researchSessions.flatMap(session=>session.experiments.map(experiment=>({session,experiment,review:experiment.visualReview}))).filter(item=>item.review);
+if(RT){
+  q('#research-cockpit').hidden=false;
+  q('#artifact-stats').hidden=true;
+  const labSessions=S.researchSessions.filter(session=>session.researchId===RT.labId).sort((a,b)=>String(a.startedAt??'').localeCompare(String(b.startedAt??'')));
+  const rows=labSessions.flatMap(session=>session.experiments.map(experiment=>({
+    key:session.id+'/'+experiment.id,
+    session,
+    experiment,
+    reviewEntry:timelineEntries.find(entry=>entry.key===session.id+'/'+experiment.id)??null,
+  })));
+  const keep=rows.filter(row=>row.experiment.verdict==='KEEP').length,revert=rows.filter(row=>row.experiment.verdict==='REVERT').length,crash=rows.filter(row=>!['KEEP','REVERT'].includes(row.experiment.verdict)).length;
+  const latestSession=labSessions.at(-1);
+  q('#research-progress-stats').innerHTML=[['Iterations',rows.length],['KEEP',keep],['REVERT',revert],['CRASH',crash],['Visual reviews',timelineEntries.length+'/'+rows.length],['Latest accepted score',Number(latestSession?.finalScore??0).toFixed(3)]].map(x=>'<div class="stat"><strong>'+esc(x[1])+'</strong>'+esc(x[0])+'</div>').join('');
+  const sessionSelect=q('#timeline-session');
+  sessionSelect.innerHTML='<option value="ALL">All sessions</option>'+labSessions.slice().reverse().map((session,index)=>'<option value="'+esc(session.id)+'">'+esc(new Date(session.startedAt).toLocaleString())+' · '+session.iterationsCompleted+' iteration'+(session.iterationsCompleted===1?'':'s')+'</option>').join('');
+  if(RT.sessionId)sessionSelect.value=RT.sessionId;
+  const renderTimeline=()=>{
+    const sessionValue=sessionSelect.value,outcome=q('#timeline-outcome').value,sort=q('#timeline-sort').value;
+    const visible=rows.filter(row=>(sessionValue==='ALL'||row.session.id===sessionValue)&&(outcome==='ALL'||row.experiment.verdict===outcome));
+    visible.sort((a,b)=>sort==='latest'?Number(b.experiment.sequence??0)-Number(a.experiment.sequence??0)||String(b.session.startedAt).localeCompare(String(a.session.startedAt)):sort==='score'?Number(b.experiment.delta??-Infinity)-Number(a.experiment.delta??-Infinity):sort==='violations'?Number(a.experiment.decision?.candidateViolationCount??Infinity)-Number(b.experiment.decision?.candidateViolationCount??Infinity):String(a.session.startedAt).localeCompare(String(b.session.startedAt))||Number(a.experiment.sequence??0)-Number(b.experiment.sequence??0));
+    q('#timeline-list').innerHTML=visible.map(row=>{const experiment=row.experiment,active=row.key===activeTimelineEntry?.key,reviewed=Boolean(row.reviewEntry),sequence=Number(experiment.sequence??row.session.experiments.indexOf(experiment)+1);return '<div class="iteration '+(active?'active':'')+'"><div class="sequence">#'+sequence+'</div><div><span class="tag verdict-'+esc(experiment.verdict)+'">'+esc(experiment.verdict??'CRASH')+'</span> <strong>'+esc(experiment.proposal?.strategy??'failed experiment')+'</strong><br><span class="'+(Number(experiment.delta??0)>=0?'delta-good':'delta-bad')+'">score Δ '+(Number(experiment.delta??0)>=0?'+':'')+Number(experiment.delta??0).toFixed(4)+'</span> · gates '+esc(experiment.decision?.previousViolationCount??'—')+' → '+esc(experiment.decision?.candidateViolationCount??'—')+'<br><span class="muted">'+esc(experiment.proposal?.hypothesis??experiment.error??'No hypothesis recorded')+'</span></div><button data-timeline-key="'+esc(row.key)+'" '+(reviewed?'':'disabled')+'>'+(active?'Viewing':reviewed?'Compare':'Metrics only')+'</button></div>'}).join('')||'<div class="muted">No iterations match these filters.</div>';
+  };
+  const selectedExperiment=rows.find(row=>row.key===activeTimelineEntry?.key)?.experiment;
+  q('#timeline-detail').innerHTML=activeTimelineEntry&&selectedExperiment
+    ? '<span class="tag verdict-'+esc(selectedReview?.judge.verdict)+'">'+esc(selectedReview?.judge.verdict)+'</span> Iteration #'+esc(selectedExperiment.sequence)+' · '+esc(selectedReview?.proposal.strategy)+'<br><strong>'+esc(selectedReview?.proposal.hypothesis)+'</strong><br>accepted score '+Number(selectedReview?.accepted.score).toFixed(4)+' → candidate '+Number(selectedReview?.candidate.score).toFixed(4)+' · witness Δ '+(Number(selectedReview?.selectedCase.candidateScoreDelta)>=0?'+':'')+Number(selectedReview?.selectedCase.candidateScoreDelta).toFixed(4)+'<br><span class="muted">Gate decision: '+esc(selectedReview?.judge.decision.selectionReason)+' · witness case '+esc(selectedReview?.selectedCase.id)+'</span>'
+    : 'No reviewed iteration is selected.';
+  q('#timeline-list').onclick=event=>{const button=event.target.closest?.('[data-timeline-key]');if(!button||button.disabled)return;const params=new URLSearchParams(location.hash.slice(1));params.set('iteration',button.dataset.timelineKey);location.hash=params.toString();location.reload()};
+  sessionSelect.onchange=renderTimeline;q('#timeline-outcome').onchange=renderTimeline;q('#timeline-sort').onchange=renderTimeline;renderTimeline();
+}
 q('#copy-selected-review').disabled=!selectedReview;
 q('#selected-research-review').innerHTML=selectedReview
   ? '<span class="tag" style="color:'+(selectedReview.judge.verdict==='KEEP'?'var(--a)':'var(--b)')+'">'+esc(selectedReview.judge.verdict)+'</span> <code>'+esc(selectedReview.lineage.experimentId)+'</code> · '+esc(selectedReview.lineage.researchId)
@@ -555,6 +653,13 @@ if(H){
   q('#research-review-provenance').hidden=true;
   q('#attention-guidance').textContent='Only faults and recorded human hypotheses associated with this selected device episode belong in the focused queue.';
   q('#device-provenance-detail').innerHTML='<code>'+esc(H.id)+'</code> / <code>'+esc(H.episode.id)+'</code><br>device-reported qpos/qvel → State ABI <code>'+esc(H.bundle.stateContractHash.slice(0,12))+'</code> → Bundle <code>'+esc(H.bundle.id)+'</code> → MuJoCo frames'+(T?'<br>Audit <code>'+esc(T.id)+'</code> compares the next device state with one frozen-twin step using device <code>appliedAction</code>.':'')+'<br><span class="muted">State ABI '+esc(H.bundle.stateContractAuthority)+' · source '+esc(H.bundle.sourceKind)+' · maximum bundle mode '+esc(H.bundle.maximumCaptureMode)+'</span>';
+}else if(RT&&activeTimelineEntry){
+  q('#replay-heading').textContent='Selected training iteration · accepted ↔ candidate';
+  q('#primary-heading').innerHTML='Accepted baseline <span class="tag">A</span>';
+  q('#comparison-heading').innerHTML='Candidate change <span class="tag">B</span>';
+  q('#copy-frame').textContent='Copy selected iteration + frame for Agent';
+  q('#evidence-heading').textContent='Selected iteration evidence';
+  q('#attention-guidance').textContent='Focused failures from the selected accepted/candidate Run pair, followed by recorded human hypotheses.';
 }
 const sel=q('#assembly');sel.innerHTML=S.assemblies.map(a=>'<option '+(a.id===S.selectedAssembly?'selected':'')+' value="'+esc(a.id)+'">'+esc(a.id)+'</option>').join('');
 function showAssembly(){const a=S.assemblies.find(x=>x.id===sel.value);q('#assembly-detail').innerHTML='<div class="row">hash <code>'+esc(a.hash.slice(0,16))+'</code><br>mass '+a.totalMassKg.toFixed(3)+' kg · component cost '+a.componentCost+'</div><h3>Components</h3><div>'+a.components.map(c=>'<div class="row"><span class="tag">'+esc(c.componentId)+'</span> <code>'+esc(JSON.stringify(c.config||{}))+'</code></div>').join('')+'</div><h3>Observation '+a.observationContract.size+'</h3><div>'+a.observationContract.channels.map(c=>'<span class="tag">'+esc(c.name)+' ['+c.size+']</span>').join('')+'</div><h3>Action '+a.actionContract.size+'</h3><div>'+a.actionContract.channels.map(c=>'<span class="tag">'+esc(c.name)+' ['+c.size+']</span>').join('')+'</div>'}sel.onchange=showAssembly;showAssembly();
@@ -573,7 +678,7 @@ function selectedBriefLab(){return S.researchLabs.find(item=>item.id===briefLabS
 function updateBriefSource(){const observation=selectedBriefObservation(),lab=selectedBriefLab();q('#brief-source').innerHTML=observation&&lab?'Human hypothesis <code>'+esc(observation.id)+'</code> → <code>'+esc(lab.id)+'</code><br><span class="muted">Benchmark '+esc(lab.benchmark)+' · '+esc(lab.editable.paths.length)+' explicit editable path(s) · promotion '+esc(lab.promotion)+'</span>':'Record a human observation and select a Research Lab before preparing a Brief.'}
 briefObservationSelect.onchange=updateBriefSource;briefLabSelect.onchange=updateBriefSource;updateBriefSource();
 const runAttention=eventRows.filter(item=>String(item.event.type??'').includes('fall')||item.event.healthy===false||String(item.event.type??'').includes('failed')).map(item=>({kind:'run',severity:'blocking',title:item.side+' · '+item.event.type,detail:'Run '+(item.side==='A'?A.run?.id:B.run?.id)+' at '+Number(item.event.time??0).toFixed(3)+'s',time:Number(item.event.time??0),sortTime:Number.MAX_SAFE_INTEGER}));
-const captureAttention=(H?captureRows.filter(capture=>capture.id===H.id):captureRows).filter(capture=>capture.status==='ABORTED'||Number(capture.interventions??0)>0).map(capture=>({kind:'capture',severity:capture.status==='ABORTED'?'blocking':'investigate',title:capture.status+' · '+capture.id,detail:(capture.reasons?.join(' · ')||capture.interventions+' safety interventions')+' · protocol event '+capture.attentionEventIndex,capture,sortTime:Date.parse(capture.endedAt??'')||0}));
+const captureAttention=(H?captureRows.filter(capture=>capture.id===H.id):RT?[]:captureRows).filter(capture=>capture.status==='ABORTED'||Number(capture.interventions??0)>0).map(capture=>({kind:'capture',severity:capture.status==='ABORTED'?'blocking':'investigate',title:capture.status+' · '+capture.id,detail:(capture.reasons?.join(' · ')||capture.interventions+' safety interventions')+' · protocol event '+capture.attentionEventIndex,capture,sortTime:Date.parse(capture.endedAt??'')||0}));
 const observationAttention=humanObservations.map(observation=>({kind:'observation',severity:observation.assessment?.severity??'info',title:'Human · '+observation.assessment?.summary,detail:observation.id+' · hypothesis only',sortTime:Date.parse(observation.recordedAt??'')||0}));
 const attentionRank={blocking:0,investigate:1,info:2},attentionRows=[...runAttention,...captureAttention,...observationAttention].sort((a,b)=>attentionRank[a.severity]-attentionRank[b.severity]||b.sortTime-a.sortTime||String(a.title).localeCompare(String(b.title)));
 q('#attention').innerHTML=attentionRows.map((item,index)=>'<div class="attention-row" data-attention-index="'+index+'"><span class="tag severity-'+esc(item.severity)+'">'+esc(item.severity)+'</span><div><strong>'+esc(item.title)+'</strong><div class="muted">'+esc(item.detail)+'</div></div></div>').join('')||'<div class="muted">No anomalies or human hypotheses in this snapshot.</div>';
@@ -624,6 +729,14 @@ export async function writeStudioSnapshot(projectDirectory: string, options: Stu
     await writeJson(join(directory, "snapshot.json"), snapshot);
     if (options.replay) await cp(options.replay.path, join(directory, "replay"), { recursive: true });
     if (options.compareReplay) await cp(options.compareReplay.path, join(directory, "comparison-replay"), { recursive: true });
+    if (options.researchTimeline) {
+      const replayByRun = new Map<string, ReplayInput>();
+      for (const entry of options.researchTimeline.entries) {
+        replayByRun.set(entry.review.accepted.id, entry.acceptedReplay);
+        replayByRun.set(entry.review.candidate.id, entry.candidateReplay);
+      }
+      for (const [runId, replay] of replayByRun) await cp(replay.path, join(directory, "research-replays", runId), { recursive: true });
+    }
     const captureReplay = options.twinAudit?.hardwareCapture.replay ?? options.hardwareCapture?.replay;
     if (captureReplay) await cp(captureReplay.path, join(directory, "hardware-replay"), { recursive: true });
     if (options.twinAudit) await cp(options.twinAudit.predictionReplay.path, join(directory, "twin-replay"), { recursive: true });

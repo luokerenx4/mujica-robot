@@ -30,7 +30,7 @@ import {
   type ResearchBrief,
   type ResearchReview,
 } from "@mujica/core";
-import { candidateCommand, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons, simulateCommand } from "./commands";
+import { candidateCommand, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons, simulateCommand, studioCommand } from "./commands";
 import { success, type Artifact } from "./contract";
 import { verifyHumanObservation } from "./evidence";
 
@@ -723,6 +723,58 @@ export async function researchReviewInspectCommand(projectDir: string, labId: st
       effect: "read-only",
     },
   ]);
+}
+
+export async function researchTimelineStudioCommand(projectDir: string, labId: string, sessionId?: string, experimentId?: string) {
+  const project = await loadProject(projectDir);
+  const sessionsRoot = confined(project.rootDir, `research-runs/${labId}/sessions`);
+  if (!(await exists(sessionsRoot))) throw new Error(`Research Lab '${labId}' has no completed Sessions`);
+  if (experimentId && !sessionId) throw new Error("Studio Research Timeline requires --session when --experiment is supplied");
+  const availableSessions = (await readdir(sessionsRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
+    .map((entry) => entry.name)
+    .sort();
+  const selectedSessions = sessionId ? availableSessions.filter((id) => id === sessionId) : availableSessions;
+  if (!selectedSessions.length) throw new Error(`Research Session '${sessionId}' does not exist in Lab '${labId}'`);
+  const verifiedReviews: Array<Awaited<ReturnType<typeof verifyResearchReview>>> = [];
+  for (const selectedSessionId of selectedSessions) {
+    const sessionRoot = confined(sessionsRoot, selectedSessionId);
+    const sessionManifest = JSON.parse(await readFile(join(sessionRoot, "manifest.json"), "utf8"));
+    const experimentIds = Array.isArray(sessionManifest.experiments) ? sessionManifest.experiments.map(String) : [];
+    const scopedExperimentIds = experimentId ? experimentIds.filter((id: string) => id === experimentId) : experimentIds;
+    if (experimentId && !scopedExperimentIds.length) {
+      throw new Error(`Research Experiment '${experimentId}' does not exist in Session '${selectedSessionId}'`);
+    }
+    for (const selectedExperimentId of scopedExperimentIds) {
+      const manifest = JSON.parse(await readFile(join(sessionRoot, "experiments", selectedExperimentId, "manifest.json"), "utf8"));
+      if (manifest.review?.status === "AVAILABLE") {
+        verifiedReviews.push(await verifyResearchReview(project.rootDir, labId, selectedSessionId, selectedExperimentId));
+      } else if (experimentId) {
+        const reason = manifest.review?.error ? `: ${manifest.review.error}` : "";
+        throw new Error(`Research experiment '${selectedExperimentId}' has no available visual Review${reason}`);
+      }
+    }
+  }
+  if (!verifiedReviews.length) {
+    throw new Error(`Research Timeline '${labId}' has no immutable visual Reviews in the selected scope`);
+  }
+  const selected = experimentId
+    ? verifiedReviews.find((entry) => entry.review.lineage.experimentId === experimentId)
+    : verifiedReviews.at(-1);
+  if (!selected) throw new Error(`Research Experiment '${experimentId}' has no immutable visual Review`);
+  return studioCommand(
+    project.rootDir,
+    selected.review.accepted.id,
+    selected.review.candidate.id,
+    { review: selected.review, reviewHash: selected.reviewHash },
+    {
+      labId,
+      ...(sessionId ? { sessionId } : {}),
+      ...(experimentId ? { experimentId } : {}),
+      selectedKey: `${selected.review.lineage.sessionId}/${selected.review.lineage.experimentId}`,
+      entries: verifiedReviews.map((entry) => ({ review: entry.review, reviewHash: entry.reviewHash })),
+    },
+  );
 }
 
 export async function researchLabListCommand(projectDir: string) {

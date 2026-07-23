@@ -17,7 +17,7 @@ mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
-mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID | --twin-audit ID) [--json]
+mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID) [--json]
 mujica twin audit <project> --capture ID --episode ID [--json]
 mujica twin inspect <project> --audit ID [--transition N] [--json]
 mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]
@@ -133,9 +133,12 @@ Every completed KEEP/REVERT Research Experiment attempts to publish a
 Benchmark lock, optional Brief/Observation, Session, Experiment, Judge decision,
 and every byte of its accepted/candidate Runs before returning the exact Studio
 argv. The Review is `derived-human-review` / `visual-witness`; it cannot alter
-the locked verdict. `studio --research-lab ... --session ... --experiment ...`
-requires all three selectors and opens that verified Run pair with the Review
-lineage. It cannot be mixed with explicit `--run` selectors.
+the locked verdict. `studio --research-lab ...` opens the Lab as a read-only
+Training Cockpit and packages every available Review in the selected scope.
+`--session` and `--experiment` progressively narrow that scope; Experiment
+requires Session. The Timeline shows legacy iterations as metrics-only and
+opens reviewed iterations as synchronized accepted/candidate Run pairs. It
+cannot be mixed with explicit `--run` selectors.
 
 `hardware export` freezes one Hardware Target, source Revision, Controller,
 optional Policy, selected Driver Package, Observation/Action contracts,

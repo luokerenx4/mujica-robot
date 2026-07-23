@@ -7,7 +7,7 @@ import {
   assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCaptureCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
-import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand } from "./research-lab";
+import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand, researchTimelineStudioCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
 import { twinAuditCommand, twinInspectCommand, twinStudioCommand } from "./twin";
 
@@ -31,7 +31,7 @@ USAGE
   mujica assembly compare <project> --from ID --to ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
-  mujica studio <project> --research-lab ID --session ID --experiment ID [--json]
+  mujica studio <project> --research-lab ID [--session ID [--experiment ID]] [--json]
   mujica studio <project> --capture ID --episode ID [--json]
   mujica studio <project> --twin-audit ID [--json]
   mujica twin audit <project> --capture ID --episode ID [--json]
@@ -86,7 +86,7 @@ const CAPABILITIES = [
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
-  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID | --twin-audit ID) [--json]", effect: "creates-artifact" },
+  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID) [--json]", effect: "creates-artifact" },
   { id: "twin.audit", usage: "mujica twin audit <project> --capture ID --episode ID [--json]", effect: "creates-artifact" },
   { id: "twin.inspect", usage: "mujica twin inspect <project> --audit ID [--transition N] [--json]", effect: "read-only" },
   { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]", effect: "read-only" },
@@ -186,15 +186,12 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       if (command === "studio") {
         const reviewSelectorCount = [values["research-lab"], values.session, values.experiment].filter(Boolean).length;
         const captureSelectorCount = [values.capture, values.episode].filter(Boolean).length;
-        if (reviewSelectorCount !== 0 && reviewSelectorCount !== 3) throw new Error("Studio Research Review selection requires --research-lab, --session, and --experiment together");
+        if (reviewSelectorCount && !values["research-lab"]) throw new Error("Studio Research Timeline requires --research-lab");
+        if (values.experiment && !values.session) throw new Error("Studio Research Timeline requires --session when --experiment is supplied");
         if (captureSelectorCount !== 0 && captureSelectorCount !== 2) throw new Error("Studio Hardware Capture selection requires --capture and --episode together");
         if ([Boolean(values.run || values["compare-run"]), Boolean(reviewSelectorCount), Boolean(captureSelectorCount), Boolean(values["twin-audit"])].filter(Boolean).length > 1) throw new Error("Studio accepts exactly one explicit Run, Research Review, Hardware Capture, or Digital Twin Audit source mode");
         if (reviewSelectorCount) {
-          const inspected = await researchReviewInspectCommand(project, values["research-lab"]!, values.session!, values.experiment!);
-          envelope = await studioCommand(project, inspected.data.review.accepted.id, inspected.data.review.candidate.id, {
-            review: inspected.data.review,
-            reviewHash: inspected.data.reviewHash,
-          });
+          envelope = await researchTimelineStudioCommand(project, values["research-lab"]!, values.session, values.experiment);
         } else if (captureSelectorCount) envelope = await studioCaptureCommand(project, values.capture!, values.episode!);
         else if (values["twin-audit"]) envelope = await twinStudioCommand(project, values["twin-audit"]);
         else envelope = await studioCommand(project, values.run, values["compare-run"]);

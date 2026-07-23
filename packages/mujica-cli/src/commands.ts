@@ -9,7 +9,7 @@ import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
 import { verifyHardwareBundleIntegrity, verifyHardwareCaptureIntegrity } from "./hardware";
 import { dependencyLockHash, harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeCompiled, runtimeSourceHash, runtimeVersion } from "./runtime";
-import { writeStudioSnapshot } from "@mujica/studio";
+import { writeStudioSnapshot, type ResearchTimelineInput } from "@mujica/studio";
 
 function projectArtifact(kind: Artifact["kind"], id: string, path: string, immutable: boolean): Artifact { return { kind, id, path, immutable }; }
 async function exists(path: string): Promise<boolean> {
@@ -95,7 +95,15 @@ export async function driverInspectCommand(projectDir: string, id: string) {
   }, project);
 }
 
-export async function studioCommand(projectDir: string, run?: string, compareRun?: string, researchReview?: { review: ResearchReview; reviewHash: string }) {
+export async function studioCommand(
+  projectDir: string,
+  run?: string,
+  compareRun?: string,
+  researchReview?: { review: ResearchReview; reviewHash: string },
+  researchTimeline?: Omit<ResearchTimelineInput, "entries"> & {
+    entries: Array<{ review: ResearchReview; reviewHash: string }>;
+  },
+) {
   const project = await loadProject(projectDir); const runIds = await listManifestDirectories(join(project.rootDir, "runs")); const runId = run ?? runIds.at(-1);
   if (!runId) throw new Error("Studio requires at least one completed Simulation Run");
 
@@ -135,23 +143,40 @@ export async function studioCommand(projectDir: string, run?: string, compareRun
     });
   };
 
-  const replay = await render(runId);
-  const comparisonReplay = compareRun ? await render(compareRun) : null;
+  const replayByRun = new Map<string, Awaited<ReturnType<typeof render>>>();
+  const renderOnce = async (selectedRunId: string) => {
+    const cached = replayByRun.get(selectedRunId);
+    if (cached) return cached;
+    const rendered = await render(selectedRunId);
+    replayByRun.set(selectedRunId, rendered);
+    return rendered;
+  };
+  const replay = await renderOnce(runId);
+  const comparisonReplay = compareRun ? await renderOnce(compareRun) : null;
+  const timelineEntries = [];
+  for (const entry of researchTimeline?.entries ?? []) {
+    timelineEntries.push({
+      ...entry,
+      acceptedReplay: await renderOnce(entry.review.accepted.id).then((rendered) => ({ path: rendered.path, manifest: rendered.manifest })),
+      candidateReplay: await renderOnce(entry.review.candidate.id).then((rendered) => ({ path: rendered.path, manifest: rendered.manifest })),
+    });
+  }
   const result = await writeStudioSnapshot(project.rootDir, {
     run: runId, replay: { path: replay.path, manifest: replay.manifest },
     ...(compareRun && comparisonReplay ? { compareRun, compareReplay: { path: comparisonReplay.path, manifest: comparisonReplay.manifest } } : {}),
     ...(researchReview ? { researchReview } : {}),
+    ...(researchTimeline ? { researchTimeline: { ...researchTimeline, entries: timelineEntries } } : {}),
   });
   const artifacts = [
-    projectArtifact("simulation-replay", replay.id, replay.path, true),
+    ...[...replayByRun.values()].map((rendered) => projectArtifact("simulation-replay", rendered.id, rendered.path, true)),
     projectArtifact("studio-snapshot", result.id, result.path, false),
   ];
-  if (comparisonReplay && comparisonReplay.id !== replay.id) artifacts.splice(1, 0, projectArtifact("simulation-replay", comparisonReplay.id, comparisonReplay.path, true));
   return success("studio", {
     id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun, comparisonRun: result.comparisonRun,
     replay: { id: replay.id, path: replay.path, frameCount: replay.manifest.frameCount, cached: replay.cached },
     comparisonReplay: comparisonReplay ? { id: comparisonReplay.id, path: comparisonReplay.path, frameCount: comparisonReplay.manifest.frameCount, cached: comparisonReplay.cached } : null,
     researchReview: researchReview ? { experimentId: researchReview.review.lineage.experimentId, reviewHash: researchReview.reviewHash } : null,
+    researchTimeline: researchTimeline ? { labId: researchTimeline.labId, selectedKey: researchTimeline.selectedKey, reviewCount: timelineEntries.length } : null,
   }, project, artifacts);
 }
 

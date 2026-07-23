@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -322,7 +322,7 @@ describe("agent CLI contract", () => {
     expect(studioEnvelope.artifacts.map((item: any) => item.kind)).toEqual(["hardware-replay", "studio-snapshot"]);
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 7,
+      version: 8,
       selectedRun: null,
       comparisonRun: null,
       selectedHardwareCapture: {
@@ -452,7 +452,7 @@ describe("agent CLI contract", () => {
     });
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 7,
+      version: 8,
       selectedTwinAudit: {
         id: envelope.data.id,
         auditHash: envelope.data.auditHash,
@@ -1026,8 +1026,6 @@ describe("agent CLI contract", () => {
     const studio = invoke([
       "studio", "examples/quadruped",
       "--research-lab", "transition-controller-review",
-      "--session", "session-c773bff5c54a2cd7",
-      "--experiment", "001-0f8bcb31c045",
       "--json",
     ]);
     expect({ code: studio.code, stderr: studio.stderr }).toEqual({ code: 0, stderr: "" });
@@ -1038,7 +1036,16 @@ describe("agent CLI contract", () => {
         experimentId: "001-0f8bcb31c045",
         reviewHash: inspection.data.reviewHash,
       },
+      researchTimeline: {
+        labId: "transition-controller-review",
+        selectedKey: "session-c773bff5c54a2cd7/001-0f8bcb31c045",
+        reviewCount: 1,
+      },
     });
+    const timelineHtml = readFileSync(resolve(JSON.parse(studio.stdout).data.indexPath), "utf8");
+    expect(timelineHtml).toContain("Training Cockpit · Research Timeline");
+    expect(timelineHtml).toContain("data-timeline-key");
+    expect(timelineHtml).toContain("Metrics only");
   }, 15_000);
 
   test("validation crosses the Python MuJoCo boundary", async () => {
