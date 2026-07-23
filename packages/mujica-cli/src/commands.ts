@@ -56,8 +56,45 @@ export async function inspectCommand(projectDir: string) {
 }
 
 export async function studioCommand(projectDir: string, run?: string) {
-  const project = await loadProject(projectDir); const result = await writeStudioSnapshot(project.rootDir, { ...(run ? { run } : {}) });
-  return success("studio", { id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun }, project, [projectArtifact("studio-snapshot", result.id, result.path, false)]);
+  const project = await loadProject(projectDir); const runIds = await listManifestDirectories(join(project.rootDir, "runs")); const runId = run ?? runIds.at(-1);
+  if (!runId) throw new Error("Studio requires at least one completed Simulation Run");
+  if (!runIds.includes(runId)) throw new Error(`Unknown completed run '${runId}'`);
+  const runRoot = confined(project.rootDir, `runs/${runId}`); const manifest = JSON.parse(await readFile(join(runRoot, "manifest.json"), "utf8"));
+  if (manifest.completed !== true) throw new Error(`Simulation Run '${runId}' is incomplete`);
+  const compiledInput = JSON.parse(await readFile(join(runRoot, "inputs", "compiled-assembly.json"), "utf8"));
+  if (compiledInput.assemblyHash !== manifest.assemblyHash) throw new Error(`Simulation Run '${runId}' compiled Assembly hash is inconsistent`);
+  let modelPath = join(runRoot, "inputs", "model.xml");
+  if (await exists(modelPath)) {
+    const frozenHash = sha256(await readFile(modelPath));
+    if (compiledInput.modelHash !== frozenHash || manifest.modelHash !== frozenHash) throw new Error(`Simulation Run '${runId}' frozen model hash is inconsistent`);
+  } else {
+    const legacyRoot = confined(project.rootDir, `.mujica/cache/assemblies/${manifest.assemblyHash}`);
+    const legacyManifestPath = join(legacyRoot, "compiled-assembly.json"); modelPath = join(legacyRoot, "model.xml");
+    if (!(await exists(legacyManifestPath)) || !(await exists(modelPath))) throw new Error(`Simulation Run '${runId}' exact compiled model is unavailable`);
+    const legacy = JSON.parse(await readFile(legacyManifestPath, "utf8"));
+    if (legacy.assemblyHash !== manifest.assemblyHash || legacy.id !== compiledInput.id) throw new Error(`Simulation Run '${runId}' legacy compiled model cache is inconsistent`);
+  }
+  const modelHash = sha256(await readFile(modelPath));
+  const trajectoryPath = join(runRoot, "trajectory.ndjson"); const trajectoryHash = sha256(await readFile(trajectoryPath));
+  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
+  const replay = await invokeRuntime("render-replay", {
+    runtimeVersion,
+    runtimeSourceHash: await runtimeSourceHash(),
+    runId,
+    resultHash: manifest.resultHash,
+    assemblyHash: manifest.assemblyHash,
+    modelHash,
+    modelPath,
+    trajectoryPath,
+    trajectoryHash,
+    outputRoot: join(project.rootDir, ".mujica", "replays"),
+    settings,
+  });
+  const result = await writeStudioSnapshot(project.rootDir, { run: runId, replay: { path: replay.path, manifest: replay.manifest } });
+  return success("studio", { id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun, replay: { id: replay.id, path: replay.path, frameCount: replay.manifest.frameCount, cached: replay.cached } }, project, [
+    projectArtifact("simulation-replay", replay.id, replay.path, true),
+    projectArtifact("studio-snapshot", result.id, result.path, false),
+  ]);
 }
 
 export async function componentListCommand(projectDir: string) {

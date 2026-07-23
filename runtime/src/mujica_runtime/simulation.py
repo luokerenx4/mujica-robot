@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +10,7 @@ import numpy as np
 
 from .controllers import load_policy_controller, load_program_controller
 from .environment import RobotEnvironment, compile_motion_command_schedule
-from .io import atomic_directory, hash_json, sha256_bytes, write_json
+from .io import atomic_directory, hash_file, hash_json, sha256_bytes, write_json
 
 
 def quaternion_pitch(quaternion: np.ndarray) -> float:
@@ -151,13 +152,16 @@ def validate_model(request: dict[str, Any]) -> dict[str, Any]:
 def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     project_dir = Path(request["projectDir"])
     compiled = request["compiled"]
+    model_path = Path(request["modelPath"])
+    if hash_file(model_path) != compiled["modelHash"]:
+        raise RuntimeError("Compiled Assembly model hash does not match modelPath")
     controller_definition = request["controller"]
     if controller_definition["kind"] == "program":
         controller = load_program_controller(Path(request["controllerRoot"]), controller_definition)
     else:
         controller = load_policy_controller(project_dir, controller_definition, compiled)
     controller.reset(int(request["seed"]))
-    environment = RobotEnvironment(Path(request["modelPath"]), compiled, request["task"], request["scenario"], int(request["seed"]))
+    environment = RobotEnvironment(model_path, compiled, request["task"], request["scenario"], int(request["seed"]))
     observation = environment.reset()
     initial_position = environment.data.qpos[:3].copy()
     previous_position = initial_position.copy()
@@ -238,6 +242,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
 
     def writer(directory: Path) -> None:
         write_json(directory / "inputs" / "compiled-assembly.json", compiled)
+        shutil.copyfile(model_path, directory / "inputs" / "model.xml")
         write_json(directory / "inputs" / "controller.json", controller_definition)
         write_json(directory / "inputs" / "task.json", request["task"])
         write_json(directory / "inputs" / "scenario.json", request["scenario"])
@@ -249,6 +254,6 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "metrics.json", metrics)
         write_json(directory / "score.json", score)
         (directory / "report.md").write_text(f"# Mujica simulation run\n\n- Run: `{output['runId']}`\n- Score: `{score['total']:.6f}`\n- Survival: `{metrics['survivalRate']:.3f}`\n- Fell: `{metrics['fell']}`\n")
-        write_json(directory / "manifest.json", {"version": 1, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
+        write_json(directory / "manifest.json", {"version": 2, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "modelHash": compiled["modelHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
     atomic_directory(target, writer)
     return {**output, "artifactPath": str(target), "cached": False}

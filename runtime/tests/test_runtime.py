@@ -10,7 +10,8 @@ import torch
 
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.io import hash_directory
+from mujica_runtime.io import hash_directory, hash_file
+from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
 
@@ -40,6 +41,45 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_visual_replay_is_content_addressed_and_reuses_only_complete_frames(self):
+        model, compiled = compiled_assembly("force-sensing-3dof")
+        run_root = PROJECT / "runs" / "run-e8bd80892b0f0123"
+        source_row = next(line for line in (run_root / "trajectory.ndjson").read_text().splitlines() if line.strip())
+        run_manifest = json.loads((run_root / "manifest.json").read_text())
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trajectory = root / "trajectory.ndjson"
+            trajectory.write_text(source_row + "\n")
+            request = {
+                "runtimeVersion": "test-runtime",
+                "runtimeSourceHash": "test-source",
+                "runId": run_manifest["id"],
+                "resultHash": run_manifest["resultHash"],
+                "assemblyHash": compiled["assemblyHash"],
+                "modelHash": hash_file(model),
+                "modelPath": str(model),
+                "trajectoryPath": str(trajectory),
+                "trajectoryHash": hash_file(trajectory),
+                "outputRoot": str(root / "replays"),
+                "settings": {"width": 160, "height": 120, "stride": 1, "camera": {"azimuth": 135, "elevation": -22, "distance": 2.2}},
+            }
+            first = render_replay(request)
+            second = render_replay(request)
+            self.assertFalse(first["cached"])
+            self.assertTrue(second["cached"])
+            self.assertEqual(first["id"], second["id"])
+            self.assertEqual(first["manifest"]["renderer"], RENDERER_ID)
+            self.assertEqual(first["manifest"]["frameCount"], 1)
+            self.assertEqual(len(first["manifest"]["frameHashes"]), 1)
+            frame = Path(first["path"]) / "frames" / "000000.png"
+            self.assertEqual(frame.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            frame.write_bytes(frame.read_bytes() + b"corrupt")
+            with self.assertRaisesRegex(RuntimeError, "integrity"):
+                render_replay(request)
+            frame.unlink()
+            with self.assertRaisesRegex(RuntimeError, "incomplete"):
+                render_replay(request)
+
     def test_program_prior_policy_freezes_the_exact_controller_source(self):
         policy_root = PROJECT / "policies" / "upright-residual-locomotion-1d4c901d04ccfabb"
         architecture = json.loads((policy_root / "architecture.json").read_text())

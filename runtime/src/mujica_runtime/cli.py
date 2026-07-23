@@ -5,20 +5,22 @@ import json
 import sys
 from pathlib import Path
 
+from .replay import render_replay
 from .simulation import simulate, validate_model
 from .training import train
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m mujica_runtime.cli")
-    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train"])
+    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "render-replay"])
     parser.add_argument("--request", required=True)
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text())
     if args.operation == "validate": result = validate_model(request)
     elif args.operation == "simulate": result = simulate(request, persist=True)
     elif args.operation == "evaluate-case": result = simulate(request, persist=False)
-    else: result = train(request)
+    elif args.operation == "train": result = train(request)
+    else: result = render_replay(request)
     sys.stdout.write(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
 
 

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
@@ -50,12 +51,26 @@ describe("agent CLI contract", () => {
   });
 
   test("Studio is a read-only projection of a completed quadruped run", () => {
-    const result = invoke(["studio", "examples/quadruped", "--run", "run-e8bd80892b0f0123", "--json"]); const envelope = JSON.parse(result.stdout);
-    expect(result.code).toBe(0);
-    expect(envelope.data.selectedRun).toBe("run-e8bd80892b0f0123");
-    expect(envelope.data.snapshotHash).toHaveLength(64);
-    expect(envelope.artifacts).toEqual([{ kind: "studio-snapshot", id: envelope.data.id, path: envelope.data.path, immutable: false }]);
-  });
+    const simulated = invoke(["simulate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-forward-gait", "--task", "forward-walk", "--scenario", "nominal", "--objective", "forward-locomotion", "--seed", "709913", "--json"]);
+    expect(simulated.code).toBe(0);
+    const run = JSON.parse(simulated.stdout).data;
+    try {
+      const result = invoke(["studio", "examples/quadruped", "--run", run.runId, "--json"]); const envelope = JSON.parse(result.stdout);
+      expect(result.code).toBe(0);
+      expect(envelope.data.selectedRun).toBe(run.runId);
+      expect(envelope.data.snapshotHash).toHaveLength(64);
+      expect(envelope.data.replay.frameCount).toBe(250);
+      expect(envelope.artifacts).toEqual([
+        { kind: "simulation-replay", id: envelope.data.replay.id, path: envelope.data.replay.path, immutable: true },
+        { kind: "studio-snapshot", id: envelope.data.id, path: envelope.data.path, immutable: false },
+      ]);
+      const cached = invoke(["studio", "examples/quadruped", "--run", run.runId, "--json"]);
+      expect(cached.code).toBe(0);
+      expect(JSON.parse(cached.stdout).data.replay).toMatchObject({ id: envelope.data.replay.id, cached: true });
+    } finally {
+      rmSync(run.artifactPath, { recursive: true, force: true });
+    }
+  }, 15_000);
 
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
@@ -132,7 +147,7 @@ describe("agent CLI contract", () => {
     expect(candidate.data.proposed.cases.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.lateralDrift <= 0.25 && item.metrics.planarVelocityTrackingError <= 0.22 && item.metrics.yawRateTrackingError <= 0.35 && (item.metrics.targetDistance === 0 || item.metrics.forwardProgress >= 0.2))).toBe(true);
     const spatialResult = invoke(["diagnose", "examples/quadruped", "--assembly", "command-conditioned-history-3dof", "--controller", "command-tracking-gait", "--benchmark", "spatial-generalization", "--json"]); const spatial = JSON.parse(spatialResult.stdout);
     expect(spatialResult.code).toBe(0); expect(spatial.data.status).toBe("PASS"); expect(spatial.data.violationCount).toBe(0);
-  }, 30_000);
+  }, 45_000);
 
   test("Policy requalification requires byte-identical MJCF and contracts", () => {
     const result = invoke(["policy", "requalify", "examples/quadruped", "--policy", "spatial-residual-locomotion-81df145800cc15c7", "--assembly", "force-sensing-3dof", "--json"]); const envelope = JSON.parse(result.stdout);

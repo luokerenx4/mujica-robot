@@ -63,4 +63,6 @@ Candidate preview computes a content-derived proposed Robot Revision hash before
 
 A Hardware Target binds a kept Robot Revision to one `dry-run`, `hil`, or `real` environment, a driver protocol, control rate, explicit device identity, latency/deadline gates, and a contract-sized emergency-stop Action. Exported bundles and verification records are immutable. External Evidence must carry exact bundle and contract hashes, driver hash, device serial, timestamps, sample count, timing measurements, emergency-stop count, and operator identity.
 
+Simulation Run v2 freezes the exact compiled `model.xml` beside its compiled Assembly, Controller, Task, Scenario, and Objective inputs. Its manifest records the model hash. Visual replay therefore never needs to infer an old robot from current source. Derived PNG replays live under ignored `.mujica/replays/<content-id>/`; their identity covers the Run result, frozen model, trajectory bytes, Runtime/MuJoCo renderer, camera, resolution, and stride. Legacy Runs can be replayed only while their matching content-addressed Assembly cache is still available.
+
 `mujica-workspace.json` contains only a name, one projects directory, and an optional default project. Workspaces never provide shared components or policies.
