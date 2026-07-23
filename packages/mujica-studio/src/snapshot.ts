@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { cp, lstat, mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join, resolve } from "node:path";
-import { atomicDirectory, compileAssembly, hashJson, humanObservationDraftSchema, listAssemblyIds, listComponentIds, loadComponent, loadProject, sha256, writeJson } from "@mujica/core";
+import { atomicDirectory, compileAssembly, hashJson, humanObservationDraftSchema, listAssemblyIds, listComponentIds, loadComponent, loadProject, researchReviewSchema, sha256, writeJson, type ResearchReview } from "@mujica/core";
 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
@@ -95,7 +95,18 @@ async function researchSessions(root: string): Promise<Array<Record<string, any>
         const entries = await readdir(experimentsRoot, { withFileTypes: true });
         for (const experiment of entries.sort((a, b) => a.name.localeCompare(b.name))) {
           const path = join(experimentsRoot, experiment.name, "manifest.json");
-          if (experiment.isDirectory() && !experiment.isSymbolicLink() && await exists(path)) experiments.push(JSON.parse(await readFile(path, "utf8")));
+          if (experiment.isDirectory() && !experiment.isSymbolicLink() && await exists(path)) {
+            const experimentRoot = join(experimentsRoot, experiment.name);
+            const experimentManifest = JSON.parse(await readFile(path, "utf8"));
+            let visualReview = null;
+            if (experimentManifest.review?.status === "AVAILABLE") {
+              const reviewPath = join(experimentRoot, "review.json");
+              if (!(await exists(reviewPath))) throw new Error(`Research experiment '${experiment.name}' is missing its available Review`);
+              visualReview = researchReviewSchema.parse(JSON.parse(await readFile(reviewPath, "utf8")));
+              if (hashJson(visualReview) !== experimentManifest.review.reviewHash) throw new Error(`Research experiment '${experiment.name}' Review hash is invalid`);
+            }
+            experiments.push({ ...experimentManifest, visualReview });
+          }
         }
       }
       values.push({ ...manifest, experiments });
@@ -169,6 +180,7 @@ async function readNdjsonWithIndices(path: string): Promise<Array<{ index: numbe
 }
 
 type ReplayInput = { path: string; manifest: Record<string, any> };
+type ResearchReviewInput = { review: ResearchReview; reviewHash: string };
 
 async function validateReplayInput(replay: ReplayInput): Promise<void> {
   const root = resolve(replay.path); const rootStat = await lstat(root);
@@ -199,7 +211,7 @@ async function verifyReplayForRun(replay: ReplayInput | undefined, run: Awaited<
   if (replay.manifest.completed !== true) throw new Error(`${label} visual replay is incomplete`);
 }
 
-export async function buildStudioSnapshot(projectDirectory: string, options: { run?: string; replay?: ReplayInput; compareRun?: string; compareReplay?: ReplayInput } = {}) {
+export async function buildStudioSnapshot(projectDirectory: string, options: { run?: string; replay?: ReplayInput; compareRun?: string; compareReplay?: ReplayInput; researchReview?: ResearchReviewInput } = {}) {
   const project = await loadProject(projectDirectory); const assemblies = [];
   for (const id of await listAssemblyIds(project.rootDir)) {
     const assembly = await compileAssembly(project.rootDir, id);
@@ -215,6 +227,16 @@ export async function buildStudioSnapshot(projectDirectory: string, options: { r
   if (options.compareReplay && !options.compareRun) throw new Error("A comparison visual replay requires --compare-run");
   await verifyReplayForRun(options.replay, runs.selected, "primary");
   await verifyReplayForRun(options.compareReplay, comparison.selected, "comparison");
+  const selectedResearchReview = options.researchReview
+    ? { review: researchReviewSchema.parse(options.researchReview.review), reviewHash: options.researchReview.reviewHash }
+    : null;
+  if (selectedResearchReview && (
+    hashJson(selectedResearchReview.review) !== selectedResearchReview.reviewHash
+    || selectedResearchReview.review.accepted.id !== runs.selected?.id
+    || selectedResearchReview.review.candidate.id !== comparison.selected?.id
+    || selectedResearchReview.review.accepted.resultHash !== runs.selected?.manifest?.resultHash
+    || selectedResearchReview.review.candidate.resultHash !== comparison.selected?.manifest?.resultHash
+  )) throw new Error("Selected Research Review differs from its immutable Run pair");
   return {
     version: 5, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-offline-v1", sourceHash: sha256(studioHtml.toString()) }, project: project.manifest,
     selectedAssembly: project.manifest.defaults.assembly, assemblies, components,
@@ -222,6 +244,7 @@ export async function buildStudioSnapshot(projectDirectory: string, options: { r
     selectedReplay: options.replay ? { ...options.replay.manifest, frameBase: "replay/frames" } : null,
     comparisonRun: comparison.selected,
     comparisonReplay: options.compareReplay ? { ...options.compareReplay.manifest, frameBase: "comparison-replay/frames" } : null,
+    selectedResearchReview,
     policies: await artifactManifests(join(project.rootDir, "policies")),
     trainingRuns: await artifactManifests(join(project.rootDir, "training-runs")),
     hardwareBundles: await artifactManifests(join(project.rootDir, "hardware-bundles")),
@@ -250,6 +273,7 @@ function studioHtml(snapshot: Awaited<ReturnType<typeof buildStudioSnapshot>>): 
 <main><section class="panel wide"><div class="stats" id="stats"></div></section>
 <section class="panel wide"><h2>Attention queue</h2><div class="muted">Measured failures first, then human hypotheses. Click a Run event to seek; click a Capture to bind an observation draft to its exact protocol event.</div><div class="list" id="attention"></div></section>
 <section class="panel wide"><h2>Authoritative MuJoCo replay comparison</h2><div class="comparison-grid"><div class="replay-card"><h3>Baseline <span class="tag">A</span></h3><div class="replay-stage"><img id="replay-image" alt="Baseline MuJoCo robot replay"><div class="missing" id="replay-missing">No authoritative visual replay.</div><span class="live-badge" id="health">—</span></div><div id="frame-a">—</div><div class="telemetry" id="telemetry-a"></div></div><div class="replay-card" id="comparison-card"><h3>Subject <span class="tag">B</span></h3><div class="replay-stage"><img id="comparison-image" alt="Subject MuJoCo robot replay"><div class="missing" id="comparison-missing">Choose --compare-run to add a subject.</div><span class="live-badge" id="comparison-health">—</span></div><div id="frame-b">—</div><div class="telemetry" id="telemetry-b"></div></div></div><div class="controls"><button id="previous" title="Previous shared time">◀</button><button id="play">Play</button><button id="next" title="Next shared time">▶</button><input id="scrub" type="range" min="0" value="0"><select id="speed" title="Playback speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><div id="frame">—</div><div class="muted" id="replay-status"></div><div class="controls"><button id="copy-frame">Copy comparison context for Agent</button></div><div class="muted" id="copy-status"></div></section>
+<section class="panel wide"><h2>Research Review provenance</h2><div id="selected-research-review" class="source-chip">This Run pair is not bound to a Research Review.</div><div class="controls"><button id="copy-selected-review">Copy complete Research Review context</button></div><div class="muted" id="selected-review-status">Visual interpretation remains a human hypothesis; the locked Judge verdict is unchanged.</div></section>
 <section class="panel wide"><h2>Human observation → Agent hypothesis</h2><div class="muted">This records what a person sees; it never becomes measured evidence or a Judge verdict.</div><div class="source-chip" id="observation-source">Current Run frame</div><div class="controls"><button id="use-current-frame">Use current replay frame</button></div><div class="form-grid"><label class="field">Category<select id="observation-category"><option>motion</option><option>stability</option><option>contact</option><option>control</option><option>timing</option><option>safety</option><option>other</option></select></label><label class="field">Severity<select id="observation-severity"><option>investigate</option><option>info</option><option>blocking</option></select></label><label class="field">Confidence<select id="observation-confidence"><option>medium</option><option>low</option><option>high</option></select></label><label class="field span-all">Summary<input id="observation-summary" maxlength="240" placeholder="What did you see?"></label><label class="field span-all">Details<textarea id="observation-details" maxlength="2000" placeholder="Describe the visible pattern and when it begins."></textarea></label><label class="field span-all">Suggested next action<input id="observation-next" maxlength="500" placeholder="What should the Agent inspect before changing code?"></label></div><div class="controls"><button id="copy-observation">Copy observation draft</button><button id="download-observation">Download draft JSON</button></div><div class="muted" id="observation-status">Record with <code>mujica observation record . --input draft.json --observer NAME</code>.</div></section>
 <section class="panel"><h2>Run evidence</h2><div id="run"></div></section>
 <section class="panel"><h2>Top-down path</h2><canvas id="trajectory" width="900" height="420"></canvas><div class="muted" id="sampling"></div></section>
@@ -279,6 +303,18 @@ q('#copy-frame').onclick=async()=>{const row=trajectory[trajectoryIndex(currentF
 q('#replay-status').textContent=replay?replay.renderer+' · MuJoCo '+replay.mujocoVersion+' · '+replay.frameCount+' exact qpos frames · '+replay.settings.width+'×'+replay.settings.height:'Generate this Run again with mujica studio to add an authoritative MuJoCo replay.';q('#sampling').textContent=selected?'trajectory '+selected.trajectory.total+' rows · displayed '+trajectory.length+' · stride '+selected.trajectory.stride:'';render(0);}
 
 const A={run:S.selectedRun,replay:S.selectedReplay},B={run:S.comparisonRun,replay:S.comparisonReplay};
+const selectedReview=S.selectedResearchReview?.review??null;
+const researchReviewEntries=S.researchSessions.flatMap(session=>session.experiments.map(experiment=>({session,experiment,review:experiment.visualReview}))).filter(item=>item.review);
+q('#copy-selected-review').disabled=!selectedReview;
+q('#selected-research-review').innerHTML=selectedReview
+  ? '<span class="tag" style="color:'+(selectedReview.judge.verdict==='KEEP'?'var(--a)':'var(--b)')+'">'+esc(selectedReview.judge.verdict)+'</span> <code>'+esc(selectedReview.lineage.experimentId)+'</code> · '+esc(selectedReview.lineage.researchId)
+    +'<br><strong>'+esc(selectedReview.proposal.hypothesis)+'</strong>'
+    +'<br><span class="muted">Brief '+esc(selectedReview.lineage.researchBriefId??'none')+' · observations '+esc(selectedReview.lineage.observationIds.join(', ')||'none')+'</span>'
+    +'<br>Witness case <code>'+esc(selectedReview.selectedCase.id)+'</code> · '+esc(selectedReview.selectedCase.selectionPolicy)+' · Δ '+Number(selectedReview.selectedCase.candidateScoreDelta).toFixed(4)
+    +'<br><span class="muted">'+esc(selectedReview.selectedCase.selectionReason)+'</span>'
+    +'<br><code>'+esc(selectedReview.accepted.id)+'</code> accepted → <code>'+esc(selectedReview.candidate.id)+'</code> candidate'
+    +(selectedReview.judge.decision.gateReasons.length?'<br><span class="bad">'+selectedReview.judge.decision.gateReasons.map(esc).join(' · ')+'</span>':'')
+  : 'This Run pair is not bound to a Research Review. Open one with <code>mujica studio . --research-lab ID --session ID --experiment ID</code>.';
 A.trajectory=A.run?.trajectory.rows??[];B.trajectory=B.run?.trajectory.rows??[];
 const pad=i=>String(i).padStart(6,'0'),vector=v=>Array.isArray(v)?v.map(x=>Number(x).toFixed(3)).join(', '):'—';
 const timesFor=side=>side.replay?.frameTimes?.length?side.replay.frameTimes.map(Number):side.trajectory.map(row=>Number(row.time??0));
@@ -288,7 +324,7 @@ if(!clockTimes.length)clockTimes.push(0);
 const atOrBefore=(times,time)=>{let found=0;for(let i=0;i<times.length;i++){if(Number(times[i])<=time+1e-9)found=i;else break}return found};
 const rowAt=(side,time)=>side.trajectory[atOrBefore(side.trajectory.map(row=>Number(row.time??0)),time)]??null;
 const sideFrame=(side,time)=>side.times.length?atOrBefore(side.times,time):0;
-q('#stats').innerHTML=[['Assemblies',S.assemblies.length],['Runs',S.runs.length],['Compared Runs',B.run?2:A.run?1:0],['Rendered frames',(A.replay?.frameCount??0)+(B.replay?.frameCount??0)],['Hardware Captures',S.hardwareCaptures.length],['Human observations',S.humanObservations.length],['Research Briefs',S.researchBriefs.length],['Policies',S.policies.length],['Robot revisions',S.revisions.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');
+q('#stats').innerHTML=[['Assemblies',S.assemblies.length],['Runs',S.runs.length],['Compared Runs',B.run?2:A.run?1:0],['Rendered frames',(A.replay?.frameCount??0)+(B.replay?.frameCount??0)],['Hardware Captures',S.hardwareCaptures.length],['Human observations',S.humanObservations.length],['Research Briefs',S.researchBriefs.length],['Research Reviews',researchReviewEntries.length],['Policies',S.policies.length],['Robot revisions',S.revisions.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');
 const runEvidence=(label,side)=>side.run?'<div class="row"><span class="tag">'+label+'</span> <code>'+esc(side.run.id)+'</code></div><div class="row">seed '+esc(side.run.manifest?.seed)+' · result '+esc(side.run.manifest?.resultHash?.slice?.(0,12))+'</div>'+(side.replay?'<div class="row">replay <code>'+esc(side.replay.id)+'</code> · '+side.replay.frameCount+' frames</div>':''):'<div class="muted">'+label+' not selected.</div>';
 q('#run').innerHTML=runEvidence('baseline',A)+runEvidence('subject',B);
 const qualityKeys=['meanJointJerkRadPerSec3','meanBodyAngularJerkRadPerSec3','meanActionSlewRatePerSec','actuatorSaturationRate','meanFootSlipSpeedMps','peakFootContactImpactNPerSec','totalFootSlipDistanceM'];
@@ -317,7 +353,12 @@ q('#attention').innerHTML=attentionRows.map((item,index)=>'<div class="attention
 q('#revisions').innerHTML=S.revisions.map(r=>'<div class="row"><code>'+esc(r.id)+'</code><br><span class="muted">'+esc(r.parent??'root')+' → score '+esc(Number(r.aggregateScore).toFixed(4))+'</span></div>').join('');
 q('#training').innerHTML=S.policyRevisions.map(r=>'<div class="row">Policy revision <code>'+esc(r.id)+'</code><br><span class="muted">'+esc(r.policyId)+'</span></div>').join('')+S.trainingRuns.slice(-8).map(r=>'<div class="row">Training <code>'+esc(r.id)+'</code><br><span class="muted">'+esc(r.policyId)+'</span></div>').join('');
 q('#research-labs').innerHTML=S.researchLabs.map(l=>'<div class="row"><code>'+esc(l.id)+'</code> <span class="tag">'+esc(l.execution.kind)+'</span><br><span class="muted">'+esc(l.benchmark)+' · editable '+l.editable.paths.map(esc).join(', ')+'</span></div>').join('')||'<div class="muted">No Research Labs.</div>';
-q('#research-sessions').innerHTML=S.researchSessions.slice().reverse().map(s=>'<div class="row"><code>'+esc(s.id)+'</code> <span class="tag">'+esc(s.completed?'COMPLETE':'INCOMPLETE')+'</span><br><span class="muted">'+esc(s.researchId)+' · '+s.iterationsCompleted+'/'+s.iterationsRequested+' experiments · score '+Number(s.initialScore).toFixed(4)+' → '+Number(s.finalScore).toFixed(4)+(s.researchBriefId?' · brief '+esc(s.researchBriefId):'')+'</span></div>').join('')||'<div class="muted">No completed research Sessions.</div>';
+q('#research-sessions').innerHTML=S.researchSessions.slice().reverse().map(s=>'<div class="row"><code>'+esc(s.id)+'</code> <span class="tag">'+esc(s.completed?'COMPLETE':'INCOMPLETE')+'</span><br><span class="muted">'+esc(s.researchId)+' · '+s.iterationsCompleted+'/'+s.iterationsRequested+' experiments · score '+Number(s.initialScore).toFixed(4)+' → '+Number(s.finalScore).toFixed(4)+(s.researchBriefId?' · brief '+esc(s.researchBriefId):'')+' · reviews '+esc(s.reviewCount??0)+'</span>'
+  +s.experiments.map(e=>{const review=e.visualReview,index=review?researchReviewEntries.findIndex(item=>item.session.id===s.id&&item.experiment.id===e.id):-1;return '<div class="row"><span class="tag" style="color:'+(e.verdict==='KEEP'?'var(--a)':e.verdict==='REVERT'?'var(--b)':'var(--bad)')+'">'+esc(e.verdict)+'</span> <code>'+esc(e.id)+'</code> Δ '+Number(e.delta??0).toFixed(4)
+    +'<br>'+esc(e.proposal?.hypothesis??e.error??'No proposal')
+    +(e.decision?.gateReasons?.length?'<br><span class="bad">'+e.decision.gateReasons.map(esc).join(' · ')+'</span>':'')
+    +(review?'<br><span class="muted">visual witness <code>'+esc(review.selectedCase.id)+'</code> · '+esc(review.selectedCase.selectionPolicy)+' · <code>'+esc(review.accepted.id)+'</code> → <code>'+esc(review.candidate.id)+'</code></span><br><button data-research-review-index="'+index+'">Copy exact visual-review command</button>':'<br><span class="muted">Review '+esc(e.review?.status??'legacy-unavailable')+(e.review?.error?' · '+esc(e.review.error):'')+'</span>')
+    +'</div>'}).join('')+'</div>').join('')||'<div class="muted">No completed research Sessions.</div>';
 q('#benchmarks').innerHTML=S.benchmarks.map(b=>'<div class="row"><code>'+esc(b.id)+'</code><br><span class="muted">'+esc(b.objective)+' · '+b.cases.length+' fixed cases · baseline '+esc(b.baseline.assembly)+'/'+esc(b.baseline.controller)+'</span></div>').join('');
 q('#candidates').innerHTML=S.candidates.map(c=>'<div class="row"><code>'+esc(c.id)+'</code> <span class="tag">'+esc(c.kind)+'</span><br><span class="muted">'+esc(c.baseline.assembly)+'/'+esc(c.baseline.controller)+' → '+esc(c.proposed.assembly)+'/'+esc(c.proposed.controller)+'</span></div>').join('');
 const canvas=q('#trajectory'),ctx=canvas.getContext('2d'),scrub=q('#scrub');scrub.max=String(Math.max(0,clockTimes.length-1));let timer=null,currentClock=0,selectedCapture=null;
@@ -331,11 +372,14 @@ document.querySelectorAll('[data-event-index]').forEach(node=>node.onclick=()=>{
 document.querySelectorAll('[data-capture-index]').forEach(node=>node.onclick=()=>{selectedCapture=captureRows[Number(node.dataset.captureIndex)];updateObservationSource()});
 document.querySelectorAll('[data-attention-index]').forEach(node=>node.onclick=()=>{const item=attentionRows[Number(node.dataset.attentionIndex)];if(item.kind==='run'){selectedCapture=null;pause();render(atOrBefore(clockTimes,item.time))}else if(item.kind==='capture'){selectedCapture=item.capture;updateObservationSource()}});
 const sideContext=(side,time)=>{const frameIndex=sideFrame(side,time),row=rowAt(side,time);return side.run?{runId:side.run.id,resultHash:side.run.manifest?.resultHash,replayId:side.replay?.id??null,replayFrame:frameIndex,mappedFrameTimeSeconds:side.times[frameIndex]??null,simulationStep:row?.step??null,rowTimeSeconds:row?.time??null,healthy:row?.healthy??null,pitchRad:row?.pitchRad??null,bodyTiltRad:row?.bodyTiltRad??null,motionCommand:row?.motionCommand??null,measuredMotion:row?.measuredMotion??null,footContactForce:row?.footContactForce??null,motionQuality:row?.motionQuality??null,action:row?.action??null}:null};
-q('#copy-frame').onclick=async()=>{const time=clockTimes[currentClock],deltas=Object.fromEntries(qualityKeys.map(key=>[key,B.run&&A.run?Number(B.run.metrics?.[key]??0)-Number(A.run.metrics?.[key]??0):null])),context={kind:B.run?'mujica-run-comparison-context':'mujica-frame-context',authority:'immutable-evidence-selector',headlessArgv:['evidence','inspect','.', '--run',A.run.id,'--time',String(time),...(B.run?['--compare-run',B.run.id]:[])],sharedTimeSeconds:time,baseline:sideContext(A,time),subject:sideContext(B,time),motionQualityDeltaSubjectMinusBaseline:deltas};const text=JSON.stringify(context,null,2);try{await navigator.clipboard.writeText(text);q('#copy-status').textContent='Copied exact evidence selector and headless reproduction command.'}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();q('#copy-status').textContent='Copied comparison context.'}};
+q('#copy-frame').onclick=async()=>{const time=clockTimes[currentClock],deltas=Object.fromEntries(qualityKeys.map(key=>[key,B.run&&A.run?Number(B.run.metrics?.[key]??0)-Number(A.run.metrics?.[key]??0):null])),context={kind:B.run?'mujica-run-comparison-context':'mujica-frame-context',authority:'immutable-evidence-selector',headlessArgv:['evidence','inspect','.', '--run',A.run.id,'--time',String(time),...(B.run?['--compare-run',B.run.id]:[])],sharedTimeSeconds:time,baseline:sideContext(A,time),subject:sideContext(B,time),motionQualityDeltaSubjectMinusBaseline:deltas,researchReview:selectedReview?{lineage:selectedReview.lineage,judge:selectedReview.judge,selectedCase:selectedReview.selectedCase,authorityBoundary:selectedReview.authorityBoundary}:null};const text=JSON.stringify(context,null,2);try{await navigator.clipboard.writeText(text);q('#copy-status').textContent='Copied exact evidence selector and headless reproduction command.'}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();q('#copy-status').textContent='Copied comparison context.'}};
 function observationSource(){if(selectedCapture)return{kind:'hardware-capture-event',captureId:selectedCapture.id,captureHash:selectedCapture.captureHash,eventIndex:selectedCapture.attentionEventIndex};const time=clockTimes[currentClock];return{kind:'run-frame',runId:A.run.id,resultHash:A.run.manifest.resultHash,timeSeconds:time,...(B.run?{comparisonRunId:B.run.id,comparisonResultHash:B.run.manifest.resultHash}:{})}}
 function updateObservationSource(){const source=observationSource();q('#observation-source').innerHTML=source.kind==='run-frame'?'Run frame · <code>'+esc(source.runId)+'</code> at '+Number(source.timeSeconds).toFixed(3)+'s'+(source.comparisonRunId?' compared with <code>'+esc(source.comparisonRunId)+'</code>':''):'Hardware Capture · <code>'+esc(source.captureId)+'</code> · transcript event '+source.eventIndex}
 function observationDraft(){const summary=q('#observation-summary').value.trim();if(!summary)throw new Error('Summary is required.');const details=q('#observation-details').value.trim(),next=q('#observation-next').value.trim();return{version:1,kind:'mujica-human-observation-draft',source:observationSource(),assessment:{category:q('#observation-category').value,severity:q('#observation-severity').value,confidence:q('#observation-confidence').value,summary,...(details?{details}:{}),...(next?{suggestedNextAction:next}:{})}}}
 async function copyText(text){try{await navigator.clipboard.writeText(text)}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove()}}
+const reviewHandoff=review=>({kind:'mujica-research-review-selector',authority:'derived-human-review',claimKind:'visual-witness',research:{lab:review.lineage.researchId,session:review.lineage.sessionId,experiment:review.lineage.experimentId,brief:review.lineage.researchBriefId,observations:review.lineage.observationIds},judge:{verdict:review.judge.verdict,decisionHash:review.judge.decisionHash},selectedCase:review.selectedCase,accepted:review.accepted,candidate:review.candidate,headlessArgv:['studio','.', '--research-lab',review.lineage.researchId,'--session',review.lineage.sessionId,'--experiment',review.lineage.experimentId],authorityBoundary:review.authorityBoundary});
+q('#copy-selected-review').onclick=async()=>{if(!selectedReview)return;await copyText(JSON.stringify(reviewHandoff(selectedReview),null,2));q('#selected-review-status').textContent='Copied complete Review lineage and exact Studio reproduction command. Human interpretation remains hypothesis-only.'};
+document.querySelectorAll('[data-research-review-index]').forEach(node=>node.onclick=async()=>{const item=researchReviewEntries[Number(node.dataset.researchReviewIndex)];if(!item?.review)return;await copyText(JSON.stringify(reviewHandoff(item.review),null,2));q('#selected-review-status').textContent='Copied exact visual-review command for '+item.experiment.id+'. Run it to load the immutable accepted/candidate pair.'});
 q('#copy-research-brief').onclick=async()=>{const observation=selectedBriefObservation(),lab=selectedBriefLab();if(!observation||!lab){q('#brief-status').textContent='Record a human observation and select a Lab first.';return}const handoff={kind:'mujica-research-brief-selector',authority:'human-selected-handoff',claimKind:'research-prioritization',observation:{id:observation.id,observationHash:observation.observationHash,contextHash:observation.contextHash},lab:{id:lab.id,benchmark:lab.benchmark,executionKind:lab.execution.kind},headlessArgv:['research','brief','.', '--lab',lab.id,'--observation',observation.id],authorityBoundary:{humanInput:'hypothesis-only',promotion:'locked-judge-only'}};await copyText(JSON.stringify(handoff,null,2));q('#brief-status').textContent='Copied exact Research Brief command. Run it to publish the immutable handoff, then use its research.run next action.'};
 q('#use-current-frame').onclick=()=>{selectedCapture=null;updateObservationSource()};
 q('#copy-observation').onclick=async()=>{try{await copyText(JSON.stringify(observationDraft(),null,2));q('#observation-status').textContent='Copied schema-valid human hypothesis draft. Record it explicitly with mujica observation record.'}catch(error){q('#observation-status').textContent=error.message}};
@@ -346,7 +390,7 @@ render(0);
 </script></body></html>`;
 }
 
-export async function writeStudioSnapshot(projectDirectory: string, options: { run?: string; replay?: ReplayInput; compareRun?: string; compareReplay?: ReplayInput } = {}) {
+export async function writeStudioSnapshot(projectDirectory: string, options: { run?: string; replay?: ReplayInput; compareRun?: string; compareReplay?: ReplayInput; researchReview?: ResearchReviewInput } = {}) {
   const project = await loadProject(projectDirectory); const snapshot = await buildStudioSnapshot(project.rootDir, options); const snapshotHash = hashJson(snapshot);
   const id = `studio-${snapshotHash.slice(0, 16)}`; const target = join(project.rootDir, ".mujica", "studio", id);
   if (!(await exists(join(target, "snapshot.json")))) await atomicDirectory(target, async (directory) => {

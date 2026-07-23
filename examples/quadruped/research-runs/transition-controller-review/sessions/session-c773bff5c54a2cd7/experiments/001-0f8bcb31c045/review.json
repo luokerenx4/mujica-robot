@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "transition-controller-review",
+    "labHash": "c671fcc23d7b522cea2065428536b29666b95bb912b4f8b152d1218cd8bba7c0",
+    "programHash": "0d37be7b4eff0ab68d6a5b28cb86b06d85721f70e1c7919dad0edca55da6e7ac",
+    "benchmarkLockHash": "3a512a09c5c7557a30cf36c0a465dec02e75c1baf48baacd79fb28b8acd1d7f4",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-c773bff5c54a2cd7",
+    "experimentId": "001-0f8bcb31c045",
+    "experimentHash": "0f8bcb31c0458bd3236195f11b23b2de3c61b8d66721bbaf28dd2fbb0973d3fe"
+  },
+  "proposal": {
+    "strategy": "payload-lateral-lean-normalization",
+    "hypothesis": "The transition Controller over-leans during lateral commands compared with the gate-safe command baseline, amplifying payload drift.",
+    "expectedEffect": "Reduce payload lateral drift and recover weighted transition score while preserving delayed braking and regression gates."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "yaw-redirection: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 0,
+      "candidateViolationCount": 1,
+      "previousViolationSeverity": 0,
+      "candidateViolationSeverity": 1,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "f9576d803d6541c6636ca6b1940e4bdbbf5046d0b1791c42c6080137db53510b"
+  },
+  "selectedCase": {
+    "benchmark": "command-transitions",
+    "id": "yaw-redirection",
+    "task": "yaw-redirection",
+    "scenario": "nominal",
+    "seed": 1204,
+    "weight": 1.5,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: yaw-redirection: unsettled-yaw regressed from passing to failing",
+    "candidateScoreDelta": 0.399970566807724,
+    "weightedScoreDelta": 0.599955850211586
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-6f9c6481f208e927",
+    "runKey": "6f9c6481f208e92742abee9471a1ed3c1864b3267bd3165913c2f8e4c25479c1",
+    "resultHash": "447a20efaded28b3b5df939cba0727a17ed8bbb2dbcd72543f78ae2c23131ef3",
+    "artifactHash": "364bb12c411cf1d3988524e17c816fa9b519d3d5e488024bcc4e7c25cc8615e1",
+    "manifestHash": "e996453584be2569286437b57d6b445e4bfd284414c61e2d0efbe0fe4c954e28",
+    "metricsHash": "9a91a3ff5b0820bfe2f6fc647e13dabbc6de1543b31e0a59a754f01a96fc852b",
+    "scoreHash": "47da7d1f3902afc913e0438694e03227312b70b38703eb724e9df367f2988c4f",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait",
+    "score": 70.38171555768297
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-b05629b197f18ee9",
+    "runKey": "b05629b197f18ee9579b0c17390f3f92aacc25f376bccc22b63e0374937c2538",
+    "resultHash": "9b3ecdea4cd7df12906264524e2bae08b1d64513f32b2e771d7f2f4cb8e8d3cb",
+    "artifactHash": "58e5bb57d9639373854e82053f29a01ba5c2aabf384b103bb0424e84f418786b",
+    "manifestHash": "ef372c27714bbf509327c5e80a8cbc2eeabc6ce8802dbe005edbe220906aa41d",
+    "metricsHash": "ad57b96d1f0bb364271e0aca6626c4cbf21636fe682f6a4562242d125ad99a4f",
+    "scoreHash": "1cda66b414ba302d72e9c2fc26887a8202a9f712362f1b5fb12fad96421d03a7",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait",
+    "score": 70.78168612449069
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

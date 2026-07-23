@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "id": "transition-controller-review",
+  "name": "Command-transition Controller source research",
+  "program": "research/transition-controller-review/program.md",
+  "benchmark": "command-transitions",
+  "regressions": [
+    "command-tracking",
+    "spatial-robustness"
+  ],
+  "execution": {
+    "kind": "controller",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "transition-aware-gait"
+  },
+  "editable": {
+    "paths": [
+      "controllers/transition-aware-gait/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 2,
+    "maxWallClockSeconds": 240
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "robot-revision"
+}

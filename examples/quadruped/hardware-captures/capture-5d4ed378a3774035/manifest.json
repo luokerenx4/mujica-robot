@@ -1,0 +1,392 @@
+{
+  "version": 1,
+  "planHash": "c32edcf537df8efd2a9ae4ed7724f50d80460fe5efaa84117623c44b643a8ad1",
+  "bundleHash": "457fe145a8371cf074eafa3bfbb71fc754621e55157b38868913f53d4e354e86",
+  "driverHash": "cf035443f35464d99990cc802926c14f08188692da6412fab019cb7f8f452841",
+  "driverPackageHash": "a11faeba3d4cd6d8b1422763425f5063b325eb982ebcaf176673513e012123d0",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+    "--actuator-state",
+    "7:faulted",
+    "--post-stop-clear-health"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "local-developer",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T16:47:49.927368Z",
+  "endedAt": "2026-07-23T16:47:50.085386Z",
+  "status": "ABORTED",
+  "transcriptHash": "747e3e793e195f2be157334926063abfab0b282426d22b6c67503668b6b01c98",
+  "episodeHashes": {},
+  "runtimeSourceHash": "1df2a2dfe33ebd69fd208c918ed9c497673fe890c8720f319ef7808bf464ef41",
+  "harnessSourceHash": "d6f9872c42c9a534057e8bb40250fffdddb407bb87748bbac9e8476c33381bf0",
+  "mode": "shadow",
+  "actuationAuthorized": false,
+  "protocolCapabilities": [
+    "applied-action",
+    "command-lease",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 1,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "decisionDeadlineIdentity": {
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0,
+    "samples": 0,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0
+  },
+  "commandLeaseIdentity": {
+    "durationMicroseconds": 100000,
+    "maximumOverrunMicroseconds": 25000,
+    "expirations": 0,
+    "autonomousStops": 0,
+    "maximumObservedSilenceMicroseconds": 0,
+    "lastAcceptedSteps": []
+  },
+  "deviceHealthIdentity": {
+    "samples": 1,
+    "maximumMotorTemperatureMilliC": 40000,
+    "maximumMotorCurrentMilliA": 0,
+    "minimumBusVoltageMilliV": 24000,
+    "maximumBusVoltageMilliV": 24000,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 1,
+      "offline": 0,
+      "ready": 11
+    },
+    "tripCount": 1,
+    "affectedActuatorIndices": [
+      7
+    ]
+  },
+  "postStopHealthIdentity": {
+    "windows": 1,
+    "samples": 3,
+    "healthySamples": 3,
+    "recoveryCandidates": 1,
+    "maximumObservedDurationMicroseconds": 25463,
+    "terminalStates": [
+      "recovery-eligible"
+    ]
+  },
+  "emergencyStopAcknowledgements": 1,
+  "controllerWarmupPasses": 2,
+  "realTimeQualified": true,
+  "id": "capture-5d4ed378a3774035",
+  "captureHash": "5d4ed378a377403521f5e4c4944bae6e338eb5c6f65be6bb6c351d7e581150b6",
+  "plan": "history-policy-shadow-dry-run",
+  "target": "history-policy-shadow-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-history-3dof",
+  "assemblyHash": "547647c66ff536a486ed3134902d24173597e08b6321be404fbda47300886f84",
+  "executionHash": "e6e345bf462080612f784fdde084a0e732bf41634e6668c76e813ed0c0c693d3",
+  "modelHash": "5433c9eca695980694a51e121a2888f1e52d7c7280c37ec72815cffaf9d9f5c0",
+  "controller": "capture-calibrated-history-residual-gait",
+  "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+  "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+  "episodes": [
+    {
+      "id": "learned-policy-shadow",
+      "seed": 4302,
+      "plannedSteps": 10,
+      "steps": 0,
+      "completed": false,
+      "reason": "actuator states are unsafe: 7:faulted"
+    }
+  ],
+  "dispatch": {
+    "samples": 0,
+    "maximumLatencyMs": 0.0,
+    "meanLatencyMs": 0.0,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "decisionDeadline": {
+    "maximumLatencyMs": 10.0,
+    "samples": 0,
+    "maximumObservedLatencyMs": 0.0,
+    "meanObservedLatencyMs": 0.0,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0,
+    "maximumDriverRejectedLatencyMs": 0.0
+  },
+  "commandLease": {
+    "durationMs": 100,
+    "maximumOverrunMs": 25.0,
+    "expirations": 0,
+    "autonomousStops": 0,
+    "maximumObservedSilenceMs": 0.0,
+    "events": [],
+    "automaticRearm": false
+  },
+  "deviceHealth": {
+    "samples": 1,
+    "maximumMotorTemperatureC": 40.0,
+    "maximumMotorCurrentA": 0.0,
+    "minimumBusVoltageV": 24.0,
+    "maximumBusVoltageV": 24.0,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 1,
+      "offline": 0,
+      "ready": 11
+    },
+    "trips": 1,
+    "affectedActuatorIndices": [
+      7
+    ]
+  },
+  "stopRecovery": {
+    "windows": [
+      {
+        "episode": "learned-policy-shadow",
+        "trip": {
+          "episode": "learned-policy-shadow",
+          "step": 0,
+          "kind": "device-health",
+          "reasons": [
+            "actuator states are unsafe: 7:faulted"
+          ],
+          "affectedActuatorIndices": [
+            7
+          ],
+          "scope": "actuator"
+        },
+        "requestedSamples": 3,
+        "minimumHealthyDurationMs": 20.0,
+        "observedDurationMs": 25.46325,
+        "healthySamples": 3,
+        "samples": [
+          {
+            "sequence": 0,
+            "deviceHealth": {
+              "motorTemperatureC": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
+              ],
+              "motorCurrentA": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "actuatorStates": [
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready"
+              ],
+              "busVoltageV": 24.0,
+              "faults": [],
+              "estopEngaged": false,
+              "watchdogHealthy": true
+            },
+            "reasons": [],
+            "affectedActuatorIndices": [],
+            "scope": "none"
+          },
+          {
+            "sequence": 1,
+            "deviceHealth": {
+              "motorTemperatureC": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
+              ],
+              "motorCurrentA": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "actuatorStates": [
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready"
+              ],
+              "busVoltageV": 24.0,
+              "faults": [],
+              "estopEngaged": false,
+              "watchdogHealthy": true
+            },
+            "reasons": [],
+            "affectedActuatorIndices": [],
+            "scope": "none"
+          },
+          {
+            "sequence": 2,
+            "deviceHealth": {
+              "motorTemperatureC": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
+              ],
+              "motorCurrentA": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "actuatorStates": [
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready"
+              ],
+              "busVoltageV": 24.0,
+              "faults": [],
+              "estopEngaged": false,
+              "watchdogHealthy": true
+            },
+            "reasons": [],
+            "affectedActuatorIndices": [],
+            "scope": "none"
+          }
+        ],
+        "recoveryEligible": true,
+        "requiresNewSession": true,
+        "stateTransitions": [
+          "armed",
+          "tripped",
+          "stop-acknowledged",
+          "health-checking",
+          "recovery-eligible"
+        ]
+      }
+    ],
+    "samples": 3,
+    "healthySamples": 3,
+    "recoveryCandidates": 1,
+    "requiresNewSession": true
+  },
+  "stateAge": {
+    "samples": 1,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [
+    {
+      "episode": "learned-policy-shadow",
+      "step": 0,
+      "kind": "device-health",
+      "reasons": [
+        "actuator states are unsafe: 7:faulted"
+      ],
+      "affectedActuatorIndices": [
+        7
+      ],
+      "scope": "actuator"
+    }
+  ],
+  "safeStops": 0,
+  "emergencyStops": 1,
+  "reasons": [
+    "learned-policy-shadow: actuator states are unsafe: 7:faulted"
+  ],
+  "calibrationEligible": false,
+  "completed": true
+}

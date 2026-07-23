@@ -1,0 +1,53 @@
+{
+  "version": 4,
+  "id": "001-0f8bcb31c045",
+  "experimentHash": "0f8bcb31c0458bd3236195f11b23b2de3c61b8d66721bbaf28dd2fbb0973d3fe",
+  "sequence": 1,
+  "sessionId": "session-c773bff5c54a2cd7",
+  "researchId": "transition-controller-review",
+  "labHash": "c671fcc23d7b522cea2065428536b29666b95bb912b4f8b152d1218cd8bba7c0",
+  "programHash": "0d37be7b4eff0ab68d6a5b28cb86b06d85721f70e1c7919dad0edca55da6e7ac",
+  "benchmarkLockHash": "3a512a09c5c7557a30cf36c0a465dec02e75c1baf48baacd79fb28b8acd1d7f4",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "288c48c0126615e868f647c90c928332a022f52bafd882f32dbfd102388199b3",
+  "researcherChangedPaths": [
+    "controllers/transition-aware-gait/controller.json"
+  ],
+  "changedPaths": [
+    "controllers/transition-aware-gait/controller.json"
+  ],
+  "proposal": {
+    "strategy": "payload-lateral-lean-normalization",
+    "hypothesis": "The transition Controller over-leans during lateral commands compared with the gate-safe command baseline, amplifying payload drift.",
+    "expectedEffect": "Reduce payload lateral drift and recover weighted transition score while preserving delayed braking and regression gates."
+  },
+  "policyId": null,
+  "score": 68.88662732401636,
+  "delta": 0.6923486818126179,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "yaw-redirection: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 0,
+    "candidateViolationCount": 1,
+    "previousViolationSeverity": 0,
+    "candidateViolationSeverity": 1,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "f901aff3ebc04c9dddeade0a8e554261862153c0dcc768fca52e249c488a1e7a",
+    "acceptedRunId": "run-6f9c6481f208e927",
+    "candidateRunId": "run-b05629b197f18ee9",
+    "caseId": "yaw-redirection"
+  },
+  "durationMs": 45632,
+  "completed": true
+}

@@ -7,7 +7,7 @@ import {
   assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
-import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand } from "./research-lab";
+import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
 
 const HELP = `mujica — AI-native robot development harness
@@ -30,6 +30,7 @@ USAGE
   mujica assembly compare <project> --from ID --to ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
+  mujica studio <project> --research-lab ID --session ID --experiment ID [--json]
   mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]
   mujica observation list <project> [--json]
   mujica observation inspect <project> --observation ID [--json]
@@ -54,6 +55,7 @@ USAGE
   mujica research inspect|status <project> --lab ID [--json]
   mujica research brief <project> --lab ID --observation ID [--observation ID] [--json]
   mujica research brief inspect <project> --brief ID [--json]
+  mujica research review inspect <project> --lab ID --session ID --experiment ID [--json]
   mujica research run <project> --lab ID [--brief ID] --iterations N --agent-command CMD [--json]
   mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
   mujica revisions <project> [--json]
@@ -79,7 +81,7 @@ const CAPABILITIES = [
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
-  { id: "studio", usage: "mujica studio <project> [--run ID] [--compare-run ID] [--json]", effect: "creates-artifact" },
+  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID) [--json]", effect: "creates-artifact" },
   { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]", effect: "read-only" },
   { id: "observation.list", usage: "mujica observation list <project> [--json]", effect: "read-only" },
   { id: "observation.inspect", usage: "mujica observation inspect <project> --observation ID [--json]", effect: "read-only" },
@@ -105,6 +107,7 @@ const CAPABILITIES = [
   { id: "research.status", usage: "mujica research status <project> --lab ID [--json]", effect: "read-only" },
   { id: "research.brief", usage: "mujica research brief <project> --lab ID --observation ID [--observation ID] [--json]", effect: "creates-artifact" },
   { id: "research.brief.inspect", usage: "mujica research brief inspect <project> --brief ID [--json]", effect: "read-only" },
+  { id: "research.review.inspect", usage: "mujica research review inspect <project> --lab ID --session ID --experiment ID [--json]", effect: "read-only" },
   { id: "research.run", usage: "mujica research run <project> --lab ID [--brief ID] [--iterations N] --agent-command CMD [--json]", effect: "mutates-project" },
   { id: "research", usage: "mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]", effect: "mutates-project" },
   { id: "revisions", usage: "mujica revisions <project> [--json]", effect: "read-only" },
@@ -154,6 +157,7 @@ function printHuman(command: string, data: any): void {
   else if (command === "research.inspect") process.stdout.write(`lab=${data.lab.id}\nlane=${data.lab.execution.kind}\nbenchmark=${data.lab.benchmark}\nlock=${data.benchmarkLockHash}\nprogram=${data.programHash}\neditable=${data.lab.editable.paths.join(",")}\n`);
   else if (command === "research.status") process.stdout.write(`lab=${data.lab}\nsessions=${data.sessions.length}\nhead=${data.head?.id ?? "none"}\n`);
   else if (command === "research.brief" || command === "research.brief.inspect") process.stdout.write(`brief=${data.id}\nlab=${data.brief.lab.definition.id}\nobservations=${data.brief.observations.map((item: any) => item.id).join(",")}\nhash=${data.briefHash}\n`);
+  else if (command === "research.review.inspect") process.stdout.write(`experiment=${data.review.lineage.experimentId}\nverdict=${data.review.judge.verdict}\ncase=${data.review.selectedCase.id}\naccepted=${data.review.accepted.id}\ncandidate=${data.review.candidate.id}\nhash=${data.reviewHash}\n`);
   else if (command === "research.run") process.stdout.write(`lab=${data.researchId}\nsession=${data.id}\ninitial_score=${data.initialScore}\nfinal_score=${data.finalScore}\nscore_delta=${data.scoreDelta}\niterations=${data.iterationsCompleted}\nledger=${data.ledgerPath}\n`);
   else process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
 }
@@ -169,8 +173,19 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   try {
     let envelope: any;
     if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
-      envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : command === "studio" ? await studioCommand(project, values.run, values["compare-run"]) : await revisionsCommand(project);
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
+      if (command === "studio") {
+        const reviewSelectorCount = [values["research-lab"], values.session, values.experiment].filter(Boolean).length;
+        if (reviewSelectorCount !== 0 && reviewSelectorCount !== 3) throw new Error("Studio Research Review selection requires --research-lab, --session, and --experiment together");
+        if (reviewSelectorCount && (values.run || values["compare-run"])) throw new Error("Studio accepts either explicit Runs or one Research Review selector, not both");
+        if (reviewSelectorCount) {
+          const inspected = await researchReviewInspectCommand(project, values["research-lab"]!, values.session!, values.experiment!);
+          envelope = await studioCommand(project, inspected.data.review.accepted.id, inspected.data.review.candidate.id, {
+            review: inspected.data.review,
+            reviewHash: inspected.data.reviewHash,
+          });
+        } else envelope = await studioCommand(project, values.run, values["compare-run"]);
+      } else envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : await revisionsCommand(project);
     } else if (command === "evidence") {
       const action = args.shift(); commandId = `evidence.${action}`;
       if (action !== "inspect") throw new Error("Usage: mujica evidence inspect ...");
@@ -244,16 +259,22 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "candidate") {
       const { values, positionals } = parseArgs({ args, options: { candidate: { type: "string" }, apply: { type: "boolean", default: false }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica candidate <project>"), values.project); envelope = await candidateCommand(project, required(values.candidate, "candidate"), values.apply);
     } else if (command === "research") {
-      const action = ["list", "inspect", "status", "brief", "run"].includes(args[0] ?? "") ? args.shift() : null;
+      const action = ["list", "inspect", "status", "brief", "review", "run"].includes(args[0] ?? "") ? args.shift() : null;
       if (action) {
         const inspectBrief = action === "brief" && args[0] === "inspect";
+        const inspectReview = action === "review" && args[0] === "inspect";
         if (inspectBrief) args.shift();
-        commandId = inspectBrief ? "research.brief.inspect" : `research.${action}`;
-        const { values, positionals } = parseArgs({ args, options: { lab: { type: "string" }, brief: { type: "string" }, observation: { type: "string", multiple: true, default: [] }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+        if (inspectReview) args.shift();
+        commandId = inspectBrief ? "research.brief.inspect" : inspectReview ? "research.review.inspect" : `research.${action}`;
+        const { values, positionals } = parseArgs({ args, options: { lab: { type: "string" }, brief: { type: "string" }, observation: { type: "string", multiple: true, default: [] }, session: { type: "string" }, experiment: { type: "string" }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
         const project = await resolveProjectDirectory(one(positionals, `mujica research ${action} <project>`), values.project);
         if (action === "list") envelope = await researchLabListCommand(project);
         else if (action === "inspect") envelope = await researchLabInspectCommand(project, required(values.lab, "lab"));
         else if (action === "status") envelope = await researchLabStatusCommand(project, required(values.lab, "lab"));
+        else if (action === "review") {
+          if (!inspectReview) throw new Error("Usage: mujica research review inspect <project> --lab ID --session ID --experiment ID");
+          envelope = await researchReviewInspectCommand(project, required(values.lab, "lab"), required(values.session, "session"), required(values.experiment, "experiment"));
+        }
         else if (action === "brief") envelope = inspectBrief
           ? await researchBriefInspectCommand(project, required(values.brief, "brief"))
           : await researchBriefCommand(project, required(values.lab, "lab"), values.observation);

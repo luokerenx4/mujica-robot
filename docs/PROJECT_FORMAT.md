@@ -90,7 +90,16 @@ A Training Research definition similarly names one Training JSON file and promot
 
 A V2 Research Lab lives at `research/<id>/research.json` beside its human-owned `program.md`. It selects one `controller`, `policy`, or `development` execution lane; one locked primary Benchmark; zero or more locked regression Benchmarks; exact editable files or trailing-`/**` directory closures; experiment, wall-clock, and optional training-transition budgets; minimum improvement; and an evidence, Policy Revision, or Robot Revision promotion rule. The Agent owns only the declared source closure. Runtime, Harness, Benchmarks, locks, objectives, tasks, scenarios, generated artifacts, and every undeclared project path remain fixed.
 
-Each V2 invocation creates an immutable Session under `research-runs/<lab-id>/sessions/`. Its `results.tsv` is compact Agent memory; every Experiment directory contains proposal metadata, an authoritative source patch, before/after hashes, execution references, frozen evaluation evidence, verdict, and manifest. Candidate work occurs in a disposable project copy. REVERT and CRASH cannot modify source. KEEP uses stale-source checks and a rollback-capable source transaction before publishing the declared Revision. Large content-addressed Runs, Training Runs, Policies, and Revisions stay in their normal top-level stores and are referenced by identity.
+Each V2 invocation creates an immutable Session under `research-runs/<lab-id>/sessions/`. Its `results.tsv` is compact Agent memory; every Experiment directory contains proposal metadata, an authoritative source patch, before/after hashes, execution references, frozen evaluation evidence, verdict, manifest, and—when KEEP or REVERT completed successfully—a `review.json`. Candidate work occurs in a disposable project copy. REVERT and CRASH cannot modify source. KEEP uses stale-source checks and a rollback-capable source transaction before publishing the declared Revision. Large content-addressed Runs, Training Runs, Policies, Revisions, and the accepted/candidate Simulation Runs referenced by a Research Review stay in their normal top-level stores.
+
+A Research Review selects one deterministic primary-Benchmark witness after the
+Judge decision, while the isolated candidate still executes. It binds complete
+Lab/Brief/Session/Experiment/Judge lineage to two integrity-checked immutable
+Runs. The Experiment manifest records `AVAILABLE`, `UNAVAILABLE`, or
+`NOT_APPLICABLE`; the Session counts successful and failed captures. Review
+failure cannot change KEEP/REVERT, and one selected case cannot represent the
+full Judge suite. See [Human-reviewed Research
+Outcomes](design/human-reviewed-research-outcomes.md).
 
 A Research Brief lives at `research-briefs/brief-<hash>/`. It deterministically
 binds one Lab/program/primary-Benchmark-lock identity to 1–16 immutable Human

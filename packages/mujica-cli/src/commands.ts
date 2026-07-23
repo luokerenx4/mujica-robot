@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
   listDomainProfileIds, listDriverPackageIds, listHardwareCapturePlanIds, loadController, loadDomainProfile, loadDriverPackage, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
-  type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
+  type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type ResearchReview, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
@@ -94,7 +94,7 @@ export async function driverInspectCommand(projectDir: string, id: string) {
   }, project);
 }
 
-export async function studioCommand(projectDir: string, run?: string, compareRun?: string) {
+export async function studioCommand(projectDir: string, run?: string, compareRun?: string, researchReview?: { review: ResearchReview; reviewHash: string }) {
   const project = await loadProject(projectDir); const runIds = await listManifestDirectories(join(project.rootDir, "runs")); const runId = run ?? runIds.at(-1);
   if (!runId) throw new Error("Studio requires at least one completed Simulation Run");
 
@@ -139,6 +139,7 @@ export async function studioCommand(projectDir: string, run?: string, compareRun
   const result = await writeStudioSnapshot(project.rootDir, {
     run: runId, replay: { path: replay.path, manifest: replay.manifest },
     ...(compareRun && comparisonReplay ? { compareRun, compareReplay: { path: comparisonReplay.path, manifest: comparisonReplay.manifest } } : {}),
+    ...(researchReview ? { researchReview } : {}),
   });
   const artifacts = [
     projectArtifact("simulation-replay", replay.id, replay.path, true),
@@ -149,6 +150,7 @@ export async function studioCommand(projectDir: string, run?: string, compareRun
     id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun, comparisonRun: result.comparisonRun,
     replay: { id: replay.id, path: replay.path, frameCount: replay.manifest.frameCount, cached: replay.cached },
     comparisonReplay: comparisonReplay ? { id: comparisonReplay.id, path: comparisonReplay.path, frameCount: comparisonReplay.manifest.frameCount, cached: comparisonReplay.cached } : null,
+    researchReview: researchReview ? { experimentId: researchReview.review.lineage.experimentId, reviewHash: researchReview.reviewHash } : null,
   }, project, artifacts);
 }
 

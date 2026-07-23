@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
-import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, trainingRunStableResultIdentity } from "./research-lab";
+import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
@@ -49,6 +49,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.brief")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.brief.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.review.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train-research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy-revision.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
@@ -214,7 +215,7 @@ describe("agent CLI contract", () => {
       expect(JSON.parse(await readFile(resolve(sessionArtifactPath, "brief.json"), "utf8"))).toEqual(briefEnvelope.data.brief);
       const experimentManifest = JSON.parse(await readFile(resolve(runEnvelope.data.experiments[0].artifactPath, "manifest.json"), "utf8"));
       expect(experimentManifest).toMatchObject({
-        version: 3,
+        version: 4,
         researchBriefId: briefEnvelope.data.id,
         researchBriefHash: briefEnvelope.data.briefHash,
       });
@@ -695,6 +696,64 @@ describe("agent CLI contract", () => {
     }
   }, 15_000);
 
+  test("Research Review inspection and Studio preserve the locked Judge lineage", () => {
+    const inspected = invoke([
+      "research", "review", "inspect", "examples/quadruped",
+      "--lab", "transition-controller-review",
+      "--session", "session-c773bff5c54a2cd7",
+      "--experiment", "001-0f8bcb31c045",
+      "--json",
+    ]);
+    expect({ code: inspected.code, stderr: inspected.stderr }).toEqual({ code: 0, stderr: "" });
+    const inspection = JSON.parse(inspected.stdout);
+    expect(inspection.data.review).toMatchObject({
+      kind: "mujica-research-review",
+      authority: "derived-human-review",
+      claimKind: "visual-witness",
+      lineage: {
+        researchId: "transition-controller-review",
+        sessionId: "session-c773bff5c54a2cd7",
+        experimentId: "001-0f8bcb31c045",
+      },
+      judge: { verdict: "REVERT", decision: { selectionReason: "gate-regression" } },
+      selectedCase: { id: "yaw-redirection", selectionPolicy: "first-primary-gate-regression" },
+      accepted: { id: "run-6f9c6481f208e927" },
+      candidate: { id: "run-b05629b197f18ee9" },
+      authorityBoundary: {
+        visualInterpretation: "hypothesis-only",
+        experimentDecision: "locked-judge",
+      },
+    });
+    expect(inspection.data.reviewHash).toHaveLength(64);
+    expect(inspection.nextActions[0]).toMatchObject({
+      id: "open-visual-review",
+      argv: [
+        "studio",
+        resolve(root, "examples/quadruped"),
+        "--research-lab", "transition-controller-review",
+        "--session", "session-c773bff5c54a2cd7",
+        "--experiment", "001-0f8bcb31c045",
+      ],
+    });
+
+    const studio = invoke([
+      "studio", "examples/quadruped",
+      "--research-lab", "transition-controller-review",
+      "--session", "session-c773bff5c54a2cd7",
+      "--experiment", "001-0f8bcb31c045",
+      "--json",
+    ]);
+    expect({ code: studio.code, stderr: studio.stderr }).toEqual({ code: 0, stderr: "" });
+    expect(JSON.parse(studio.stdout).data).toMatchObject({
+      selectedRun: "run-6f9c6481f208e927",
+      comparisonRun: "run-b05629b197f18ee9",
+      researchReview: {
+        experimentId: "001-0f8bcb31c045",
+        reviewHash: inspection.data.reviewHash,
+      },
+    });
+  }, 15_000);
+
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
@@ -705,7 +764,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
-    expect(envelope.data.definitions.researchLabs).toBe(5);
+    expect(envelope.data.definitions.researchLabs).toBe(6);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
@@ -724,7 +783,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-b0bf1545307c8d5f",
+      "--bundle", "hardware-457fe145a8371cf0",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -884,6 +943,37 @@ describe("agent CLI contract", () => {
     const feasibility = researchDecision(objective as any, result(0.4, 50) as any, result(0.4, 60) as any, result(0.1, 57) as any, 0.01);
     expect(feasibility).toMatchObject({ verdict: "KEEP", previousViolationCount: 1, candidateViolationCount: 0, feasibilityImproved: true, scoreImproved: false, selectionReason: "fewer-gate-violations" });
     expect(researchDecision(objective as any, result(0.4, 50) as any, result(0.1, 60) as any, result(0.1, 57) as any, 0.01).verdict).toBe("REVERT");
+  });
+
+  test("Research Review selects a Judge-named gate case before score magnitude", () => {
+    const benchmark = {
+      id: "review-benchmark",
+      cases: [
+        { id: "large-score", task: "walk", scenario: "nominal", seed: 1, weight: 2, gating: true },
+        { id: "gate-case", task: "brake", scenario: "delay", seed: 2, weight: 1, gating: true },
+      ],
+    };
+    const evaluation = (scores: number[]) => ({
+      aggregateScore: scores.reduce((sum, value) => sum + value, 0) / scores.length,
+      cases: benchmark.cases.map((item, index) => ({ case: item, metrics: {}, score: { total: scores[index] }, resultHash: String(index + 1).repeat(64) })),
+    });
+    const decision = {
+      verdict: "REVERT", gateReasons: ["gate-case: lateral-drift regressed from passing to failing"],
+      previousViolationCount: 0, candidateViolationCount: 1, previousViolationSeverity: 0, candidateViolationSeverity: 1,
+      feasibilityImproved: false, severityImproved: false, scoreImproved: true, selectionReason: "gate-regression",
+    };
+    const gateSelected = selectResearchReviewCase(benchmark as any, evaluation([10, 10]) as any, evaluation([20, 11]) as any, decision as any);
+    expect(gateSelected).toMatchObject({
+      definition: { id: "gate-case" },
+      selectionPolicy: "first-primary-gate-regression",
+      candidateScoreDelta: 1,
+    });
+    const scoreSelected = selectResearchReviewCase(benchmark as any, evaluation([10, 10]) as any, evaluation([20, 11]) as any, { ...decision, gateReasons: [], selectionReason: "score-improvement-within-feasibility-tier", verdict: "KEEP" } as any);
+    expect(scoreSelected).toMatchObject({
+      definition: { id: "large-score" },
+      selectionPolicy: "largest-absolute-weighted-score-delta",
+      weightedScoreDelta: 20,
+    });
   });
 
   test("training proposals are confined and preserve integer parameters", async () => {

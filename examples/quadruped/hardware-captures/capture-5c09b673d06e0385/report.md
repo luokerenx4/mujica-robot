@@ -1,0 +1,32 @@
+# Hardware capture
+
+- Status: COMPLETED
+- Environment: dry-run
+- Mode: shadow
+- Actuation authorized: false
+- Device: Mujica Protocol simulator (simulated)
+- Driver Package / executable hash: a11faeba3d4cd6d8b1422763425f5063b325eb982ebcaf176673513e012123d0 / cf035443f35464d99990cc802926c14f08188692da6412fab019cb7f8f452841
+- Episodes: 1/1
+- Dispatch latency max/mean: 1.021417/0.349825 ms
+- Decision latency max/mean/limit: 1.015125/0.345996/10.000000 ms
+- Host pre-dispatch deadline misses: 0
+- Driver deadline rejections: 0
+- Command lease / maximum overrun: 100 / 25.000000 ms
+- Command-lease expirations / autonomous stops: 0 / 0
+- Maximum observed command silence: 0.000000 ms
+- Device health samples: 11
+- Motor temperature/current max: 40.000000 C / 0.000000 A
+- Bus voltage min/max: 24.000000/24.000000 V
+- Driver fault/E-stop/watchdog-unhealthy samples: 0/0/0
+- Actuator states ready/derated/faulted/offline: 132/0/0/0
+- Device-health trips / affected actuator indices: 0 / []
+- Stop-latched health windows/samples/healthy: 0/0/0
+- Recovery candidates (new session required): 0
+- State age max/mean: 0.000000/0.000000 ms
+- Deadline misses: 0
+- Safety interventions: 0
+- Emergency stops: 0
+- Emergency-stop acknowledgements: 0
+- Controller warm-up passes before driver connection: 2
+- Real-time qualified: true
+- Calibration eligible: false

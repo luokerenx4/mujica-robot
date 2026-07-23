@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { sha256 } from "@mujica/core";
+import { hashJson, sha256 } from "@mujica/core";
 import { buildStudioSnapshot, writeStudioSnapshot } from "./snapshot";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
@@ -30,8 +30,20 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.humanObservations).toEqual(second.snapshot.humanObservations);
     expect(first.snapshot.researchBriefs).toEqual(second.snapshot.researchBriefs);
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
+    expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("transition-controller-review");
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
+    const reviewedSession = first.snapshot.researchSessions.find((item) => item.id === "session-c773bff5c54a2cd7");
+    expect(reviewedSession?.experiments[0]).toMatchObject({
+      id: "001-0f8bcb31c045",
+      verdict: "REVERT",
+      visualReview: {
+        judge: { verdict: "REVERT" },
+        selectedCase: { id: "yaw-redirection", selectionPolicy: "first-primary-gate-regression" },
+        accepted: { id: "run-6f9c6481f208e927" },
+        candidate: { id: "run-b05629b197f18ee9" },
+      },
+    });
     const html = await readFile(first.indexPath, "utf8");
     expect(html).toContain("read-only evidence debugger");
     expect(html).toContain("Authoritative MuJoCo replay comparison");
@@ -40,11 +52,15 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Attention queue");
     expect(html).toContain("Human observation → Agent hypothesis");
     expect(html).toContain("Human hypothesis → governed Research Brief");
+    expect(html).toContain("Research Review provenance");
     expect(html).toContain("mujica-human-observation-draft");
     expect(html).toContain("mujica-research-brief-selector");
+    expect(html).toContain("mujica-research-review-selector");
     expect(html).toContain("'research','brief'");
+    expect(html).toContain("'studio','.'");
     expect(html).toContain("humanInput:'hypothesis-only'");
     expect(html).toContain("promotion:'locked-judge-only'");
+    expect(html).toContain("first-primary-gate-regression");
     expect(html).toContain("mujica observation record");
     expect(html).toContain("Hardware Captures");
     expect(html).toContain("gate-regression");
@@ -66,6 +82,41 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("headlessArgv");
     expect(html).toContain("'evidence','inspect'");
     expect(html).toContain("subject − baseline");
+  });
+
+  test("binds an exact Research Review to its immutable accepted and candidate Runs", async () => {
+    const reviewPath = join(
+      project,
+      "research-runs",
+      "transition-controller-review",
+      "sessions",
+      "session-c773bff5c54a2cd7",
+      "experiments",
+      "001-0f8bcb31c045",
+      "review.json",
+    );
+    const review = JSON.parse(await readFile(reviewPath, "utf8"));
+    const result = await writeStudioSnapshot(project, {
+      run: "run-6f9c6481f208e927",
+      compareRun: "run-b05629b197f18ee9",
+      researchReview: { review, reviewHash: hashJson(review) },
+    });
+    expect(result.snapshot.selectedResearchReview).toMatchObject({
+      reviewHash: hashJson(review),
+      review: {
+        judge: { verdict: "REVERT" },
+        selectedCase: { id: "yaw-redirection" },
+        accepted: { id: "run-6f9c6481f208e927" },
+        candidate: { id: "run-b05629b197f18ee9" },
+      },
+    });
+    expect(result.snapshot.selectedRun?.id).toBe(review.accepted.id);
+    expect(result.snapshot.comparisonRun?.id).toBe(review.candidate.id);
+    await expect(buildStudioSnapshot(project, {
+      run: review.accepted.id,
+      compareRun: review.candidate.id,
+      researchReview: { review, reviewHash: "0".repeat(64) },
+    })).rejects.toThrow("differs from its immutable Run pair");
   });
 
   test("copies a verified MuJoCo replay into the offline snapshot", async () => {

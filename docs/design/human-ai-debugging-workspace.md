@@ -58,12 +58,17 @@ Studio is deliberately offline and read-only:
 6. When the human explicitly chooses a Research Lab, `research brief` can bind
    the Observation and its full context into a governed research handoff. The
    Brief remains hypothesis-only and cannot widen the Lab or Judge.
+7. A completed KEEP/REVERT experiment preserves an accepted/candidate Research
+   Review. Human inspection may record the next Observation, but the Review
+   cannot alter the locked verdict.
 
 The artifact freezes `draft.json`, full `context.json`, and `manifest.json`.
 Its identity includes observer, timestamp, source, assessment, draft hash, and
 context hash. Editing any byte makes inspection and Studio projection fail.
 See [Human-guided Research Briefs](human-guided-research-briefs.md) for the
 optional Observation-to-Research lifecycle.
+See [Human-reviewed Research Outcomes](human-reviewed-research-outcomes.md) for
+the verified Research-to-Observation return path.
 
 ## Attention queue
 

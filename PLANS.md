@@ -18,12 +18,13 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-| — | No active capability Plan. | 2026-07-24 |
+| None | — | — |
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Human-reviewed Research Outcomes](plans/human-reviewed-research-outcomes.md) | Preserve exact accepted/candidate MuJoCo review pairs across KEEP and REVERT for the human half of the research loop. | 2026-07-24 |
 | [Human-guided Research Briefs](plans/human-guided-research-briefs.md) | Bound human visual hypotheses into governed Agent/ML experiments without widening Judge authority. | 2026-07-24 |
 | [Human–AI debugging workspace](plans/human-ai-debugging-workspace.md) | Gave humans and Coding Agents one provenance-bound visual and headless debugging context. | 2026-07-23 |
 | [Driver command-lease watchdog](plans/driver-command-lease-watchdog.md) | Make the frozen Driver autonomously stop and latch when host commands disappear. | 2026-07-23 |

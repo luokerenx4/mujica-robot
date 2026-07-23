@@ -61,6 +61,12 @@ bun run mujica research run examples/quadruped --lab motion-quality-residual-pol
   --iterations 2 \
   --agent-command 'python3 research/motion-quality-residual-policy/researcher.py'
 bun run mujica research status examples/quadruped --lab upright-residual-policy
+bun run mujica research review inspect examples/quadruped \
+  --lab transition-controller-review --session session-c773bff5c54a2cd7 \
+  --experiment 001-0f8bcb31c045
+bun run mujica studio examples/quadruped \
+  --research-lab transition-controller-review \
+  --session session-c773bff5c54a2cd7 --experiment 001-0f8bcb31c045
 bun run mujica research examples/quadruped --research forward-gait --iterations 6
 bun run mujica train-research examples/quadruped --research forward-residual-policy --iterations 6
 ```
@@ -181,6 +187,17 @@ records the Brief in Session/Experiment provenance. Human intuition chooses
 what to investigate, while fixed editable paths, RL transition budgets,
 regression Benchmarks, and the Judge still decide what may change and KEEP.
 
+Every judged KEEP/REVERT experiment also preserves one deterministic visual
+witness before its isolated candidate disappears. Immutable accepted and
+candidate MuJoCo Runs are bound to the proposal, Brief/Observation lineage,
+Benchmark lock, and locked Judge decision in a Research Review.
+`research review inspect` verifies those bytes headlessly; the three-part Studio
+selector opens the exact synchronized pair. The checked-in controller experiment
+improved aggregate score `68.1943 → 68.8866` but was correctly REVERT because
+`yaw-redirection` regressed from passing to failing. Visual interpretation
+remains hypothesis-only. See [Human-reviewed Research
+Outcomes](docs/design/human-reviewed-research-outcomes.md).
+
 The hardware boundary exports a kept Robot Revision as an immutable,
 contract-bound driver Bundle, can execute that Bundle through a governed Capture
 Plan, and can still validate separately collected conformance Evidence. The
@@ -224,4 +241,4 @@ The traction lane now reaches `friction = 0.1` without exposing Scenario identit
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 
-Read [the architecture](docs/ARCHITECTURE.md), [Human–AI debugging workspace](docs/design/human-ai-debugging-workspace.md), [Human-guided Research Briefs](docs/design/human-guided-research-briefs.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [hardware capture protocol](docs/design/hardware-capture-protocol.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Read [the architecture](docs/ARCHITECTURE.md), [Human–AI debugging workspace](docs/design/human-ai-debugging-workspace.md), [Human-guided Research Briefs](docs/design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](docs/design/human-reviewed-research-outcomes.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [hardware capture protocol](docs/design/hardware-capture-protocol.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

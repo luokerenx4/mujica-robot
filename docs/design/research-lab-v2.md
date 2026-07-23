@@ -35,6 +35,7 @@ research-runs/
             execution.json
             evaluation.json
             verdict.json
+            review.json
             manifest.json
 ```
 
@@ -76,6 +77,14 @@ prioritize a hypothesis, but it does not widen the editable closure, budgets,
 regressions, or promotion authority. A Brief whose Lab, program, or primary
 Benchmark lock changed is stale and cannot execute. See [Human-guided Research
 Briefs](human-guided-research-briefs.md).
+
+After a KEEP/REVERT decision is locked, Mujica selects one deterministic
+primary-case witness and persists both accepted and exact candidate Simulation
+Runs before destroying the isolated workspace. The resulting Research Review
+preserves Judge and Brief lineage for post-experiment human inspection. It is
+not part of selection authority; a capture error is recorded without changing
+the verdict. See [Human-reviewed Research
+Outcomes](human-reviewed-research-outcomes.md).
 
 ## Execution lanes
 

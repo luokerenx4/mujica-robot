@@ -19,6 +19,7 @@ import {
   loadTraining,
   researchBriefSchema,
   researchLabProposalSchema,
+  researchReviewSchema,
   sha256,
   writeJson,
   type BenchmarkDefinition,
@@ -27,8 +28,9 @@ import {
   type ResearchLabDefinition,
   type ResearchLabProposal,
   type ResearchBrief,
+  type ResearchReview,
 } from "@mujica/core";
-import { candidateCommand, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons } from "./commands";
+import { candidateCommand, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons, simulateCommand } from "./commands";
 import { success, type Artifact } from "./contract";
 import { verifyHumanObservation } from "./evidence";
 
@@ -41,6 +43,53 @@ const SOURCE_ARTIFACT_ROOTS = new Set([...GENERATED_ROOTS, "policies"]);
 
 type Evaluation = Awaited<ReturnType<typeof evaluatePair>>;
 type SourceHashes = Record<string, string>;
+type ResearchDecision = ReturnType<typeof researchDecision>;
+
+export function selectResearchReviewCase(
+  benchmark: BenchmarkDefinition,
+  previous: Evaluation,
+  candidate: Evaluation,
+  decision: ResearchDecision,
+) {
+  const evaluated = benchmark.cases.map((definition) => {
+    const accepted = previous.cases.find((item) => item.case.id === definition.id);
+    const proposed = candidate.cases.find((item) => item.case.id === definition.id);
+    if (!accepted || !proposed) throw new Error(`Research Review case '${definition.id}' is missing from the locked evaluation`);
+    const candidateScoreDelta = proposed.score.total - accepted.score.total;
+    return {
+      definition,
+      accepted,
+      candidate: proposed,
+      candidateScoreDelta,
+      weightedScoreDelta: candidateScoreDelta * definition.weight,
+    };
+  });
+  if (!evaluated.length) throw new Error(`Benchmark '${benchmark.id}' has no Research Review cases`);
+  const gateCase = evaluated.find((item) => decision.gateReasons.some((reason) => reason.startsWith(`${item.definition.id}:`)));
+  if (gateCase) {
+    return {
+      ...gateCase,
+      selectionPolicy: "first-primary-gate-regression" as const,
+      selectionReason: `First primary gate regression named by the locked Judge: ${decision.gateReasons.find((reason) => reason.startsWith(`${gateCase.definition.id}:`))}`,
+    };
+  }
+  const ranked = evaluated
+    .map((item, index) => ({ ...item, index }))
+    .sort((left, right) => Math.abs(right.weightedScoreDelta) - Math.abs(left.weightedScoreDelta) || left.index - right.index);
+  const selected = ranked[0]!;
+  if (Math.abs(selected.weightedScoreDelta) > 1e-12) {
+    return {
+      ...selected,
+      selectionPolicy: "largest-absolute-weighted-score-delta" as const,
+      selectionReason: "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    };
+  }
+  return {
+    ...selected,
+    selectionPolicy: "first-primary-case" as const,
+    selectionReason: "All primary-case score deltas are equal; selected the first locked Benchmark case.",
+  };
+}
 
 function artifact(kind: Artifact["kind"], id: string, path: string, immutable = true): Artifact {
   return { kind, id, path, immutable };
@@ -49,6 +98,165 @@ function artifact(kind: Artifact["kind"], id: string, path: string, immutable = 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+
+async function importImmutableSimulationRun(projectRoot: string, result: Record<string, any>): Promise<string> {
+  const source = resolve(String(result.artifactPath));
+  const sourceStat = await lstat(source);
+  if (!sourceStat.isDirectory() || sourceStat.isSymbolicLink()) throw new Error(`Research Review Run '${result.runId}' is not a real artifact directory`);
+  const target = confined(projectRoot, `runs/${result.runId}`);
+  const sourceHash = await hashDirectory(source);
+  if (resolve(target) !== source) {
+    if (await exists(target)) {
+      if (await hashDirectory(target) !== sourceHash) throw new Error(`Research Review Run '${result.runId}' conflicts with an existing immutable Run`);
+    } else {
+      await atomicDirectory(target, async (directory) => {
+        for (const entry of await readdir(source, { withFileTypes: true })) {
+          if (entry.isSymbolicLink()) throw new Error(`Research Review Run '${result.runId}' contains a symlink`);
+          await cp(join(source, entry.name), join(directory, entry.name), { recursive: true });
+        }
+      });
+    }
+  }
+  if (await hashDirectory(target) !== sourceHash) throw new Error(`Research Review Run '${result.runId}' failed immutable import verification`);
+  return target;
+}
+
+async function researchReviewRunReference(
+  projectRoot: string,
+  result: Record<string, any>,
+  role: "accepted" | "candidate",
+  assembly: string,
+  controller: string,
+  expectedResultHash: string,
+  expectedScore: number,
+) {
+  if (result.resultHash !== expectedResultHash) throw new Error(`Research Review ${role} Run differs from the locked evaluation result`);
+  const root = await importImmutableSimulationRun(projectRoot, result);
+  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  const metrics = JSON.parse(await readFile(join(root, "metrics.json"), "utf8"));
+  const score = JSON.parse(await readFile(join(root, "score.json"), "utf8"));
+  if (
+    manifest.completed !== true
+    || manifest.id !== result.runId
+    || manifest.runKey !== result.runKey
+    || manifest.resultHash !== result.resultHash
+    || Math.abs(Number(score.total) - expectedScore) > 1e-9
+  ) throw new Error(`Research Review ${role} Run '${result.runId}' failed identity verification`);
+  return {
+    role,
+    id: String(result.runId),
+    runKey: String(result.runKey),
+    resultHash: String(result.resultHash),
+    artifactHash: await hashDirectory(root),
+    manifestHash: hashJson(manifest),
+    metricsHash: hashJson(metrics),
+    scoreHash: hashJson(score),
+    assembly,
+    controller,
+    score: Number(score.total),
+  };
+}
+
+async function captureResearchReview(options: {
+  project: ProjectContext;
+  stagedProject: ProjectContext;
+  lab: ResearchLabDefinition;
+  benchmark: BenchmarkDefinition;
+  previous: Evaluation;
+  candidate: Evaluation;
+  previousSubject: { assembly: string; controller: string };
+  candidateSubject: { assembly: string; controller: string };
+  decision: ResearchDecision;
+  proposal: ResearchLabProposal;
+  experimentId: string;
+  experimentHash: string;
+  sessionId: string;
+  labHash: string;
+  programHash: string;
+  benchmarkLockHash: string;
+  researchBrief: Awaited<ReturnType<typeof verifyResearchBrief>> | null;
+}): Promise<ResearchReview> {
+  const selected = selectResearchReviewCase(options.benchmark, options.previous, options.candidate, options.decision);
+  const simulation = {
+    task: selected.definition.task,
+    scenario: selected.definition.scenario,
+    objective: options.benchmark.objective,
+    seed: selected.definition.seed,
+  };
+  const acceptedEnvelope = await simulateCommand(options.project.rootDir, {
+    assembly: options.previousSubject.assembly,
+    controller: options.previousSubject.controller,
+    ...simulation,
+  });
+  const candidateEnvelope = await simulateCommand(options.stagedProject.rootDir, {
+    assembly: options.candidateSubject.assembly,
+    controller: options.candidateSubject.controller,
+    ...simulation,
+  });
+  const accepted = await researchReviewRunReference(
+    options.project.rootDir,
+    acceptedEnvelope.data,
+    "accepted",
+    options.previousSubject.assembly,
+    options.previousSubject.controller,
+    selected.accepted.resultHash,
+    selected.accepted.score.total,
+  );
+  const candidate = await researchReviewRunReference(
+    options.project.rootDir,
+    candidateEnvelope.data,
+    "candidate",
+    options.candidateSubject.assembly,
+    options.candidateSubject.controller,
+    selected.candidate.resultHash,
+    selected.candidate.score.total,
+  );
+  return researchReviewSchema.parse({
+    version: 1,
+    kind: "mujica-research-review",
+    authority: "derived-human-review",
+    claimKind: "visual-witness",
+    lineage: {
+      researchId: options.lab.id,
+      labHash: options.labHash,
+      programHash: options.programHash,
+      benchmarkLockHash: options.benchmarkLockHash,
+      researchBriefId: options.researchBrief?.id ?? null,
+      researchBriefHash: options.researchBrief?.briefHash ?? null,
+      observationIds: options.researchBrief?.brief.observations.map((item) => item.id) ?? [],
+      sessionId: options.sessionId,
+      experimentId: options.experimentId,
+      experimentHash: options.experimentHash,
+    },
+    proposal: options.proposal,
+    judge: {
+      verdict: options.decision.verdict,
+      decision: options.decision,
+      decisionHash: hashJson(options.decision),
+    },
+    selectedCase: {
+      benchmark: options.benchmark.id,
+      id: selected.definition.id,
+      task: selected.definition.task,
+      scenario: selected.definition.scenario,
+      seed: selected.definition.seed,
+      weight: selected.definition.weight,
+      gating: selected.definition.gating,
+      selectionPolicy: selected.selectionPolicy,
+      selectionReason: selected.selectionReason,
+      candidateScoreDelta: selected.candidateScoreDelta,
+      weightedScoreDelta: selected.weightedScoreDelta,
+    },
+    accepted,
+    candidate,
+    authorityBoundary: {
+      visualInterpretation: "hypothesis-only",
+      simulationEvidence: "immutable-runs",
+      experimentDecision: "locked-judge",
+      sourcePromotion: "verdict-governed",
+    },
+  });
 }
 
 async function researchLabBinding(projectRoot: string, id: string) {
@@ -409,6 +617,114 @@ async function evaluateRegressions(options: {
   return { results, gateReasons };
 }
 
+async function verifyResearchReviewRun(projectRoot: string, reference: ResearchReview["accepted"] | ResearchReview["candidate"]) {
+  const root = confined(projectRoot, `runs/${reference.id}`);
+  const rootStat = await lstat(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Research Review Run '${reference.id}' must be a real artifact directory`);
+  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  const metrics = JSON.parse(await readFile(join(root, "metrics.json"), "utf8"));
+  const score = JSON.parse(await readFile(join(root, "score.json"), "utf8"));
+  if (
+    manifest.completed !== true
+    || manifest.id !== reference.id
+    || manifest.runKey !== reference.runKey
+    || manifest.resultHash !== reference.resultHash
+    || hashJson(manifest) !== reference.manifestHash
+    || hashJson(metrics) !== reference.metricsHash
+    || hashJson(score) !== reference.scoreHash
+    || await hashDirectory(root) !== reference.artifactHash
+    || Math.abs(Number(score.total) - reference.score) > 1e-9
+  ) throw new Error(`Research Review Run '${reference.id}' failed immutable verification`);
+  return { root, manifest, metrics, score };
+}
+
+export async function verifyResearchReview(projectRoot: string, labId: string, sessionId: string, experimentId: string) {
+  const sessionRoot = confined(projectRoot, `research-runs/${labId}/sessions/${sessionId}`);
+  const experimentRoot = confined(sessionRoot, `experiments/${experimentId}`);
+  for (const [label, root] of [["Session", sessionRoot], ["Experiment", experimentRoot]] as const) {
+    const item = await lstat(root);
+    if (!item.isDirectory() || item.isSymbolicLink()) throw new Error(`Research Review ${label} must be a real artifact directory`);
+  }
+  const session = JSON.parse(await readFile(join(sessionRoot, "manifest.json"), "utf8"));
+  const experiment = JSON.parse(await readFile(join(experimentRoot, "manifest.json"), "utf8"));
+  if (experiment.review?.status !== "AVAILABLE") {
+    const reason = experiment.review?.error ? `: ${experiment.review.error}` : "";
+    throw new Error(`Research experiment '${experimentId}' has no available visual Review${reason}`);
+  }
+  const review = researchReviewSchema.parse(JSON.parse(await readFile(join(experimentRoot, "review.json"), "utf8")));
+  const reviewHash = hashJson(review);
+  const evaluation = JSON.parse(await readFile(join(experimentRoot, "evaluation.json"), "utf8"));
+  const acceptedCase = evaluation.previousPrimary?.cases?.find((item: any) => item.case?.id === review.selectedCase.id);
+  const candidateCase = evaluation.primary?.cases?.find((item: any) => item.case?.id === review.selectedCase.id);
+  if (
+    session.id !== sessionId
+    || session.researchId !== labId
+    || !session.experiments?.includes(experimentId)
+    || experiment.id !== experimentId
+    || experiment.sessionId !== sessionId
+    || experiment.researchId !== labId
+    || experiment.experimentHash !== review.lineage.experimentHash
+    || experiment.labHash !== review.lineage.labHash
+    || experiment.programHash !== review.lineage.programHash
+    || experiment.benchmarkLockHash !== review.lineage.benchmarkLockHash
+    || experiment.researchBriefId !== review.lineage.researchBriefId
+    || experiment.researchBriefHash !== review.lineage.researchBriefHash
+    || experiment.verdict !== review.judge.verdict
+    || hashJson(experiment.decision) !== review.judge.decisionHash
+    || hashJson(experiment.decision) !== hashJson(review.judge.decision)
+    || hashJson(experiment.proposal) !== hashJson(review.proposal)
+    || experiment.review.reviewHash !== reviewHash
+    || experiment.review.acceptedRunId !== review.accepted.id
+    || experiment.review.candidateRunId !== review.candidate.id
+    || experiment.review.caseId !== review.selectedCase.id
+    || !acceptedCase
+    || !candidateCase
+    || acceptedCase.resultHash !== review.accepted.resultHash
+    || candidateCase.resultHash !== review.candidate.resultHash
+    || Math.abs(Number(acceptedCase.score?.total) - review.accepted.score) > 1e-9
+    || Math.abs(Number(candidateCase.score?.total) - review.candidate.score) > 1e-9
+  ) throw new Error(`Research Review '${experimentId}' failed lineage verification`);
+  if (review.lineage.researchBriefId) {
+    const brief = await verifyResearchBrief(projectRoot, review.lineage.researchBriefId);
+    if (
+      brief.briefHash !== review.lineage.researchBriefHash
+      || hashJson(brief.brief.observations.map((item) => item.id)) !== hashJson(review.lineage.observationIds)
+    ) throw new Error(`Research Review '${experimentId}' differs from its immutable Research Brief`);
+  } else if (review.lineage.researchBriefHash !== null || review.lineage.observationIds.length) {
+    throw new Error(`Research Review '${experimentId}' has observations without a Research Brief`);
+  }
+  const [accepted, candidate] = await Promise.all([
+    verifyResearchReviewRun(projectRoot, review.accepted),
+    verifyResearchReviewRun(projectRoot, review.candidate),
+  ]);
+  return { review, reviewHash, path: join(experimentRoot, "review.json"), session, experiment, evaluation, accepted, candidate };
+}
+
+export async function researchReviewInspectCommand(projectDir: string, labId: string, sessionId: string, experimentId: string) {
+  const project = await loadProject(projectDir);
+  const verified = await verifyResearchReview(project.rootDir, labId, sessionId, experimentId);
+  return success("research.review.inspect", {
+    review: verified.review,
+    reviewHash: verified.reviewHash,
+    path: verified.path,
+    session: verified.session,
+    experiment: verified.experiment,
+  }, project, [], [
+    {
+      id: "open-visual-review",
+      description: "Render the immutable accepted/candidate MuJoCo Run pair with complete Research Review lineage",
+      argv: ["studio", project.rootDir, "--research-lab", labId, "--session", sessionId, "--experiment", experimentId],
+      effect: "creates-artifact",
+    },
+    {
+      id: "inspect-candidate-evidence",
+      description: "Inspect the candidate Run at its initial frame with the accepted Run as comparison",
+      argv: ["evidence", "inspect", project.rootDir, "--run", verified.review.accepted.id, "--time", "0", "--compare-run", verified.review.candidate.id],
+      effect: "read-only",
+    },
+  ]);
+}
+
 export async function researchLabListCommand(projectDir: string) {
   const project = await loadProject(projectDir); const labs = [];
   for (const id of await listResearchLabIds(project.rootDir)) labs.push(await loadResearchLab(project.rootDir, id));
@@ -521,7 +837,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
     const workspaceContainer = await mkdtemp(join(tmpdir(), `mujica-${id}-`)); const workspace = join(workspaceContainer, "project"); const snapshots = join(workspaceContainer, "snapshots"); const beforeSnapshot = join(snapshots, "before"); const afterSnapshot = join(snapshots, "after");
     const experimentStarted = Date.now(); const deadlineMs = experimentStarted + lab.budget.maxWallClockSeconds * 1000;
     const previous = current;
-    let proposal: ResearchLabProposal | null = null; let researcher: { stderr: string; durationMs: number } | null = null; let patch = ""; let beforeSource: SourceHashes = {}; let afterSource: SourceHashes = {}; let execution: any = null; let candidate: Evaluation | null = null; let referencePrimary: Evaluation | null = null; let regressionResults: any[] = []; let decision: ReturnType<typeof researchDecision> | null = null; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH"; let errorMessage: string | null = null; let policyId: string | null = null; let revision: { id: string; path: string } | null = null; let finalChanged: string[] = []; let researcherChangedPaths: string[] = [];
+    let proposal: ResearchLabProposal | null = null; let researcher: { stderr: string; durationMs: number } | null = null; let patch = ""; let beforeSource: SourceHashes = {}; let afterSource: SourceHashes = {}; let execution: any = null; let candidate: Evaluation | null = null; let referencePrimary: Evaluation | null = null; let regressionResults: any[] = []; let decision: ReturnType<typeof researchDecision> | null = null; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH"; let errorMessage: string | null = null; let policyId: string | null = null; let revision: { id: string; path: string } | null = null; let finalChanged: string[] = []; let researcherChangedPaths: string[] = []; let review: ResearchReview | null = null; let reviewError: string | null = null;
     try {
       await copyProject(project.rootDir, workspace); beforeSource = await materializeEditableSnapshot(project.rootDir, beforeSnapshot, lab); const beforeGuard = await snapshotFiles(workspace, false);
       const response = await invokeResearcher(agentCommand, workspace, {
@@ -588,6 +904,29 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); assertResearchLabEditableChanges(lab, finalChanged); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
       const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), referenceResults: referencePrimary?.cases.map((item) => item.resultHash) ?? null, regressionResults: regressionResults.map((item) => ({ reference: item.reference?.cases.map((entry: any) => entry.resultHash) ?? null, candidate: item.candidate.cases.map((entry: any) => entry.resultHash) })), verdict });
       const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`;
+      try {
+        review = await captureResearchReview({
+          project,
+          stagedProject,
+          lab,
+          benchmark,
+          previous,
+          candidate: candidateEvaluation,
+          previousSubject: currentSubject,
+          candidateSubject,
+          decision: finalDecision,
+          proposal,
+          experimentId,
+          experimentHash,
+          sessionId,
+          labHash,
+          programHash,
+          benchmarkLockHash: lock.lockHash,
+          researchBrief,
+        });
+      } catch (error) {
+        reviewError = error instanceof Error ? error.message : String(error);
+      }
       if (verdict === "KEEP") {
         const rollback = await applySourceTransaction(project.rootDir, workspace, beforeSource, afterSource, finalChanged);
         try {
@@ -607,12 +946,36 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       await atomicDirectory(artifactPath, async (directory) => {
         await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch);
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeJson(join(directory, "execution.json"), execution);
-        await writeJson(join(directory, "evaluation.json"), { primary: candidateEvaluation, referencePrimary, regressions: regressionResults });
+        await writeJson(join(directory, "evaluation.json"), { previousPrimary: previous, primary: candidateEvaluation, referencePrimary, regressions: regressionResults });
         await writeJson(join(directory, "verdict.json"), { verdict, decision, revisionId: revision?.id ?? null });
-        await writeJson(join(directory, "manifest.json"), { version: 3, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: hashJson(afterSource), researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null, durationMs: Date.now() - experimentStarted, completed: true });
+        if (review) await writeJson(join(directory, "review.json"), review);
+        await writeJson(join(directory, "manifest.json"), {
+          version: 4, id: experimentId, experimentHash, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash,
+          researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: hashJson(afterSource),
+          researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: candidateEvaluation.aggregateScore,
+          delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null,
+          review: review
+            ? { status: "AVAILABLE", reviewHash: hashJson(review), acceptedRunId: review.accepted.id, candidateRunId: review.candidate.id, caseId: review.selectedCase.id }
+            : { status: "UNAVAILABLE", error: reviewError ?? "Research Review was not captured" },
+          durationMs: Date.now() - experimentStarted, completed: true,
+        });
       });
-      const summary = { sequence, experimentId, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision: finalDecision, revisionId: revision?.id ?? null, artifactPath };
+      const summary = {
+        sequence, experimentId, proposal, policyId, score: candidateEvaluation.aggregateScore,
+        delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision: finalDecision,
+        revisionId: revision?.id ?? null,
+        review: review
+          ? { status: "AVAILABLE", reviewHash: hashJson(review), acceptedRunId: review.accepted.id, candidateRunId: review.candidate.id, caseId: review.selectedCase.id }
+          : { status: "UNAVAILABLE", error: reviewError ?? "Research Review was not captured" },
+        artifactPath,
+      };
       summaries.push(summary); artifacts.push(artifact("research-experiment", experimentId, artifactPath)); if (revision) artifacts.push(artifact(lab.promotion === "policy-revision" ? "policy-revision" : "revision", revision.id, revision.path));
+      if (review) {
+        artifacts.push(artifact("research-review", `${experimentId}-review`, join(artifactPath, "review.json")));
+        for (const run of [review.accepted, review.candidate]) {
+          if (!artifacts.some((item) => item.kind === "simulation-run" && item.id === run.id)) artifacts.push(artifact("simulation-run", run.id, confined(project.rootDir, `runs/${run.id}`)));
+        }
+      }
       await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${candidateEvaluation.aggregateScore}\t${summary.delta}\t${finalDecision.candidateViolationCount}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${proposal.hypothesis.replace(/[\t\r\n]+/g, " ")}\n`);
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : String(error); const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, proposal, beforeSource, afterSource, researcherChangedPaths, errorMessage, verdict: "CRASH" }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(experimentsRoot, experimentId);
@@ -621,7 +984,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
         await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch); await writeJson(join(directory, "execution.json"), execution);
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
         await writeJson(join(directory, "verdict.json"), { verdict: "CRASH", error: errorMessage });
-        await writeJson(join(directory, "manifest.json"), { version: 3, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: Object.keys(afterSource).length ? hashJson(afterSource) : null, researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, durationMs: Date.now() - experimentStarted, completed: true });
+        await writeJson(join(directory, "manifest.json"), { version: 4, id: experimentId, experimentHash, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: Object.keys(afterSource).length ? hashJson(afterSource) : null, researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, review: { status: "NOT_APPLICABLE", error: "Experiment did not complete locked Judge evaluation" }, durationMs: Date.now() - experimentStarted, completed: true });
       });
       const summary = { sequence, experimentId, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, artifactPath }; summaries.push(summary); artifacts.push(artifact("research-experiment", experimentId, artifactPath));
       await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${current.aggregateScore}\t0\t-\tcrash\t${proposal?.strategy ?? "proposal-error"}\t${errorMessage.replace(/[\t\r\n]+/g, " ")}\n`);
@@ -630,9 +993,25 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
     }
   }
 
-  const endedAt = new Date().toISOString(); const sessionManifest = { version: 3, id: sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, startedAt, endedAt, iterationsRequested: requestedIterations, iterationsCompleted: summaries.length, initialScore: initial.current.aggregateScore, finalScore: current.aggregateScore, scoreDelta: current.aggregateScore - initial.current.aggregateScore, exhausted, experiments: summaries.map((item) => item.experimentId), completed: true };
+  const endedAt = new Date().toISOString(); const sessionManifest = {
+    version: 4, id: sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash,
+    researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null,
+    startedAt, endedAt, iterationsRequested: requestedIterations, iterationsCompleted: summaries.length,
+    initialScore: initial.current.aggregateScore, finalScore: current.aggregateScore,
+    scoreDelta: current.aggregateScore - initial.current.aggregateScore, exhausted,
+    reviewCount: summaries.filter((item) => item.review?.status === "AVAILABLE").length,
+    reviewFailureCount: summaries.filter((item) => item.review?.status === "UNAVAILABLE").length,
+    experiments: summaries.map((item) => item.experimentId), completed: true,
+  };
   await writeJson(join(sessionRoot, "manifest.json"), sessionManifest); artifacts.push(artifact("research-session", sessionId, sessionRoot));
+  const latestReview = [...summaries].reverse().find((item) => item.review?.status === "AVAILABLE");
   return success("research.run", { ...sessionManifest, lab, experiments: summaries, ledgerPath }, project, artifacts, [
+    ...(latestReview ? [{
+      id: "review-latest-experiment",
+      description: "Inspect and visually compare the exact accepted/candidate MuJoCo Runs",
+      argv: ["research", "review", "inspect", project.rootDir, "--lab", id, "--session", sessionId, "--experiment", latestReview.experimentId],
+      effect: "read-only" as const,
+    }] : []),
     { id: "research-status", description: "Inspect Research Lab sessions and current head", argv: ["research", "status", project.rootDir, "--lab", id], effect: "read-only" },
   ]);
 }

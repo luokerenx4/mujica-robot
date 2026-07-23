@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -274,6 +274,80 @@ describe("Robot Assembly compiler", () => {
       authorityBoundary: { ...brief.authorityBoundary, promotion: "human-approved" },
     }).success).toBe(false);
     expect(researchBriefSchema.safeParse({ ...brief, observations: [] }).success).toBe(false);
+  });
+
+  test("Research Reviews preserve visual interpretation below locked Judge authority", () => {
+    const decision = {
+      verdict: "REVERT",
+      gateReasons: ["delayed-braking: lateral-drift regressed from passing to failing"],
+      previousViolationCount: 0,
+      candidateViolationCount: 1,
+      previousViolationSeverity: 0,
+      candidateViolationSeverity: 0.25,
+      feasibilityImproved: false,
+      severityImproved: false,
+      scoreImproved: true,
+      selectionReason: "gate-regression",
+    };
+    const run = (role: "accepted" | "candidate", digit: string) => ({
+      role,
+      id: `run-${role}`,
+      runKey: digit.repeat(64),
+      resultHash: digit.repeat(64),
+      artifactHash: digit.repeat(64),
+      manifestHash: digit.repeat(64),
+      metricsHash: digit.repeat(64),
+      scoreHash: digit.repeat(64),
+      assembly: "review-assembly",
+      controller: `review-${role}`,
+      score: role === "accepted" ? 60 : 61,
+    });
+    const review = {
+      version: 1,
+      kind: "mujica-research-review",
+      authority: "derived-human-review",
+      claimKind: "visual-witness",
+      lineage: {
+        researchId: "review-lab",
+        labHash: "1".repeat(64),
+        programHash: "2".repeat(64),
+        benchmarkLockHash: "3".repeat(64),
+        researchBriefId: "brief-example",
+        researchBriefHash: "4".repeat(64),
+        observationIds: ["observation-example"],
+        sessionId: "session-example",
+        experimentId: "001-example",
+        experimentHash: "5".repeat(64),
+      },
+      proposal: { strategy: "review-test", hypothesis: "Test a visible change.", expectedEffect: "The Judge and human see the same candidate." },
+      judge: { verdict: "REVERT", decision, decisionHash: "6".repeat(64) },
+      selectedCase: {
+        benchmark: "review-benchmark",
+        id: "delayed-braking",
+        task: "brake",
+        scenario: "delay",
+        seed: 7,
+        weight: 1,
+        gating: true,
+        selectionPolicy: "first-primary-gate-regression",
+        selectionReason: "The locked Judge named this case first.",
+        candidateScoreDelta: 1,
+        weightedScoreDelta: 1,
+      },
+      accepted: run("accepted", "a"),
+      candidate: run("candidate", "b"),
+      authorityBoundary: {
+        visualInterpretation: "hypothesis-only",
+        simulationEvidence: "immutable-runs",
+        experimentDecision: "locked-judge",
+        sourcePromotion: "verdict-governed",
+      },
+    };
+    expect(researchReviewSchema.safeParse(review).success).toBe(true);
+    expect(researchReviewSchema.safeParse({
+      ...review,
+      authorityBoundary: { ...review.authorityBoundary, experimentDecision: "human-overridable" },
+    }).success).toBe(false);
   });
 
   test("training research names one bounded Training definition", async () => {

@@ -536,6 +536,89 @@ export const researchBriefSchema = z.object({
   }).strict(),
 }).strict();
 
+const researchJudgeDecisionSchema = z.object({
+  verdict: z.enum(["KEEP", "REVERT"]),
+  gateReasons: z.array(z.string()),
+  previousViolationCount: z.number().int().nonnegative(),
+  candidateViolationCount: z.number().int().nonnegative(),
+  previousViolationSeverity: z.number().finite().nonnegative(),
+  candidateViolationSeverity: z.number().finite().nonnegative(),
+  feasibilityImproved: z.boolean(),
+  severityImproved: z.boolean(),
+  scoreImproved: z.boolean(),
+  selectionReason: z.enum([
+    "fewer-gate-violations",
+    "lower-gate-violation-severity",
+    "score-improvement-within-feasibility-tier",
+    "gate-regression",
+    "no-lexicographic-improvement",
+  ]),
+}).strict();
+
+const researchReviewRunSchema = z.object({
+  role: z.enum(["accepted", "candidate"]),
+  id: idSchema,
+  runKey: sha256Schema,
+  resultHash: sha256Schema,
+  artifactHash: sha256Schema,
+  manifestHash: sha256Schema,
+  metricsHash: sha256Schema,
+  scoreHash: sha256Schema,
+  assembly: idSchema,
+  controller: idSchema,
+  score: z.number().finite(),
+}).strict();
+
+export const researchReviewSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("mujica-research-review"),
+  authority: z.literal("derived-human-review"),
+  claimKind: z.literal("visual-witness"),
+  lineage: z.object({
+    researchId: idSchema,
+    labHash: sha256Schema,
+    programHash: sha256Schema,
+    benchmarkLockHash: sha256Schema,
+    researchBriefId: idSchema.nullable(),
+    researchBriefHash: sha256Schema.nullable(),
+    observationIds: z.array(idSchema),
+    sessionId: idSchema,
+    experimentId: idSchema,
+    experimentHash: sha256Schema,
+  }).strict(),
+  proposal: researchLabProposalSchema,
+  judge: z.object({
+    verdict: z.enum(["KEEP", "REVERT"]),
+    decision: researchJudgeDecisionSchema,
+    decisionHash: sha256Schema,
+  }).strict(),
+  selectedCase: z.object({
+    benchmark: idSchema,
+    id: idSchema,
+    task: idSchema,
+    scenario: idSchema,
+    seed: z.number().int(),
+    weight: z.number().positive(),
+    gating: z.boolean(),
+    selectionPolicy: z.enum([
+      "first-primary-gate-regression",
+      "largest-absolute-weighted-score-delta",
+      "first-primary-case",
+    ]),
+    selectionReason: z.string().min(1),
+    candidateScoreDelta: z.number().finite(),
+    weightedScoreDelta: z.number().finite(),
+  }).strict(),
+  accepted: researchReviewRunSchema.extend({ role: z.literal("accepted") }).strict(),
+  candidate: researchReviewRunSchema.extend({ role: z.literal("candidate") }).strict(),
+  authorityBoundary: z.object({
+    visualInterpretation: z.literal("hypothesis-only"),
+    simulationEvidence: z.literal("immutable-runs"),
+    experimentDecision: z.literal("locked-judge"),
+    sourcePromotion: z.literal("verdict-governed"),
+  }).strict(),
+}).strict();
+
 export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
@@ -558,3 +641,4 @@ export type ResearchLabDefinition = z.output<typeof researchLabSchema>;
 export type ResearchLabProposal = z.output<typeof researchLabProposalSchema>;
 export type HumanObservationDraft = z.output<typeof humanObservationDraftSchema>;
 export type ResearchBrief = z.output<typeof researchBriefSchema>;
+export type ResearchReview = z.output<typeof researchReviewSchema>;

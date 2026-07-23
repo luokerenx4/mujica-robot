@@ -17,7 +17,7 @@ mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
-mujica studio <project> [--run ID] [--compare-run ID] [--json]
+mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID) [--json]
 mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]
 mujica observation list <project> [--json]
 mujica observation inspect <project> --observation ID [--json]
@@ -46,6 +46,7 @@ mujica research brief <project> --lab ID --observation ID [--observation ID] [--
 mujica research brief inspect <project> --brief ID [--json]
 mujica research run <project> --lab ID [--brief ID] --agent-command CMD [--iterations N] [--json]
 mujica research status <project> --lab ID [--json]
+mujica research review inspect <project> --lab ID --session ID --experiment ID [--json]
 mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica revisions <project> [--json]
 mujica revision inspect <project> --revision ID [--json]
@@ -98,6 +99,15 @@ hash, primary Benchmark lock, and a closed hypothesis/Judge authority boundary.
 `research brief inspect` re-verifies the Brief and every referenced
 Observation. A Brief prioritizes investigation; it cannot change source,
 budgets, regressions, or promotion.
+
+Every completed KEEP/REVERT Research Experiment attempts to publish a
+`mujica-research-review`. `research review inspect` verifies Lab, program,
+Benchmark lock, optional Brief/Observation, Session, Experiment, Judge decision,
+and every byte of its accepted/candidate Runs before returning the exact Studio
+argv. The Review is `derived-human-review` / `visual-witness`; it cannot alter
+the locked verdict. `studio --research-lab ... --session ... --experiment ...`
+requires all three selectors and opens that verified Run pair with the Review
+lineage. It cannot be mixed with explicit `--run` selectors.
 
 `hardware export` freezes one Hardware Target, source Revision, Controller,
 optional Policy, selected Driver Package, Observation/Action contracts, safety envelope, and

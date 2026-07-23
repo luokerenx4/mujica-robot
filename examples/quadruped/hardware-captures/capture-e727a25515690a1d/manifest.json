@@ -1,0 +1,459 @@
+{
+  "version": 1,
+  "planHash": "73ce6f5d970f0201afcb2ee84ffd014df02f2c048ec653ba1f357b5e15adb009",
+  "bundleHash": "0154c41d17d1b1793fc475e8e7be3a7cf390eac4bf212b16dc78cad254bdef57",
+  "driverHash": "cf035443f35464d99990cc802926c14f08188692da6412fab019cb7f8f452841",
+  "driverPackageHash": "a11faeba3d4cd6d8b1422763425f5063b325eb982ebcaf176673513e012123d0",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "local-developer",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T16:47:53.413334Z",
+  "endedAt": "2026-07-23T16:47:53.671225Z",
+  "status": "ABORTED",
+  "transcriptHash": "10846ffff53a39c29688694327ab569426d428fa52d3c33828f3da7e94c9a77e",
+  "episodeHashes": {},
+  "runtimeSourceHash": "1df2a2dfe33ebd69fd208c918ed9c497673fe890c8720f319ef7808bf464ef41",
+  "harnessSourceHash": "d6f9872c42c9a534057e8bb40250fffdddb407bb87748bbac9e8476c33381bf0",
+  "mode": "actuate",
+  "actuationAuthorized": true,
+  "protocolCapabilities": [
+    "applied-action",
+    "command-lease",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 2,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "decisionDeadlineIdentity": {
+    "maximumMicroseconds": 415,
+    "meanMicroseconds": 415,
+    "samples": 1,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0
+  },
+  "commandLeaseIdentity": {
+    "durationMicroseconds": 100000,
+    "maximumOverrunMicroseconds": 25000,
+    "expirations": 1,
+    "autonomousStops": 1,
+    "maximumObservedSilenceMicroseconds": 105033,
+    "lastAcceptedSteps": [
+      0
+    ]
+  },
+  "deviceHealthIdentity": {
+    "samples": 3,
+    "maximumMotorTemperatureMilliC": 40000,
+    "maximumMotorCurrentMilliA": 0,
+    "minimumBusVoltageMilliV": 24000,
+    "maximumBusVoltageMilliV": 24000,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 0,
+      "offline": 0,
+      "ready": 36
+    },
+    "tripCount": 0,
+    "affectedActuatorIndices": []
+  },
+  "postStopHealthIdentity": {
+    "windows": 1,
+    "samples": 3,
+    "healthySamples": 3,
+    "recoveryCandidates": 0,
+    "maximumObservedDurationMicroseconds": 21618,
+    "terminalStates": [
+      "recovery-blocked"
+    ]
+  },
+  "emergencyStopAcknowledgements": 0,
+  "controllerWarmupPasses": 0,
+  "realTimeQualified": false,
+  "id": "capture-e727a25515690a1d",
+  "captureHash": "e727a25515690a1daa780fa32d4c535d4c03734153fe501c884b63022acdcf90",
+  "plan": "quadruped-host-loss-trip",
+  "target": "spatial-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-3dof",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "executionHash": "69a0d1f7e2ba14a56917e15a305c65f3f544f90e35dbbde8ce62000449cfe8b9",
+  "modelHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+  "controller": "spatial-forward-gait",
+  "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+  "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+  "episodes": [
+    {
+      "id": "host-loss-trip",
+      "seed": 4305,
+      "plannedSteps": 10,
+      "steps": 1,
+      "completed": false,
+      "reason": "Driver autonomously stopped after 105.033250 ms without a host command (lease 100 ms)"
+    }
+  ],
+  "dispatch": {
+    "samples": 1,
+    "maximumLatencyMs": 0.421,
+    "meanLatencyMs": 0.421,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "decisionDeadline": {
+    "maximumLatencyMs": 10.0,
+    "samples": 1,
+    "maximumObservedLatencyMs": 0.414916,
+    "meanObservedLatencyMs": 0.414916,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0,
+    "maximumDriverRejectedLatencyMs": 0.0
+  },
+  "commandLease": {
+    "durationMs": 100,
+    "maximumOverrunMs": 25.0,
+    "expirations": 1,
+    "autonomousStops": 1,
+    "maximumObservedSilenceMs": 105.03325,
+    "events": [
+      {
+        "episode": "host-loss-trip",
+        "lastAcceptedStep": 0,
+        "commandLeaseMs": 100,
+        "observedSilenceMs": 105.03325,
+        "stopLatched": true,
+        "appliedAction": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deviceHealth": {
+          "motorTemperatureC": [
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            40.0
+          ],
+          "motorCurrentA": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "actuatorStates": [
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready",
+            "ready"
+          ],
+          "busVoltageV": 24.0,
+          "faults": [],
+          "estopEngaged": false,
+          "watchdogHealthy": true
+        }
+      }
+    ],
+    "automaticRearm": false
+  },
+  "deviceHealth": {
+    "samples": 3,
+    "maximumMotorTemperatureC": 40.0,
+    "maximumMotorCurrentA": 0.0,
+    "minimumBusVoltageV": 24.0,
+    "maximumBusVoltageV": 24.0,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 0,
+      "offline": 0,
+      "ready": 36
+    },
+    "trips": 0,
+    "affectedActuatorIndices": []
+  },
+  "stopRecovery": {
+    "windows": [
+      {
+        "episode": "host-loss-trip",
+        "trip": {
+          "episode": "host-loss-trip",
+          "step": 1,
+          "kind": "command-lease",
+          "reasons": [
+            "Driver autonomously stopped after 105.033250 ms without a host command (lease 100 ms)"
+          ],
+          "affectedActuatorIndices": [],
+          "scope": "driver",
+          "lastAcceptedStep": 0,
+          "commandLeaseMs": 100,
+          "observedSilenceMs": 105.03325
+        },
+        "requestedSamples": 3,
+        "minimumHealthyDurationMs": 20.0,
+        "observedDurationMs": 21.617792,
+        "healthySamples": 3,
+        "samples": [
+          {
+            "sequence": 0,
+            "deviceHealth": {
+              "motorTemperatureC": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
+              ],
+              "motorCurrentA": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "actuatorStates": [
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready"
+              ],
+              "busVoltageV": 24.0,
+              "faults": [],
+              "estopEngaged": false,
+              "watchdogHealthy": true
+            },
+            "reasons": [],
+            "affectedActuatorIndices": [],
+            "scope": "none"
+          },
+          {
+            "sequence": 1,
+            "deviceHealth": {
+              "motorTemperatureC": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
+              ],
+              "motorCurrentA": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "actuatorStates": [
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready"
+              ],
+              "busVoltageV": 24.0,
+              "faults": [],
+              "estopEngaged": false,
+              "watchdogHealthy": true
+            },
+            "reasons": [],
+            "affectedActuatorIndices": [],
+            "scope": "none"
+          },
+          {
+            "sequence": 2,
+            "deviceHealth": {
+              "motorTemperatureC": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
+              ],
+              "motorCurrentA": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "actuatorStates": [
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready",
+                "ready"
+              ],
+              "busVoltageV": 24.0,
+              "faults": [],
+              "estopEngaged": false,
+              "watchdogHealthy": true
+            },
+            "reasons": [],
+            "affectedActuatorIndices": [],
+            "scope": "none"
+          }
+        ],
+        "recoveryEligible": false,
+        "requiresNewSession": true,
+        "stateTransitions": [
+          "armed",
+          "tripped",
+          "driver-autonomous-stop",
+          "health-checking",
+          "recovery-blocked"
+        ]
+      }
+    ],
+    "samples": 3,
+    "healthySamples": 3,
+    "recoveryCandidates": 0,
+    "requiresNewSession": true
+  },
+  "stateAge": {
+    "samples": 2,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [
+    {
+      "episode": "host-loss-trip",
+      "step": 1,
+      "kind": "command-lease",
+      "reasons": [
+        "Driver autonomously stopped after 105.033250 ms without a host command (lease 100 ms)"
+      ],
+      "affectedActuatorIndices": [],
+      "scope": "driver",
+      "lastAcceptedStep": 0,
+      "commandLeaseMs": 100,
+      "observedSilenceMs": 105.03325
+    }
+  ],
+  "safeStops": 0,
+  "emergencyStops": 0,
+  "reasons": [
+    "host-loss-trip: Driver autonomously stopped after 105.033250 ms without a host command (lease 100 ms)"
+  ],
+  "calibrationEligible": false,
+  "completed": true
+}

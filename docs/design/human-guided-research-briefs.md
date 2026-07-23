@@ -26,6 +26,10 @@ only KEEP/REVERT authority.
    retain the Brief id and hash.
 6. The existing editable closure, budget, regression Benchmarks, evaluation,
    and promotion transaction run unchanged.
+7. After a KEEP/REVERT verdict, Mujica captures a deterministic accepted versus
+   candidate Research Review. Studio can turn that visual witness into a new
+   Observation, beginning another explicitly governed loop without rewriting
+   the completed verdict.
 
 Brief creation is deterministic. Observation ids are unique, sorted, and
 limited to 16. The same Lab and observation set produces the same Brief id.
@@ -73,3 +77,6 @@ research-runs/<lab>/sessions/<session>/
 Run/Capture context needed by a sandboxed Researcher. It does not depend on
 browser state or on the observation artifact being copied into the disposable
 workspace.
+
+See [Human-reviewed Research Outcomes](human-reviewed-research-outcomes.md) for
+the post-Judge visual return path.
