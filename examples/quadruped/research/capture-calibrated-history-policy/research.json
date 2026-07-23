@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "id": "capture-calibrated-history-policy",
+  "name": "Capture-calibrated bounded-history Policy autoresearch",
+  "program": "research/capture-calibrated-history-policy/program.md",
+  "benchmark": "spatial-robustness",
+  "regressions": [
+    "spatial-generalization",
+    "motion-quality"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "capture-calibrated-history-residual-locomotion",
+    "controller": "capture-calibrated-history-residual-gait",
+    "referenceController": "latency-aware-spatial-gait",
+    "seed": 4211
+  },
+  "editable": {
+    "paths": [
+      "trainers/capture-history-residual-ppo/**",
+      "training/capture-calibrated-history-residual-locomotion.training.json",
+      "controllers/capture-calibrated-history-residual-gait/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 360,
+    "maximumTrainingSteps": 16384
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

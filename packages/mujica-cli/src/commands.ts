@@ -25,6 +25,12 @@ async function domainProfileIdentity(projectDir: string, id: string) {
   return { definition, evidenceHash, hash: hashJson({ definition, evidenceHash }) };
 }
 
+export function assertDomainProfilePlantCompatible(profile: { id: string; plantHash?: string | undefined }, assembly: Pick<CompiledAssembly, "id" | "plantHash">): void {
+  if (profile.plantHash !== undefined && profile.plantHash !== assembly.plantHash) {
+    throw new Error(`Training Domain Profile '${profile.id}' plantHash does not match Assembly '${assembly.id}'`);
+  }
+}
+
 async function controllerIdentity(projectDir: string, id: string, override?: ControllerDefinition): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string; trainingSteps: number }> {
   const controller = await loadController(projectDir, id);
   const definition = override ?? controller.definition;
@@ -249,13 +255,14 @@ export async function calibrationPromoteCommand(projectDir: string, runId: strin
   if (manifest.runtimeSourceHash !== await runtimeSourceHash() || manifest.harnessSourceHash !== await harnessSourceHash()) throw new Error(`Calibration Run '${runId}' was produced by a different Runtime or Harness; rerun Calibration before promotion`);
   const calibration = await loadCalibration(project.rootDir, manifest.calibration); const assembly = await compileAssembly(project.rootDir, calibration.assembly);
   if (manifest.validationLoss > calibration.optimizer.maximumValidationLoss) throw new Error(`Calibration Run '${runId}' validation loss ${manifest.validationLoss} exceeds the promotion limit ${calibration.optimizer.maximumValidationLoss}`);
-  if (manifest.assemblyHash !== assembly.assemblyHash || manifest.modelHash !== assembly.modelHash) throw new Error(`Calibration Run '${runId}' model differs from the current Calibration Assembly`);
+  if (manifest.assemblyHash !== assembly.assemblyHash || manifest.modelHash !== assembly.modelHash || (manifest.plantHash !== undefined && manifest.plantHash !== assembly.plantHash)) throw new Error(`Calibration Run '${runId}' model differs from the current Calibration Assembly`);
   const baseScenario = await loadScenario(project.rootDir, calibration.scenario);
   if (manifest.calibrationHash !== hashJson(calibration) || manifest.baseScenarioHash !== hashJson(baseScenario)) throw new Error(`Calibration Run '${runId}' definition or base Scenario changed; rerun Calibration before promotion`);
   const currentSources = (await calibrationRuntimeSources(project, calibration, assembly)).map((source) => Object.fromEntries(Object.entries(source).filter(([key]) => !key.endsWith("Path") && key !== "path")));
   if (stableJson(currentSources) !== stableJson(manifest.sources)) throw new Error(`Calibration Run '${runId}' source evidence changed; rerun Calibration before promotion`);
   const profile = domainProfileSchema.parse(JSON.parse(await readFile(join(root, "profile-proposal.json"), "utf8")));
   if (hashJson(profile) !== manifest.profileProposalHash) throw new Error(`Calibration Run '${runId}' Profile proposal hash differs from its manifest`);
+  assertDomainProfilePlantCompatible(profile, assembly);
   if (profile.provenance.evidence !== `calibration-runs/${runId}/manifest.json`) throw new Error(`Calibration Run '${runId}' Profile does not bind its evidence manifest`);
   const path = confined(project.rootDir, `domain-profiles/${profile.id}.domain.json`);
   const cached = await exists(path);
@@ -334,6 +341,7 @@ export async function executeTraining(project: ProjectContext, training: Trainin
   const domainProfile = domainProfileIdentityValue?.definition ?? null;
   const domainProfileEvidenceHash = domainProfileIdentityValue?.evidenceHash ?? null;
   const domainProfileHash = domainProfileIdentityValue?.hash ?? null;
+  if (domainProfile) assertDomainProfilePlantCompatible(domainProfile, assembly);
   const timeoutMs = deadlineMs === undefined ? undefined : deadlineMs - Date.now();
   if (timeoutMs !== undefined && timeoutMs <= 0) throw new Error("Research Lab wall-clock budget exhausted before training");
   return await invokeRuntime("train", {

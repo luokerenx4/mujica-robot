@@ -16,7 +16,7 @@ from mujica_runtime.hardware_capture import _state_safety_reasons
 from mujica_runtime.io import hash_directory, hash_file
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
-from mujica_runtime.training import PPOTrainer, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -44,6 +44,16 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_training_rejects_a_domain_profile_from_another_plant(self):
+        compatible = {"compiled": {"id": "history", "plantHash": "a" * 64}, "domainProfile": {"id": "profile", "plantHash": "a" * 64}}
+        assert_domain_profile_plant_compatible(compatible)
+        assert_domain_profile_plant_compatible({"compiled": compatible["compiled"], "domainProfile": {"id": "legacy"}})
+        with self.assertRaisesRegex(RuntimeError, "plantHash does not match"):
+            assert_domain_profile_plant_compatible({
+                "compiled": compatible["compiled"],
+                "domainProfile": {"id": "wrong", "plantHash": "b" * 64},
+            })
+
     def test_visual_replay_is_content_addressed_and_reuses_only_complete_frames(self):
         model, compiled = compiled_assembly("force-sensing-3dof")
         run_root = PROJECT / "runs" / "run-e8bd80892b0f0123"

@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "id": "001-3e47595ccf81",
+  "sequence": 1,
+  "sessionId": "session-731f9ca179aaf909",
+  "researchId": "capture-calibrated-history-policy",
+  "labHash": "dcf7d472a2b328df7648058697be39d9cd61d8e4b7269ce55ac10af161182814",
+  "programHash": "9dc45a85a88e50ae6b4a22820d9b53d2612f17d12f2c45b4ef96e80ff00bff88",
+  "benchmarkLockHash": "21ab1fe5af6293f3b80591f24b609bff02ea5a6be323ce24b3215d90f168bafd",
+  "sourceHash": "9d9acd6b91e11e0e5b988bfc148f4aa11e60b69730f6fb97bbddda9963b37738",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-history-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-history-residual-gait/controller.json",
+    "training/capture-calibrated-history-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "reference-gated-near-prior",
+    "hypothesis": "The kept micro residual still regressed against its program reference under delayed held-out cases; reduce authority fourfold and explicitly test the new referenceController gate.",
+    "expectedEffect": "Match the frozen program prior's delay and quality gates; otherwise record a deployment REVERT."
+  },
+  "policyId": "capture-calibrated-history-residual-locomotion-c3323ee86f298164",
+  "score": 55.64568268333051,
+  "delta": 0.11552516965018356,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reference-controller: no-lexicographic-improvement",
+      "spatial-generalization: delay-plus-reset: lateral-drift regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 3,
+    "previousViolationSeverity": 2.1613237920291266,
+    "candidateViolationSeverity": 2.1674688512290334,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 62059,
+  "completed": true
+}

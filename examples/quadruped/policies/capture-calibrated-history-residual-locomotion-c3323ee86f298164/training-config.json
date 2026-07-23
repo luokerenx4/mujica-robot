@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "capture-calibrated-history-residual-locomotion",
+  "name": "Plant-bound capture-calibrated history residual locomotion",
+  "assembly": "force-sensing-history-3dof",
+  "trainer": "capture-history-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal",
+    "reset-perturbation",
+    "low-friction",
+    "strong-lateral-push",
+    "actuator-delay"
+  ],
+  "priorController": "latency-aware-spatial-gait",
+  "domainProfile": "quadruped-dry-run-capture-calibrated-v2",
+  "totalSteps": 4096,
+  "rolloutSteps": 512,
+  "epochs": 2,
+  "minibatchSize": 128,
+  "learningRate": 5e-06,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0,
+  "residualScale": 0.0005,
+  "residualPenalty": 100,
+  "qualityReward": {
+    "jointAcceleration": 0,
+    "bodyAngularAcceleration": 0.25,
+    "actionSlew": 0,
+    "actuatorSaturation": 0.7,
+    "footSlip": 0,
+    "footImpact": 0.6
+  }
+}

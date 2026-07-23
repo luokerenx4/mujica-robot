@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadResearch, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -26,6 +26,18 @@ describe("Robot Assembly compiler", () => {
     expect(component.manifest.sensors.map((item) => item.name)).toEqual(["body-gyro", "body-accelerometer"]);
     const assembly = await compileAssembly(project, "force-sensing-3dof");
     expect(assembly.modelHash).toBe("9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea"); expect(assembly.executionHash).toHaveLength(64);
+  });
+
+  test("plant identity ignores comments and inter-tag layout but preserves MJCF semantics", async () => {
+    expect(canonicalPlantXml("<mujoco><!-- runtime only --><worldbody>\n  <body mass=\"1\" />\n</worldbody></mujoco>"))
+      .toBe("<mujoco><worldbody><body mass=\"1\" /></worldbody></mujoco>");
+    expect(sha256(canonicalPlantXml("<mujoco><body mass=\"1\" /></mujoco>")))
+      .not.toBe(sha256(canonicalPlantXml("<mujoco><body mass=\"2\" /></mujoco>")));
+    const ordinary = await compileAssembly(project, "force-sensing-3dof");
+    const history = await compileAssembly(project, "force-sensing-history-3dof");
+    expect(history.modelHash).not.toBe(ordinary.modelHash);
+    expect(history.plantHash).toBe(ordinary.plantHash);
+    expect(history.plantHash).toHaveLength(64);
   });
 
   test("typed Component config is resolved into MJCF and appears in semantic diffs", async () => {
@@ -183,6 +195,8 @@ describe("Robot Assembly compiler", () => {
     expect(spatial.editable.parameters.find((item) => item.path === "/residualScale")?.maximum).toBe(1);
     const generalized = await loadTrainingResearch(project, "spatial-generalized-policy");
     expect(generalized.editable.parameters.find((item) => item.path === "/residualPenalty")?.maximum).toBe(0.2);
+    const historyLab = await loadResearchLab(project, "capture-calibrated-history-policy");
+    expect(historyLab.execution).toMatchObject({ kind: "policy", referenceController: "latency-aware-spatial-gait" });
   });
 
   test("robustness benchmarks distinguish promotion gates from scored challenges", async () => {

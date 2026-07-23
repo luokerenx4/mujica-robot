@@ -89,6 +89,14 @@ export function assertResearchLabEditableChanges(lab: ResearchLabDefinition, pat
   if (!paths.length) throw new Error("Researcher produced no source changes");
 }
 
+export function policyReferenceGateReasons(referenceDecision: ReturnType<typeof researchDecision> | null, regressionGateReasons: string[]): string[] {
+  if (!referenceDecision || referenceDecision.verdict === "KEEP") return [...regressionGateReasons];
+  const primary = referenceDecision.gateReasons.length
+    ? referenceDecision.gateReasons.map((reason) => `reference-controller: ${reason}`)
+    : [`reference-controller: ${referenceDecision.selectionReason}`];
+  return [...primary, ...regressionGateReasons];
+}
+
 async function copyProject(source: string, destination: string): Promise<void> {
   await cp(source, destination, {
     recursive: true,
@@ -285,7 +293,7 @@ async function currentPrimary(project: ProjectContext, lab: ResearchLabDefinitio
 }
 
 async function evaluateRegressions(options: {
-  originalProject: ProjectContext; stagedProject: ProjectContext; lab: ResearchLabDefinition; previousSubject: { assembly: string; controller: string }; candidateSubject: { assembly: string; controller: string }; deadlineMs: number;
+  originalProject: ProjectContext; stagedProject: ProjectContext; lab: ResearchLabDefinition; previousSubject: { assembly: string; controller: string }; candidateSubject: { assembly: string; controller: string }; referenceSubject?: { assembly: string; controller: string }; deadlineMs: number;
 }): Promise<{ results: any[]; gateReasons: string[] }> {
   const results: any[] = []; const gateReasons: string[] = [];
   for (const id of options.lab.regressions) {
@@ -295,9 +303,12 @@ async function evaluateRegressions(options: {
     const objective = await loadObjective(options.originalProject.rootDir, originalBenchmark.objective);
     const baseline = await evaluatePair(options.originalProject, originalBenchmark, originalBenchmark.baseline.assembly, originalBenchmark.baseline.controller, undefined, options.deadlineMs);
     const previous = await evaluatePair(options.originalProject, originalBenchmark, options.previousSubject.assembly, options.previousSubject.controller, undefined, options.deadlineMs);
+    const reference = options.referenceSubject
+      ? await evaluatePair(options.originalProject, originalBenchmark, options.referenceSubject.assembly, options.referenceSubject.controller, undefined, options.deadlineMs)
+      : previous;
     const candidate = await evaluatePair(options.stagedProject, stagedBenchmark, options.candidateSubject.assembly, options.candidateSubject.controller, undefined, options.deadlineMs);
-    const reasons = researchGateReasons(objective, baseline, previous, candidate).map((reason) => `${id}: ${reason}`); gateReasons.push(...reasons);
-    results.push({ benchmark: id, lockHash: originalLock.lockHash, previous, candidate, gateReasons: reasons });
+    const reasons = researchGateReasons(objective, baseline, reference, candidate).map((reason) => `${id}: ${reason}`); gateReasons.push(...reasons);
+    results.push({ benchmark: id, lockHash: originalLock.lockHash, previous, reference: options.referenceSubject ? reference : null, candidate, gateReasons: reasons });
   }
   return { results, gateReasons };
 }
@@ -338,7 +349,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
     const workspaceContainer = await mkdtemp(join(tmpdir(), `mujica-${id}-`)); const workspace = join(workspaceContainer, "project"); const snapshots = join(workspaceContainer, "snapshots"); const beforeSnapshot = join(snapshots, "before"); const afterSnapshot = join(snapshots, "after");
     const experimentStarted = Date.now(); const deadlineMs = experimentStarted + lab.budget.maxWallClockSeconds * 1000;
     const previous = current;
-    let proposal: ResearchLabProposal | null = null; let researcher: { stderr: string; durationMs: number } | null = null; let patch = ""; let beforeSource: SourceHashes = {}; let afterSource: SourceHashes = {}; let execution: any = null; let candidate: Evaluation | null = null; let regressionResults: any[] = []; let decision: ReturnType<typeof researchDecision> | null = null; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH"; let errorMessage: string | null = null; let policyId: string | null = null; let revision: { id: string; path: string } | null = null; let finalChanged: string[] = []; let researcherChangedPaths: string[] = [];
+    let proposal: ResearchLabProposal | null = null; let researcher: { stderr: string; durationMs: number } | null = null; let patch = ""; let beforeSource: SourceHashes = {}; let afterSource: SourceHashes = {}; let execution: any = null; let candidate: Evaluation | null = null; let referencePrimary: Evaluation | null = null; let regressionResults: any[] = []; let decision: ReturnType<typeof researchDecision> | null = null; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH"; let errorMessage: string | null = null; let policyId: string | null = null; let revision: { id: string; path: string } | null = null; let finalChanged: string[] = []; let researcherChangedPaths: string[] = [];
     try {
       await copyProject(project.rootDir, workspace); beforeSource = await materializeEditableSnapshot(project.rootDir, beforeSnapshot, lab); const beforeGuard = await snapshotFiles(workspace, false);
       const response = await invokeResearcher(agentCommand, workspace, { version: 2, lab, program, programHash, benchmarkLockHash: lock.lockHash, workspace, currentBest: current, history: summaries }, Math.max(1, deadlineMs - Date.now()));
@@ -374,21 +385,33 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       }
       if (!candidate) throw new Error("Research Lab execution did not produce a candidate evaluation");
       const candidateEvaluation = candidate;
-      const regressions = await evaluateRegressions({ originalProject: project, stagedProject, lab, previousSubject: currentSubject, candidateSubject, deadlineMs }); regressionResults = regressions.results;
-      decision = researchDecision(objective, initial.lockedBaseline, previous, candidateEvaluation, lab.minimumImprovement);
-      verdict = decision.verdict === "KEEP" && regressions.gateReasons.length === 0 ? "KEEP" : "REVERT";
-      if (regressions.gateReasons.length) decision = { ...decision, verdict: "REVERT", gateReasons: [...decision.gateReasons, ...regressions.gateReasons], selectionReason: "gate-regression" };
+      const referenceSubject = lab.execution.kind === "policy" && lab.execution.referenceController
+        ? { assembly: (await loadTraining(project.rootDir, lab.execution.training)).assembly, controller: lab.execution.referenceController }
+        : undefined;
+      let referenceDecision: ReturnType<typeof researchDecision> | null = null;
+      if (referenceSubject) {
+        referencePrimary = await evaluatePair(project, benchmark, referenceSubject.assembly, referenceSubject.controller, undefined, deadlineMs);
+        referenceDecision = researchDecision(objective, initial.lockedBaseline, referencePrimary, candidateEvaluation, lab.minimumImprovement);
+      }
+      const regressions = await evaluateRegressions({ originalProject: project, stagedProject, lab, previousSubject: currentSubject, candidateSubject, ...(referenceSubject ? { referenceSubject } : {}), deadlineMs }); regressionResults = regressions.results;
+      const candidateDecision = researchDecision(objective, initial.lockedBaseline, previous, candidateEvaluation, lab.minimumImprovement);
+      const externalGateReasons = policyReferenceGateReasons(referenceDecision, regressions.gateReasons);
+      verdict = candidateDecision.verdict === "KEEP" && externalGateReasons.length === 0 ? "KEEP" : "REVERT";
+      const finalDecision: ReturnType<typeof researchDecision> = externalGateReasons.length
+        ? { ...candidateDecision, verdict: "REVERT", gateReasons: [...candidateDecision.gateReasons, ...externalGateReasons], selectionReason: "gate-regression" }
+        : candidateDecision;
+      decision = finalDecision;
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); assertResearchLabEditableChanges(lab, finalChanged); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
-      const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), regressionResults: regressionResults.map((item) => item.candidate.cases.map((entry: any) => entry.resultHash)), verdict });
+      const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), referenceResults: referencePrimary?.cases.map((item) => item.resultHash) ?? null, regressionResults: regressionResults.map((item) => ({ reference: item.reference?.cases.map((entry: any) => entry.resultHash) ?? null, candidate: item.candidate.cases.map((entry: any) => entry.resultHash) })), verdict });
       const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`;
       if (verdict === "KEEP") {
         const rollback = await applySourceTransaction(project.rootDir, workspace, beforeSource, afterSource, finalChanged);
         try {
           if (lab.promotion === "policy-revision") {
             if (!policyId) throw new Error("Policy KEEP is missing a frozen Policy");
-            revision = await publishPolicyRevision({ project, lab, benchmark, lockHash: lock.lockHash, experimentId, experimentHash, proposal, previous, candidate: candidateEvaluation, decision, policyId });
+            revision = await publishPolicyRevision({ project, lab, benchmark, lockHash: lock.lockHash, experimentId, experimentHash, proposal, previous, candidate: candidateEvaluation, decision: finalDecision, policyId });
           } else if (lab.promotion === "robot-revision") {
-            if (lab.execution.kind === "controller") revision = await publishControllerRevision({ project, lab, benchmark, lockHash: lock.lockHash, experimentId, experimentHash, proposal, previous, candidate: candidateEvaluation, decision });
+            if (lab.execution.kind === "controller") revision = await publishControllerRevision({ project, lab, benchmark, lockHash: lock.lockHash, experimentId, experimentHash, proposal, previous, candidate: candidateEvaluation, decision: finalDecision });
             else if (lab.execution.kind === "development") {
               const applied = await candidateCommand(project.rootDir, lab.execution.candidate, true, deadlineMs); const data: any = applied.data; revision = { id: data.revisionId, path: data.revisionPath };
             }
@@ -400,13 +423,13 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       await atomicDirectory(artifactPath, async (directory) => {
         await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch);
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeJson(join(directory, "execution.json"), execution);
-        await writeJson(join(directory, "evaluation.json"), { primary: candidateEvaluation, regressions: regressionResults });
+        await writeJson(join(directory, "evaluation.json"), { primary: candidateEvaluation, referencePrimary, regressions: regressionResults });
         await writeJson(join(directory, "verdict.json"), { verdict, decision, revisionId: revision?.id ?? null });
         await writeJson(join(directory, "manifest.json"), { version: 2, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, sourceHash: hashJson(afterSource), researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null, durationMs: Date.now() - experimentStarted, completed: true });
       });
-      const summary = { sequence, experimentId, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null, artifactPath };
+      const summary = { sequence, experimentId, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision: finalDecision, revisionId: revision?.id ?? null, artifactPath };
       summaries.push(summary); artifacts.push(artifact("research-experiment", experimentId, artifactPath)); if (revision) artifacts.push(artifact(lab.promotion === "policy-revision" ? "policy-revision" : "revision", revision.id, revision.path));
-      await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${candidateEvaluation.aggregateScore}\t${summary.delta}\t${decision.candidateViolationCount}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${proposal.hypothesis.replace(/[\t\r\n]+/g, " ")}\n`);
+      await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${candidateEvaluation.aggregateScore}\t${summary.delta}\t${finalDecision.candidateViolationCount}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${proposal.hypothesis.replace(/[\t\r\n]+/g, " ")}\n`);
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : String(error); const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, proposal, beforeSource, afterSource, researcherChangedPaths, errorMessage, verdict: "CRASH" }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(experimentsRoot, experimentId);
       if (!patch && await exists(beforeSnapshot) && await exists(afterSnapshot)) try { patch = await sourcePatch(beforeSnapshot, afterSnapshot); } catch {}

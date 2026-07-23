@@ -303,7 +303,7 @@ def _fit(estimator: OneStepEstimator, definition: dict[str, Any]) -> dict[str, A
     }
 
 
-def _profile(definition: dict[str, Any], calibration_run_id: str, fitted: dict[str, float | int]) -> dict[str, Any]:
+def _profile(definition: dict[str, Any], calibration_run_id: str, fitted: dict[str, float | int], plant_hash: str) -> dict[str, Any]:
     uncertainty = float(definition["profile"]["uncertaintyFraction"])
     parameters: dict[str, Any] = {}
     for name in CONTINUOUS_PARAMETERS:
@@ -328,6 +328,7 @@ def _profile(definition: dict[str, Any], calibration_run_id: str, fitted: dict[s
         "version": 1,
         "id": definition["profile"]["id"],
         "name": definition["profile"]["name"],
+        "plantHash": plant_hash,
         "provenance": {
             "kind": provenance["kind"],
             "evidence": f"calibration-runs/{calibration_run_id}/manifest.json",
@@ -350,6 +351,7 @@ def calibrate(request: dict[str, Any]) -> dict[str, Any]:
         "mujocoVersion": mujoco.__version__,
         "assemblyHash": request["compiled"]["assemblyHash"],
         "modelHash": request["compiled"]["modelHash"],
+        "plantHash": request["compiled"]["plantHash"],
         "calibration": definition,
         "baseScenario": request["baseScenario"],
         "sources": identity_sources,
@@ -372,7 +374,7 @@ def calibrate(request: dict[str, Any]) -> dict[str, Any]:
 
     estimator = OneStepEstimator(model_path, float(definition["controlHz"]), request["baseScenario"], request["sources"])
     fitted = _fit(estimator, definition)
-    profile = _profile(definition, calibration_run_id, fitted["parameters"])
+    profile = _profile(definition, calibration_run_id, fitted["parameters"], request["compiled"]["plantHash"])
     result_hash = hash_json({"identity": identity, "fit": fitted, "profile": profile})
     result = {
         "calibrationRunId": calibration_run_id,
@@ -412,6 +414,7 @@ def calibrate(request: dict[str, Any]) -> dict[str, Any]:
             "assembly": definition["assembly"],
             "assemblyHash": request["compiled"]["assemblyHash"],
             "modelHash": request["compiled"]["modelHash"],
+            "plantHash": request["compiled"]["plantHash"],
             "calibration": definition["id"],
             "calibrationHash": hash_json(definition),
             "baseScenarioHash": hash_json(request["baseScenario"]),

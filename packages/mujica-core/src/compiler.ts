@@ -9,6 +9,13 @@ import { loadProject } from "./workspace";
 const COMPONENT_MARKER = "<!-- MUJICA_COMPONENTS -->";
 const END_MARKER = "<!-- MUJICA_END -->";
 
+export function canonicalPlantXml(xml: string): string {
+  return xml
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/>\s+</g, "><")
+    .trim();
+}
+
 function assertUnique<T>(items: T[], key: (item: T) => string, path: string): void {
   const seen = new Set<string>();
   for (const item of items) { const id = key(item); if (seen.has(id)) throw new MujicaValidationError([{ path, code: "duplicate.id", message: `duplicate id '${id}'` }]); seen.add(id); }
@@ -171,7 +178,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const unknownMountMarker = composedXml.match(/<!-- MUJICA_MOUNT:[^>]+ -->/)?.[0]; if (unknownMountMarker) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.mount-marker", message: `unknown mount marker ${unknownMountMarker}` }]);
   if (composedXml.split(END_MARKER).length > 2) throw new MujicaValidationError([{ path: baseModelPath, code: "mjcf.end-marker", message: `base MJCF may contain at most one ${END_MARKER}` }]); composedXml = composedXml.replace(END_MARKER, "");
   const assemblySource = await readText(join(project.rootDir, "assemblies", `${assembly.id}.robot.json`));
-  const modelHash = sha256(composedXml); const executionHash = hashJson({ modelHash, observationContract, actionContract });
+  const modelHash = sha256(composedXml); const plantHash = sha256(canonicalPlantXml(composedXml)); const executionHash = hashJson({ modelHash, observationContract, actionContract });
   const catalogHash = hashJson({ base: base.hash, components: resolved.map((item) => ({ id: item.compiled.componentId, hash: item.compiled.hash })) });
   const assemblyHash = sha256([project.manifest.id, assemblySource, base.hash, ...resolved.map((item) => `${item.compiled.instanceId}:${item.compiled.hash}`), hashJson(observationContract), hashJson(actionContract), modelHash].join("\n"));
   const artifactDir = join(project.rootDir, ".mujica", "cache", "assemblies", assemblyHash);
@@ -183,7 +190,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const sourceFiles = [relative(project.rootDir, join(project.rootDir, "assemblies", `${assembly.id}.robot.json`)), relative(project.rootDir, join(base.rootDir, "robot.json")), relative(project.rootDir, baseModelPath), ...resolved.flatMap((item) => [relative(project.rootDir, join(item.rootDir, "component.json")), ...[item.manifest.fragment, item.manifest.mountFragment].filter((path): path is string => path !== undefined).map((path) => relative(project.rootDir, confined(item.rootDir, path)))])];
   const result: CompiledAssembly = {
     version: 1, id: assembly.id, name: assembly.name, projectId: project.manifest.id, rootDir: project.rootDir, artifactDir, modelPath,
-    assemblyHash, executionHash, modelHash, baseHash: base.hash, catalogHash, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
+    assemblyHash, executionHash, modelHash, plantHash, baseHash: base.hash, catalogHash, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
     componentCost: resolved.reduce((sum, item) => sum + item.manifest.cost, 0), components: resolved.map((item) => item.compiled), observationContract, actionContract, sourceFiles,
   };
   await writeJson(join(artifactDir, "compiled-assembly.json"), { ...result, rootDir: undefined, artifactDir: undefined, modelPath: "model.xml" });

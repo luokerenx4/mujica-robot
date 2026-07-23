@@ -100,6 +100,7 @@ const integerDomainRangeSchema = z.object({ minimum: z.number().int(), maximum: 
 
 export const domainProfileSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
+  plantHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   provenance: z.object({
     kind: z.enum(["synthetic", "hil", "real"]), evidence: relativeFileSchema.nullable(), notes: z.string(),
   }).strict(),
@@ -347,7 +348,7 @@ export const researchLabSchema = z.object({
   regressions: z.array(idSchema).default([]),
   execution: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("controller"), assembly: idSchema, controller: idSchema }).strict(),
-    z.object({ kind: z.literal("policy"), training: idSchema, controller: idSchema, seed: z.number().int() }).strict(),
+    z.object({ kind: z.literal("policy"), training: idSchema, controller: idSchema, referenceController: idSchema.optional(), seed: z.number().int() }).strict(),
     z.object({ kind: z.literal("development"), candidate: idSchema }).strict(),
   ]),
   editable: z.object({

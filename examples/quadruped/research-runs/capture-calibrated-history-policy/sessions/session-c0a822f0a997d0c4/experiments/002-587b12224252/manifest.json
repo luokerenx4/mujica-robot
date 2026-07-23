@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "id": "002-587b12224252",
+  "sequence": 2,
+  "sessionId": "session-c0a822f0a997d0c4",
+  "researchId": "capture-calibrated-history-policy",
+  "labHash": "92b934db6375070f0c13b0efb386c0f57d451c9df431c46cbb3346e0b4e9eb4c",
+  "programHash": "9dc45a85a88e50ae6b4a22820d9b53d2612f17d12f2c45b4ef96e80ff00bff88",
+  "benchmarkLockHash": "28d765f8d25ccb4c1ff806c08923e17487ef1c15d4b260625571a9d4324ed855",
+  "sourceHash": "b1b2742b02778d416af9e5136fcaa2e3efc65abbfeb0af787421077113cd0f9d",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-history-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-history-residual-gait/controller.json",
+    "training/capture-calibrated-history-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "kept-history-frontier",
+    "hypothesis": "A gate-safe micro residual established useful history conditioning; add evidence and cautiously expand authority without leaving that feasible neighborhood.",
+    "expectedEffect": "Improve delayed and disturbed score while retaining every primary and regression gate."
+  },
+  "policyId": "capture-calibrated-history-residual-locomotion-5061262bd5d2779d",
+  "score": 55.710587858229694,
+  "delta": 0.18043034454936446,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "actuator-delay: lateral-drift regressed from passing to failing",
+      "spatial-generalization: delay-plus-reset: forward-progress regressed from passing to failing",
+      "spatial-generalization: delay-plus-reset: lateral-drift regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 4,
+    "previousViolationSeverity": 2.1613237920291266,
+    "candidateViolationSeverity": 2.2735471015031465,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 39403,
+  "completed": true
+}

@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "id": "001-5373ee6da410",
+  "sequence": 1,
+  "sessionId": "session-c0a822f0a997d0c4",
+  "researchId": "capture-calibrated-history-policy",
+  "labHash": "92b934db6375070f0c13b0efb386c0f57d451c9df431c46cbb3346e0b4e9eb4c",
+  "programHash": "9dc45a85a88e50ae6b4a22820d9b53d2612f17d12f2c45b4ef96e80ff00bff88",
+  "benchmarkLockHash": "28d765f8d25ccb4c1ff806c08923e17487ef1c15d4b260625571a9d4324ed855",
+  "sourceHash": "f0241bbe3242a7bc74af0642af32ebc4523d4a8d03736d29d17d668d47316d05",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-history-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-history-residual-gait/controller.json",
+    "training/capture-calibrated-history-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "history-micro-residual",
+    "hypothesis": "The first history Policy over-corrected delayed lateral motion; reduce authority fivefold and strengthen prior/quality regularization while retaining the GRU delay evidence.",
+    "expectedEffect": "Recover delay, generalization, and motion-quality gates while preserving any useful strong-push correction."
+  },
+  "policyId": "capture-calibrated-history-residual-locomotion-30d743e004fc844d",
+  "score": 55.53015751368033,
+  "delta": 0.22601230314848664,
+  "verdict": "KEEP",
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 4,
+    "candidateViolationCount": 3,
+    "previousViolationSeverity": 2.5837931489863704,
+    "candidateViolationSeverity": 2.1613237920291266,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "fewer-gate-violations"
+  },
+  "revisionId": "quadruped-p-ed7ad2ff20dd",
+  "durationMs": 36441,
+  "completed": true
+}

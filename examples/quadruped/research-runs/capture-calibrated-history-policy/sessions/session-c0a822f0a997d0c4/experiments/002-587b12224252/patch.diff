@@ -1,0 +1,36 @@
+diff --git a/before/controllers/capture-calibrated-history-residual-gait/controller.json b/after/controllers/capture-calibrated-history-residual-gait/controller.json
+index 764766c..ca34457 100644
+--- a/before/controllers/capture-calibrated-history-residual-gait/controller.json
++++ b/after/controllers/capture-calibrated-history-residual-gait/controller.json
+@@ -3,6 +3,6 @@
+   "id": "capture-calibrated-history-residual-gait",
+   "name": "Frozen capture-calibrated bounded-history residual policy",
+   "kind": "policy",
+-  "policy": "capture-calibrated-history-residual-locomotion-30d743e004fc844d",
++  "policy": "capture-calibrated-history-residual-locomotion-5061262bd5d2779d",
+   "deterministic": true
+ }
+diff --git a/before/training/capture-calibrated-history-residual-locomotion.training.json b/after/training/capture-calibrated-history-residual-locomotion.training.json
+index 25919bd..27b71bb 100644
+--- a/before/training/capture-calibrated-history-residual-locomotion.training.json
++++ b/after/training/capture-calibrated-history-residual-locomotion.training.json
+@@ -14,7 +14,7 @@
+     "strong-lateral-push",
+     "actuator-delay"
+   ],
+-  "totalSteps": 4096,
++  "totalSteps": 8192,
+   "rolloutSteps": 512,
+   "epochs": 2,
+   "minibatchSize": 128,
+@@ -23,8 +23,8 @@
+   "gaeLambda": 0.95,
+   "clipRatio": 0.15,
+   "entropyCoefficient": 0.0,
+-  "residualScale": 0.002,
+-  "residualPenalty": 50.0,
++  "residualScale": 0.003,
++  "residualPenalty": 40.0,
+   "qualityReward": {
+     "jointAcceleration": 0.0,
+     "bodyAngularAcceleration": 0.2,

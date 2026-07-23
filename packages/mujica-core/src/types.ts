@@ -105,6 +105,7 @@ export interface CompiledAssembly {
   assemblyHash: string;
   executionHash: string;
   modelHash: string;
+  plantHash: string;
   baseHash: string;
   catalogHash: string;
   totalMassKg: number;

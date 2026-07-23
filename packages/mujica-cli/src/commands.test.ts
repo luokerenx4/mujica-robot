@@ -3,8 +3,8 @@ import { rmSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
-import { candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
-import { assertResearchLabEditableChanges, researchPathIsEditable, trainingRunStableResultIdentity } from "./research-lab";
+import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
+import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, trainingRunStableResultIdentity } from "./research-lab";
 import { validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
@@ -16,6 +16,26 @@ function invoke(args: string[]) {
 }
 
 describe("agent CLI contract", () => {
+  test("Training rejects a Domain Profile bound to another physical plant", () => {
+    const assembly = { id: "history-assembly", plantHash: "a".repeat(64) };
+    expect(() => assertDomainProfilePlantCompatible({ id: "legacy-profile" }, assembly)).not.toThrow();
+    expect(() => assertDomainProfilePlantCompatible({ id: "matching-profile", plantHash: "a".repeat(64) }, assembly)).not.toThrow();
+    expect(() => assertDomainProfilePlantCompatible({ id: "wrong-profile", plantHash: "b".repeat(64) }, assembly))
+      .toThrow("plantHash does not match Assembly");
+  });
+
+  test("Policy Lab reference gates cannot be hidden by improving on a worse Policy", () => {
+    const referenceDecision = {
+      verdict: "REVERT" as const, gateReasons: [], previousViolationCount: 3, candidateViolationCount: 3,
+      previousViolationSeverity: 1, candidateViolationSeverity: 1.1, feasibilityImproved: false,
+      severityImproved: false, scoreImproved: true, selectionReason: "no-lexicographic-improvement" as const,
+    };
+    expect(policyReferenceGateReasons(referenceDecision, ["motion-quality: delayed drift"]))
+      .toEqual(["reference-controller: no-lexicographic-improvement", "motion-quality: delayed drift"]);
+    expect(policyReferenceGateReasons({ ...referenceDecision, verdict: "KEEP", selectionReason: "fewer-gate-violations" }, []))
+      .toEqual([]);
+  });
+
   test("help is machine discoverable", () => {
     const result = invoke(["help", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
@@ -161,8 +181,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
-    expect(envelope.data.definitions.researchLabs).toBe(4);
-    expect(envelope.data.definitions.domainProfiles).toBe(3);
+    expect(envelope.data.definitions.researchLabs).toBe(5);
+    expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(2);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
@@ -327,7 +347,8 @@ describe("agent CLI contract", () => {
     const revisionsResult = invoke(["policy-revisions", "examples/quadruped", "--json"]); const revisionsEnvelope = JSON.parse(revisionsResult.stdout); expect(revisionsResult.code).toBe(0); expect(revisionsEnvelope.data.revisions.length).toBeGreaterThan(0);
     const revisions = revisionsEnvelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt));
     const head = revisions.filter((item: { kind: string }) => item.kind === "policy-optimization").at(-1); expect(head.kind).toBe("policy-optimization");
-    const researchHead = revisions.filter((item: { kind: string }) => item.kind === "research-lab-policy").at(-1); expect(researchHead.policyId).toBe("motion-quality-residual-locomotion-478335c4ce7fee99");
+    const motionRevision = revisions.find((item: { researchId?: string }) => item.researchId === "motion-quality-residual-policy"); expect(motionRevision.policyId).toBe("motion-quality-residual-locomotion-478335c4ce7fee99");
+    const historyRevision = revisions.find((item: { researchId?: string }) => item.researchId === "capture-calibrated-history-policy"); expect(historyRevision).toMatchObject({ policyId: "capture-calibrated-history-residual-locomotion-30d743e004fc844d", selectionReason: "fewer-gate-violations" });
     const inspectResult = invoke(["policy", "inspect", "examples/quadruped", "--policy", head.policyId, "--json"]); const policy = JSON.parse(inspectResult.stdout); expect(inspectResult.code).toBe(0); expect(policy.data.manifest.runtimeVersion).toBe("0.2.0"); expect(policy.data.manifest.runtimeSourceHash).toHaveLength(64);
     expect(policy.data.architecture.actionTransform.residualScale).toBe(0.5);
     const revisionResult = invoke(["policy-revision", "inspect", "examples/quadruped", "--revision", head.id, "--json"]); const revision = JSON.parse(revisionResult.stdout); expect(revisionResult.code).toBe(0); expect(revision.data.evaluation.candidate.cases[0].score.terms.trainingSteps).toBe(-0.04096);
