@@ -11,6 +11,7 @@ project/
   controllers/<id>/controller.json + controller.py
   trainers/<id>/trainer.json + trainer.py + model.py
   training/<id>.training.json
+  domain-profiles/<id>.domain.json
   training-research/<id>.training-research.json
   tasks/<id>.task.json
   scenarios/<id>.scenario.json
@@ -46,6 +47,15 @@ Every Program Controller declares an `interface.requiredObservations` named subs
 Task v2 carries one explicit constant episode `motionCommand`: world-frame planar linear velocity in metres per second and body-frame yaw rate in radians per second. Task v3 carries 1–16 control-grid-aligned command segments and exposes only the active segment through the same Observation channel. A Controller receives it only when its Assembly includes the zero-mass `motion-command-input` Runtime Component. Trajectory evidence records the command beside measured motion, and the evaluator compares yaw against free-joint angular velocity rather than the unrelated vertical linear velocity. See [Motion command contract](design/motion-command-contract.md).
 
 Scenarios may define seeded initial joint-position and joint-velocity noise in addition to observation noise, friction, payload, lateral push, and actuator delay. Scenario sliding friction is applied to every MuJoCo contact geometry so a low-friction case cannot become inert through geom-pair combination. Objectives may score clipped forward progress while independently gating signed target-direction progress, maximum backward displacement, signed backward pitch, absolute pitch, and absolute pitch rate; a surviving robot that slides or tumbles backward therefore cannot pass as stationary. They may also gate maximum drift, planar/yaw tracking, transition terminal error, settling, braking-only settling, overshoot, and unsettled-transition counts. Trajectory rows retain commanded/measured motion, signed pitch/pitch rate, and an optional per-foot contact-force vector for deployable diagnosis. Benchmark cases default to `gating: true`; `gating: false` keeps a known challenge in aggregate scoring without claiming it as a release gate. See [Traction recovery](design/traction-recovery.md).
+
+A Domain Profile bounds body-mass, joint-damping, actuator-strength, contact
+friction, added observation-noise, and actuator-delay uncertainty for Training.
+It declares `synthetic`, `hil`, or `real` provenance; physical profiles require
+a confined evidence path, and the evidence bytes participate in identity.
+Samples use a dedicated deterministic episode seed and are frozen into Training
+and Policy artifacts. Benchmark evaluation remains fixed-Scenario and never
+receives a random profile. See [Sim-to-real Domain
+Profiles](design/sim-to-real-domain-profiles.md).
 
 A Research definition names one locked Benchmark, one Assembly, one program Controller, one Markdown instruction program, and one exact controller JSON file. V1 editable parameters are finite numeric `/config/<key>` values with explicit bounds, step size, and search order. Benchmark, task, scenario, objective, assembly, controller source, and runtime files are never delegated to the proposer.
 

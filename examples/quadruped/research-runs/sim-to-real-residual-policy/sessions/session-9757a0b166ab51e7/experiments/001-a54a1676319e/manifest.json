@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "id": "001-a54a1676319e",
+  "sequence": 1,
+  "sessionId": "session-9757a0b166ab51e7",
+  "researchId": "sim-to-real-residual-policy",
+  "labHash": "a01d9b69b6592692d131f7148392a3d13c3905ca53ceda23c21cae0b1459420a",
+  "programHash": "5dc5fe8b52953f9d1cf08d3ac59619e11f0e21827ea69df8516b72c302fb3d81",
+  "benchmarkLockHash": "60145d98358d5ff0fdaf1f7664197548da4500f55845386c997b0686ff2c3d25",
+  "sourceHash": "d347554922d678b0538f9c8990c8d152dc1923fa7573ed81911fbd4b53745c6f",
+  "researcherChangedPaths": [
+    "training/sim-to-real-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/sim-to-real-residual-gait/controller.json",
+    "training/sim-to-real-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "increase-residual-authority",
+    "hypothesis": "The conservative residual improved the light plant but could not counter the heavy weak-actuator mismatch; doubling only residual authority may let PPO correct that plant without changing its data budget or uncertainty assumptions.",
+    "expectedEffect": "Improve heavy/weak survival and signed forward progress while retaining light/strong forward capability and locked regression gates."
+  },
+  "policyId": "sim-to-real-residual-locomotion-c8fdee1209213de5",
+  "score": 40.261769548986656,
+  "delta": -8.110082443000287,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "light-strong: forward-progress regressed from passing to failing",
+      "light-strong: signed-forward-progress regressed from passing to failing",
+      "light-strong: backward-displacement regressed from passing to failing",
+      "light-strong: planar-velocity-tracking regressed from passing to failing",
+      "light-strong: yaw-rate-tracking regressed from passing to failing"
+    ],
+    "previousViolationCount": 12,
+    "candidateViolationCount": 17,
+    "previousViolationSeverity": 31.9897674006866,
+    "candidateViolationSeverity": 43.297901600106286,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 54045,
+  "completed": true
+}

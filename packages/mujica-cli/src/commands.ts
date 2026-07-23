@@ -2,7 +2,7 @@ import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } fro
 import { dirname, join, resolve } from "node:path";
 import {
   assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, hashDirectory, hashJson, listAssemblyIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCandidate, loadComponent,
-  loadController, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
+  listDomainProfileIds, loadController, loadDomainProfile, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
   type BenchmarkDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
@@ -14,6 +14,14 @@ function projectArtifact(kind: Artifact["kind"], id: string, path: string, immut
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+
+async function domainProfileIdentity(projectDir: string, id: string) {
+  const definition = await loadDomainProfile(projectDir, id);
+  const evidenceHash = definition.provenance.evidence
+    ? sha256(await readFile(confined(projectDir, definition.provenance.evidence)))
+    : null;
+  return { definition, evidenceHash, hash: hashJson({ definition, evidenceHash }) };
 }
 
 async function controllerIdentity(projectDir: string, id: string, override?: ControllerDefinition): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string; trainingSteps: number }> {
@@ -49,10 +57,10 @@ export async function validateCommand(projectDir: string) {
 }
 
 export async function inspectCommand(projectDir: string) {
-  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir);
+  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
   const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications"));
-  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
+  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, domainProfiles, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
 }
 
 export async function studioCommand(projectDir: string, run?: string, compareRun?: string) {
@@ -124,6 +132,20 @@ export async function componentInspectCommand(projectDir: string, id: string) {
   return success("component.inspect", { ...component.manifest, hash: component.hash, rootDir: component.rootDir }, project);
 }
 
+export async function domainListCommand(projectDir: string) {
+  const project = await loadProject(projectDir); const profiles = [];
+  for (const id of await listDomainProfileIds(project.rootDir)) {
+    const identity = await domainProfileIdentity(project.rootDir, id);
+    profiles.push({ ...identity.definition, evidenceHash: identity.evidenceHash, hash: identity.hash });
+  }
+  return success("domain.list", { profiles }, project);
+}
+
+export async function domainInspectCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir); const identity = await domainProfileIdentity(project.rootDir, id);
+  return success("domain.inspect", { definition: identity.definition, evidenceHash: identity.evidenceHash, hash: identity.hash, path: confined(project.rootDir, `domain-profiles/${id}.domain.json`) }, project);
+}
+
 async function controllerCompatibility(project: ProjectContext, definition: ControllerDefinition) {
   const compatibleAssemblies: string[] = []; const incompatibleAssemblies: Array<{ assembly: string; issues: Array<{ code: string; channel: string | null; message: string }> }> = [];
   const policyManifest = definition.kind === "policy" ? JSON.parse(await readFile(confined(project.rootDir, `policies/${definition.policy}/manifest.json`), "utf8")) : null;
@@ -186,13 +208,18 @@ export async function executeTraining(project: ProjectContext, training: Trainin
     const prior = await loadController(project.rootDir, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training prior '${training.priorController}' must be a program Controller`);
     assertProgramControllerCompatible(prior.definition, assembly); priorController = { definition: prior.definition, rootDir: prior.rootDir, hash: await hashDirectory(prior.rootDir) };
   }
+  const domainProfileIdentityValue = training.domainProfile ? await domainProfileIdentity(project.rootDir, training.domainProfile) : null;
+  const domainProfile = domainProfileIdentityValue?.definition ?? null;
+  const domainProfileEvidenceHash = domainProfileIdentityValue?.evidenceHash ?? null;
+  const domainProfileHash = domainProfileIdentityValue?.hash ?? null;
   const timeoutMs = deadlineMs === undefined ? undefined : deadlineMs - Date.now();
   if (timeoutMs !== undefined && timeoutMs <= 0) throw new Error("Research Lab wall-clock budget exhausted before training");
   return await invokeRuntime("train", {
     runtimeVersion, runtimeSourceHash: sourceHash, harnessSourceHash: harnessHash, harnessDependencyLockHash: harnessDependencyHash, projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), training, trainer: trainer.definition, trainerRoot: trainer.rootDir, trainerHash,
     priorController: priorController?.definition ?? null, priorControllerRoot: priorController?.rootDir ?? null, priorControllerHash: priorController?.hash ?? null,
+    domainProfile, domainProfileHash, domainProfileEvidenceHash,
     task: await loadTask(project.rootDir, training.task), scenarios, seed, dependencyLockHash: await dependencyLockHash(),
-    sourceHashes: { runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash, priorController: priorController?.hash ?? null, assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training) },
+    sourceHashes: { runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash, priorController: priorController?.hash ?? null, domainProfile: domainProfileHash, assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training) },
   }, timeoutMs);
 }
 

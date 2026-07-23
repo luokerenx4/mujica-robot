@@ -1,0 +1,40 @@
+{
+  "definition": {
+    "version": 1,
+    "id": "quadruped-pre-hil-v1",
+    "name": "Conservative quadruped pre-HIL uncertainty envelope",
+    "provenance": {
+      "kind": "synthetic",
+      "evidence": null,
+      "notes": "Engineering envelope only. Replace with a versioned HIL or real profile after system identification; this file makes no physical calibration claim."
+    },
+    "parameters": {
+      "bodyMassScale": {
+        "minimum": 0.94,
+        "maximum": 1.06
+      },
+      "jointDampingScale": {
+        "minimum": 0.75,
+        "maximum": 1.25
+      },
+      "actuatorStrengthScale": {
+        "minimum": 0.9,
+        "maximum": 1.1
+      },
+      "frictionScale": {
+        "minimum": 0.75,
+        "maximum": 1.15
+      },
+      "observationNoiseStd": {
+        "minimum": 0,
+        "maximum": 0.002
+      },
+      "actuatorDelayJitterSteps": {
+        "minimum": 0,
+        "maximum": 2
+      }
+    }
+  },
+  "evidenceHash": null,
+  "hash": "ea135355bafdd903ab857ac96bd2ba3d163164b618b6e9f8fec52fb728acfa88"
+}

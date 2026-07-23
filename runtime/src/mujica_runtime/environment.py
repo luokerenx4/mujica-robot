@@ -42,12 +42,19 @@ class RobotEnvironment:
     FOOT_SITE_NAMES = ("foot-fl-site", "foot-fr-site", "foot-rl-site", "foot-rr-site")
     FOOT_SENSOR_NAMES = ("foot-force-fl", "foot-force-fr", "foot-force-rl", "foot-force-rr")
 
-    def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int):
+    def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int, domain_sample: dict[str, Any] | None = None):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
         self.compiled = compiled
         self.task = task
-        self.scenario = scenario
+        self.domain_sample = dict(domain_sample or {})
+        self.scenario = dict(scenario)
+        self.scenario["friction"] = float(scenario["friction"]) * float(scenario.get("frictionScale", 1.0)) * float(self.domain_sample.get("frictionScale", 1.0))
+        self.scenario["observationNoiseStd"] = float(scenario["observationNoiseStd"]) + float(self.domain_sample.get("observationNoiseStd", 0.0))
+        self.scenario["actuatorDelaySteps"] = max(0, int(scenario["actuatorDelaySteps"]) + int(self.domain_sample.get("actuatorDelayJitterSteps", 0)))
+        self.body_mass_scale = float(scenario.get("bodyMassScale", 1.0)) * float(self.domain_sample.get("bodyMassScale", 1.0))
+        self.joint_damping_scale = float(scenario.get("jointDampingScale", 1.0)) * float(self.domain_sample.get("jointDampingScale", 1.0))
+        self.actuator_strength_scale = float(scenario.get("actuatorStrengthScale", 1.0)) * float(self.domain_sample.get("actuatorStrengthScale", 1.0))
         self.rng = np.random.default_rng(seed)
         self.seed = seed
         self.control_dt = 1.0 / float(task["controlHz"])
@@ -61,11 +68,14 @@ class RobotEnvironment:
         self.last_applied_action = np.zeros(self.model.nu, dtype=np.float64)
         self.command_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
-        self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(scenario["actuatorDelaySteps"]) + 1)], maxlen=int(scenario["actuatorDelaySteps"]) + 1)
+        self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(self.scenario["actuatorDelaySteps"]) + 1)], maxlen=int(self.scenario["actuatorDelaySteps"]) + 1)
         self.events: list[dict[str, Any]] = []
         self._configure_scenario()
 
     def _configure_scenario(self) -> None:
+        self.model.body_mass[:] *= self.body_mass_scale
+        self.model.dof_damping[:] *= self.joint_damping_scale
+        self.model.actuator_gainprm[:, 0] *= self.actuator_strength_scale
         self.model.geom_friction[:, 0] = float(self.scenario["friction"])
         torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "torso")
         if torso >= 0:
@@ -92,7 +102,17 @@ class RobotEnvironment:
         self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(self.scenario["actuatorDelaySteps"]) + 1)], maxlen=int(self.scenario["actuatorDelaySteps"]) + 1)
         initial_command = self.motion_command(0)
-        self.events = [{"type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"], "motionCommand": initial_command.tolist()}]
+        self.events = [{
+            "type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"], "motionCommand": initial_command.tolist(),
+            "plant": {
+                "bodyMassScale": self.body_mass_scale,
+                "jointDampingScale": self.joint_damping_scale,
+                "actuatorStrengthScale": self.actuator_strength_scale,
+                "friction": float(self.scenario["friction"]),
+                "observationNoiseStd": float(self.scenario["observationNoiseStd"]),
+                "actuatorDelaySteps": int(self.scenario["actuatorDelaySteps"]),
+            },
+        }]
         return self.observation()
 
     def motion_command(self, step_index: int | None = None) -> np.ndarray:

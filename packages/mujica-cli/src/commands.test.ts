@@ -34,6 +34,20 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "domain.inspect")).toBe(true);
+  });
+
+  test("Domain Profile discovery exposes provenance and bounded dynamics", () => {
+    const result = invoke(["domain", "inspect", "examples/quadruped", "--domain", "quadruped-pre-hil-v1", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.hash).toHaveLength(64);
+    expect(envelope.data.evidenceHash).toBeNull();
+    expect(envelope.data.definition.provenance.kind).toBe("synthetic");
+    expect(envelope.data.definition.parameters).toMatchObject({
+      bodyMassScale: { minimum: 0.94, maximum: 1.06 },
+      actuatorStrengthScale: { minimum: 0.9, maximum: 1.1 },
+      actuatorDelayJitterSteps: { minimum: 0, maximum: 2 },
+    });
   });
 
   test("Controller discovery exposes legal Assembly combinations", () => {
@@ -84,7 +98,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
-    expect(envelope.data.definitions.researchLabs).toBe(2);
+    expect(envelope.data.definitions.researchLabs).toBe(3);
+    expect(envelope.data.definitions.domainProfiles).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);

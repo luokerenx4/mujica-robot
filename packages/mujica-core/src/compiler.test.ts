@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compareAssemblies, compileAssembly, loadBenchmark, loadCandidate, loadComponent, loadController, loadResearch, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { compareAssemblies, compileAssembly, domainProfileSchema, loadBenchmark, loadCandidate, loadComponent, loadController, loadDomainProfile, loadResearch, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -125,6 +125,17 @@ describe("Robot Assembly compiler", () => {
     expect(commanded?.observationContract.channels.at(-1)).toMatchObject({ name: "foot-contact-force", size: 4 });
     expect(commanded?.observationContract.channels.find((channel) => channel.name === "motion-command")).toMatchObject({ kind: "command", size: 3, source: "task:motion-command" });
     expect(commanded?.observationContract.size).toBe(145);
+  });
+
+  test("Domain Profiles are bounded provenance-carrying Training inputs", async () => {
+    const profile = await loadDomainProfile(project, "quadruped-pre-hil-v1");
+    expect(profile.provenance.kind).toBe("synthetic");
+    expect(profile.provenance.evidence).toBeNull();
+    expect(profile.parameters.actuatorStrengthScale).toEqual({ minimum: 0.9, maximum: 1.1 });
+    const training = await loadTraining(project, "sim-to-real-residual-locomotion");
+    expect(training.domainProfile).toBe(profile.id);
+    expect(domainProfileSchema.safeParse({ ...profile, parameters: { bodyMassScale: { minimum: 1.1, maximum: 0.9 } } }).success).toBe(false);
+    expect(domainProfileSchema.safeParse({ ...profile, provenance: { kind: "real", evidence: null, notes: "" } }).success).toBe(false);
   });
 
   test("research definitions expose a bounded editable surface", async () => {

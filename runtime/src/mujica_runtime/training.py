@@ -34,6 +34,40 @@ QUALITY_REWARD_FEATURES = {
     "footSlip": "footSlipMeanMps",
     "footImpact": "footContactImpactMeanNPerSec",
 }
+DOMAIN_PARAMETER_NAMES = (
+    "bodyMassScale",
+    "jointDampingScale",
+    "actuatorStrengthScale",
+    "frictionScale",
+    "observationNoiseStd",
+    "actuatorDelayJitterSteps",
+)
+
+
+def sample_domain_profile(profile: dict[str, Any] | None, seed: int) -> dict[str, float | int]:
+    if not profile:
+        return {}
+    rng = np.random.default_rng(seed)
+    sample: dict[str, float | int] = {}
+    for name in DOMAIN_PARAMETER_NAMES:
+        bounds = profile.get("parameters", {}).get(name)
+        if not bounds:
+            continue
+        minimum = bounds["minimum"]; maximum = bounds["maximum"]
+        if name == "actuatorDelayJitterSteps":
+            sample[name] = int(rng.integers(int(minimum), int(maximum) + 1))
+        else:
+            sample[name] = float(rng.uniform(float(minimum), float(maximum)))
+    return sample
+
+
+def summarize_domain_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    summary: dict[str, dict[str, float]] = {}
+    for name in DOMAIN_PARAMETER_NAMES:
+        values = [float(item["parameters"][name]) for item in samples if name in item["parameters"]]
+        if values:
+            summary[name] = {"minimum": min(values), "mean": float(np.mean(values)), "maximum": max(values)}
+    return summary
 
 
 def quality_reward_penalty(info: dict[str, Any], weights: dict[str, Any] | None) -> tuple[float, dict[str, float]]:
@@ -88,11 +122,16 @@ class PPOTrainer:
         torch.use_deterministic_algorithms(True, warn_only=True)
         scenarios = request["scenarios"]
         scenario_index = 0
+        domain_samples: list[dict[str, Any]] = []
 
         def make_environment() -> RobotEnvironment:
             nonlocal scenario_index
             scenario = scenarios[scenario_index % len(scenarios)]; scenario_index += 1
-            return RobotEnvironment(Path(request["modelPath"]), request["compiled"], request["task"], scenario, seed + scenario_index)
+            episode_seed = seed + scenario_index
+            domain_seed = seed + 10_000_000 + scenario_index
+            domain_sample = sample_domain_profile(request.get("domainProfile"), domain_seed)
+            domain_samples.append({"episode": scenario_index, "scenario": scenario["id"], "environmentSeed": episode_seed, "domainSeed": domain_seed, "steps": 0, "completed": False, "parameters": domain_sample})
+            return RobotEnvironment(Path(request["modelPath"]), request["compiled"], request["task"], scenario, episode_seed, domain_sample)
 
         environment = make_environment()
         program_prior: Controller | None = None
@@ -150,10 +189,14 @@ class PPOTrainer:
                 batch_base_rewards.append(result.reward); batch_quality_penalties.append(quality_penalty)
                 for name, value in quality_terms.items(): batch_quality_terms[name].append(value)
                 observation_map = result.observation; observation = environment.vector(observation_map); completed_steps += 1
+                domain_samples[-1]["steps"] += 1
                 if done:
-                    completed_rewards.append(episode_reward); episode_reward = 0.0; environment = make_environment()
-                    if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + scenario_index)
-                    observation_map = environment.reset(); observation = environment.vector(observation_map)
+                    domain_samples[-1]["completed"] = True
+                    completed_rewards.append(episode_reward); episode_reward = 0.0
+                    if completed_steps < total_steps:
+                        environment = make_environment()
+                        if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + scenario_index)
+                        observation_map = environment.reset(); observation = environment.vector(observation_map)
             with torch.no_grad():
                 normalized = normalizer.normalize(observation); _, next_value, _ = network(torch.from_numpy(normalized).unsqueeze(0)); bootstrap = float(next_value.item())
             advantages = np.zeros(len(batch_rewards), dtype=np.float32); last_advantage = 0.0
@@ -192,7 +235,19 @@ class PPOTrainer:
             action_transform = {**action_transform, "controllerId": prior_definition["id"], "controllerHash": request["priorControllerHash"]}
         write_json(output_dir / "architecture.json", {**architecture, "actionTransform": action_transform})
         write_json(output_dir / "normalizer.json", {"count": normalizer.count, "mean": normalizer.mean.tolist(), "variance": normalizer.variance.tolist()})
-        write_json(output_dir / "training-metrics.json", {"updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward, "qualityRewardReferences": QUALITY_REWARD_REFERENCES})
+        write_json(output_dir / "training-metrics.json", {
+            "updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards),
+            "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
+            "qualityRewardReferences": QUALITY_REWARD_REFERENCES,
+            "domainProfile": {
+                "id": request["domainProfile"]["id"],
+                "hash": request["domainProfileHash"],
+                "evidenceHash": request.get("domainProfileEvidenceHash"),
+                "provenance": request["domainProfile"]["provenance"],
+            } if request.get("domainProfile") else None,
+            "domainSamples": domain_samples,
+            "domainCoverage": summarize_domain_samples(domain_samples),
+        })
         return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}
 
 
@@ -200,7 +255,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
     project_dir = Path(request["projectDir"]); trainer_root = Path(request["trainerRoot"]); definition = request["trainer"]
     module = load_python_module((trainer_root / definition["entry"]).resolve(), f"mujica_trainer_{definition['id'].replace('-', '_')}")
     trainer = module.create_trainer()
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "training": request["training"], "task": request["task"], "scenarios": request["scenarios"], "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request["task"], "scenarios": request["scenarios"], "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
     training_run_id = f"training-{run_key[:16]}"; training_run = project_dir / "training-runs" / training_run_id
     if (training_run / "manifest.json").exists(): return {**json.loads((training_run / "result.json").read_text()), "artifactPath": str(training_run), "cached": True}
     policy_result: dict[str, Any] = {}
@@ -211,7 +266,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
         started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time() - started
         model_hash = hash_file(work / "model.pt")
         observation_hash = hash_json(request["compiled"]["observationContract"]); action_hash = hash_json(request["compiled"]["actionContract"])
-        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]), "scenarioHashes": [hash_json(item) for item in request["scenarios"]], "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
+        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]), "scenarioHashes": [hash_json(item) for item in request["scenarios"]], "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
         policy_id = f"{request['training']['id']}-{hash_json(policy_identity)[:16]}"; policy_dir = project_dir / "policies" / policy_id
         reuse_policy = False
         if policy_dir.exists():
@@ -224,6 +279,12 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
             if (work / "prior").exists(): shutil.copytree(work / "prior", target / "prior")
             write_json(target / "observation-contract.json", request["compiled"]["observationContract"]); write_json(target / "action-contract.json", request["compiled"]["actionContract"])
             write_json(target / "training-config.json", request["training"]); write_json(target / "source-hashes.json", request["sourceHashes"])
+            if request.get("domainProfile"):
+                write_json(target / "domain-profile.json", {
+                    "definition": request["domainProfile"],
+                    "evidenceHash": request.get("domainProfileEvidenceHash"),
+                    "hash": request["domainProfileHash"],
+                })
             write_json(target / "manifest.json", {"version": 1, "id": policy_id, **policy_identity, "hardware": hardware_info(), "trainingDeterminism": "best-effort", "evaluationDeterminism": "same-environment-bitwise-intended", "createdByTrainingRun": training_run_id})
         if not reuse_policy: atomic_directory(policy_dir, policy_writer)
         policy_result = {"trainingRunId": training_run_id, "policyId": policy_id, "policyPath": str(policy_dir), "modelHash": model_hash, "trainingMetrics": training_metrics, "elapsedSeconds": elapsed}

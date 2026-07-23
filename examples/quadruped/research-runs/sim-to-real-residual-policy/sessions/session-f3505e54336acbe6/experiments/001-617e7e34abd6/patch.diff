@@ -1,0 +1,25 @@
+diff --git a/before/controllers/sim-to-real-residual-gait/controller.json b/after/controllers/sim-to-real-residual-gait/controller.json
+index 859ec51..6aa5ae8 100644
+--- a/before/controllers/sim-to-real-residual-gait/controller.json
++++ b/after/controllers/sim-to-real-residual-gait/controller.json
+@@ -3,6 +3,6 @@
+   "id": "sim-to-real-residual-gait",
+   "name": "Frozen domain-randomized residual policy",
+   "kind": "policy",
+-  "policy": "sim-to-real-residual-locomotion-d42a5b44110f8796",
++  "policy": "sim-to-real-residual-locomotion-a67931c8bf15bcd8",
+   "deterministic": true
+ }
+diff --git a/before/training/sim-to-real-residual-locomotion.training.json b/after/training/sim-to-real-residual-locomotion.training.json
+index bec9244..deef814 100644
+--- a/before/training/sim-to-real-residual-locomotion.training.json
++++ b/after/training/sim-to-real-residual-locomotion.training.json
+@@ -11,7 +11,7 @@
+     "nominal",
+     "actuator-delay-three-step"
+   ],
+-  "totalSteps": 4096,
++  "totalSteps": 8192,
+   "rolloutSteps": 256,
+   "epochs": 2,
+   "minibatchSize": 64,

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "sim-to-real-audit",
+  "name": "Fixed held-out plant mismatch audit",
+  "objective": "upright-locomotion",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "upright-traction-gait"
+  },
+  "cases": [
+    {
+      "id": "heavy-weak",
+      "task": "forward-walk",
+      "scenario": "heldout-heavy-weak",
+      "seed": 2711,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "light-strong",
+      "task": "forward-walk",
+      "scenario": "heldout-light-strong",
+      "seed": 2712,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "slippery-weak",
+      "task": "forward-walk",
+      "scenario": "heldout-slippery-weak",
+      "seed": 2713,
+      "weight": 1,
+      "gating": false
+    }
+  ]
+}

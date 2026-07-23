@@ -88,7 +88,37 @@ export const scenarioSchema = z.object({
   lateralPush: z.object({ timeSeconds: z.number().nonnegative(), durationSeconds: z.number().positive(), forceNewton: z.number() }).strict().nullable(),
   observationNoiseStd: z.number().nonnegative(), actuatorDelaySteps: z.number().int().nonnegative(),
   initialJointPositionNoiseStd: z.number().nonnegative().default(0), initialJointVelocityNoiseStd: z.number().nonnegative().default(0),
+  bodyMassScale: z.number().positive().optional(), jointDampingScale: z.number().nonnegative().optional(), actuatorStrengthScale: z.number().positive().optional(),
 }).strict();
+
+const positiveDomainRangeSchema = z.object({ minimum: z.number().positive(), maximum: z.number().positive() }).strict()
+  .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
+const nonnegativeDomainRangeSchema = z.object({ minimum: z.number().nonnegative(), maximum: z.number().nonnegative() }).strict()
+  .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
+const integerDomainRangeSchema = z.object({ minimum: z.number().int(), maximum: z.number().int() }).strict()
+  .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
+
+export const domainProfileSchema = z.object({
+  version: z.literal(1), id: idSchema, name: z.string().min(1),
+  provenance: z.object({
+    kind: z.enum(["synthetic", "hil", "real"]), evidence: relativeFileSchema.nullable(), notes: z.string(),
+  }).strict(),
+  parameters: z.object({
+    bodyMassScale: positiveDomainRangeSchema.optional(),
+    jointDampingScale: nonnegativeDomainRangeSchema.optional(),
+    actuatorStrengthScale: positiveDomainRangeSchema.optional(),
+    frictionScale: positiveDomainRangeSchema.optional(),
+    observationNoiseStd: nonnegativeDomainRangeSchema.optional(),
+    actuatorDelayJitterSteps: integerDomainRangeSchema.optional(),
+  }).strict(),
+}).strict().superRefine((profile, context) => {
+  if (profile.provenance.kind !== "synthetic" && profile.provenance.evidence === null) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "evidence"], message: "HIL and real Domain Profiles require an evidence path" });
+  }
+  if (Object.keys(profile.parameters).length === 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["parameters"], message: "Domain Profile must bound at least one parameter" });
+  }
+});
 
 export const objectiveSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
@@ -130,6 +160,7 @@ export const trainerSchema = z.object({ version: z.literal(1), id: idSchema, nam
 export const trainingSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), assembly: idSchema, trainer: idSchema, task: idSchema, scenarios: z.array(idSchema).min(1),
   priorController: idSchema.optional(),
+  domainProfile: idSchema.optional(),
   totalSteps: z.number().int().positive(), rolloutSteps: z.number().int().positive(), epochs: z.number().int().positive(), minibatchSize: z.number().int().positive(),
   learningRate: z.number().positive(), gamma: z.number().min(0).max(1), gaeLambda: z.number().min(0).max(1), clipRatio: z.number().positive(), entropyCoefficient: z.number().nonnegative(),
   residualScale: z.number().min(0).max(1).optional(),
@@ -249,6 +280,7 @@ export const researchLabProposalSchema = z.object({
 export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
+export type DomainProfileDefinition = z.output<typeof domainProfileSchema>;
 export type ObjectiveDefinition = z.output<typeof objectiveSchema>;
 export type BenchmarkDefinition = z.output<typeof benchmarkSchema>;
 export type TrainerDefinition = z.output<typeof trainerSchema>;

@@ -4,7 +4,7 @@ import { resolveProjectDirectory } from "@mujica/core";
 import { failure } from "./contract";
 import { hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
-  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, evaluateCommand, inspectCommand,
+  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 import { researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand } from "./research-lab";
@@ -15,6 +15,8 @@ USAGE
   mujica validate|inspect <project> [--json]
   mujica component list <project> [--json]
   mujica component inspect <project> --component ID [--json]
+  mujica domain list <project> [--json]
+  mujica domain inspect <project> --domain ID [--json]
   mujica controller list <project> [--json]
   mujica controller inspect <project> --controller ID [--json]
   mujica assembly inspect|compile <project> --assembly ID [--json]
@@ -47,6 +49,8 @@ const CAPABILITIES = [
   { id: "inspect", usage: "mujica inspect <project> [--json]", effect: "read-only" },
   { id: "component.list", usage: "mujica component list <project> [--json]", effect: "read-only" },
   { id: "component.inspect", usage: "mujica component inspect <project> --component ID [--json]", effect: "read-only" },
+  { id: "domain.list", usage: "mujica domain list <project> [--json]", effect: "read-only" },
+  { id: "domain.inspect", usage: "mujica domain inspect <project> --domain ID [--json]", effect: "read-only" },
   { id: "controller.list", usage: "mujica controller list <project> [--json]", effect: "read-only" },
   { id: "controller.inspect", usage: "mujica controller inspect <project> --controller ID [--json]", effect: "read-only" },
   { id: "assembly.inspect", usage: "mujica assembly inspect <project> --assembly ID [--json]", effect: "read-only" },
@@ -81,6 +85,8 @@ function one(positionals: string[], usage: string): string { if (positionals.len
 function printHuman(command: string, data: any): void {
   if (command === "validate") process.stdout.write(`Valid Mujica project '${data.project.id}'\nassemblies=${data.assemblies.length} components=${data.components.length}\n`);
   else if (command === "controller.list") process.stdout.write(`${data.controllers.map((controller: any) => `${controller.id}\t${controller.kind}\tcompatible=${controller.compatibleAssemblies.join(",") || "none"}`).join("\n")}\n`);
+  else if (command === "domain.list") process.stdout.write(`${data.profiles.map((profile: any) => `${profile.id}\t${profile.provenance.kind}\t${profile.hash.slice(0, 16)}`).join("\n")}\n`);
+  else if (command === "domain.inspect") process.stdout.write(`domain=${data.definition.id}\nprovenance=${data.definition.provenance.kind}\nhash=${data.hash}\nparameters=${Object.keys(data.definition.parameters).join(",")}\n`);
   else if (command === "controller.inspect") process.stdout.write(`controller=${data.definition.id}\nkind=${data.definition.kind}\nhash=${data.hash}\ncompatible=${data.compatibleAssemblies.join(",") || "none"}\nincompatible=${data.incompatibleAssemblies.length}\n`);
   else if (command === "assembly.compare") process.stdout.write(`Assembly ${data.from.id} -> ${data.to.id}\ncomponents +${data.components.added.length} -${data.components.removed.length} ~${data.components.changed.length}\nobservations +${data.observations.added.length} -${data.observations.removed.length}\nmass_delta_kg=${data.massDeltaKg}\ncost_delta=${data.costDelta}\n`);
   else if (command === "simulate") process.stdout.write(`run=${data.runId}\nscore=${data.score.total}\nsurvival=${data.metrics.survivalRate}\nartifact=${data.artifactPath}\n`);
@@ -120,6 +126,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "component") {
       const action = args.shift(); commandId = `component.${action}`; const { values, positionals } = parseArgs({ args, options: { component: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica component ${action} <project>`), values.project);
       if (action === "list") envelope = await componentListCommand(project); else if (action === "inspect") envelope = await componentInspectCommand(project, required(values.component, "component")); else throw new Error("Usage: mujica component list|inspect ...");
+    } else if (command === "domain") {
+      const action = args.shift(); commandId = `domain.${action}`; const { values, positionals } = parseArgs({ args, options: { domain: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica domain ${action} <project>`), values.project);
+      if (action === "list") envelope = await domainListCommand(project); else if (action === "inspect") envelope = await domainInspectCommand(project, required(values.domain, "domain")); else throw new Error("Usage: mujica domain list|inspect ...");
     } else if (command === "controller") {
       const action = args.shift(); commandId = `controller.${action}`; const { values, positionals } = parseArgs({ args, options: { controller: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica controller ${action} <project>`), values.project);
       if (action === "list") envelope = await controllerListCommand(project); else if (action === "inspect") envelope = await controllerInspectCommand(project, required(values.controller, "controller")); else throw new Error("Usage: mujica controller list|inspect ...");

@@ -6,6 +6,8 @@ mujica validate <project> [--json]
 mujica inspect <project> [--json]
 mujica component list <project> [--json]
 mujica component inspect <project> --component ID [--json]
+mujica domain list <project> [--json]
+mujica domain inspect <project> --domain ID [--json]
 mujica controller list <project> [--json]
 mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
@@ -38,6 +40,12 @@ JSON mode emits one schema-versioned value on stdout. Validation/runtime failure
 
 `controller list` exposes each Program or Policy Controller and the Assemblies it can legally execute against. `controller inspect` includes the complete Program Controller interface or frozen Policy pointer plus structured incompatibility reasons. Program Controller Observation requirements are a named subset; produced Action channels must exactly match the compiled Assembly in order, size, and bounds. Incompatible pairs fail before Python Runtime invocation.
 
+`domain list|inspect` exposes each Domain Profile's physical uncertainty ranges,
+provenance, optional evidence-file hash, and combined identity. A `synthetic`
+Profile may omit evidence but makes no calibration claim; `hil` and `real`
+Profiles require confined captured evidence. Domain Profiles are Training inputs
+only and are never sampled by `evaluate`.
+
 `diagnose` evaluates the requested robot and the locked Benchmark baseline without publishing artifacts. It reports every enforced gate as a signed margin, ranks failing cases by normalized violation severity, preserves measured findings as `kind: evidence`, and labels possible intervention surfaces as `kind: hypothesis`. Its next action persists the worst case through `simulate` so events and trajectory can be inspected without confusing a heuristic with proof.
 
 `studio` creates or reuses an immutable MuJoCo replay under `<project>/.mujica/replays/`, then copies it into a content-addressed offline projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run; without it, the deterministic last run id is selected. The Runtime loads the Run's frozen `model.xml`, reconstructs every recorded `qpos`, and renders PNG frames. The browser only synchronizes those frames with trajectory, Events, health, attitude, command, measured motion, contact force, and Action telemetry.
@@ -57,3 +65,9 @@ The legacy `research <project> --research ID` command remains intentionally muta
 `train-research` applies the same protocol to one Training JSON definition. Every candidate creates or reuses an immutable Training Run and Policy; only a frozen-policy KEEP advances the Training file, promoted policy Controller, and Policy Revision lineage. `policy-revisions` and `policy-revision inspect` expose that lineage without conflating it with whole-robot Revisions.
 
 Training definitions may optionally declare non-negative `qualityReward` weights for `jointAcceleration`, `bodyAngularAcceleration`, `actionSlew`, `actuatorSaturation`, `footSlip`, and `footImpact`. Omission is exactly neutral. These normalized terms shape training only; immutable Training evidence records base reward, total quality penalty, each weighted term, and fixed reference magnitudes. Frozen Benchmark scores and KEEP/REVERT decisions never consume the shaped training reward.
+
+Training may also name one Domain Profile. The Runtime samples one domain per
+episode from a dedicated seed stream and records its exact parameters, consumed
+steps, completion state, and aggregate coverage. The Policy freezes the Profile,
+evidence hash, combined identity, and Training metrics. Omitting the field
+preserves the existing fixed-Scenario behavior.

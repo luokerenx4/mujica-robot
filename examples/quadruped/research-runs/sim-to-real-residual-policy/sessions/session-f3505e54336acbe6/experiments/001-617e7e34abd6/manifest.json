@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "001-617e7e34abd6",
+  "sequence": 1,
+  "sessionId": "session-f3505e54336acbe6",
+  "researchId": "sim-to-real-residual-policy",
+  "labHash": "a01d9b69b6592692d131f7148392a3d13c3905ca53ceda23c21cae0b1459420a",
+  "programHash": "5dc5fe8b52953f9d1cf08d3ac59619e11f0e21827ea69df8516b72c302fb3d81",
+  "benchmarkLockHash": "60145d98358d5ff0fdaf1f7664197548da4500f55845386c997b0686ff2c3d25",
+  "sourceHash": "2af2c831b15b4cc0453d3847a3723fd05eee6b5e5c07d992d24172fefcaca75a",
+  "researcherChangedPaths": [
+    "training/sim-to-real-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/sim-to-real-residual-gait/controller.json",
+    "training/sim-to-real-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "double-sample-budget",
+    "hypothesis": "The first domain-randomized residual improved one held-out plant but saw only twenty complete episodes; doubling PPO samples should improve coverage and reduce seed-specific underfitting without increasing residual authority.",
+    "expectedEffect": "Improve heavy/weak survival or forward displacement while retaining the light/strong gain and all upright and motion-quality gates."
+  },
+  "policyId": "sim-to-real-residual-locomotion-a67931c8bf15bcd8",
+  "score": 40.29719993759344,
+  "delta": -8.074652054393503,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "light-strong: forward-progress regressed from passing to failing",
+      "light-strong: signed-forward-progress regressed from passing to failing",
+      "light-strong: backward-displacement regressed from passing to failing",
+      "light-strong: planar-velocity-tracking regressed from passing to failing"
+    ],
+    "previousViolationCount": 12,
+    "candidateViolationCount": 16,
+    "previousViolationSeverity": 31.9897674006866,
+    "candidateViolationSeverity": 39.79884277207508,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 50628,
+  "completed": true
+}

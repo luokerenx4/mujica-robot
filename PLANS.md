@@ -16,12 +16,15 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 ## Active plans
 
-None.
+No active capability Plan. The next sim-to-real slice should start with captured
+HIL evidence and system identification rather than widening the synthetic
+envelope.
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Sim-to-real domain profiles](plans/sim-to-real-domain-randomization.md) | Trained frozen Policies across provenance-bound physical uncertainty and judged them on fixed held-out plant combinations. | 2026-07-23 |
 | [ML motion-quality autoresearch](plans/ml-motion-quality-autoresearch.md) | Trained and governed a quality-aware residual Policy through an AI-authored experiment, frozen-policy Judge evaluation, regression protection, and visual comparison. | 2026-07-23 |
 | [Motion-quality judgement and comparison](plans/motion-quality-comparison.md) | Made visible gait defects measurable and let humans compare two authoritative MuJoCo Runs on one synchronized Studio clock. | 2026-07-23 |
 | [Visual simulation debugger](plans/visual-simulation-debugger.md) | Rendered authoritative MuJoCo motion in Studio with synchronized frame, Event, telemetry, and copyable Agent context for human-Agent debugging. | 2026-07-23 |

@@ -32,6 +32,8 @@ bun run mujica diagnose examples/quadruped \
   --assembly force-sensing-history-3dof --controller latency-aware-spatial-gait \
   --benchmark spatial-generalization
 bun run mujica train examples/quadruped --training forward-residual-locomotion --seed 42
+bun run mujica domain inspect examples/quadruped --domain quadruped-pre-hil-v1
+bun run mujica train examples/quadruped --training sim-to-real-residual-locomotion --seed 91
 bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
 bun run mujica studio examples/quadruped --run run-3404db433e7eb644 --compare-run run-35cd362b2def8a20
@@ -51,6 +53,19 @@ bun run mujica train-research examples/quadruped --research forward-residual-pol
 Research Lab V2 is the canonical source-level autoresearch protocol. A human `program.md`, an explicit Agent-editable source closure, and a locked Judge divide authority cleanly. Each candidate runs in a disposable project copy; only declared files may change, every Training Run and Policy remains immutable, and frozen robot Benchmark evidence—not training reward—decides KEEP, REVERT, or CRASH. The checked-in upright residual Lab contains a real experiment whose score improved `76.0910 → 76.1612` but was correctly REVERT because it introduced three regression-gate failures.
 
 The motion-quality ML Lab closes the loop between Agent-authored research and learned robot control. Optional typed reward terms expose joint/body acceleration, Action slew, saturation, planted-foot slip, and contact impact during PPO training while the locked Judge retains authority over unitful jerk, motion quality, and task gates. Its safety-first residual experiment promoted Policy Revision `quadruped-p-a19af86be9ad`: the primary score improved `48.4059 → 49.6529`, enforced violations fell `10 → 7`, and normalized severity fell `7.7188 → 2.6004`. The next experiment doubled the residual authority, introduced lateral-drift and braking regressions, and was automatically REVERT. See [ML motion-quality research](docs/design/ml-motion-quality-research.md).
+
+Domain Profiles make sim-to-real assumptions executable instead of implicit. Each
+Profile binds physical ranges to `synthetic`, `hil`, or `real` provenance and,
+when present, the captured evidence bytes. Training samples mass, damping,
+actuator strength, friction, observation noise, and delay from a separate
+deterministic RNG, while locked evaluation uses exact held-out Scenarios. The
+first synthetic pre-HIL PPO Policy improves the held-out score `41.8841 →
+48.3719` and turns the light/strong plant from `-0.437 m` backwards into `+0.813
+m` forward travel. It still fails heavy/weak and slippery/weak; two Agent
+hypotheses—double samples and double residual authority—were both automatically
+REVERT after capability regressions. This is evidence of a useful learning
+signal, not a claim of hardware readiness. See [sim-to-real Domain
+Profiles](docs/design/sim-to-real-domain-profiles.md).
 
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
@@ -92,4 +107,4 @@ The traction lane now reaches `friction = 0.1` without exposing Scenario identit
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 
-Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

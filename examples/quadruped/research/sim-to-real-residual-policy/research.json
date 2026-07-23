@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "id": "sim-to-real-residual-policy",
+  "name": "Domain-randomized residual Policy autoresearch",
+  "program": "research/sim-to-real-residual-policy/program.md",
+  "benchmark": "sim-to-real-audit",
+  "regressions": [
+    "upright-locomotion",
+    "motion-quality"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "sim-to-real-residual-locomotion",
+    "controller": "sim-to-real-residual-gait",
+    "seed": 91
+  },
+  "editable": {
+    "paths": [
+      "trainers/motion-quality-residual-ppo/**",
+      "training/sim-to-real-residual-locomotion.training.json",
+      "controllers/sim-to-real-residual-gait/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 2,
+    "maxWallClockSeconds": 360,
+    "maximumTrainingSteps": 8192
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

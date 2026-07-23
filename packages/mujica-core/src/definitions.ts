@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { benchmarkSchema, candidateSchema, controllerSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { benchmarkSchema, candidateSchema, controllerSchema, domainProfileSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type DomainProfileDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
 import { confined, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -44,6 +44,7 @@ export function assertProgramControllerCompatible(controller: ControllerDefiniti
 }
 export const loadTask = async (projectDir: string, id: string): Promise<TaskDefinition> => await readJson(confined(resolve(projectDir), `tasks/${id}.task.json`), taskSchema) as TaskDefinition;
 export const loadScenario = async (projectDir: string, id: string): Promise<ScenarioDefinition> => await readJson(confined(resolve(projectDir), `scenarios/${id}.scenario.json`), scenarioSchema) as ScenarioDefinition;
+export const loadDomainProfile = async (projectDir: string, id: string): Promise<DomainProfileDefinition> => await readJson(confined(resolve(projectDir), `domain-profiles/${id}.domain.json`), domainProfileSchema) as DomainProfileDefinition;
 export const loadObjective = async (projectDir: string, id: string): Promise<ObjectiveDefinition> => await readJson(confined(resolve(projectDir), `objectives/${id}.objective.json`), objectiveSchema) as ObjectiveDefinition;
 export const loadBenchmark = async (projectDir: string, id: string): Promise<BenchmarkDefinition> => await readJson(confined(resolve(projectDir), `benchmarks/${id}.benchmark.json`), benchmarkSchema) as BenchmarkDefinition;
 export const loadTraining = async (projectDir: string, id: string): Promise<TrainingDefinition> => await readJson(confined(resolve(projectDir), `training/${id}.training.json`), trainingSchema) as TrainingDefinition;
@@ -76,6 +77,12 @@ export async function listResearchLabIds(projectDir: string): Promise<string[]> 
 async function fileIds(root: string, suffix: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true });
   return entries.filter((entry) => entry.isFile() && entry.name.endsWith(suffix)).map((entry) => entry.name.slice(0, -suffix.length)).sort();
+}
+
+export async function listDomainProfileIds(projectDir: string): Promise<string[]> {
+  const root = confined(resolve(projectDir), "domain-profiles");
+  try { return await fileIds(root, ".domain.json"); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
 }
 
 async function requireFile(path: string, label: string): Promise<void> {
@@ -131,10 +138,16 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   }
   const taskIds = await fileIds(join(root, "tasks"), ".task.json"); for (const id of taskIds) await loadTask(root, id);
   const scenarioIds = await fileIds(join(root, "scenarios"), ".scenario.json"); for (const id of scenarioIds) await loadScenario(root, id);
+  const domainProfileIds = await listDomainProfileIds(root);
+  for (const id of domainProfileIds) {
+    const profile = await loadDomainProfile(root, id); if (profile.id !== id) throw new Error(`Domain Profile id '${profile.id}' must match filename '${id}'`);
+    if (profile.provenance.evidence) await requireFile(confined(root, profile.provenance.evidence), `Domain Profile '${id}' evidence`);
+  }
   const objectiveIds = await fileIds(join(root, "objectives"), ".objective.json"); for (const id of objectiveIds) await loadObjective(root, id);
   const trainingIds = await fileIds(join(root, "training"), ".training.json");
   for (const id of trainingIds) {
     const training = await loadTraining(root, id); const assembly = await compileAssembly(root, training.assembly); await loadTrainer(root, training.trainer); await loadTask(root, training.task); for (const scenario of training.scenarios) await loadScenario(root, scenario);
+    if (training.domainProfile) await loadDomainProfile(root, training.domainProfile);
     if (training.priorController) {
       const prior = await loadController(root, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training '${id}' priorController must be a program Controller`); assertProgramControllerCompatible(prior.definition, assembly);
     }
@@ -223,5 +236,5 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     }
   }
   const defaultAssembly = await compileAssembly(root, project.manifest.defaults.assembly); const defaultController = await loadController(root, project.manifest.defaults.controller); assertProgramControllerCompatible(defaultController.definition, defaultAssembly); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
-  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
+  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, domainProfiles: domainProfileIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
 }

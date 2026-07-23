@@ -13,7 +13,7 @@ from mujica_runtime.environment import RobotEnvironment, compile_motion_command_
 from mujica_runtime.io import hash_directory, hash_file
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
-from mujica_runtime.training import PPOTrainer, effective_action_transform, quality_reward_penalty
+from mujica_runtime.training import PPOTrainer, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -129,6 +129,40 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(penalty, 3.0)
         self.assertEqual(terms, {name: 0.5 for name in terms})
         self.assertEqual(quality_reward_penalty(info, None)[0], 0.0)
+
+    def test_domain_profile_sampling_is_separate_reproducible_and_applied_to_mujoco(self):
+        profile = {"parameters": {
+            "bodyMassScale": {"minimum": 0.9, "maximum": 1.1},
+            "jointDampingScale": {"minimum": 0.8, "maximum": 1.2},
+            "actuatorStrengthScale": {"minimum": 0.85, "maximum": 1.15},
+            "frictionScale": {"minimum": 0.7, "maximum": 1.3},
+            "observationNoiseStd": {"minimum": 0.001, "maximum": 0.003},
+            "actuatorDelayJitterSteps": {"minimum": 1, "maximum": 2},
+        }}
+        first = sample_domain_profile(profile, 19); second = sample_domain_profile(profile, 19)
+        self.assertEqual(first, second)
+        self.assertEqual(sample_domain_profile(None, 19), {})
+        self.assertIn(first["actuatorDelayJitterSteps"], [1, 2])
+        summary = summarize_domain_samples([
+            {"parameters": {"bodyMassScale": 0.9, "actuatorDelayJitterSteps": 1}},
+            {"parameters": {"bodyMassScale": 1.1, "actuatorDelayJitterSteps": 2}},
+        ])
+        self.assertEqual(summary["bodyMassScale"], {"minimum": 0.9, "mean": 1.0, "maximum": 1.1})
+
+        model, compiled = compiled_assembly("command-conditioned-history-3dof")
+        task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        nominal = RobotEnvironment(model, compiled, task, scenario, 7)
+        sample = {"bodyMassScale": 1.1, "jointDampingScale": 0.5, "actuatorStrengthScale": 0.8, "frictionScale": 0.6, "observationNoiseStd": 0.002, "actuatorDelayJitterSteps": 2}
+        randomized = RobotEnvironment(model, compiled, task, scenario, 7, sample)
+        self.assertAlmostEqual(float(randomized.model.body_mass.sum()), float(nominal.model.body_mass.sum()) * 1.1)
+        np.testing.assert_allclose(randomized.model.dof_damping, nominal.model.dof_damping * 0.5)
+        np.testing.assert_allclose(randomized.model.actuator_gainprm[:, 0], nominal.model.actuator_gainprm[:, 0] * 0.8)
+        np.testing.assert_allclose(randomized.model.geom_friction[:, 0], float(scenario["friction"]) * 0.6)
+        self.assertEqual(randomized.scenario["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
+        self.assertAlmostEqual(randomized.scenario["observationNoiseStd"], float(scenario["observationNoiseStd"]) + 0.002)
+        randomized.reset()
+        self.assertEqual(randomized.events[0]["plant"]["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
     def test_survival_is_measured_against_the_requested_episode(self):
         self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
