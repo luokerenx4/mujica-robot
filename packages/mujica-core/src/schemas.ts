@@ -490,6 +490,17 @@ export const humanObservationSourceSchema = z.discriminatedUnion("kind", [
     episodeHash: sha256Schema,
     timeSeconds: z.number().finite().nonnegative(),
   }).strict(),
+  z.object({
+    kind: z.literal("digital-twin-audit-transition"),
+    auditId: idSchema,
+    auditHash: sha256Schema,
+    captureId: idSchema,
+    captureHash: sha256Schema,
+    bundleHash: sha256Schema,
+    episodeId: idSchema,
+    episodeHash: sha256Schema,
+    transitionIndex: z.number().int().nonnegative(),
+  }).strict(),
 ]);
 
 export const humanObservationAssessmentSchema = z.object({

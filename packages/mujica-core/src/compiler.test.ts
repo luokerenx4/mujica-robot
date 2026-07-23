@@ -256,6 +256,20 @@ describe("Robot Assembly compiler", () => {
         timeSeconds: 0.08,
       },
     }).success).toBe(true);
+    expect(humanObservationDraftSchema.safeParse({
+      ...draft,
+      source: {
+        kind: "digital-twin-audit-transition",
+        auditId: "twin-audit-example",
+        auditHash: "e".repeat(64),
+        captureId: "capture-example",
+        captureHash: "b".repeat(64),
+        bundleHash: "c".repeat(64),
+        episodeId: "commissioning",
+        episodeHash: "d".repeat(64),
+        transitionIndex: 6,
+      },
+    }).success).toBe(true);
   });
 
   test("Research Briefs preserve hypothesis and Judge authority boundaries", async () => {

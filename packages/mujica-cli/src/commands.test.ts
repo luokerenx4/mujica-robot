@@ -322,7 +322,7 @@ describe("agent CLI contract", () => {
     expect(studioEnvelope.artifacts.map((item: any) => item.kind)).toEqual(["hardware-replay", "studio-snapshot"]);
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 6,
+      version: 7,
       selectedRun: null,
       comparisonRun: null,
       selectedHardwareCapture: {
@@ -389,6 +389,116 @@ describe("agent CLI contract", () => {
         capture: { id: captureId },
         episode: { id: episodeId },
         deviceStep: 2,
+      });
+    } finally {
+      if (observationPath) rmSync(observationPath, { recursive: true, force: true });
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  test("Digital Twin Audit gives Studio and Agents the same one-step device residual", async () => {
+    const captureId = "capture-5c09b673d06e0385";
+    const episodeId = "learned-policy-shadow";
+    const audited = invoke(["twin", "audit", "examples/quadruped", "--capture", captureId, "--episode", episodeId, "--json"]);
+    expect({ code: audited.code, stderr: audited.stderr }).toEqual({ code: 0, stderr: "" });
+    const envelope = JSON.parse(audited.stdout);
+    expect(envelope.data.id).toMatch(/^twin-audit-/);
+    expect(envelope.data).toMatchObject({
+      transitionCount: 10,
+      source: { captureId, episodeId, mode: "shadow" },
+      authority: {
+        measurement: "immutable-device-telemetry",
+        prediction: "frozen-digital-twin",
+        claim: "derived-model-fit-evidence",
+        changesHardwareVerified: false,
+        grantsActuation: false,
+        promotesCalibration: false,
+      },
+    });
+    expect(envelope.data.metrics.jointPositionRad.rmse).toBeGreaterThan(0);
+    expect(envelope.data.metrics.jointVelocityRadPerSec.worstTransition).toBe(6);
+    expect(envelope.artifacts).toEqual([{ kind: "digital-twin-audit", id: envelope.data.id, path: envelope.data.path, immutable: true }]);
+
+    const inspected = invoke(["twin", "inspect", "examples/quadruped", "--audit", envelope.data.id, "--transition", "6", "--json"]);
+    expect({ code: inspected.code, stderr: inspected.stderr }).toEqual({ code: 0, stderr: "" });
+    const inspection = JSON.parse(inspected.stdout).data;
+    expect(inspection.transition).toMatchObject({
+      index: 6,
+      fromStep: 6,
+      toStep: 7,
+      durationSeconds: 0.02,
+    });
+    expect(inspection.transition.appliedAction).toHaveLength(12);
+    expect(inspection.transition.measured.qpos).toHaveLength(19);
+    expect(inspection.transition.predicted.qpos).toHaveLength(19);
+    expect(inspection.transition.residual.jointPositionRad).toHaveLength(12);
+
+    const studio = invoke(["studio", "examples/quadruped", "--twin-audit", envelope.data.id, "--json"]);
+    expect({ code: studio.code, stderr: studio.stderr }).toEqual({ code: 0, stderr: "" });
+    const studioEnvelope = JSON.parse(studio.stdout);
+    expect(studioEnvelope.data).toMatchObject({
+      selectedRun: null,
+      comparisonRun: null,
+      twinAudit: { id: envelope.data.id, captureId, episodeId, transitionCount: 10 },
+      replay: { frameCount: 11 },
+      comparisonReplay: { frameCount: 11 },
+    });
+    const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
+    expect(snapshot).toMatchObject({
+      version: 7,
+      selectedTwinAudit: {
+        id: envelope.data.id,
+        auditHash: envelope.data.auditHash,
+        summary: { transitionCount: 10 },
+        authorityBoundary: { claim: "derived-model-fit-evidence", grantsActuation: false },
+      },
+      selectedTwinReplay: {
+        kind: "mujica-digital-twin-prediction-replay",
+        frameBase: "twin-replay/frames",
+        frameCount: 11,
+      },
+    });
+    expect(snapshot.selectedTwinAudit.transitions[6].residual.jointVelocityNormRadPerSec).toBeGreaterThan(0);
+    const html = await readFile(resolve(studioEnvelope.data.path, "index.html"), "utf8");
+    expect(html).toContain("Device telemetry ↔ one-step frozen MuJoCo prediction");
+    expect(html).toContain("mujica-digital-twin-residual-selector");
+    expect(html).toContain("digital-twin-audit-transition");
+
+    const temporary = await mkdtemp(resolve(tmpdir(), "mujica-twin-observation-"));
+    const draftPath = resolve(temporary, "draft.json");
+    await writeFile(draftPath, JSON.stringify({
+      version: 1,
+      kind: "mujica-human-observation-draft",
+      source: {
+        kind: "digital-twin-audit-transition",
+        auditId: envelope.data.id,
+        auditHash: envelope.data.auditHash,
+        captureId,
+        captureHash: envelope.data.source.captureHash,
+        bundleHash: envelope.data.source.bundleHash,
+        episodeId,
+        episodeHash: envelope.data.source.episodeHash,
+        transitionIndex: 6,
+      },
+      assessment: {
+        category: "control",
+        severity: "investigate",
+        confidence: "medium",
+        summary: "The frozen twin diverges most visibly from device telemetry on transition six.",
+      },
+    }));
+    let observationPath: string | undefined;
+    try {
+      const recorded = invoke(["observation", "record", "examples/quadruped", "--input", draftPath, "--observer", "Twin audit reviewer", "--json"]);
+      expect({ code: recorded.code, stderr: recorded.stderr }).toEqual({ code: 0, stderr: "" });
+      const observation = JSON.parse(recorded.stdout).data;
+      observationPath = observation.path;
+      const observationInspect = invoke(["observation", "inspect", "examples/quadruped", "--observation", observation.id, "--json"]);
+      expect(JSON.parse(observationInspect.stdout).data.context).toMatchObject({
+        kind: "mujica-digital-twin-transition-context",
+        audit: { id: envelope.data.id, auditHash: envelope.data.auditHash },
+        transition: { index: 6 },
+        authorityBoundary: { changesHardwareVerified: false, grantsActuation: false },
       });
     } finally {
       if (observationPath) rmSync(observationPath, { recursive: true, force: true });
@@ -921,7 +1031,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-6d0dedb5e3d7f6aa",
+      "--bundle", "hardware-ba87fac80feb5f33",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

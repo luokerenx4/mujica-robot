@@ -9,6 +9,7 @@ import {
 } from "./commands";
 import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
+import { twinAuditCommand, twinInspectCommand, twinStudioCommand } from "./twin";
 
 const HELP = `mujica — AI-native robot development harness
 
@@ -32,6 +33,9 @@ USAGE
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
   mujica studio <project> --research-lab ID --session ID --experiment ID [--json]
   mujica studio <project> --capture ID --episode ID [--json]
+  mujica studio <project> --twin-audit ID [--json]
+  mujica twin audit <project> --capture ID --episode ID [--json]
+  mujica twin inspect <project> --audit ID [--transition N] [--json]
   mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]
   mujica observation list <project> [--json]
   mujica observation inspect <project> --observation ID [--json]
@@ -82,7 +86,9 @@ const CAPABILITIES = [
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
-  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID) [--json]", effect: "creates-artifact" },
+  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID | --twin-audit ID) [--json]", effect: "creates-artifact" },
+  { id: "twin.audit", usage: "mujica twin audit <project> --capture ID --episode ID [--json]", effect: "creates-artifact" },
+  { id: "twin.inspect", usage: "mujica twin inspect <project> --audit ID [--transition N] [--json]", effect: "read-only" },
   { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]", effect: "read-only" },
   { id: "observation.list", usage: "mujica observation list <project> [--json]", effect: "read-only" },
   { id: "observation.inspect", usage: "mujica observation inspect <project> --observation ID [--json]", effect: "read-only" },
@@ -129,7 +135,9 @@ function printHuman(command: string, data: any): void {
   else if (command === "controller.inspect") process.stdout.write(`controller=${data.definition.id}\nkind=${data.definition.kind}\nhash=${data.hash}\ncompatible=${data.compatibleAssemblies.join(",") || "none"}\nincompatible=${data.incompatibleAssemblies.length}\n`);
   else if (command === "assembly.compare") process.stdout.write(`Assembly ${data.from.id} -> ${data.to.id}\ncomponents +${data.components.added.length} -${data.components.removed.length} ~${data.components.changed.length}\nobservations +${data.observations.added.length} -${data.observations.removed.length}\nmass_delta_kg=${data.massDeltaKg}\ncost_delta=${data.costDelta}\n`);
   else if (command === "simulate") process.stdout.write(`run=${data.runId}\nscore=${data.score.total}\nsurvival=${data.metrics.survivalRate}\nartifact=${data.artifactPath}\n`);
-  else if (command === "studio") process.stdout.write(`studio=${data.id}\nsource=${data.hardwareCapture ? `${data.hardwareCapture.id}/${data.hardwareCapture.episodeId}` : data.selectedRun ?? "none"}\nopen=${data.indexPath}\n`);
+  else if (command === "studio") process.stdout.write(`studio=${data.id}\nsource=${data.twinAudit?.id ?? (data.hardwareCapture ? `${data.hardwareCapture.id}/${data.hardwareCapture.episodeId}` : data.selectedRun ?? "none")}\nopen=${data.indexPath}\n`);
+  else if (command === "twin.audit") process.stdout.write(`twin_audit=${data.id}\ntransitions=${data.transitionCount}\njoint_position_rmse_rad=${data.metrics.jointPositionRad.rmse}\nartifact=${data.path}\n`);
+  else if (command === "twin.inspect") process.stdout.write(`twin_audit=${data.manifest.id}\ntransitions=${data.manifest.transitionCount}\n${data.transition ? `transition=${data.transition.index}\nbase_position_m=${data.transition.residual.basePositionNormM}\njoint_position_rad=${data.transition.residual.jointPositionNormRad}\n` : ""}path=${data.path}\n`);
   else if (command === "evidence.inspect") process.stdout.write(`context=${data.contextHash}\nkind=${data.kind}\nsource=${data.baseline?.runId ?? data.capture?.id}\n`);
   else if (command === "observation.list") process.stdout.write(`${data.observations.map((observation: any) => `${observation.id}\t${observation.assessment.severity}\t${observation.assessment.category}\t${observation.assessment.summary}`).join("\n")}\n`);
   else if (command === "observation.inspect") process.stdout.write(`observation=${data.manifest.id}\nclaim=${data.manifest.claimKind}\ncontext=${data.manifest.contextHash}\nsummary=${data.manifest.assessment.summary}\npath=${data.path}\n`);
@@ -174,13 +182,13 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   try {
     let envelope: any;
     if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, "twin-audit": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
       if (command === "studio") {
         const reviewSelectorCount = [values["research-lab"], values.session, values.experiment].filter(Boolean).length;
         const captureSelectorCount = [values.capture, values.episode].filter(Boolean).length;
         if (reviewSelectorCount !== 0 && reviewSelectorCount !== 3) throw new Error("Studio Research Review selection requires --research-lab, --session, and --experiment together");
         if (captureSelectorCount !== 0 && captureSelectorCount !== 2) throw new Error("Studio Hardware Capture selection requires --capture and --episode together");
-        if ([Boolean(values.run || values["compare-run"]), Boolean(reviewSelectorCount), Boolean(captureSelectorCount)].filter(Boolean).length > 1) throw new Error("Studio accepts exactly one explicit Run, Research Review, or Hardware Capture source mode");
+        if ([Boolean(values.run || values["compare-run"]), Boolean(reviewSelectorCount), Boolean(captureSelectorCount), Boolean(values["twin-audit"])].filter(Boolean).length > 1) throw new Error("Studio accepts exactly one explicit Run, Research Review, Hardware Capture, or Digital Twin Audit source mode");
         if (reviewSelectorCount) {
           const inspected = await researchReviewInspectCommand(project, values["research-lab"]!, values.session!, values.experiment!);
           envelope = await studioCommand(project, inspected.data.review.accepted.id, inspected.data.review.candidate.id, {
@@ -188,8 +196,16 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
             reviewHash: inspected.data.reviewHash,
           });
         } else if (captureSelectorCount) envelope = await studioCaptureCommand(project, values.capture!, values.episode!);
+        else if (values["twin-audit"]) envelope = await twinStudioCommand(project, values["twin-audit"]);
         else envelope = await studioCommand(project, values.run, values["compare-run"]);
       } else envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : await revisionsCommand(project);
+    } else if (command === "twin") {
+      const action = args.shift(); commandId = `twin.${action}`;
+      const { values, positionals } = parseArgs({ args, options: { capture: { type: "string" }, episode: { type: "string" }, audit: { type: "string" }, transition: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const project = await resolveProjectDirectory(one(positionals, `mujica twin ${action} <project>`), values.project);
+      if (action === "audit") envelope = await twinAuditCommand(project, required(values.capture, "capture"), required(values.episode, "episode"));
+      else if (action === "inspect") envelope = await twinInspectCommand(project, required(values.audit, "audit"), values.transition === undefined ? undefined : Number(values.transition));
+      else throw new Error("Usage: mujica twin audit|inspect ...");
     } else if (command === "evidence") {
       const action = args.shift(); commandId = `evidence.${action}`;
       if (action !== "inspect") throw new Error("Usage: mujica evidence inspect ...");

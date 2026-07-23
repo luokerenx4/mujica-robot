@@ -88,15 +88,29 @@ def render_replay(request: dict[str, Any]) -> dict[str, Any]:
         manifest_kind = "mujica-simulation-replay"
         manifest_version = 1
     else:
-        if source.get("kind") != "hardware-capture-episode":
+        source_kind = source.get("kind")
+        if source_kind == "hardware-capture-episode":
+            required = ["captureId", "captureHash", "bundleId", "bundleHash", "episodeId", "episodeHash"]
+            if any(not isinstance(source.get(key), str) or not source[key] for key in required):
+                raise RuntimeError("Hardware Capture replay source identity is incomplete")
+            if any(not _is_sha256(source[key]) for key in ["captureHash", "bundleHash", "episodeHash"]):
+                raise RuntimeError("Hardware Capture replay source hashes are invalid")
+            if source["episodeHash"] != request["trajectoryHash"]:
+                raise RuntimeError("Hardware Capture episode hash differs from replay trajectory")
+            manifest_kind = "mujica-hardware-capture-replay"
+            manifest_version = 2
+        elif source_kind == "digital-twin-audit-prediction":
+            required = ["auditId", "auditHash", "captureId", "captureHash", "bundleId", "bundleHash", "episodeId", "episodeHash", "predictionHash"]
+            if any(not isinstance(source.get(key), str) or not source[key] for key in required):
+                raise RuntimeError("Digital Twin prediction replay source identity is incomplete")
+            if any(not _is_sha256(source[key]) for key in ["auditHash", "captureHash", "bundleHash", "episodeHash", "predictionHash"]):
+                raise RuntimeError("Digital Twin prediction replay source hashes are invalid")
+            if source["predictionHash"] != request["trajectoryHash"]:
+                raise RuntimeError("Digital Twin prediction hash differs from replay trajectory")
+            manifest_kind = "mujica-digital-twin-prediction-replay"
+            manifest_version = 1
+        else:
             raise RuntimeError("Replay source kind is unsupported")
-        required = ["captureId", "captureHash", "bundleId", "bundleHash", "episodeId", "episodeHash"]
-        if any(not isinstance(source.get(key), str) or not source[key] for key in required):
-            raise RuntimeError("Hardware Capture replay source identity is incomplete")
-        if any(not _is_sha256(source[key]) for key in ["captureHash", "bundleHash", "episodeHash"]):
-            raise RuntimeError("Hardware Capture replay source hashes are invalid")
-        if source["episodeHash"] != request["trajectoryHash"]:
-            raise RuntimeError("Hardware Capture episode hash differs from replay trajectory")
         identity = {
             "renderer": RENDERER_ID,
             "runtimeVersion": request["runtimeVersion"],
@@ -108,8 +122,6 @@ def render_replay(request: dict[str, Any]) -> dict[str, Any]:
             "trajectoryHash": request["trajectoryHash"],
             "settings": settings,
         }
-        manifest_kind = "mujica-hardware-capture-replay"
-        manifest_version = 2
     replay_id = f"replay-{hash_json(identity)[:16]}"
     target = output_root / replay_id
     rows = [json.loads(line) for line in trajectory_path.read_text().splitlines() if line.strip()]

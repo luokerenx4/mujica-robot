@@ -10,11 +10,12 @@ from .hardware_capture import capture_hardware
 from .replay import render_replay
 from .simulation import simulate, validate_model
 from .training import train
+from .twin_audit import audit_twin
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m mujica_runtime.cli")
-    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay"])
+    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay", "audit-twin"])
     parser.add_argument("--request", required=True)
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text())
@@ -24,7 +25,8 @@ def main() -> None:
     elif args.operation == "train": result = train(request)
     elif args.operation == "calibrate": result = calibrate(request)
     elif args.operation == "hardware-capture": result = capture_hardware(request)
-    else: result = render_replay(request)
+    elif args.operation == "render-replay": result = render_replay(request)
+    else: result = audit_twin(request)
     sys.stdout.write(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
 
 

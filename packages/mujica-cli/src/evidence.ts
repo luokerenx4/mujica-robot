@@ -14,6 +14,7 @@ import {
 } from "@mujica/core";
 import { success, type Artifact } from "./contract";
 import { verifyHardwareCaptureIntegrity } from "./hardware";
+import { verifyTwinAuditIntegrity } from "./twin";
 
 const qualityKeys = [
   "meanJointJerkRadPerSec3",
@@ -304,6 +305,32 @@ async function contextForDraft(projectRoot: string, draft: HumanObservationDraft
       || context.episode.hash !== draft.source.episodeHash
     ) throw new Error("Human observation Capture frame source identity differs from current immutable evidence");
     return context;
+  }
+  if (draft.source.kind === "digital-twin-audit-transition") {
+    const root = confined(projectRoot, `twin-audits/${draft.source.auditId}`);
+    const verified = await verifyTwinAuditIntegrity(root);
+    const transition = verified.transitions[draft.source.transitionIndex];
+    const source = verified.manifest.identity?.source;
+    if (
+      !transition
+      || verified.manifest.auditHash !== draft.source.auditHash
+      || source?.captureId !== draft.source.captureId
+      || source?.captureHash !== draft.source.captureHash
+      || source?.bundleHash !== draft.source.bundleHash
+      || source?.episodeId !== draft.source.episodeId
+      || source?.episodeHash !== draft.source.episodeHash
+    ) throw new Error("Human observation Digital Twin Audit source identity differs from current immutable evidence");
+    const body = {
+      version: 1,
+      kind: "mujica-digital-twin-transition-context",
+      authority: "derived-model-fit-evidence",
+      audit: { id: verified.manifest.id, auditHash: verified.manifest.auditHash },
+      source,
+      transition,
+      summary: verified.summary,
+      authorityBoundary: verified.summary.authority,
+    };
+    return { ...body, contextHash: hashJson(body) };
   }
   const context = await captureEvidenceContext(projectRoot, draft.source.captureId, draft.source.eventIndex);
   if (context.capture.captureHash !== draft.source.captureHash) {

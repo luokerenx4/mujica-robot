@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "protocol": "stdio-jsonl-v1",
+  "handshake": {
+    "bundleHash": "1fde31d1e94095a8351f470cad20680d95f31c466fd478915fdcb9faacfaf2d4",
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7"
+  },
+  "capabilities": [
+    "applied-action",
+    "command-lease",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "messages": [
+    "hello",
+    "start-episode",
+    "state",
+    "action",
+    "shadow-action",
+    "deadline-rejected",
+    "lease-expired",
+    "control-rejected",
+    "safe-stop",
+    "emergency-stop",
+    "stopped",
+    "health-check",
+    "health-state",
+    "close",
+    "completed"
+  ],
+  "state": {
+    "required": [
+      "episode",
+      "step",
+      "qpos",
+      "qvel",
+      "observation",
+      "appliedAction",
+      "stateAgeMs",
+      "deviceHealth"
+    ]
+  },
+  "deviceHealth": {
+    "actuatorStates": [
+      "ready",
+      "derated",
+      "faulted",
+      "offline"
+    ]
+  },
+  "commandLease": {
+    "durationMs": 100,
+    "maximumOverrunMs": 25,
+    "renewalMessages": [
+      "start-episode",
+      "action",
+      "shadow-action"
+    ],
+    "automaticRearm": false
+  },
+  "stopRecovery": {
+    "automaticRearm": false,
+    "requiresNewSession": true
+  }
+}

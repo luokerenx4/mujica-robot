@@ -19,6 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
+from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,6 +47,60 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_digital_twin_audit_publishes_one_step_device_residuals(self):
+        capture_id = "capture-5c09b673d06e0385"
+        episode_id = "learned-policy-shadow"
+        capture_root = PROJECT / "hardware-captures" / capture_id
+        capture = json.loads((capture_root / "manifest.json").read_text())
+        episode = next(item for item in capture["episodes"] if item["id"] == episode_id)
+        bundle_root = PROJECT / "hardware-bundles" / "hardware-457fe145a8371cf0"
+        bundle = json.loads((bundle_root / "manifest.json").read_text())
+        model = bundle_root / "revision" / "compiled" / "model.xml"
+        trajectory = capture_root / episode["path"]
+        with tempfile.TemporaryDirectory() as directory:
+            request = {
+                "runtimeVersion": "test-runtime",
+                "runtimeSourceHash": "runtime-source",
+                "harnessSourceHash": "harness-source",
+                "source": {
+                    "kind": "hardware-capture-episode",
+                    "captureId": capture_id,
+                    "captureHash": capture["captureHash"],
+                    "episodeId": episode_id,
+                    "episodeHash": episode["hash"],
+                    "bundleId": bundle["id"],
+                    "bundleHash": bundle["bundleHash"],
+                    "environment": capture["environment"],
+                    "mode": capture["mode"],
+                },
+                "assemblyHash": bundle["assemblyHash"],
+                "modelHash": hash_file(model),
+                "modelPath": str(model),
+                "trajectoryHash": hash_file(trajectory),
+                "trajectoryPath": str(trajectory),
+                "controlHz": 50,
+                "outputRoot": str(Path(directory) / "twin-audits"),
+            }
+            first = audit_twin(request)
+            second = audit_twin(request)
+            self.assertFalse(first["cached"])
+            self.assertTrue(second["cached"])
+            self.assertEqual(first["id"], second["id"])
+            self.assertEqual(first["manifest"]["identity"]["auditor"], AUDITOR_ID)
+            self.assertEqual(first["manifest"]["transitionCount"], 10)
+            self.assertGreater(first["summary"]["metrics"]["jointPositionRad"]["rmse"], 0)
+            self.assertEqual(first["summary"]["metrics"]["jointVelocityRadPerSec"]["worstTransition"], 6)
+            self.assertFalse(first["summary"]["authority"]["grantsActuation"])
+            transitions = [json.loads(line) for line in (Path(first["path"]) / "transitions.ndjson").read_text().splitlines()]
+            self.assertEqual(transitions[6]["fromStep"], 6)
+            self.assertEqual(transitions[6]["toStep"], 7)
+            self.assertEqual(len(transitions[6]["appliedAction"]), 12)
+            self.assertEqual(len(transitions[6]["measured"]["qpos"]), 19)
+            self.assertEqual(len(transitions[6]["predicted"]["qpos"]), 19)
+            (Path(first["path"]) / "summary.json").write_text("{}")
+            with self.assertRaisesRegex(RuntimeError, "summary.json integrity"):
+                audit_twin(request)
+
     def test_training_rejects_a_domain_profile_from_another_plant(self):
         compatible = {"compiled": {"id": "history", "plantHash": "a" * 64}, "domainProfile": {"id": "profile", "plantHash": "a" * 64}}
         assert_domain_profile_plant_compatible(compatible)
@@ -118,6 +173,27 @@ class RuntimeContractTest(unittest.TestCase):
                 render_replay({**capture_request, "source": {**capture_request["source"], "episodeHash": "0" * 64}})
             with self.assertRaisesRegex(RuntimeError, "source hashes are invalid"):
                 render_replay({**capture_request, "source": {**capture_request["source"], "captureHash": "capture"}})
+            prediction_request = {
+                **request,
+                "source": {
+                    "kind": "digital-twin-audit-prediction",
+                    "auditId": "twin-audit-example",
+                    "auditHash": "c" * 64,
+                    "captureId": "capture-example",
+                    "captureHash": "a" * 64,
+                    "bundleId": "hardware-example",
+                    "bundleHash": "b" * 64,
+                    "episodeId": "commissioning",
+                    "episodeHash": "d" * 64,
+                    "predictionHash": hash_file(trajectory),
+                },
+            }
+            prediction = render_replay(prediction_request)
+            self.assertEqual(prediction["manifest"]["version"], 1)
+            self.assertEqual(prediction["manifest"]["kind"], "mujica-digital-twin-prediction-replay")
+            self.assertEqual(prediction["manifest"]["source"]["auditId"], "twin-audit-example")
+            with self.assertRaisesRegex(RuntimeError, "prediction hash"):
+                render_replay({**prediction_request, "source": {**prediction_request["source"], "predictionHash": "0" * 64}})
 
     def test_program_prior_policy_freezes_the_exact_controller_source(self):
         policy_root = PROJECT / "policies" / "upright-residual-locomotion-1d4c901d04ccfabb"

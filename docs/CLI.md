@@ -17,7 +17,9 @@ mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
-mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID) [--json]
+mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID | --twin-audit ID) [--json]
+mujica twin audit <project> --capture ID --episode ID [--json]
+mujica twin inspect <project> --audit ID [--transition N] [--json]
 mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]
 mujica observation list <project> [--json]
 mujica observation inspect <project> --observation ID [--json]
@@ -84,6 +86,17 @@ commissioning explicit. The image is a kinematic digital-twin projection, not
 camera/motion-capture/contact truth, and it cannot change hardware verification,
 Calibration, safety, or actuation authority. The command reports an immutable
 `hardware-replay` plus the derived `studio-snapshot`.
+
+`twin audit --capture ID --episode ID` verifies that same Capture/Bundle boundary,
+then resets the frozen MuJoCo model from every device row, applies the
+device-reported `appliedAction`, and predicts exactly one control interval. It
+publishes immutable per-transition measured/predicted state, base/joint
+residuals, per-joint RMSE, maximum magnitudes, and worst-transition selectors.
+It is derived model-fit evidence, not Calibration or hardware verification.
+`twin inspect --transition N` is the exact Agent/headless selector.
+`studio --twin-audit ID` renders device state and one-step prediction side by
+side; a human observation may bind to that exact transition without changing
+the Audit or Judge authority.
 
 The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. The attention queue ranks measured Run/Capture failures before human hypotheses. “Copy frame context for Agent” includes a directly executable `evidence inspect` argv. Studio may copy or download an observation draft, but it cannot write project state. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode; renderer source participates in snapshot identity.
 
