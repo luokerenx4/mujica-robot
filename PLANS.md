@@ -18,12 +18,13 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-| — | No active capability slice. | — |
+| — | — | — |
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Safe hardware capture sessions](plans/safe-hardware-capture-sessions.md) | Execute a frozen Controller against a driver through a safety-supervised protocol and publish calibration-ready, provenance-bound device captures. | 2026-07-23 |
 | [Evidence-bound system identification](plans/evidence-bound-system-identification.md) | Fit simulator plant parameters from immutable time-series captures and promote an auditable Domain Profile for the next Training cycle. | 2026-07-23 |
 | [Sim-to-real domain profiles](plans/sim-to-real-domain-randomization.md) | Trained frozen Policies across provenance-bound physical uncertainty and judged them on fixed held-out plant combinations. | 2026-07-23 |
 | [ML motion-quality autoresearch](plans/ml-motion-quality-autoresearch.md) | Trained and governed a quality-aware residual Policy through an AI-authored experiment, frozen-policy Judge evaluation, regression protection, and visual comparison. | 2026-07-23 |

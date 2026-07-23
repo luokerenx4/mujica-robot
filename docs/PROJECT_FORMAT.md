@@ -29,6 +29,8 @@ project/
   revisions/<immutable-id>/manifest.json
   hardware-targets/<id>.hardware.json
   hardware-bundles/<immutable-id>/...
+  capture-plans/<id>.capture.json
+  hardware-captures/<immutable-id>/...
   hardware-verifications/<immutable-id>/...
   runs/<immutable-id>/...
   calibration-runs/<immutable-id>/...
@@ -60,14 +62,16 @@ receives a random profile. See [Sim-to-real Domain
 Profiles](design/sim-to-real-domain-profiles.md).
 
 A Calibration definition binds an Assembly and neutral base Scenario to at least
-two content-hashed Simulation Run v3 or external NDJSON capture sources. It
+two content-hashed Simulation Run v3, external NDJSON, or governed Hardware
+Capture episode sources. It
 declares synthetic, HIL, or real provenance, bounded plant parameters, a
 whole-source validation count, deterministic search budget, and maximum
-validation loss. HIL/real definitions require serialized device identity and
-cannot consume simulated Runs. The immutable Calibration Run records the search
-and proposes a Domain Profile; `calibration promote` separately revalidates all
-identities and copies the proposal into source. See [System-identification
-captures](design/system-identification-captures.md).
+validation loss. HIL/real definitions require serialized device identity, cannot
+consume simulated Runs or loose external paths, and accept only an eligible
+Hardware Capture with matching environment and device. The immutable Calibration
+Run records the search and proposes a Domain Profile; `calibration promote`
+separately revalidates all identities and copies the proposal into source. See
+[System-identification captures](design/system-identification-captures.md).
 
 A Research definition names one locked Benchmark, one Assembly, one program Controller, one Markdown instruction program, and one exact controller JSON file. V1 editable parameters are finite numeric `/config/<key>` values with explicit bounds, step size, and search order. Benchmark, task, scenario, objective, assembly, controller source, and runtime files are never delegated to the proposer.
 
@@ -84,6 +88,16 @@ A Candidate contains a strict `changes` declaration for components, Observation 
 Candidate preview computes a content-derived proposed Robot Revision hash before apply. Selection is feasibility-first: a zero-violation Candidate may KEEP by eliminating locked baseline violations even when its aggregate score is lower, provided every per-case regression gate still passes; when both sides are feasible, aggregate score must improve. A KEEP Revision records component-package hashes, Observation/Action contract hashes, Controller identity, optional Policy identity, the verified semantic change set, exact changed files, fixed Benchmark identity, full evaluation evidence, and the selection reason. Policy-backed Revisions copy the referenced immutable Policy Artifact into their own snapshot so replay does not depend on a mutable pointer.
 
 A Hardware Target binds a kept Robot Revision to one `dry-run`, `hil`, or `real` environment, a driver protocol, control rate, explicit device identity, latency/deadline gates, and a contract-sized emergency-stop Action. Exported bundles and verification records are immutable. External Evidence must carry exact bundle and contract hashes, driver hash, device serial, timestamps, sample count, timing measurements, emergency-stop count, and operator identity.
+
+A Capture Plan binds one such Bundle to 1–32 finite episodes. Each episode has
+an ID, seed, and bounded step count; Plan safety may only tighten authority with
+Action scale/slew, maximum joint velocity, and optional free-base height/tilt
+gates. The driver executable and any driver inputs are content-hashed and frozen.
+HIL/real execution additionally requires a separate expiring authorization with
+the exact Plan/Bundle/operator/device identity and episode ceiling. Hardware
+Capture artifacts preserve the byte-exact transcript, per-episode capture data,
+timing, interventions, stops, executable identity, and authorization. See
+[Hardware capture protocol](design/hardware-capture-protocol.md).
 
 Simulation Run v3 freezes the exact compiled `model.xml` and initial `qpos`/`qvel`
 beside its compiled Assembly, Controller, Task, Scenario, and Objective inputs.

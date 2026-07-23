@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, compareAssemblies, compileAssembly, domainProfileSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadResearch, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadResearch, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -148,6 +148,22 @@ describe("Robot Assembly compiler", () => {
     expect(calibrationSchema.safeParse({ ...calibration, provenance: { ...calibration.provenance, kind: "real" } }).success).toBe(false);
     expect(calibrationSchema.safeParse({ ...calibration, optimizer: { ...calibration.optimizer, validationSources: 3 } }).success).toBe(false);
     expect(calibrationSchema.safeParse({ ...calibration, optimizer: { ...calibration.optimizer, samplesPerAxis: 4 } }).success).toBe(false);
+  });
+
+  test("Hardware Capture Plans bound finite episodes and physical authorization", async () => {
+    const plan = await loadHardwareCapturePlan(project, "quadruped-dry-run-identification");
+    expect(plan.target).toBe("spatial-dry-run");
+    expect(plan.bundle).toMatch(/^hardware-/);
+    expect(plan.episodes.map((episode) => episode.id)).toEqual(["fit-a", "fit-b", "validation"]);
+    expect(plan.action).toEqual({ scale: 1, maximumSlewPerSecond: 400 });
+    expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, minimumBaseHeightM: 0.9, maximumBaseHeightM: 0.8 } }).success).toBe(false);
+    const authorization = {
+      version: 1, plan: plan.id, planHash: "a".repeat(64), target: "physical-target", bundleHash: "b".repeat(64), environment: "real",
+      device: { vendor: "Vendor", model: "Robot", serial: "robot-001" }, operator: "Operator",
+      approvedAt: "2026-07-23T10:00:00.000Z", expiresAt: "2026-07-23T10:10:00.000Z", maximumEpisodes: 3, notes: "",
+    };
+    expect(hardwareCaptureAuthorizationSchema.safeParse(authorization).success).toBe(true);
+    expect(hardwareCaptureAuthorizationSchema.safeParse({ ...authorization, environment: "dry-run" }).success).toBe(false);
   });
 
   test("research definitions expose a bounded editable surface", async () => {

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "quadruped-dry-run-safety-trip",
+  "name": "Synthetic device posture safety-trip proof",
+  "target": "spatial-dry-run",
+  "bundle": "hardware-a1a9f1140200b611",
+  "episodes": [
+    {
+      "id": "tilt-trip",
+      "seed": 4201,
+      "steps": 120
+    }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 30,
+    "minimumBaseHeightM": 0.12,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Expected to trip the host posture gate and publish ABORTED evidence. It runs only against the checked-in MuJoCo protocol simulator."
+}

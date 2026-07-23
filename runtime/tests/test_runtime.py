@@ -12,6 +12,7 @@ import torch
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
+from mujica_runtime.hardware_capture import _state_safety_reasons
 from mujica_runtime.io import hash_directory, hash_file
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
@@ -567,6 +568,21 @@ class RuntimeContractTest(unittest.TestCase):
         environment.reset()
         with self.assertRaisesRegex(RuntimeError, "expected 8 values"):
             environment.step(np.zeros(7))
+
+    def test_hardware_capture_state_gate_rejects_tilt_height_and_joint_speed(self):
+        model, _ = compiled_assembly("force-sensing-3dof")
+        mujoco_model = mujoco.MjModel.from_xml_path(str(model))
+        data = mujoco.MjData(mujoco_model)
+        mujoco.mj_resetDataKeyframe(mujoco_model, data, 0)
+        safety = {"maximumJointVelocityRadPerSec": 5.0, "minimumBaseHeightM": 0.2, "maximumBaseHeightM": 0.8, "maximumBodyTiltRad": 0.5}
+        self.assertEqual(_state_safety_reasons(mujoco_model, data.qpos.copy(), data.qvel.copy(), safety), [])
+        data.qvel[6] = 6.0
+        data.qpos[2] = 0.1
+        data.qpos[3:7] = np.array([np.cos(0.3), np.sin(0.3), 0.0, 0.0])
+        reasons = _state_safety_reasons(mujoco_model, data.qpos, data.qvel, safety)
+        self.assertTrue(any("joint velocity" in reason for reason in reasons))
+        self.assertTrue(any("base height" in reason for reason in reasons))
+        self.assertTrue(any("body tilt" in reason for reason in reasons))
 
     def test_training_reward_exposes_benchmark_aligned_lateral_displacement(self):
         model, compiled = compiled_assembly("force-sensing-3dof")

@@ -2,7 +2,7 @@
 import { parseArgs } from "node:util";
 import { resolveProjectDirectory } from "@mujica/core";
 import { failure } from "./contract";
-import { hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
+import { hardwareCaptureCommand, hardwareCaptureInspectCommand, hardwareCapturePlanInspectCommand, hardwareCapturePlanListCommand, hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
   assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
@@ -29,6 +29,9 @@ USAGE
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
   mujica hardware export <project> --target ID [--json]
   mujica hardware verify <project> --bundle ID --evidence PATH [--json]
+  mujica capture list <project> [--json]
+  mujica capture inspect <project> (--plan ID | --capture ID) [--json]
+  mujica capture run <project> --plan ID --driver PATH --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]
   mujica train <project> --training ID [--seed N]
   mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
   mujica policies <project> [--json]
@@ -68,6 +71,9 @@ const CAPABILITIES = [
   { id: "studio", usage: "mujica studio <project> [--run ID] [--compare-run ID] [--json]", effect: "creates-artifact" },
   { id: "hardware.export", usage: "mujica hardware export <project> --target ID [--json]", effect: "creates-artifact" },
   { id: "hardware.verify", usage: "mujica hardware verify <project> --bundle ID --evidence PATH [--json]", effect: "creates-artifact" },
+  { id: "capture.list", usage: "mujica capture list <project> [--json]", effect: "read-only" },
+  { id: "capture.inspect", usage: "mujica capture inspect <project> (--plan ID | --capture ID) [--json]", effect: "read-only" },
+  { id: "capture.run", usage: "mujica capture run <project> --plan ID --driver PATH --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]", effect: "creates-artifact" },
   { id: "train", usage: "mujica train <project> --training ID [--seed N] [--json]", effect: "creates-artifact" },
   { id: "train-research", usage: "mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]", effect: "mutates-project" },
   { id: "policies", usage: "mujica policies <project> [--json]", effect: "read-only" },
@@ -105,6 +111,14 @@ function printHuman(command: string, data: any): void {
   else if (command === "studio") process.stdout.write(`studio=${data.id}\nrun=${data.selectedRun ?? "none"}\nopen=${data.indexPath}\n`);
   else if (command === "hardware.export") process.stdout.write(`bundle=${data.id}\nhash=${data.bundleHash}\nstatus=${data.verificationStatus}\nartifact=${data.path}\n`);
   else if (command === "hardware.verify") process.stdout.write(`verification=${data.id}\nstatus=${data.status}\nhardware_verified=${data.hardwareVerified}\nartifact=${data.path}\n`);
+  else if (command === "capture.list") process.stdout.write(`${[
+    ...data.plans.map((plan: any) => `plan\t${plan.definition.id}\t${plan.definition.target}\t${plan.hash.slice(0, 16)}`),
+    ...data.captures.map((capture: any) => `capture\t${capture.id}\t${capture.status}\teligible=${capture.calibrationEligible}`),
+  ].join("\n")}\n`);
+  else if (command === "capture.inspect") process.stdout.write(data.definition
+    ? `plan=${data.definition.id}\ntarget=${data.definition.target}\nbundle=${data.definition.bundle}\nepisodes=${data.definition.episodes.length}\nhash=${data.hash}\n`
+    : `capture=${data.manifest.id}\nstatus=${data.manifest.status}\nenvironment=${data.manifest.environment}\ncalibration_eligible=${data.manifest.calibrationEligible}\npath=${data.path}\n`);
+  else if (command === "capture.run") process.stdout.write(`capture=${data.captureId}\nstatus=${data.status}\nenvironment=${data.environment}\nepisodes=${data.episodes.filter((episode: any) => episode.completed).length}/${data.episodes.length}\ncalibration_eligible=${data.calibrationEligible}\nartifact=${data.artifactPath}\n`);
   else if (command === "train") process.stdout.write(`training_run=${data.trainingRunId}\npolicy=${data.policyId}\nsteps=${data.trainingMetrics.totalSteps}\nartifact=${data.policyPath}\n`);
   else if (command === "policy.requalify") process.stdout.write(`policy=${data.id}\nsource=${data.sourcePolicyId}\nassembly=${data.assembly}\nartifact=${data.path}\n`);
   else if (command === "evaluate") process.stdout.write(`benchmark=${data.benchmark}\nscore=${data.evaluation.aggregateScore}\nlock=${data.lockHash}\n`);
@@ -159,6 +173,17 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "hardware") {
       const action = args.shift(); commandId = `hardware.${action}`; const { values, positionals } = parseArgs({ args, options: { target: { type: "string" }, bundle: { type: "string" }, evidence: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica hardware ${action} <project>`), values.project);
       if (action === "export") envelope = await hardwareExportCommand(project, required(values.target, "target")); else if (action === "verify") envelope = await hardwareVerifyCommand(project, required(values.bundle, "bundle"), required(values.evidence, "evidence")); else throw new Error("Usage: mujica hardware export|verify ...");
+    } else if (command === "capture") {
+      const action = args.shift(); commandId = `capture.${action}`;
+      const { values, positionals } = parseArgs({ args, options: { plan: { type: "string" }, capture: { type: "string" }, driver: { type: "string" }, operator: { type: "string" }, "driver-arg": { type: "string", multiple: true, default: [] }, "driver-input": { type: "string", multiple: true, default: [] }, authorization: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const project = await resolveProjectDirectory(one(positionals, `mujica capture ${action} <project>`), values.project);
+      if (action === "list") envelope = await hardwareCapturePlanListCommand(project);
+      else if (action === "inspect") {
+        if (Boolean(values.plan) === Boolean(values.capture)) throw new Error("Usage: mujica capture inspect <project> (--plan ID | --capture ID)");
+        envelope = values.plan ? await hardwareCapturePlanInspectCommand(project, values.plan) : await hardwareCaptureInspectCommand(project, values.capture!);
+      }
+      else if (action === "run") envelope = await hardwareCaptureCommand(project, required(values.plan, "plan"), required(values.driver, "driver"), values["driver-arg"], values["driver-input"], required(values.operator, "operator"), values.authorization);
+      else throw new Error("Usage: mujica capture list|inspect|run ...");
     } else if (command === "train") {
       const { values, positionals } = parseArgs({ args, options: { training: { type: "string" }, seed: { type: "string", default: "42" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica train <project>"), values.project); envelope = await trainCommand(project, required(values.training, "training"), Number(values.seed));
     } else if (command === "train-research") {

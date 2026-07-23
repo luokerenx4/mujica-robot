@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "planHash": "50852b05b4e371cd18e28fb80d6fb9699c4d5434b926764590625ab6d2ea0226",
+  "bundleHash": "a1a9f1140200b611e1ef39742b67870e271bcb7c89d44c97c224ebecadad357a",
+  "driverHash": "73dd9616c83d913720e8df23bba9073d6628d6924406c6467c97bbcc6d228ddc",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "Mujica synthetic protocol verification",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T10:11:23.775633Z",
+  "endedAt": "2026-07-23T10:11:23.948706Z",
+  "status": "ABORTED",
+  "transcriptHash": "c795723b0ff6cb5534b39c8cc06e4813d287ad708e8c6bb1297848f3b63a0aab",
+  "episodeHashes": {},
+  "runtimeSourceHash": "a79e5142dd9b7d7532bee718e0264287797c2449ee873e989724355663ba03e8",
+  "harnessSourceHash": "3976b1e86c059b21337a13de3d2c1cad2e3c2ffa968741eb0aaaf51a67cfb0f1",
+  "id": "capture-14a9552ea209a31f",
+  "captureHash": "14a9552ea209a31f656176a67c885d89637e5c4508596268130b36782e242483",
+  "plan": "quadruped-dry-run-safety-trip",
+  "target": "spatial-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-3dof",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "executionHash": "69a0d1f7e2ba14a56917e15a305c65f3f544f90e35dbbde8ce62000449cfe8b9",
+  "modelHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+  "controller": "spatial-forward-gait",
+  "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+  "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+  "episodes": [
+    {
+      "id": "tilt-trip",
+      "seed": 4201,
+      "plannedSteps": 120,
+      "steps": 63,
+      "completed": false,
+      "reason": "body tilt 1.618392 exceeds 1.5"
+    }
+  ],
+  "dispatch": {
+    "samples": 63,
+    "maximumLatencyMs": 0.578625,
+    "meanLatencyMs": 0.0991811746031746,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "interventions": [
+    {
+      "episode": "tilt-trip",
+      "step": 3,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 6,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 7,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 9,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 12,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 13,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 16,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 17,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 18,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 21,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 22,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 23,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 24,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 25,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 26,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 27,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 28,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 29,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 30,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 31,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 32,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 33,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 34,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 35,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 36,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 37,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 38,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 41,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 42,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 43,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 44,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 46,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 47,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 48,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 49,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 51,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 52,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 53,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 56,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 57,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 58,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 59,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 61,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "tilt-trip",
+      "step": 62,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    }
+  ],
+  "safeStops": 0,
+  "emergencyStops": 1,
+  "reasons": [
+    "tilt-trip: body tilt 1.618392 exceeds 1.5"
+  ],
+  "calibrationEligible": false,
+  "completed": true
+}

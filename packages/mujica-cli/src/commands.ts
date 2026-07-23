@@ -2,11 +2,12 @@ import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } fro
 import { dirname, join, resolve } from "node:path";
 import {
   assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
-  listDomainProfileIds, loadController, loadDomainProfile, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
+  listDomainProfileIds, listHardwareCapturePlanIds, loadController, loadDomainProfile, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
   type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
+import { verifyHardwareCaptureIntegrity } from "./hardware";
 import { dependencyLockHash, harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeCompiled, runtimeSourceHash, runtimeVersion } from "./runtime";
 import { writeStudioSnapshot } from "@mujica/studio";
 
@@ -57,10 +58,10 @@ export async function validateCommand(projectDir: string) {
 }
 
 export async function inspectCommand(projectDir: string) {
-  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir);
+  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir); const capturePlans = await listHardwareCapturePlanIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const calibrationRuns = await listManifestDirectories(join(project.rootDir, "calibration-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
-  const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications"));
-  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, calibrations: calibrations.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, domainProfiles, calibrations, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
+  const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications")); const hardwareCaptures = await listManifestDirectories(join(project.rootDir, "hardware-captures"));
+  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, calibrations: calibrations.length, capturePlans: capturePlans.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length, hardwareCaptures: hardwareCaptures.length }, components, assemblies, controllers, domainProfiles, calibrations, capturePlans, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications, hardwareCaptures }, project);
 }
 
 export async function studioCommand(projectDir: string, run?: string, compareRun?: string) {
@@ -152,10 +153,13 @@ export async function calibrationListCommand(projectDir: string) {
     const definition = await loadCalibration(project.rootDir, id);
     const sourceHashes = [];
     for (const source of definition.sources) {
-      const path = source.kind === "capture"
-        ? confined(project.rootDir, source.path)
-        : confined(project.rootDir, `runs/${source.run}/manifest.json`);
-      sourceHashes.push({ ...source, hash: sha256(await readFile(path)) });
+      if (source.kind === "capture") sourceHashes.push({ ...source, hash: sha256(await readFile(confined(project.rootDir, source.path))) });
+      else if (source.kind === "simulation-run") sourceHashes.push({ ...source, hash: sha256(await readFile(confined(project.rootDir, `runs/${source.run}/manifest.json`))) });
+      else {
+        const root = confined(project.rootDir, `hardware-captures/${source.capture}`); const manifest = await verifyHardwareCaptureIntegrity(root); const episode = manifest.episodes?.find((item: any) => item.id === source.episode);
+        if (!episode) throw new Error(`Hardware Capture '${source.capture}' has no episode '${source.episode}'`);
+        sourceHashes.push({ ...source, manifestHash: sha256(await readFile(join(root, "manifest.json"))), hash: sha256(await readFile(confined(root, episode.path))) });
+      }
     }
     calibrations.push({ definition, sourceHashes, hash: hashJson({ definition, sourceHashes }) });
   }
@@ -166,10 +170,13 @@ export async function calibrationInspectCommand(projectDir: string, id: string) 
   const project = await loadProject(projectDir); const definition = await loadCalibration(project.rootDir, id);
   const sourceHashes = [];
   for (const source of definition.sources) {
-    const path = source.kind === "capture"
-      ? confined(project.rootDir, source.path)
-      : confined(project.rootDir, `runs/${source.run}/manifest.json`);
-    sourceHashes.push({ ...source, hash: sha256(await readFile(path)) });
+    if (source.kind === "capture") sourceHashes.push({ ...source, hash: sha256(await readFile(confined(project.rootDir, source.path))) });
+    else if (source.kind === "simulation-run") sourceHashes.push({ ...source, hash: sha256(await readFile(confined(project.rootDir, `runs/${source.run}/manifest.json`))) });
+    else {
+      const root = confined(project.rootDir, `hardware-captures/${source.capture}`); const manifest = await verifyHardwareCaptureIntegrity(root); const episode = manifest.episodes?.find((item: any) => item.id === source.episode);
+      if (!episode) throw new Error(`Hardware Capture '${source.capture}' has no episode '${source.episode}'`);
+      sourceHashes.push({ ...source, manifestHash: sha256(await readFile(join(root, "manifest.json"))), hash: sha256(await readFile(confined(root, episode.path))) });
+    }
   }
   return success("calibration.inspect", { definition, sourceHashes, hash: hashJson({ definition, sourceHashes }), path: confined(project.rootDir, `calibrations/${id}.calibration.json`) }, project, [], [
     { id: "run-calibration", description: "Fit the declared plant parameters and publish immutable Calibration evidence", argv: ["calibrate", project.rootDir, "--calibration", id], effect: "creates-artifact" },
@@ -183,6 +190,20 @@ async function calibrationRuntimeSources(project: ProjectContext, definition: Ca
     if (source.kind === "capture") {
       const path = confined(project.rootDir, source.path);
       sources.push({ kind: "capture", id: `capture-${index + 1}`, path, hash: sha256(await readFile(path)) });
+      continue;
+    }
+    if (source.kind === "hardware-capture") {
+      const root = confined(project.rootDir, `hardware-captures/${source.capture}`); const manifestPath = join(root, "manifest.json"); const manifest = await verifyHardwareCaptureIntegrity(root);
+      if (manifest.id !== source.capture || manifest.completed !== true || manifest.status !== "COMPLETED" || manifest.calibrationEligible !== true) throw new Error(`Hardware Capture '${source.capture}' is not calibration-eligible`);
+      if (manifest.executionHash !== assembly.executionHash || manifest.modelHash !== assembly.modelHash) throw new Error(`Hardware Capture '${source.capture}' executable Assembly differs from '${assembly.id}'`);
+      const expectedEnvironment = definition.provenance.kind === "synthetic" ? "dry-run" : definition.provenance.kind;
+      if (manifest.environment !== expectedEnvironment) throw new Error(`Hardware Capture '${source.capture}' environment '${manifest.environment}' cannot support '${definition.provenance.kind}' Calibration`);
+      if (definition.provenance.device && stableJson(definition.provenance.device) !== stableJson(manifest.device)) throw new Error(`Hardware Capture '${source.capture}' device differs from Calibration provenance`);
+      const episode = manifest.episodes?.find((item: any) => item.id === source.episode);
+      if (!episode || episode.completed !== true) throw new Error(`Hardware Capture '${source.capture}' has no completed episode '${source.episode}'`);
+      const path = confined(root, episode.path); const hash = sha256(await readFile(path));
+      if (hash !== episode.hash) throw new Error(`Hardware Capture '${source.capture}' episode '${source.episode}' hash differs`);
+      sources.push({ kind: "capture", id: `${source.capture}-${source.episode}`, capture: source.capture, episode: source.episode, path, hash, manifestHash: sha256(await readFile(manifestPath)), captureHash: manifest.captureHash, environment: manifest.environment, device: manifest.device });
       continue;
     }
     const root = confined(project.rootDir, `runs/${source.run}`);

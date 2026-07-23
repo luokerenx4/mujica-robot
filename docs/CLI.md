@@ -20,6 +20,9 @@ mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID 
 mujica studio <project> [--run ID] [--compare-run ID] [--json]
 mujica hardware export <project> --target ID [--json]
 mujica hardware verify <project> --bundle ID --evidence PATH [--json]
+mujica capture list <project> [--json]
+mujica capture inspect <project> (--plan ID | --capture ID) [--json]
+mujica capture run <project> --plan ID --driver PATH --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]
 mujica train <project> --training ID [--seed N]
 mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica policies <project> [--json]
@@ -67,6 +70,23 @@ writing the Profile. Simulation Runs can only support `synthetic` provenance;
 The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. “Copy frame context for Agent” places structured Run identity and exact frame evidence on the clipboard. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode.
 
 `hardware export` freezes one Hardware Target, kept Robot Revision, Controller, Observation/Action contracts, safety envelope, and `stdio-jsonl-v1` handshake into an immutable bundle. `hardware verify` validates separately collected driver Evidence and publishes an immutable verification. A `dry-run` can only become `PROTOCOL-VERIFIED`; only passing `hil` or `real` Evidence with a required device serial can become `HARDWARE-VERIFIED`.
+
+`capture list|inspect|run` is the executable device-session boundary. A Capture
+Plan binds a finite episode set to one Bundle and may only reduce its authority
+with Action scaling, slew limiting, and tighter state gates. `run` hashes an
+exact non-symlink executable, freezes any repeated `--driver-input` files, checks
+the Bundle/contract/environment/device handshake, and executes only the
+Bundle-frozen Controller. A completed artifact contains raw protocol bytes,
+driver stderr, per-episode calibration NDJSON, timing, safety interventions, and
+all source hashes.
+
+`dry-run` Capture Plans do not accept physical authorization and produce only
+synthetic evidence. `hil` and `real` Plans require `--authorization`; that
+external JSON must be unexpired and name the exact Plan hash, Bundle hash,
+Target, environment, operator, device identity, and maximum episode count.
+Protocol, deadline, Controller, or state-safety failures trigger best-effort
+emergency stop and publish an ineligible `ABORTED`/`FAILED` artifact rather than
+discarding the evidence.
 
 `policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
 

@@ -45,6 +45,13 @@ bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
 bun run mujica studio examples/quadruped --run run-3404db433e7eb644 --compare-run run-35cd362b2def8a20
 bun run mujica hardware export examples/quadruped --target spatial-dry-run
+bun run mujica capture inspect examples/quadruped \
+  --plan quadruped-dry-run-identification
+bun run mujica capture run examples/quadruped \
+  --plan quadruped-dry-run-identification \
+  --driver examples/quadruped/drivers/mujoco-protocol-simulator.py \
+  --driver-input examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json \
+  --operator local-developer
 bun run mujica research list examples/quadruped
 bun run mujica research inspect examples/quadruped --lab upright-residual-policy
 bun run mujica research run examples/quadruped --lab upright-residual-policy \
@@ -87,6 +94,27 @@ program baseline, so it remains useful frozen evidence rather than a claimed
 Controller improvement. See [system-identification
 captures](docs/design/system-identification-captures.md).
 
+Hardware Capture removes the hand-written-evidence gap at the device boundary.
+A finite Capture Plan names one frozen Bundle and a stricter safety envelope;
+Mujica hashes and launches one exact driver executable, runs only the frozen
+Controller, and preserves every command, state, intervention, deadline, and
+stop message. HIL and real sessions additionally require an external,
+short-lived operator authorization naming the exact Plan, Bundle, device serial,
+and episode ceiling. The checked-in MuJoCo protocol driver is explicitly a
+`dry-run`, not fake hardware: one three-episode session completed with no
+deadline miss or emergency stop, recovered the hidden plant on a held-out
+episode at `0.01491` loss, and produced a synthetic-only Domain Profile. A
+separate session deliberately crosses the body-tilt gate and proves the host
+emits an emergency stop and makes the artifact calibration-ineligible. See
+[hardware capture protocol](docs/design/hardware-capture-protocol.md).
+
+The first Policy trained from that captured Profile is also frozen as evidence.
+It scores `60.6407` on the locked `spatial-robustness` Benchmark versus `60.4130`
+for the prior residual Policy and `60.2947` for the program Controller. It is
+not promoted: it still fails low-friction progress and adds a strong-push
+survival violation. Mujica therefore preserves a small aggregate ML gain without
+misreporting robot capability.
+
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
 The same hardware change also has an independent frozen-policy Development Candidate. It explicitly records the Assembly, contract, training configuration, Controller, and Policy transition. That candidate is honestly REVERT: the 1024-step force-aware PPO policy scores `43.3281` versus `44.0822` and misses every survival gate. Mujica records this as evidence that a real training run is not automatically a successful robot revision.
@@ -109,7 +137,12 @@ The follow-up adds a replayable four-step history contract, a bounded GRU histor
 
 `mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The Python Runtime reconstructs every recorded `qpos` with the Run's exact MuJoCo model and renders an authoritative 3D replay; Studio synchronizes it with play/pause, frame stepping, speed, scrubbing, semantic Event seeking, the top-down path, and frame telemetry. Add `--compare-run` to put a baseline and subject on one simulation-time clock with motion-quality deltas. A human can copy the exact immutable Run/frame comparison back to a Coding Agent without making the browser a second simulator or evaluator.
 
-The hardware boundary exports a kept Robot Revision as an immutable, contract-bound driver Bundle and validates separately captured Evidence. The checked-in 250-sample conformance run is deliberately labeled `PROTOCOL-VERIFIED` and `hardwareVerified=false`; Mujica will not represent a simulated serial number as HIL or real-robot proof.
+The hardware boundary exports a kept Robot Revision as an immutable,
+contract-bound driver Bundle, can execute that Bundle through a governed Capture
+Plan, and can still validate separately collected conformance Evidence. The
+checked-in protocol evidence is deliberately labeled `PROTOCOL-VERIFIED` and
+`hardwareVerified=false`; Mujica will not represent a simulated serial number
+as HIL or real-robot proof.
 
 Components now carry explicit physical, geometry/collision, joint, actuator, and sensor inventories. This metadata migration changed every Assembly provenance hash but not one MJCF byte. Six frozen Policies were requalified into new immutable artifacts using old/new model and contract hash proofs. A later Runtime audit found that low-friction scenarios had changed only the floor geom; corrected contact friction invalidates the old all-seven-gates interpretation while preserving those immutable artifacts as historical evidence.
 
@@ -127,4 +160,4 @@ The traction lane now reaches `friction = 0.1` without exposing Scenario identit
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 
-Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [hardware capture protocol](docs/design/hardware-capture-protocol.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

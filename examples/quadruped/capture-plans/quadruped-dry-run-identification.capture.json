@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "id": "quadruped-dry-run-identification",
+  "name": "Three-episode synthetic device identification capture",
+  "target": "spatial-dry-run",
+  "bundle": "hardware-a1a9f1140200b611",
+  "episodes": [
+    {
+      "id": "fit-a",
+      "seed": 4201,
+      "steps": 50
+    },
+    {
+      "id": "fit-b",
+      "seed": 4202,
+      "steps": 50
+    },
+    {
+      "id": "validation",
+      "seed": 4203,
+      "steps": 50
+    }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 30,
+    "minimumBaseHeightM": 0.12,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Runs only against the checked-in MuJoCo protocol simulator. It validates the session/capture boundary and remains synthetic evidence."
+}

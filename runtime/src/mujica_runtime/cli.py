@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .calibration import calibrate
+from .hardware_capture import capture_hardware
 from .replay import render_replay
 from .simulation import simulate, validate_model
 from .training import train
@@ -13,7 +14,7 @@ from .training import train
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m mujica_runtime.cli")
-    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "render-replay"])
+    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay"])
     parser.add_argument("--request", required=True)
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text())
@@ -22,6 +23,7 @@ def main() -> None:
     elif args.operation == "evaluate-case": result = simulate(request, persist=False)
     elif args.operation == "train": result = train(request)
     elif args.operation == "calibrate": result = calibrate(request)
+    elif args.operation == "hardware-capture": result = capture_hardware(request)
     else: result = render_replay(request)
     sys.stdout.write(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
 

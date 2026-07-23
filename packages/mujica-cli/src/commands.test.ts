@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertResearchLabEditableChanges, researchPathIsEditable } from "./research-lab";
+import { validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -30,6 +31,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.export")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.verify")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "capture.run")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.requalify")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
@@ -60,6 +62,48 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definition.optimizer.validationSources).toBe(1);
     expect(envelope.data.sourceHashes).toHaveLength(3);
     expect(envelope.nextActions[0].argv.slice(0, 3)).toEqual(["calibrate", resolve(root, "examples/quadruped"), "--calibration"]);
+  });
+
+  test("Hardware Capture discovery and dry-run preserve calibration-ready protocol evidence", async () => {
+    const inspected = invoke(["capture", "inspect", "examples/quadruped", "--plan", "quadruped-dry-run-identification", "--json"]); const plan = JSON.parse(inspected.stdout);
+    expect(inspected.code).toBe(0); expect(plan.data.definition.episodes).toHaveLength(3); expect(plan.data.bundle.environment).toBe("dry-run");
+    const captured = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "quadruped-dry-run-identification",
+      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test", "--json",
+    ]);
+    expect(captured.code).toBe(0);
+    const envelope = JSON.parse(captured.stdout); const artifactPath = envelope.data.artifactPath;
+    try {
+      expect(envelope.data).toMatchObject({ status: "COMPLETED", environment: "dry-run", calibrationEligible: true, deadlineMisses: 0, emergencyStops: 0 });
+      expect(envelope.data.episodes.every((episode: any) => episode.completed)).toBe(true);
+      const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
+      expect(manifest.device.serial).toBe("simulated");
+      expect(manifest.driverInputs[0].hash).toHaveLength(64);
+      expect(manifest.episodes.map((episode: any) => episode.hash).every((hash: string) => hash.length === 64)).toBe(true);
+      const inputPath = resolve(artifactPath, "driver-inputs/00-hardware-capture-hidden-plant.scenario.json");
+      expect(await readFile(inputPath, "utf8")).toContain("\"bodyMassScale\": 1.1");
+      const inspectedCapture = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
+      expect(inspectedCapture.code).toBe(0); expect(JSON.parse(inspectedCapture.stdout).data.manifest.captureHash).toBe(envelope.data.captureHash);
+      await writeFile(inputPath, "tampered\n");
+      const tampered = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
+      expect(tampered.code).toBe(1); expect(JSON.parse(tampered.stderr).error.message).toContain("driver input");
+    } finally {
+      rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }, 10_000);
+
+  test("physical Capture requires matching, live, external operator authorization", () => {
+    const target: any = { version: 1, id: "robot-target", name: "Robot", revision: "robot-r1", assembly: "robot", controller: "control", environment: "real", protocol: "stdio-jsonl-v1", controlHz: 50, safety: { maximumLatencyMs: 10, maximumConsecutiveMisses: 1, emergencyStopAction: [0] }, device: { vendor: "Vendor", model: "Robot", serialRequired: true } };
+    const plan: any = { version: 1, id: "capture-plan", name: "Capture", target: target.id, bundle: "hardware-a", episodes: [{ id: "one", seed: 1, steps: 10 }], action: { scale: 0.5, maximumSlewPerSecond: 1 }, safety: { maximumJointVelocityRadPerSec: 1 }, notes: "" };
+    const bundle = { bundleHash: "b".repeat(64) }; const planHash = "a".repeat(64); const now = Date.parse("2026-07-23T10:05:00.000Z");
+    const authorization: any = { version: 1, plan: plan.id, planHash, target: target.id, bundleHash: bundle.bundleHash, environment: "real", device: { vendor: "Vendor", model: "Robot", serial: "robot-001" }, operator: "Operator", approvedAt: "2026-07-23T10:00:00.000Z", expiresAt: "2026-07-23T10:10:00.000Z", maximumEpisodes: 1, notes: "" };
+    expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Operator", null, now)).toThrow("requires --authorization");
+    expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Operator", authorization, now)).not.toThrow();
+    expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Operator", { ...authorization, expiresAt: "2026-07-23T10:04:00.000Z" }, now)).toThrow("not currently valid");
+    expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Different", authorization, now)).toThrow("operator");
   });
 
   test("Controller discovery exposes legal Assembly combinations", () => {
@@ -118,8 +162,9 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
     expect(envelope.data.definitions.researchLabs).toBe(3);
-    expect(envelope.data.definitions.domainProfiles).toBe(2);
-    expect(envelope.data.definitions.calibrations).toBe(1);
+    expect(envelope.data.definitions.domainProfiles).toBe(3);
+    expect(envelope.data.definitions.calibrations).toBe(2);
+    expect(envelope.data.definitions.capturePlans).toBe(2);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);

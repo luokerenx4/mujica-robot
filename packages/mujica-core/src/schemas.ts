@@ -192,6 +192,7 @@ export const calibrationSchema = z.object({
   sources: z.array(z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("simulation-run"), run: idSchema }).strict(),
     z.object({ kind: z.literal("capture"), path: relativeFileSchema }).strict(),
+    z.object({ kind: z.literal("hardware-capture"), capture: idSchema, episode: idSchema }).strict(),
   ])).min(2),
   parameters: z.object({
     bodyMassScale: positiveDomainRangeSchema.optional(),
@@ -223,8 +224,8 @@ export const calibrationSchema = z.object({
   if (calibration.provenance.kind !== "synthetic" && calibration.provenance.device === null) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "device"], message: "HIL and real Calibration require serialized device identity" });
   }
-  if (calibration.provenance.kind !== "synthetic" && calibration.sources.some((source) => source.kind === "simulation-run")) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["sources"], message: "Simulation Runs can only produce synthetic Calibration evidence" });
+  if (calibration.provenance.kind !== "synthetic" && calibration.sources.some((source) => source.kind !== "hardware-capture")) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["sources"], message: "HIL and real Calibration require immutable Hardware Capture sources" });
   }
 });
 
@@ -233,6 +234,49 @@ export const hardwareTargetSchema = z.object({
   environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
   safety: z.object({ maximumLatencyMs: z.number().positive(), maximumConsecutiveMisses: z.number().int().nonnegative(), emergencyStopAction: z.array(z.number().finite()).min(1) }).strict(),
   device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serialRequired: z.boolean() }).strict(),
+}).strict();
+
+export const hardwareCapturePlanSchema = z.object({
+  version: z.literal(1),
+  id: idSchema,
+  name: z.string().min(1),
+  target: idSchema,
+  bundle: idSchema,
+  episodes: z.array(z.object({
+    id: idSchema,
+    seed: z.number().int(),
+    steps: z.number().int().min(2).max(50_000),
+  }).strict()).min(1).max(32).refine((episodes) => new Set(episodes.map((episode) => episode.id)).size === episodes.length, "Capture episode ids must be unique"),
+  action: z.object({
+    scale: z.number().positive().max(1),
+    maximumSlewPerSecond: z.number().positive(),
+  }).strict(),
+  safety: z.object({
+    maximumJointVelocityRadPerSec: z.number().positive(),
+    minimumBaseHeightM: z.number().nonnegative().optional(),
+    maximumBaseHeightM: z.number().positive().optional(),
+    maximumBodyTiltRad: z.number().positive().max(Math.PI).optional(),
+  }).strict(),
+  notes: z.string(),
+}).strict().superRefine((plan, context) => {
+  if (plan.safety.minimumBaseHeightM !== undefined && plan.safety.maximumBaseHeightM !== undefined && plan.safety.minimumBaseHeightM >= plan.safety.maximumBaseHeightM) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["safety"], message: "minimumBaseHeightM must be below maximumBaseHeightM" });
+  }
+});
+
+export const hardwareCaptureAuthorizationSchema = z.object({
+  version: z.literal(1),
+  plan: idSchema,
+  planHash: z.string().regex(/^[0-9a-f]{64}$/),
+  target: idSchema,
+  bundleHash: z.string().regex(/^[0-9a-f]{64}$/),
+  environment: z.enum(["hil", "real"]),
+  device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serial: z.string().min(1) }).strict(),
+  operator: z.string().min(1),
+  approvedAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  maximumEpisodes: z.number().int().positive(),
+  notes: z.string(),
 }).strict();
 
 export const hardwareEvidenceSchema = z.object({
@@ -344,6 +388,8 @@ export type TrainerDefinition = z.output<typeof trainerSchema>;
 export type TrainingDefinition = z.output<typeof trainingSchema>;
 export type CalibrationDefinition = z.output<typeof calibrationSchema>;
 export type HardwareTargetDefinition = z.output<typeof hardwareTargetSchema>;
+export type HardwareCapturePlanDefinition = z.output<typeof hardwareCapturePlanSchema>;
+export type HardwareCaptureAuthorization = z.output<typeof hardwareCaptureAuthorizationSchema>;
 export type HardwareEvidence = z.output<typeof hardwareEvidenceSchema>;
 export type CandidateDefinition = z.output<typeof candidateSchema>;
 export type ResearchDefinition = z.output<typeof researchSchema>;
