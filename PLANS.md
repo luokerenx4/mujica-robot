@@ -24,6 +24,7 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Frozen Hardware State ABI](plans/frozen-hardware-state-abi.md) | Froze named state coordinates from MuJoCo through Driver, Capture, Audit, CLI, and Studio. | 2026-07-24 |
 | [Digital Twin Residual Audit](plans/digital-twin-residual-audit.md) | Quantified exact one-step disagreement between device telemetry and its frozen MuJoCo twin for shared human/Agent diagnosis. | 2026-07-24 |
 | [Device Telemetry Replay](plans/device-telemetry-replay.md) | Projected integrity-checked Hardware Capture episodes through their frozen digital twin for shared human/Agent inspection. | 2026-07-24 |
 | [Human-reviewed Research Outcomes](plans/human-reviewed-research-outcomes.md) | Preserve exact accepted/candidate MuJoCo review pairs across KEEP and REVERT for the human half of the research loop. | 2026-07-24 |

@@ -3,7 +3,7 @@ import { rmSync } from "node:fs";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
+import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
@@ -432,6 +432,13 @@ describe("agent CLI contract", () => {
     expect(inspection.transition.measured.qpos).toHaveLength(19);
     expect(inspection.transition.predicted.qpos).toHaveLength(19);
     expect(inspection.transition.residual.jointPositionRad).toHaveLength(12);
+    expect(inspection.transition.residual.joints).toHaveLength(12);
+    expect(inspection.transition.residual.joints[0]).toHaveProperty("name", "abd-fl");
+    expect(inspection.summary.stateAbi).toMatchObject({
+      authority: "derived-from-frozen-model",
+      qposSize: 19,
+      qvelSize: 18,
+    });
 
     const studio = invoke(["studio", "examples/quadruped", "--twin-audit", envelope.data.id, "--json"]);
     expect({ code: studio.code, stderr: studio.stderr }).toEqual({ code: 0, stderr: "" });
@@ -463,6 +470,7 @@ describe("agent CLI contract", () => {
     expect(html).toContain("Device telemetry ↔ one-step frozen MuJoCo prediction");
     expect(html).toContain("mujica-digital-twin-residual-selector");
     expect(html).toContain("digital-twin-audit-transition");
+    expect(html).toContain("Named by the frozen Hardware State ABI");
 
     const temporary = await mkdtemp(resolve(tmpdir(), "mujica-twin-observation-"));
     const draftPath = resolve(temporary, "draft.json");
@@ -527,6 +535,36 @@ describe("agent CLI contract", () => {
     expect(JSON.parse(override.stderr).error.message).toContain("Bundle-frozen Driver Package");
   });
 
+  test("Hardware Bundle v2 freezes a named State ABI through Capture identity", async () => {
+    const bundleRoot = resolve(root, "examples/quadruped/hardware-bundles/hardware-d474a4b669d2e3f6");
+    const bundle = JSON.parse(await readFile(resolve(bundleRoot, "manifest.json"), "utf8"));
+    const state = JSON.parse(await readFile(resolve(bundleRoot, "state-contract.json"), "utf8"));
+    const protocol = JSON.parse(await readFile(resolve(bundleRoot, "driver-protocol.json"), "utf8"));
+    expect(bundle.version).toBe(2);
+    expect(bundle.stateContractHash).toBe(hashJson(state));
+    expect(state).toMatchObject({
+      kind: "mujica-hardware-state-abi",
+      qpos: { size: 19 },
+      qvel: { size: 18 },
+      quaternionConvention: { order: "wxyz", handedness: "right-handed" },
+      driverBoundary: { normalizationOwner: "driver" },
+    });
+    expect(state.qpos.coordinates[3]).toMatchObject({ name: "root.orientation.w", frame: "model-world-from-body" });
+    expect(state.qvel.coordinates[3]).toMatchObject({ name: "root.angular-velocity.x", frame: "body-local" });
+    expect(protocol.handshake.stateContractHash).toBe(bundle.stateContractHash);
+    expect(protocol.capabilities).toContain("state-abi-v1");
+
+    const inspected = invoke(["capture", "inspect", "examples/quadruped", "--capture", "capture-b6d4e6918972f58c", "--json"]);
+    expect({ code: inspected.code, stderr: inspected.stderr }).toEqual({ code: 0, stderr: "" });
+    const capture = JSON.parse(inspected.stdout).data.manifest;
+    expect(capture).toMatchObject({
+      bundleHash: bundle.bundleHash,
+      stateContractHash: bundle.stateContractHash,
+      status: "COMPLETED",
+    });
+    expect(capture.protocolCapabilities).toContain("state-abi-v1");
+  });
+
   test("Domain Profile discovery exposes provenance and bounded dynamics", () => {
     const result = invoke(["domain", "inspect", "examples/quadruped", "--domain", "quadruped-pre-hil-v1", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
@@ -574,7 +612,8 @@ describe("agent CLI contract", () => {
       const bundleManifest = JSON.parse(await readFile(resolve(root, `examples/quadruped/hardware-bundles/${plan.data.definition.bundle}/manifest.json`), "utf8"));
       expect(manifest.driverPackageHash).toBe(bundleManifest.driverPackageHash);
       expect(manifest.driverHash).toBe(bundleManifest.driverExecutableHash);
-      expect(manifest.protocolCapabilities).toEqual(["applied-action", "command-lease", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"]);
+      expect(manifest.protocolCapabilities).toEqual(["applied-action", "command-lease", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-abi-v1", "state-age-ms", "stop-ack"]);
+      expect(manifest.stateContractHash).toBe(bundleManifest.stateContractHash);
       expect(manifest.stateAge.samples).toBeGreaterThan(0);
       expect(manifest.deviceHealth).toMatchObject({
         maximumMotorTemperatureC: 40,
@@ -1031,7 +1070,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-ba87fac80feb5f33",
+      "--bundle", "hardware-d474a4b669d2e3f6",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

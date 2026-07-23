@@ -66,6 +66,14 @@ attached to each frame. The projection is not visual/contact truth and cannot
 change hardware verification, Calibration, safety, or actuation authority; see
 [Device telemetry replay](design/device-telemetry-replay.md).
 
+The device state itself is governed by a frozen Hardware State ABI rather than
+array length alone. Bundle export asks the exact compiled MuJoCo model for every
+named `qpos/qvel` coordinate, unit, frame, joint group, and `wxyz` quaternion
+meaning. Driver hello, Capture, Verification, Twin Audit, Agent selectors, and
+Studio carry the same hash. Vendor-native ordering, direction, offsets, units,
+and frames are normalized inside the Bundle-frozen Driver. See [Hardware State
+ABI](design/hardware-state-abi.md).
+
 Human-guided research adds one explicit derived boundary. `research brief`
 binds selected Observation/context hashes to one Lab, program, and primary
 Benchmark lock. The isolated Agent receives those exact bytes as
@@ -102,4 +110,4 @@ state. An acknowledged trip enters a stop-latched health window; continuously
 healthy evidence may recommend a new session, but the current process has no
 rearm transition and cannot recover actuation authority.
 
-See [the harness design](design/robot-development-harness.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [Device telemetry replay](design/device-telemetry-replay.md), [Human-guided Research Briefs](design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](design/human-reviewed-research-outcomes.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+See [the harness design](design/robot-development-harness.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [Device telemetry replay](design/device-telemetry-replay.md), [Hardware State ABI](design/hardware-state-abi.md), [Human-guided Research Briefs](design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](design/human-reviewed-research-outcomes.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

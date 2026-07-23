@@ -19,7 +19,9 @@ export async function verifyHardwareBundleIntegrity(root: string, bundle: any): 
     ...(bundle.driverPackage && typeof bundle.driverPackage === "object" ? { driverPackage: bundle.driverPackage } : {}),
     ...(typeof bundle.driverPackageHash === "string" ? { driverPackageHash: bundle.driverPackageHash } : {}),
     ...(typeof bundle.driverExecutableHash === "string" ? { driverExecutableHash: bundle.driverExecutableHash } : {}),
-    observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash, protocol: bundle.protocol,
+    observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash,
+    ...(typeof bundle.stateContractHash === "string" ? { stateContractHash: bundle.stateContractHash } : {}),
+    protocol: bundle.protocol,
   };
   if (hashJson(payload) !== bundle.bundleHash) throw new Error("Hardware Bundle manifest identity is invalid");
   if (await hashDirectory(join(root, "revision")) !== bundle.revisionHash) throw new Error("Hardware Bundle Revision snapshot was modified");
@@ -38,6 +40,14 @@ export async function verifyHardwareBundleIntegrity(root: string, bundle: any): 
   }
   const observation = JSON.parse(await readFile(join(root, "observation-contract.json"), "utf8")); const action = JSON.parse(await readFile(join(root, "action-contract.json"), "utf8"));
   if (hashJson(observation) !== bundle.observationContractHash || hashJson(action) !== bundle.actionContractHash) throw new Error("Hardware Bundle contract snapshot was modified");
+  if (bundle.version >= 2) {
+    if (typeof bundle.stateContractHash !== "string") throw new Error("Hardware Bundle State ABI identity is missing");
+    const state = JSON.parse(await readFile(join(root, "state-contract.json"), "utf8"));
+    if (hashJson(state) !== bundle.stateContractHash) throw new Error("Hardware Bundle State ABI snapshot was modified");
+    if (state.kind !== "mujica-hardware-state-abi" || state.modelHash !== bundle.modelXmlHash || state.assemblyHash !== bundle.assemblyHash) {
+      throw new Error("Hardware Bundle State ABI does not match its frozen Assembly and model");
+    }
+  }
   const target = JSON.parse(await readFile(join(root, "target.json"), "utf8")); if (stableJson(target) !== stableJson(bundle.target)) throw new Error("Hardware Bundle Target snapshot was modified");
 }
 
@@ -102,6 +112,7 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
     emergencyStopAcknowledgements: manifest.emergencyStopAcknowledgements,
     ...(typeof manifest.controllerWarmupPasses === "number" ? { controllerWarmupPasses: manifest.controllerWarmupPasses } : {}),
     ...(typeof manifest.realTimeQualified === "boolean" ? { realTimeQualified: manifest.realTimeQualified } : {}),
+    ...(typeof manifest.stateContractHash === "string" ? { stateContractHash: manifest.stateContractHash } : {}),
   } : {};
   const identity = {
     version: manifest.version,
@@ -145,7 +156,7 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
     const loaded = await loadDriverPackage(project.rootDir, target.driver); driverRoot = loaded.rootDir; driverPackage = loaded.definition;
     if (driverPackage.protocol !== target.protocol || !driverPackage.environments.includes(target.environment)) throw new Error("Hardware Target Driver Package does not support its protocol/environment");
     if (driverPackage.device.vendor !== target.device.vendor || driverPackage.device.model !== target.device.model) throw new Error("Hardware Target Driver Package device identity differs");
-    const requiredCapabilities = new Set(["stop-ack"]);
+    const requiredCapabilities = new Set(["stop-ack", "state-abi-v1"]);
     requiredCapabilities.add("command-lease");
     if (target.safety.maximumStateAgeMs !== undefined) { requiredCapabilities.add("applied-action"); requiredCapabilities.add("state-age-ms"); }
     if (target.safety.requireDecisionDeadline) requiredCapabilities.add("decision-deadline");
@@ -183,28 +194,40 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
     throw new Error("Policy Revision Hardware Target requires a Policy Controller");
   }
   const controllerHash = await hashDirectory(controllerRoot); const [harnessHash, dependencyHash] = await Promise.all([harnessSourceHash(), harnessDependencyLockHash()]);
-  const modelXmlHash = sha256(await readFile(join(compiledRoot, "model.xml")));
-  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, sourceKind, maximumCaptureMode, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, ...(policyHash ? { policyHash } : {}), ...(driverPackage ? { driverPackage, driverPackageHash, driverExecutableHash } : {}), observationContractHash, actionContractHash, protocol: target.protocol };
+  const modelPath = join(compiledRoot, "model.xml");
+  const modelXmlHash = sha256(await readFile(modelPath));
+  const describedState = await invokeRuntime("describe-state", {
+    assembly: compiled.id,
+    assemblyHash: revision.assemblyHash,
+    modelHash: modelXmlHash,
+    modelPath,
+  });
+  const stateContract = describedState.stateContract;
+  const stateContractHash = describedState.stateContractHash;
+  if (!stateContract || stateContractHash !== hashJson(stateContract) || stateContract.modelHash !== modelXmlHash || stateContract.assemblyHash !== revision.assemblyHash) {
+    throw new Error("Python Runtime returned an invalid Hardware State ABI");
+  }
+  const payload = { version: 2, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, sourceKind, maximumCaptureMode, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, ...(policyHash ? { policyHash } : {}), ...(driverPackage ? { driverPackage, driverPackageHash, driverExecutableHash } : {}), observationContractHash, actionContractHash, stateContractHash, protocol: target.protocol };
   const bundleHash = hashJson(payload); const id = `hardware-${bundleHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-bundles", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await cp(revisionRoot, join(directory, "revision"), { recursive: true }); await cp(controllerRoot, join(directory, "controller"), { recursive: true });
     if (policyRoot) await cp(policyRoot, join(directory, "policies", controllerDefinition.policy), { recursive: true });
     if (driverRoot) await cp(driverRoot, join(directory, "driver"), { recursive: true });
-    await writeJson(join(directory, "target.json"), target); await writeJson(join(directory, "observation-contract.json"), observationContract); await writeJson(join(directory, "action-contract.json"), actionContract);
+    await writeJson(join(directory, "target.json"), target); await writeJson(join(directory, "observation-contract.json"), observationContract); await writeJson(join(directory, "action-contract.json"), actionContract); await writeJson(join(directory, "state-contract.json"), stateContract);
     await writeJson(join(directory, "driver-protocol.json"), {
       version: 1,
       protocol: "stdio-jsonl-v1",
-      handshake: { bundleHash, observationContractHash, actionContractHash },
-      capabilities: driverPackage?.capabilities ?? ["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"],
+      handshake: { bundleHash, observationContractHash, actionContractHash, stateContractHash },
+      capabilities: driverPackage?.capabilities ?? ["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-abi-v1", "state-age-ms", "stop-ack"],
       messages: ["hello", "start-episode", "state", "action", "shadow-action", "deadline-rejected", "lease-expired", "control-rejected", "safe-stop", "emergency-stop", "stopped", "health-check", "health-state", "close", "completed"],
-      state: { required: ["episode", "step", "qpos", "qvel", "observation", "appliedAction", "stateAgeMs", "deviceHealth"] },
+      state: { required: ["episode", "step", "qpos", "qvel", "observation", "appliedAction", "stateAgeMs", "deviceHealth"], qpos: "state-contract.json#qpos", qvel: "state-contract.json#qvel" },
       deviceHealth: { actuatorStates: ["ready", "derated", "faulted", "offline"] },
       commandLease: { durationMs: target.safety.commandLeaseMs, maximumOverrunMs: target.safety.maximumCommandLeaseOverrunMs, renewalMessages: ["start-episode", "action", "shadow-action"], automaticRearm: false },
       stopRecovery: { automaticRearm: false, requiresNewSession: true },
     });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
   });
-  return success("hardware.export", { id, bundleHash, path: root, sourceKind, maximumCaptureMode, target, ...(driverPackage ? { driverPackage, driverPackageHash, driverExecutableHash } : {}), observationContractHash, actionContractHash, verificationStatus: "UNVERIFIED" }, project, [artifact("hardware-bundle", id, root)]);
+  return success("hardware.export", { id, bundleHash, path: root, sourceKind, maximumCaptureMode, target, ...(driverPackage ? { driverPackage, driverPackageHash, driverExecutableHash } : {}), observationContractHash, actionContractHash, stateContractHash, stateContract: { qposSize: stateContract.qpos.size, qvelSize: stateContract.qvel.size, joints: stateContract.joints.map((joint: any) => joint.name) }, verificationStatus: "UNVERIFIED" }, project, [artifact("hardware-bundle", id, root)]);
 }
 
 export async function hardwareVerifyCommand(projectDir: string, bundleId: string, evidencePath: string) {
@@ -214,6 +237,7 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   if (evidence.target !== target.id) reasons.push("evidence target does not match bundle"); if (evidence.bundleHash !== bundle.bundleHash) reasons.push("evidence bundle hash does not match");
   if (evidence.environment !== target.environment) reasons.push("evidence environment does not match target");
   if (evidence.observationContractHash !== bundle.observationContractHash || evidence.actionContractHash !== bundle.actionContractHash) reasons.push("evidence contract hashes do not match bundle");
+  if (typeof bundle.stateContractHash === "string" && evidence.stateContractHash !== bundle.stateContractHash) reasons.push("evidence State ABI hash does not match bundle");
   if (typeof bundle.driverPackageHash === "string" && evidence.driverPackageHash !== bundle.driverPackageHash) reasons.push("evidence Driver Package hash does not match bundle");
   if (typeof bundle.driverExecutableHash === "string" && evidence.driverHash !== bundle.driverExecutableHash) reasons.push("evidence Driver executable hash does not match bundle");
   if (evidence.device.vendor !== target.device.vendor || evidence.device.model !== target.device.model) reasons.push("device identity does not match target");

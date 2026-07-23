@@ -91,7 +91,9 @@ Calibration, safety, or actuation authority. The command reports an immutable
 then resets the frozen MuJoCo model from every device row, applies the
 device-reported `appliedAction`, and predicts exactly one control interval. It
 publishes immutable per-transition measured/predicted state, base/joint
-residuals, per-joint RMSE, maximum magnitudes, and worst-transition selectors.
+residuals, named per-joint RMSE, maximum magnitudes, and worst-transition
+selectors. The Audit binds the Hardware State ABI hash; `twin inspect` returns
+the same named joints shown by Studio.
 It is derived model-fit evidence, not Calibration or hardware verification.
 `twin inspect --transition N` is the exact Agent/headless selector.
 `studio --twin-audit ID` renders device state and one-step prediction side by
@@ -136,7 +138,8 @@ requires all three selectors and opens that verified Run pair with the Review
 lineage. It cannot be mixed with explicit `--run` selectors.
 
 `hardware export` freezes one Hardware Target, source Revision, Controller,
-optional Policy, selected Driver Package, Observation/Action contracts, safety envelope, and
+optional Policy, selected Driver Package, Observation/Action contracts,
+MuJoCo-derived Hardware State ABI, safety envelope, and
 `stdio-jsonl-v1` handshake into an immutable bundle. Robot Revision Bundles may
 actuate. A Target may explicitly name a Judge-kept Policy Revision, but its
 Bundle is derived as `maximumCaptureMode=shadow`; a Plan cannot widen that
@@ -144,6 +147,14 @@ authority. New exports require a Driver Package whose protocol, environment,
 device identity, and declared capabilities satisfy the Target. They also require
 a bounded command lease and maximum expiration overrun supplied by the frozen
 Driver.
+
+Bundle v2 writes `state-contract.json`. It names every `qpos` and `qvel`
+coordinate, unit, frame, joint index group, quaternion convention, and actuator
+transmission. The Driver must declare `state-abi-v1`, normalize its native
+encoder order/sign/zero/unit/frame into that contract, and echo the exact
+`stateContractHash` during hello. New Captures and Verification Evidence bind
+that hash. Legacy Bundles remain readable through an explicitly labelled ABI
+derived from their frozen model.
 
 `driver list|inspect` exposes each project-owned `hardware-drivers/<id>/`
 package, its closed manifest, whole-package hash, executable entry point, and

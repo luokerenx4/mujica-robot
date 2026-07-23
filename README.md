@@ -49,11 +49,11 @@ bun run mujica studio examples/quadruped \
 bun run mujica evidence inspect examples/quadruped \
   --capture capture-5c09b673d06e0385 --episode learned-policy-shadow --time 0.04
 bun run mujica twin audit examples/quadruped \
-  --capture capture-5c09b673d06e0385 --episode learned-policy-shadow
+  --capture capture-b6d4e6918972f58c --episode learned-policy-shadow
 bun run mujica twin inspect examples/quadruped \
-  --audit twin-audit-1ab2530cd36ec210 --transition 6
+  --audit twin-audit-d39ba3a31ffe9539 --transition 6
 bun run mujica studio examples/quadruped \
-  --twin-audit twin-audit-1ab2530cd36ec210
+  --twin-audit twin-audit-d39ba3a31ffe9539
 bun run mujica hardware export examples/quadruped --target spatial-dry-run
 bun run mujica capture inspect examples/quadruped \
   --plan quadruped-dry-run-identification
@@ -127,6 +127,16 @@ episode at `0.01491` loss, and produced a synthetic-only Domain Profile. A
 separate session deliberately crosses the body-tilt gate and proves the host
 emits an emergency stop and makes the artifact calibration-ineligible. See
 [hardware capture protocol](docs/design/hardware-capture-protocol.md).
+
+New Hardware Bundles also freeze a named State ABI generated from the exact
+compiled MuJoCo model. It makes joint order, direction-bearing axes, reference
+positions, SI units, base frames, and `wxyz` quaternion order explicit instead
+of trusting array length. The frozen Driver must normalize vendor-native
+telemetry and echo the ABI hash; Capture, Verification, Digital Twin Audit,
+Agent inspection, and Studio retain the same identity. The checked-in ABI
+Capture is `capture-b6d4e6918972f58c`, and its named-joint Audit is
+`twin-audit-d39ba3a31ffe9539`. See [Hardware State
+ABI](docs/design/hardware-state-abi.md).
 
 The control deadline now fails closed on both sides of the process boundary.
 Late Policy inference is stopped before the host emits any control message; a

@@ -18,6 +18,7 @@ from mujica_runtime.hardware_capture import _command_lease_expiration, _device_h
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
+from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
@@ -47,6 +48,27 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_hardware_state_abi_names_every_mujoco_coordinate(self):
+        model, compiled = compiled_assembly("force-sensing-history-3dof")
+        described = describe_state({
+            "assembly": compiled["id"],
+            "assemblyHash": compiled["assemblyHash"],
+            "modelHash": hash_file(model),
+            "modelPath": str(model),
+        })
+        contract = described["stateContract"]
+        mujoco_model = mujoco.MjModel.from_xml_path(str(model))
+        self.assertEqual(contract["kind"], STATE_ABI_KIND)
+        self.assertEqual(described["stateContractHash"], hash_json(contract))
+        self.assertEqual(contract["qpos"]["size"], mujoco_model.nq)
+        self.assertEqual(contract["qvel"]["size"], mujoco_model.nv)
+        self.assertEqual([item["index"] for item in contract["qpos"]["coordinates"]], list(range(mujoco_model.nq)))
+        self.assertEqual([item["index"] for item in contract["qvel"]["coordinates"]], list(range(mujoco_model.nv)))
+        self.assertEqual(contract["qpos"]["coordinates"][3]["name"], "root.orientation.w")
+        self.assertEqual(contract["qvel"]["coordinates"][3]["frame"], "body-local")
+        self.assertEqual(contract["quaternionConvention"]["order"], "wxyz")
+        self.assertIn("hip-fl", [joint["name"] for joint in contract["joints"]])
+
     def test_digital_twin_audit_publishes_one_step_device_residuals(self):
         capture_id = "capture-5c09b673d06e0385"
         episode_id = "learned-policy-shadow"
@@ -57,6 +79,12 @@ class RuntimeContractTest(unittest.TestCase):
         bundle = json.loads((bundle_root / "manifest.json").read_text())
         model = bundle_root / "revision" / "compiled" / "model.xml"
         trajectory = capture_root / episode["path"]
+        described = describe_state({
+            "assembly": "history",
+            "assemblyHash": bundle["assemblyHash"],
+            "modelHash": hash_file(model),
+            "modelPath": str(model),
+        })
         with tempfile.TemporaryDirectory() as directory:
             request = {
                 "runtimeVersion": "test-runtime",
@@ -72,6 +100,8 @@ class RuntimeContractTest(unittest.TestCase):
                     "bundleHash": bundle["bundleHash"],
                     "environment": capture["environment"],
                     "mode": capture["mode"],
+                    "stateContractHash": described["stateContractHash"],
+                    "stateContractAuthority": "derived-from-frozen-model",
                 },
                 "assemblyHash": bundle["assemblyHash"],
                 "modelHash": hash_file(model),
@@ -79,6 +109,8 @@ class RuntimeContractTest(unittest.TestCase):
                 "trajectoryHash": hash_file(trajectory),
                 "trajectoryPath": str(trajectory),
                 "controlHz": 50,
+                "stateContract": described["stateContract"],
+                "stateContractHash": described["stateContractHash"],
                 "outputRoot": str(Path(directory) / "twin-audits"),
             }
             first = audit_twin(request)
@@ -90,8 +122,10 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertEqual(first["manifest"]["transitionCount"], 10)
             self.assertGreater(first["summary"]["metrics"]["jointPositionRad"]["rmse"], 0)
             self.assertEqual(first["summary"]["metrics"]["jointVelocityRadPerSec"]["worstTransition"], 6)
+            self.assertEqual(first["summary"]["perJoint"]["names"][0], "abd-fl")
             self.assertFalse(first["summary"]["authority"]["grantsActuation"])
             transitions = [json.loads(line) for line in (Path(first["path"]) / "transitions.ndjson").read_text().splitlines()]
+            self.assertEqual(transitions[6]["residual"]["joints"][0]["name"], "abd-fl")
             self.assertEqual(transitions[6]["fromStep"], 6)
             self.assertEqual(transitions[6]["toStep"], 7)
             self.assertEqual(len(transitions[6]["appliedAction"]), 12)

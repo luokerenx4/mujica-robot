@@ -191,6 +191,24 @@ export async function studioCaptureCommand(projectDir: string, captureId: string
     || modelHash !== bundle.manifest.modelXmlHash
     || capture.assemblyHash !== bundle.manifest.assemblyHash
   ) throw new Error("Hardware Capture and frozen Bundle digital twin identities differ");
+  let stateContractHash: string;
+  let stateContractAuthority: "bundle-frozen" | "derived-from-frozen-model";
+  if (typeof bundle.manifest.stateContractHash === "string") {
+    const stateContract = JSON.parse(await readFile(join(bundle.root, "state-contract.json"), "utf8"));
+    stateContractHash = hashJson(stateContract);
+    if (stateContractHash !== bundle.manifest.stateContractHash) throw new Error("Hardware Bundle State ABI bytes changed");
+    stateContractAuthority = "bundle-frozen";
+  } else {
+    const described = await invokeRuntime("describe-state", {
+      assembly: compiled.id,
+      assemblyHash: bundle.manifest.assemblyHash,
+      modelHash,
+      modelPath,
+    });
+    stateContractHash = described.stateContractHash;
+    if (stateContractHash !== hashJson(described.stateContract)) throw new Error("Derived legacy Hardware State ABI identity is invalid");
+    stateContractAuthority = "derived-from-frozen-model";
+  }
 
   const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
   const replay = await invokeRuntime("render-replay", {
@@ -227,6 +245,8 @@ export async function studioCaptureCommand(projectDir: string, captureId: string
         maximumCaptureMode: bundle.manifest.maximumCaptureMode ?? "actuate",
         assemblyHash: bundle.manifest.assemblyHash,
         modelHash,
+        stateContractHash,
+        stateContractAuthority,
       },
       replay: { path: replay.path, manifest: replay.manifest },
     },

@@ -382,6 +382,21 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     model = mujoco.MjModel.from_xml_path(str(model_path))
     if model.nu != int(compiled["actionContract"]["size"]):
         raise RuntimeError("Hardware Bundle model and Action Contract differ")
+    state_contract_hash = bundle.get("stateContractHash")
+    state_contract: dict[str, Any] | None = None
+    if state_contract_hash is not None:
+        state_contract_path = bundle_root / "state-contract.json"
+        if not state_contract_path.is_file():
+            raise RuntimeError("Hardware Bundle State ABI is missing")
+        state_contract = json.loads(state_contract_path.read_text())
+        if (
+            hash_json(state_contract) != state_contract_hash
+            or state_contract.get("kind") != "mujica-hardware-state-abi"
+            or state_contract.get("modelHash") != bundle.get("modelXmlHash")
+            or state_contract.get("qpos", {}).get("size") != model.nq
+            or state_contract.get("qvel", {}).get("size") != model.nv
+        ):
+            raise RuntimeError("Hardware Bundle State ABI differs from its frozen model")
     controller_definition = request["controller"]
     if controller_definition["kind"] == "program":
         controller = load_program_controller(bundle_root / "controller", controller_definition)
@@ -434,7 +449,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "MUJICA_HARDWARE_BUNDLE": str(bundle_root),
             "MUJICA_CAPTURE_PLAN": str(plan["id"]),
         }, transcript, stderr_path)
-        session.send({
+        host_hello = {
             "type": "hello",
             "protocol": PROTOCOL,
             "version": 1,
@@ -444,17 +459,11 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "driverHash": request["driverHash"],
             "environment": target["environment"],
             "commandLeaseMs": command_lease_ms,
-        })
-        hello, _ = session.receive(startup_timeout_seconds)
-        expected_hello = {
-            "type": "hello", "protocol": PROTOCOL, "version": 1,
-            "bundleHash": bundle["bundleHash"],
-            "observationContractHash": bundle["observationContractHash"],
-            "actionContractHash": bundle["actionContractHash"],
-            "driverHash": request["driverHash"],
-            "environment": target["environment"],
-            "commandLeaseMs": command_lease_ms,
+            **({"stateContractHash": state_contract_hash} if state_contract_hash is not None else {}),
         }
+        session.send(host_hello)
+        hello, _ = session.receive(startup_timeout_seconds)
+        expected_hello = host_hello
         for key, expected in expected_hello.items():
             if hello.get(key) != expected:
                 raise RuntimeError(f"Driver hello '{key}' mismatch")
@@ -481,6 +490,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             if protocol_capabilities != declared_capabilities:
                 raise RuntimeError("Driver hello capabilities differ from its frozen Driver Package")
         required_capabilities = {"stop-ack"}
+        if state_contract_hash is not None:
+            required_capabilities.add("state-abi-v1")
         required_capabilities.add("command-lease")
         if target["safety"].get("maximumStateAgeMs") is not None:
             required_capabilities.update({"applied-action", "state-age-ms"})
@@ -932,6 +943,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
         "controllerWarmupPasses": controller_warmup_passes,
         "realTimeQualified": real_time_qualified,
+        **({"stateContractHash": state_contract_hash} if state_contract_hash is not None else {}),
     }
     capture_hash = hash_json(identity)
     capture_id = f"capture-{capture_hash[:16]}"
@@ -987,6 +999,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "controller": target["controller"],
             "observationContractHash": bundle["observationContractHash"],
             "actionContractHash": bundle["actionContractHash"],
+            **({"stateContractHash": state_contract_hash} if state_contract_hash is not None else {}),
             "episodes": completed_episodes,
             "dispatch": {
                 "samples": len(dispatch_latencies_ms),

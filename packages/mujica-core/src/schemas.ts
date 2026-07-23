@@ -356,6 +356,7 @@ export const hardwareEvidenceSchema = z.object({
   version: z.literal(1), target: idSchema, bundleHash: z.string().regex(/^[0-9a-f]{64}$/), environment: z.enum(["dry-run", "hil", "real"]),
   device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serial: z.string().min(1) }).strict(),
   observationContractHash: z.string().regex(/^[0-9a-f]{64}$/), actionContractHash: z.string().regex(/^[0-9a-f]{64}$/), driverHash: z.string().regex(/^[0-9a-f]{64}$/),
+  stateContractHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   driverPackageHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   startedAt: z.string().datetime(), endedAt: z.string().datetime(), samples: z.number().int().positive(), maximumObservedLatencyMs: z.number().nonnegative(),
   maximumObservedStateAgeMs: z.number().nonnegative().optional(),

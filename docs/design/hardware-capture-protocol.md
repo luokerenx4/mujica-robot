@@ -43,13 +43,18 @@ host health-check(sequence=n) → driver health-state(stopLatched=true)
 host close → driver completed
 ```
 
-The hello message fixes protocol version, Bundle and contract hashes,
+The hello message fixes protocol version, Bundle, Observation, Action, and
+Hardware State ABI hashes,
 environment, driver hash, and Target command lease. The driver returns its vendor/model/serial identity
 and an explicit capability set. Commissioning requires `shadow-action`,
 `applied-action`, `command-lease`, `state-age-ms`, `device-health`,
-`latched-stop-health`, and `stop-ack`. Every state contains full
+`latched-stop-health`, `state-abi-v1`, and `stop-ack`. Every state contains full
 `qpos`, `qvel`, the ordered Observation vector, the Action the device actually
 applied, the device-measured state age, and typed Driver health telemetry.
+`qpos/qvel` are not vendor-native arrays: their order, units, frames, and
+quaternion convention are the exact Bundle-frozen
+[Hardware State ABI](hardware-state-abi.md). The Driver owns normalization
+before emission and must echo its hash during hello.
 
 The host executes only the frozen Controller. It scales and slew-limits the
 Controller Action, then clips it to the frozen Action Contract. It records the

@@ -50,7 +50,27 @@ export async function resolveCaptureTwin(projectDir: string, captureId: string, 
     || capture.assemblyHash !== bundle.manifest.assemblyHash
   ) throw new Error("Hardware Capture and frozen Bundle digital twin identities differ");
   if (!Number.isFinite(target.controlHz) || target.controlHz <= 0) throw new Error("Frozen Hardware Bundle has an invalid controlHz");
-  return { project, captureRoot, capture, episode, trajectoryPath, trajectoryHash, bundle, compiled, modelPath, modelHash, target };
+  let stateContract: any;
+  let stateContractHash: string;
+  let stateContractAuthority: "bundle-frozen" | "derived-from-frozen-model";
+  if (typeof bundle.manifest.stateContractHash === "string") {
+    stateContract = JSON.parse(await readFile(join(bundle.root, "state-contract.json"), "utf8"));
+    stateContractHash = hashJson(stateContract);
+    if (stateContractHash !== bundle.manifest.stateContractHash) throw new Error("Hardware Bundle State ABI bytes changed");
+    stateContractAuthority = "bundle-frozen";
+  } else {
+    const described = await invokeRuntime("describe-state", {
+      assembly: compiled.id,
+      assemblyHash: bundle.manifest.assemblyHash,
+      modelHash,
+      modelPath,
+    });
+    stateContract = described.stateContract;
+    stateContractHash = described.stateContractHash;
+    if (stateContractHash !== hashJson(stateContract)) throw new Error("Derived legacy Hardware State ABI identity is invalid");
+    stateContractAuthority = "derived-from-frozen-model";
+  }
+  return { project, captureRoot, capture, episode, trajectoryPath, trajectoryHash, bundle, compiled, modelPath, modelHash, target, stateContract, stateContractHash, stateContractAuthority };
 }
 
 export async function verifyTwinAuditIntegrity(root: string): Promise<{ manifest: any; summary: any; transitions: any[] }> {
@@ -106,6 +126,8 @@ export async function twinAuditCommand(projectDir: string, captureId: string, ep
       bundleHash: source.bundle.manifest.bundleHash,
       environment: source.capture.environment,
       mode: source.capture.mode,
+      stateContractHash: source.stateContractHash,
+      stateContractAuthority: source.stateContractAuthority,
     },
     assemblyHash: source.bundle.manifest.assemblyHash,
     modelHash: source.modelHash,
@@ -113,6 +135,8 @@ export async function twinAuditCommand(projectDir: string, captureId: string, ep
     trajectoryHash: source.trajectoryHash,
     trajectoryPath: source.trajectoryPath,
     controlHz: source.target.controlHz,
+    stateContract: source.stateContract,
+    stateContractHash: source.stateContractHash,
     outputRoot: join(source.project.rootDir, "twin-audits"),
   });
   const verified = await verifyTwinAuditIntegrity(result.path);
@@ -167,6 +191,7 @@ export async function twinStudioCommand(projectDir: string, auditId: string) {
     || identitySource?.bundleHash !== source.bundle.manifest.bundleHash
     || audit.manifest.identity.assemblyHash !== source.bundle.manifest.assemblyHash
     || audit.manifest.identity.modelHash !== source.modelHash
+    || audit.manifest.identity.stateContractHash !== source.stateContractHash
   ) throw new Error(`Digital Twin Audit '${auditId}' no longer matches its immutable Capture and Bundle`);
 
   const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
@@ -228,6 +253,8 @@ export async function twinStudioCommand(projectDir: string, auditId: string) {
       maximumCaptureMode: source.bundle.manifest.maximumCaptureMode ?? "actuate",
       assemblyHash: source.bundle.manifest.assemblyHash,
       modelHash: source.modelHash,
+      stateContractHash: source.stateContractHash,
+      stateContractAuthority: source.stateContractAuthority,
     },
     replay: { path: measuredReplay.path, manifest: measuredReplay.manifest },
   };

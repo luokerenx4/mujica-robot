@@ -53,7 +53,7 @@ export function runtimeCompiled(assembly: CompiledAssembly): Record<string, unkn
   };
 }
 
-export async function invokeRuntime(operation: "validate" | "simulate" | "evaluate-case" | "train" | "calibrate" | "hardware-capture" | "render-replay" | "audit-twin", request: Record<string, unknown>, timeoutMs?: number): Promise<any> {
+export async function invokeRuntime(operation: "validate" | "simulate" | "evaluate-case" | "train" | "calibrate" | "hardware-capture" | "render-replay" | "audit-twin" | "describe-state", request: Record<string, unknown>, timeoutMs?: number): Promise<any> {
   const directory = await mkdtemp(join(tmpdir(), "mujica-request-"));
   const requestPath = join(directory, "request.json");
   await writeFile(requestPath, JSON.stringify(request));

@@ -80,6 +80,32 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
     if not math.isfinite(control_hz) or control_hz <= 0:
         raise RuntimeError("Digital Twin Audit controlHz must be positive")
     model = mujoco.MjModel.from_xml_path(str(model_path))
+    state_contract = request.get("stateContract")
+    if (
+        not isinstance(state_contract, dict)
+        or hash_json(state_contract) != request.get("stateContractHash")
+        or state_contract.get("kind") != "mujica-hardware-state-abi"
+        or state_contract.get("modelHash") != request["modelHash"]
+        or state_contract.get("qpos", {}).get("size") != model.nq
+        or state_contract.get("qvel", {}).get("size") != model.nv
+    ):
+        raise RuntimeError("Digital Twin Audit Hardware State ABI differs from the frozen model")
+    state_joints = state_contract.get("joints")
+    if not isinstance(state_joints, list) or not state_joints:
+        raise RuntimeError("Digital Twin Audit Hardware State ABI has no named joints")
+    root_joints = [joint for joint in state_joints if joint.get("type") == "free"]
+    if len(root_joints) > 1:
+        raise RuntimeError("Digital Twin Audit supports at most one free root")
+    scalar_joints = [joint for joint in state_joints if joint.get("type") in {"hinge", "slide"}]
+    unsupported_joints = [joint["name"] for joint in state_joints if joint.get("type") == "ball"]
+    if unsupported_joints:
+        raise RuntimeError(f"Digital Twin Audit v1 does not yet support ball-joint residuals: {', '.join(unsupported_joints)}")
+    for joint in scalar_joints:
+        if len(joint.get("qposIndices", [])) != 1 or len(joint.get("qvelIndices", [])) != 1:
+            raise RuntimeError("Digital Twin Audit State ABI scalar-joint indices are invalid")
+    joint_names = [str(joint["name"]) for joint in scalar_joints]
+    joint_qpos_indices = [int(joint["qposIndices"][0]) for joint in scalar_joints]
+    joint_qvel_indices = [int(joint["qvelIndices"][0]) for joint in scalar_joints]
     interval = 1.0 / control_hz
     ratio = interval / float(model.opt.timestep)
     physics_steps = int(round(ratio))
@@ -122,12 +148,11 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
         "trajectoryHash": request["trajectoryHash"],
         "controlHz": int(control_hz) if control_hz.is_integer() else control_hz,
         "physicsSteps": physics_steps,
+        "stateContractHash": request["stateContractHash"],
     }
 
     data = mujoco.MjData(model)
-    has_free_root = model.njnt > 0 and model.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE
-    joint_qpos_start = 7 if has_free_root else 0
-    joint_qvel_start = 6 if has_free_root else 0
+    has_free_root = len(root_joints) == 1
     transitions: list[dict[str, Any]] = []
     prediction_rows = [{
         "step": 0,
@@ -160,8 +185,8 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
         base_position = predicted_qpos[:3] - measured["qpos"][:3] if has_free_root else np.zeros(0)
         base_velocity = predicted_qvel[:6] - measured["qvel"][:6] if has_free_root else np.zeros(0)
         orientation_angle = _quaternion_angle(predicted_qpos[3:7], measured["qpos"][3:7]) if has_free_root else 0.0
-        joint_position = predicted_qpos[joint_qpos_start:] - measured["qpos"][joint_qpos_start:]
-        joint_velocity = predicted_qvel[joint_qvel_start:] - measured["qvel"][joint_qvel_start:]
+        joint_position = predicted_qpos[joint_qpos_indices] - measured["qpos"][joint_qpos_indices]
+        joint_velocity = predicted_qvel[joint_qvel_indices] - measured["qvel"][joint_qvel_indices]
         for name, value in [
             ("basePosition", base_position),
             ("baseVelocity", base_velocity),
@@ -194,6 +219,14 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
                 "jointPositionNormRad": float(np.linalg.norm(joint_position)),
                 "jointVelocityRadPerSec": joint_velocity.tolist(),
                 "jointVelocityNormRadPerSec": float(np.linalg.norm(joint_velocity)),
+                "joints": [
+                    {
+                        "name": name,
+                        "position": float(joint_position[joint_index]),
+                        "velocity": float(joint_velocity[joint_index]),
+                    }
+                    for joint_index, name in enumerate(joint_names)
+                ],
             },
             **({"deviceHealth": next_raw["deviceHealth"]} if "deviceHealth" in next_raw else {}),
         })
@@ -208,6 +241,20 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
 
     base_velocity_linear = [value[:3] for value in metric_vectors["baseVelocity"]]
     base_velocity_angular = [value[3:6] for value in metric_vectors["baseVelocity"]]
+    position_rmse = np.sqrt(np.mean(np.square(np.stack(metric_vectors["jointPosition"])), axis=0))
+    velocity_rmse = np.sqrt(np.mean(np.square(np.stack(metric_vectors["jointVelocity"])), axis=0))
+    per_joint_items = [
+        {
+            "name": name,
+            "positionCoordinate": state_contract["qpos"]["coordinates"][joint_qpos_indices[index]]["name"],
+            "velocityCoordinate": state_contract["qvel"]["coordinates"][joint_qvel_indices[index]]["name"],
+            "positionUnit": state_contract["qpos"]["coordinates"][joint_qpos_indices[index]]["unit"],
+            "velocityUnit": state_contract["qvel"]["coordinates"][joint_qvel_indices[index]]["unit"],
+            "positionRmse": float(position_rmse[index]),
+            "velocityRmse": float(velocity_rmse[index]),
+        }
+        for index, name in enumerate(joint_names)
+    ]
     summary = {
         "transitionCount": len(transitions),
         "metrics": {
@@ -223,8 +270,19 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
             "jointVelocityRadPerSec": _metric_summary(metric_vectors["jointVelocity"], metric_norms["jointVelocity"]),
         },
         "perJoint": {
-            "positionRmseRad": np.sqrt(np.mean(np.square(np.stack(metric_vectors["jointPosition"])), axis=0)).tolist(),
-            "velocityRmseRadPerSec": np.sqrt(np.mean(np.square(np.stack(metric_vectors["jointVelocity"])), axis=0)).tolist(),
+            "names": joint_names,
+            "positionRmseRad": position_rmse.tolist(),
+            "velocityRmseRadPerSec": velocity_rmse.tolist(),
+            "items": per_joint_items,
+            "worstPosition": max(per_joint_items, key=lambda item: item["positionRmse"], default=None),
+            "worstVelocity": max(per_joint_items, key=lambda item: item["velocityRmse"], default=None),
+        },
+        "stateAbi": {
+            "hash": request["stateContractHash"],
+            "authority": source.get("stateContractAuthority"),
+            "qposSize": model.nq,
+            "qvelSize": model.nv,
+            "jointNames": joint_names,
         },
         "authority": {
             "measurement": "immutable-device-telemetry",
@@ -253,7 +311,7 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
         manifest = _assert_existing(target, identity)
         return {"id": audit_id, "auditHash": audit_hash, "path": str(target), "manifest": manifest, "summary": summary, "cached": True}
 
-    request_record = {"identity": identity, "modelPath": str(model_path), "trajectoryPath": str(trajectory_path)}
+    request_record = {"identity": identity, "modelPath": str(model_path), "trajectoryPath": str(trajectory_path), "stateContract": state_contract}
     report = (
         "# Mujica Digital Twin Residual Audit\n\n"
         f"- Capture: `{source['captureId']}` / `{source['episodeId']}`\n"
@@ -262,6 +320,8 @@ def audit_twin(request: dict[str, Any]) -> dict[str, Any]:
         f"- Joint-position RMSE: `{summary['metrics']['jointPositionRad']['rmse']:.9f} rad`\n"
         f"- Joint-velocity RMSE: `{summary['metrics']['jointVelocityRadPerSec']['rmse']:.9f} rad/s`\n"
         f"- Base-position RMSE: `{summary['metrics']['basePositionM']['rmse']:.9f} m`\n\n"
+        f"- Worst joint-position residual: `{summary['perJoint']['worstPosition']['name']}`\n"
+        f"- State ABI: `{request['stateContractHash']}` ({source.get('stateContractAuthority')})\n\n"
         "This is derived model-fit evidence. It does not verify hardware safety, grant actuation, or promote Calibration.\n"
     )
 
