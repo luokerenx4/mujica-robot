@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "upright-locomotion-gait",
+  "name": "Upright traction and command gait development",
+  "benchmark": "upright-locomotion",
+  "assembly": "command-conditioned-history-3dof",
+  "controller": "upright-traction-gait",
+  "program": "UPRIGHT_LOCOMOTION_AUTORESEARCH.md",
+  "editable": {
+    "path": "controllers/upright-traction-gait/controller.json",
+    "parameters": [
+      { "path": "/config/tractionProgressClassificationSeconds", "minimum": 0.3, "maximum": 0.6, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/tractionLowProgressRatio", "minimum": 0.05, "maximum": 0.2, "step": 0.025, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/tractionLowProgressBoundPhaseOffsetSeconds", "minimum": -0.125, "maximum": 0, "step": 0.025, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/nominalForwardHipScale", "minimum": 1.4, "maximum": 1.8, "step": 0.05, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/crawlStanceFraction", "minimum": 0.65, "maximum": 0.85, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedCrawlMinimumForwardCommandMps", "minimum": 0.21, "maximum": 0.24, "step": 0.005, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedTractionRecoveryFrequencyScale", "minimum": 0.6, "maximum": 0.9, "step": 0.05, "directionOrder": ["increase", "decrease"] },
+      { "path": "/config/delayedCrawlCruiseDrive", "minimum": 0.8, "maximum": 1, "step": 0.05, "directionOrder": ["decrease", "increase"] },
+      { "path": "/config/delayedCrawlKneeAmplitude", "minimum": 0.02, "maximum": 0.05, "step": 0.005, "directionOrder": ["increase", "decrease"] }
+    ]
+  },
+  "minimumImprovement": 0.01,
+  "maxIterations": 64
+}

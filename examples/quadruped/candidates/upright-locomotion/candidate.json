@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "id": "upright-locomotion",
+  "name": "Promote upright traction and command locomotion",
+  "kind": "development",
+  "benchmark": "upright-locomotion",
+  "baseRevision": "quadruped-r-1101a73a0752",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "bounded-traction-gait"
+  },
+  "proposed": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "upright-traction-gait"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "bounded-traction-gait",
+      "to": "upright-traction-gait",
+      "files": [
+        "controllers/upright-traction-gait/controller.json",
+        "controllers/upright-traction-gait/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/upright-traction-gait/controller.json",
+    "controllers/upright-traction-gait/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/upright-locomotion.benchmark.json",
+    "benchmarks/upright-locomotion.lock.json",
+    "objectives/upright-locomotion.objective.json",
+    "tasks/stand.task.json",
+    "tasks/forward-walk.task.json",
+    "tasks/reverse-walk.task.json",
+    "tasks/lateral-walk.task.json",
+    "tasks/yaw-left.task.json",
+    "scenarios/nominal.scenario.json",
+    "scenarios/reset-perturbation.scenario.json",
+    "scenarios/payload-variation.scenario.json",
+    "scenarios/strong-lateral-push.scenario.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/extreme-low-friction.scenario.json",
+    "scenarios/extreme-low-friction-reset.scenario.json"
+  ],
+  "hypothesis": "A four-beat crawl on observable normal-progress surfaces can keep sagittal pitch bounded, while a measured early-progress classifier retains the proven bound under slip and a command-speed boundary retains the locked delayed transition gait without reading Scenario identity.",
+  "expectedEffect": "Eliminate every hard upright-locomotion violation, preserve authored progress and tracking gates, and retain zero violations on extreme traction, spatial generalization, command tracking, and command transitions."
+}

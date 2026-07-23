@@ -8,6 +8,8 @@ Mujica now reports `signedForwardProgress = forwardDisplacement / targetDistance
 
 Sagittal stability is explicit evidence too. Trajectories carry signed `pitchRad` and `pitchRateRadPerSec` using MuJoCo's `wxyz` quaternion convention. Run metrics retain mean, minimum, maximum, maximum absolute, maximum backward, and maximum-rate values. Objectives may gate the dangerous signed backward excursion independently of absolute pitch, because the established gait's forward rotation and the observed backward traction tumble are behaviorally distinct.
 
+Full torso quality is specified separately in [Upright locomotion](upright-locomotion.md). Its quaternion-derived body tilt complements signed pitch without confusing yaw with inclination.
+
 ## Deployable controller response
 
 `traction-aware-gait` receives the same named Observation subset as the prior command Controller. It cannot read Scenario identity, the authored friction coefficient, global evaluator state, or future Task segments.

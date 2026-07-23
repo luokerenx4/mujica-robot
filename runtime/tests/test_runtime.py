@@ -10,7 +10,7 @@ import torch
 
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.simulation import episode_survival_rate, motion_metrics, quaternion_pitch, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import episode_survival_rate, motion_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
 
 
@@ -75,6 +75,17 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(quaternion_pitch(np.array([1.0, 0.0, 0.0, 0.0])), 0.0)
         self.assertAlmostEqual(quaternion_pitch(positive), angle)
         self.assertAlmostEqual(quaternion_pitch(negative), -angle)
+
+    def test_body_tilt_is_yaw_invariant_and_geometric_near_pitch_singularity(self):
+        angle = 0.4
+        yaw = np.array([np.cos(angle / 2), 0.0, 0.0, np.sin(angle / 2)])
+        roll = np.array([np.cos(angle / 2), np.sin(angle / 2), 0.0, 0.0])
+        pitch = np.array([np.cos(angle / 2), 0.0, np.sin(angle / 2), 0.0])
+        near_horizontal = np.array([np.cos((np.pi / 2 - 1e-6) / 2), 0.0, np.sin((np.pi / 2 - 1e-6) / 2), 0.0])
+        self.assertAlmostEqual(quaternion_body_tilt(yaw), 0.0)
+        self.assertAlmostEqual(quaternion_body_tilt(roll), angle)
+        self.assertAlmostEqual(quaternion_body_tilt(pitch), angle)
+        self.assertAlmostEqual(quaternion_body_tilt(near_horizontal), np.pi / 2 - 1e-6)
 
     def test_locomotion_score_requires_net_forward_progress(self):
         task = {"version": 2, "motionCommand": {"frame": "world", "linearVelocityMps": [0.2, 0.0], "yawRateRadPerSec": 0.0}, "durationSeconds": 3.0, "controlHz": 50}

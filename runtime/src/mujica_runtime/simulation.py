@@ -18,6 +18,13 @@ def quaternion_pitch(quaternion: np.ndarray) -> float:
     return float(np.arcsin(np.clip(2.0 * (w * y - z * x), -1.0, 1.0)))
 
 
+def quaternion_body_tilt(quaternion: np.ndarray) -> float:
+    """Return the yaw-invariant angle between body-up and world-up in radians."""
+    _, x, y, _ = np.asarray(quaternion, dtype=np.float64)
+    world_up_dot_body_up = 1.0 - 2.0 * (x * x + y * y)
+    return float(np.arccos(np.clip(world_up_dot_body_up, -1.0, 1.0)))
+
+
 def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
     schedule = compile_motion_command_schedule(task)
@@ -162,6 +169,8 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     absolute_pitch_total = 0.0
     maximum_absolute_pitch = 0.0
     maximum_absolute_pitch_rate = 0.0
+    body_tilt_total = 0.0
+    maximum_body_tilt = 0.0
     minimum_pitch = float("inf")
     maximum_pitch = float("-inf")
     survived_steps = 0
@@ -182,14 +191,17 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         measured_motion_total += np.asarray(info["measuredMotion"], dtype=np.float64)
         motion_command_total += np.asarray(info["motionCommand"], dtype=np.float64)
         pitch = quaternion_pitch(environment.data.qpos[3:7])
+        body_tilt = quaternion_body_tilt(environment.data.qpos[3:7])
         pitch_rate = float(environment.data.qvel[4])
         absolute_pitch_total += abs(pitch)
         maximum_absolute_pitch = max(maximum_absolute_pitch, abs(pitch))
         maximum_absolute_pitch_rate = max(maximum_absolute_pitch_rate, abs(pitch_rate))
+        body_tilt_total += body_tilt
+        maximum_body_tilt = max(maximum_body_tilt, body_tilt)
         minimum_pitch = min(minimum_pitch, pitch)
         maximum_pitch = max(maximum_pitch, pitch)
         foot_contact_force = result.observation.get("foot-contact-force")
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -206,6 +218,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "meanVelocityTrackingError": totals["velocityError"] / steps, "meanPlanarVelocityTrackingError": totals["planarVelocityError"] / steps, "meanYawRateTrackingError": totals["yawRateError"] / steps, "meanUpright": totals["upright"] / steps,
         "meanAbsolutePitchRad": absolute_pitch_total / steps, "minimumPitchRad": minimum_pitch, "maximumPitchRad": maximum_pitch, "maximumBackwardPitchRad": max(0.0, -minimum_pitch),
         "maximumAbsolutePitchRad": maximum_absolute_pitch, "maximumAbsolutePitchRateRadPerSec": maximum_absolute_pitch_rate,
+        "meanBodyTiltRad": body_tilt_total / steps, "maximumBodyTiltRad": maximum_body_tilt,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
         **transition_metrics,

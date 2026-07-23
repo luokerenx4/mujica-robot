@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "upright-locomotion",
+  "name": "Upright locomotion and command capability ladder",
+  "objective": "upright-locomotion",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "bounded-traction-gait"
+  },
+  "cases": [
+    { "id": "stand", "task": "stand", "scenario": "nominal", "seed": 1801, "weight": 1 },
+    { "id": "forward", "task": "forward-walk", "scenario": "nominal", "seed": 1802, "weight": 2 },
+    { "id": "reset-a", "task": "forward-walk", "scenario": "reset-perturbation", "seed": 1803, "weight": 1.5 },
+    { "id": "reset-b", "task": "forward-walk", "scenario": "reset-perturbation", "seed": 1804, "weight": 1.5 },
+    { "id": "payload", "task": "forward-walk", "scenario": "payload-variation", "seed": 1805, "weight": 1 },
+    { "id": "strong-lateral-push", "task": "forward-walk", "scenario": "strong-lateral-push", "seed": 1806, "weight": 1.5 },
+    { "id": "delayed-forward", "task": "forward-walk", "scenario": "actuator-delay-three-step", "seed": 1807, "weight": 1.5 },
+    { "id": "reverse", "task": "reverse-walk", "scenario": "nominal", "seed": 1808, "weight": 1 },
+    { "id": "lateral", "task": "lateral-walk", "scenario": "nominal", "seed": 1809, "weight": 1.5 },
+    { "id": "yaw-left", "task": "yaw-left", "scenario": "nominal", "seed": 1810, "weight": 1.5 },
+    { "id": "extreme-traction", "task": "forward-walk", "scenario": "extreme-low-friction", "seed": 1811, "weight": 2 },
+    { "id": "extreme-traction-reset", "task": "forward-walk", "scenario": "extreme-low-friction-reset", "seed": 1812, "weight": 2 }
+  ]
+}
