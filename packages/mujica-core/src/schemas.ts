@@ -466,33 +466,37 @@ export const researchLabProposalSchema = z.object({
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/, "must be a lowercase SHA-256 digest");
 
+export const humanObservationSourceSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("run-frame"),
+    runId: idSchema,
+    resultHash: sha256Schema,
+    timeSeconds: z.number().finite().nonnegative(),
+    comparisonRunId: idSchema.optional(),
+    comparisonResultHash: sha256Schema.optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal("hardware-capture-event"),
+    captureId: idSchema,
+    captureHash: sha256Schema,
+    eventIndex: z.number().int().nonnegative(),
+  }).strict(),
+]);
+
+export const humanObservationAssessmentSchema = z.object({
+  category: z.enum(["motion", "stability", "contact", "control", "timing", "safety", "other"]),
+  severity: z.enum(["info", "investigate", "blocking"]),
+  confidence: z.enum(["low", "medium", "high"]),
+  summary: z.string().trim().min(1).max(240),
+  details: z.string().trim().max(2_000).optional(),
+  suggestedNextAction: z.string().trim().max(500).optional(),
+}).strict();
+
 export const humanObservationDraftSchema = z.object({
   version: z.literal(1),
   kind: z.literal("mujica-human-observation-draft"),
-  source: z.discriminatedUnion("kind", [
-    z.object({
-      kind: z.literal("run-frame"),
-      runId: idSchema,
-      resultHash: sha256Schema,
-      timeSeconds: z.number().finite().nonnegative(),
-      comparisonRunId: idSchema.optional(),
-      comparisonResultHash: sha256Schema.optional(),
-    }).strict(),
-    z.object({
-      kind: z.literal("hardware-capture-event"),
-      captureId: idSchema,
-      captureHash: sha256Schema,
-      eventIndex: z.number().int().nonnegative(),
-    }).strict(),
-  ]),
-  assessment: z.object({
-    category: z.enum(["motion", "stability", "contact", "control", "timing", "safety", "other"]),
-    severity: z.enum(["info", "investigate", "blocking"]),
-    confidence: z.enum(["low", "medium", "high"]),
-    summary: z.string().trim().min(1).max(240),
-    details: z.string().trim().max(2_000).optional(),
-    suggestedNextAction: z.string().trim().max(500).optional(),
-  }).strict(),
+  source: humanObservationSourceSchema,
+  assessment: humanObservationAssessmentSchema,
 }).strict().superRefine((draft, context) => {
   if (
     draft.source.kind === "run-frame"
@@ -501,6 +505,36 @@ export const humanObservationDraftSchema = z.object({
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["source"], message: "comparison Run id and result hash must be supplied together" });
   }
 });
+
+export const researchBriefSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("mujica-research-brief"),
+  authority: z.literal("derived-handoff"),
+  claimKind: z.literal("research-prioritization"),
+  lab: z.object({
+    definition: researchLabSchema,
+    labHash: sha256Schema,
+    programHash: sha256Schema,
+    benchmarkLockHash: sha256Schema,
+  }).strict(),
+  observations: z.array(z.object({
+    id: idSchema,
+    observationHash: sha256Schema,
+    contextHash: sha256Schema,
+    draftHash: sha256Schema,
+    observer: z.string().min(1).max(120),
+    recordedAt: z.string().datetime(),
+    source: humanObservationSourceSchema,
+    assessment: humanObservationAssessmentSchema,
+    context: z.record(z.string(), z.unknown()),
+  }).strict()).min(1).max(16),
+  authorityBoundary: z.object({
+    humanInput: z.literal("hypothesis-only"),
+    sourceContext: z.literal("immutable-evidence"),
+    sourceEdits: z.literal("lab-closure-only"),
+    promotion: z.literal("locked-judge-only"),
+  }).strict(),
+}).strict();
 
 export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
@@ -523,3 +557,4 @@ export type TrainingResearchDefinition = z.output<typeof trainingResearchSchema>
 export type ResearchLabDefinition = z.output<typeof researchLabSchema>;
 export type ResearchLabProposal = z.output<typeof researchLabProposalSchema>;
 export type HumanObservationDraft = z.output<typeof humanObservationDraftSchema>;
+export type ResearchBrief = z.output<typeof researchBriefSchema>;

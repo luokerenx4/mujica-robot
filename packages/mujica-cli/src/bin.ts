@@ -7,7 +7,7 @@ import {
   assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
-import { researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand } from "./research-lab";
+import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
 
 const HELP = `mujica — AI-native robot development harness
@@ -52,7 +52,9 @@ USAGE
   mujica candidate <project> --candidate ID [--apply] [--json]
   mujica research list <project> [--json]
   mujica research inspect|status <project> --lab ID [--json]
-  mujica research run <project> --lab ID --iterations N --agent-command CMD [--json]
+  mujica research brief <project> --lab ID --observation ID [--observation ID] [--json]
+  mujica research brief inspect <project> --brief ID [--json]
+  mujica research run <project> --lab ID [--brief ID] --iterations N --agent-command CMD [--json]
   mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
   mujica revisions <project> [--json]
   mujica revision inspect <project> --revision ID [--json]
@@ -101,7 +103,9 @@ const CAPABILITIES = [
   { id: "research.list", usage: "mujica research list <project> [--json]", effect: "read-only" },
   { id: "research.inspect", usage: "mujica research inspect <project> --lab ID [--json]", effect: "read-only" },
   { id: "research.status", usage: "mujica research status <project> --lab ID [--json]", effect: "read-only" },
-  { id: "research.run", usage: "mujica research run <project> --lab ID [--iterations N] --agent-command CMD [--json]", effect: "mutates-project" },
+  { id: "research.brief", usage: "mujica research brief <project> --lab ID --observation ID [--observation ID] [--json]", effect: "creates-artifact" },
+  { id: "research.brief.inspect", usage: "mujica research brief inspect <project> --brief ID [--json]", effect: "read-only" },
+  { id: "research.run", usage: "mujica research run <project> --lab ID [--brief ID] [--iterations N] --agent-command CMD [--json]", effect: "mutates-project" },
   { id: "research", usage: "mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]", effect: "mutates-project" },
   { id: "revisions", usage: "mujica revisions <project> [--json]", effect: "read-only" },
   { id: "revision.inspect", usage: "mujica revision inspect <project> --revision ID [--json]", effect: "read-only" },
@@ -149,6 +153,7 @@ function printHuman(command: string, data: any): void {
   else if (command === "research.list") process.stdout.write(`${data.labs.map((lab: any) => `${lab.id}\t${lab.execution.kind}\t${lab.name}`).join("\n")}\n`);
   else if (command === "research.inspect") process.stdout.write(`lab=${data.lab.id}\nlane=${data.lab.execution.kind}\nbenchmark=${data.lab.benchmark}\nlock=${data.benchmarkLockHash}\nprogram=${data.programHash}\neditable=${data.lab.editable.paths.join(",")}\n`);
   else if (command === "research.status") process.stdout.write(`lab=${data.lab}\nsessions=${data.sessions.length}\nhead=${data.head?.id ?? "none"}\n`);
+  else if (command === "research.brief" || command === "research.brief.inspect") process.stdout.write(`brief=${data.id}\nlab=${data.brief.lab.definition.id}\nobservations=${data.brief.observations.map((item: any) => item.id).join(",")}\nhash=${data.briefHash}\n`);
   else if (command === "research.run") process.stdout.write(`lab=${data.researchId}\nsession=${data.id}\ninitial_score=${data.initialScore}\nfinal_score=${data.finalScore}\nscore_delta=${data.scoreDelta}\niterations=${data.iterationsCompleted}\nledger=${data.ledgerPath}\n`);
   else process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
 }
@@ -239,15 +244,20 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "candidate") {
       const { values, positionals } = parseArgs({ args, options: { candidate: { type: "string" }, apply: { type: "boolean", default: false }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica candidate <project>"), values.project); envelope = await candidateCommand(project, required(values.candidate, "candidate"), values.apply);
     } else if (command === "research") {
-      const action = ["list", "inspect", "status", "run"].includes(args[0] ?? "") ? args.shift() : null;
+      const action = ["list", "inspect", "status", "brief", "run"].includes(args[0] ?? "") ? args.shift() : null;
       if (action) {
-        commandId = `research.${action}`;
-        const { values, positionals } = parseArgs({ args, options: { lab: { type: "string" }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+        const inspectBrief = action === "brief" && args[0] === "inspect";
+        if (inspectBrief) args.shift();
+        commandId = inspectBrief ? "research.brief.inspect" : `research.${action}`;
+        const { values, positionals } = parseArgs({ args, options: { lab: { type: "string" }, brief: { type: "string" }, observation: { type: "string", multiple: true, default: [] }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
         const project = await resolveProjectDirectory(one(positionals, `mujica research ${action} <project>`), values.project);
         if (action === "list") envelope = await researchLabListCommand(project);
         else if (action === "inspect") envelope = await researchLabInspectCommand(project, required(values.lab, "lab"));
         else if (action === "status") envelope = await researchLabStatusCommand(project, required(values.lab, "lab"));
-        else envelope = await researchLabRunCommand(project, required(values.lab, "lab"), Number(values.iterations), required(values["agent-command"], "agent-command"));
+        else if (action === "brief") envelope = inspectBrief
+          ? await researchBriefInspectCommand(project, required(values.brief, "brief"))
+          : await researchBriefCommand(project, required(values.lab, "lab"), values.observation);
+        else envelope = await researchLabRunCommand(project, required(values.lab, "lab"), Number(values.iterations), required(values["agent-command"], "agent-command"), values.brief);
       } else {
         const { values, positionals } = parseArgs({ args, options: { research: { type: "string" }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica research <project>"), values.project); envelope = await researchCommand(project, required(values.research, "research"), Number(values.iterations), values["agent-command"]);
       }

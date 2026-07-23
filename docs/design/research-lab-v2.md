@@ -55,7 +55,9 @@ A V2 Lab declares:
 
 An editable path ending in `/**` owns that directory recursively. Other entries own one exact file. Paths are confined to the robot project. Symlinks are never followed. Mujica snapshots the project source before invoking the Researcher and rejects any changed, added, or deleted path outside the declared closure.
 
-The Agent command receives a JSON request on stdin and runs with the isolated robot folder as its working directory. It edits files directly and returns only proposal metadata:
+The Agent command receives a version-3 JSON request on stdin and runs with the
+isolated robot folder as its working directory. It edits files directly and
+returns only proposal metadata:
 
 ```json
 {
@@ -66,6 +68,14 @@ The Agent command receives a JSON request on stdin and runs with the isolated ro
 ```
 
 The source diff, not a claimed list in the proposal, is authoritative.
+
+An optional `researchBrief` carries a verified Human Observation handoff. Its
+full evidence context, Brief id/hash, and closed authority boundary are frozen
+into the Session and Experiment manifests. The Researcher may use it to
+prioritize a hypothesis, but it does not widen the editable closure, budgets,
+regressions, or promotion authority. A Brief whose Lab, program, or primary
+Benchmark lock changed is stale and cannot execute. See [Human-guided Research
+Briefs](human-guided-research-briefs.md).
 
 ## Execution lanes
 

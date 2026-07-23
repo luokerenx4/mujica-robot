@@ -1,4 +1,4 @@
-import { appendFile, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, cp, lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import {
@@ -17,6 +17,7 @@ import {
   loadResearchLab,
   loadTrainer,
   loadTraining,
+  researchBriefSchema,
   researchLabProposalSchema,
   sha256,
   writeJson,
@@ -25,13 +26,16 @@ import {
   type ProjectContext,
   type ResearchLabDefinition,
   type ResearchLabProposal,
+  type ResearchBrief,
 } from "@mujica/core";
 import { candidateCommand, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons } from "./commands";
 import { success, type Artifact } from "./contract";
+import { verifyHumanObservation } from "./evidence";
 
 const GENERATED_ROOTS = new Set([
   ".mujica", "runs", "training-runs", "research-runs", "training-research-runs",
   "revisions", "policy-revisions", "hardware-bundles", "hardware-verifications",
+  "human-observations", "research-briefs",
 ]);
 const SOURCE_ARTIFACT_ROOTS = new Set([...GENERATED_ROOTS, "policies"]);
 
@@ -45,6 +49,98 @@ function artifact(kind: Artifact["kind"], id: string, path: string, immutable = 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+
+async function researchLabBinding(projectRoot: string, id: string) {
+  const lab = await loadResearchLab(projectRoot, id);
+  const program = await readFile(confined(projectRoot, lab.program), "utf8");
+  const benchmark = await loadBenchmark(projectRoot, lab.benchmark);
+  const project = await loadProject(projectRoot);
+  const lock = await requireBenchmarkLock(project, benchmark);
+  return {
+    lab,
+    program,
+    benchmark,
+    labHash: hashJson(lab),
+    programHash: sha256(program),
+    benchmarkLockHash: lock.lockHash,
+  };
+}
+
+function briefObservation(observation: Awaited<ReturnType<typeof verifyHumanObservation>>) {
+  return {
+    id: observation.manifest.id,
+    observationHash: observation.manifest.observationHash,
+    contextHash: observation.manifest.contextHash,
+    draftHash: observation.manifest.draftHash,
+    observer: observation.manifest.observer,
+    recordedAt: observation.manifest.recordedAt,
+    source: observation.manifest.source,
+    assessment: observation.manifest.assessment,
+    context: observation.context,
+  };
+}
+
+export async function verifyResearchBrief(projectRoot: string, id: string) {
+  const root = confined(projectRoot, `research-briefs/${id}`);
+  const rootStat = await lstat(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Research Brief '${id}' must be a real artifact directory`);
+  const brief = researchBriefSchema.parse(JSON.parse(await readFile(join(root, "brief.json"), "utf8")));
+  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  const briefHash = hashJson(brief);
+  const identity = {
+    version: manifest.version,
+    kind: manifest.kind,
+    id: manifest.id,
+    briefHash: manifest.briefHash,
+    labId: manifest.labId,
+    labHash: manifest.labHash,
+    programHash: manifest.programHash,
+    benchmarkLockHash: manifest.benchmarkLockHash,
+    observationIds: manifest.observationIds,
+    observationHashes: manifest.observationHashes,
+    completed: manifest.completed,
+  };
+  if (
+    manifest.version !== 1
+    || manifest.kind !== "mujica-research-brief-artifact"
+    || manifest.completed !== true
+    || briefHash !== manifest.briefHash
+    || id !== manifest.id
+    || id !== `brief-${briefHash.slice(0, 16)}`
+    || manifest.manifestHash !== hashJson(identity)
+    || brief.lab.labHash !== hashJson(brief.lab.definition)
+    || brief.lab.definition.id !== manifest.labId
+    || brief.lab.labHash !== manifest.labHash
+    || brief.lab.programHash !== manifest.programHash
+    || brief.lab.benchmarkLockHash !== manifest.benchmarkLockHash
+    || hashJson(brief.observations.map((item) => item.id)) !== hashJson(manifest.observationIds)
+    || hashJson(brief.observations.map((item) => item.observationHash)) !== hashJson(manifest.observationHashes)
+  ) throw new Error(`Research Brief '${id}' has invalid identity`);
+  for (const item of brief.observations) {
+    const observation = await verifyHumanObservation(confined(projectRoot, `human-observations/${item.id}`));
+    if (hashJson(briefObservation(observation)) !== hashJson(item)) {
+      throw new Error(`Research Brief '${id}' observation '${item.id}' differs from its immutable artifact`);
+    }
+  }
+  return { id, briefHash, path: root, manifest, brief };
+}
+
+async function assertResearchBriefForBinding(
+  projectRoot: string,
+  briefId: string,
+  binding: Awaited<ReturnType<typeof researchLabBinding>>,
+) {
+  const verified = await verifyResearchBrief(projectRoot, briefId);
+  if (
+    verified.brief.lab.definition.id !== binding.lab.id
+    || verified.brief.lab.labHash !== binding.labHash
+    || verified.brief.lab.programHash !== binding.programHash
+    || verified.brief.lab.benchmarkLockHash !== binding.benchmarkLockHash
+  ) {
+    throw new Error(`Research Brief '${briefId}' is stale or belongs to another Research Lab`);
+  }
+  return verified;
 }
 
 function excluded(relativePath: string, sourceOnly: boolean): boolean {
@@ -319,11 +415,83 @@ export async function researchLabListCommand(projectDir: string) {
   return success("research.list", { labs }, project);
 }
 
+export async function researchBriefCommand(projectDir: string, labId: string, observationIds: string[]) {
+  const project = await loadProject(projectDir);
+  if (!observationIds.length || observationIds.length > 16) throw new Error("Research Brief requires 1..16 --observation values");
+  if (new Set(observationIds).size !== observationIds.length) throw new Error("Research Brief observation ids must be unique");
+  const binding = await researchLabBinding(project.rootDir, labId);
+  const observations = [];
+  for (const id of [...observationIds].sort()) {
+    observations.push(briefObservation(await verifyHumanObservation(confined(project.rootDir, `human-observations/${id}`))));
+  }
+  const brief: ResearchBrief = researchBriefSchema.parse({
+    version: 1,
+    kind: "mujica-research-brief",
+    authority: "derived-handoff",
+    claimKind: "research-prioritization",
+    lab: {
+      definition: binding.lab,
+      labHash: binding.labHash,
+      programHash: binding.programHash,
+      benchmarkLockHash: binding.benchmarkLockHash,
+    },
+    observations,
+    authorityBoundary: {
+      humanInput: "hypothesis-only",
+      sourceContext: "immutable-evidence",
+      sourceEdits: "lab-closure-only",
+      promotion: "locked-judge-only",
+    },
+  });
+  const briefHash = hashJson(brief);
+  const id = `brief-${briefHash.slice(0, 16)}`;
+  const path = join(project.rootDir, "research-briefs", id);
+  const identity = {
+    version: 1,
+    kind: "mujica-research-brief-artifact",
+    id,
+    briefHash,
+    labId: binding.lab.id,
+    labHash: binding.labHash,
+    programHash: binding.programHash,
+    benchmarkLockHash: binding.benchmarkLockHash,
+    observationIds: observations.map((item) => item.id),
+    observationHashes: observations.map((item) => item.observationHash),
+    completed: true,
+  };
+  const manifest = { ...identity, manifestHash: hashJson(identity) };
+  if (await exists(path)) {
+    const existing = await verifyResearchBrief(project.rootDir, id);
+    if (existing.briefHash !== briefHash) throw new Error(`Immutable Research Brief collision at '${id}'`);
+  } else {
+    await atomicDirectory(path, async (directory) => {
+      await writeJson(join(directory, "brief.json"), brief);
+      await writeJson(join(directory, "manifest.json"), manifest);
+    });
+  }
+  return success("research.brief", { id, briefHash, path, manifest, brief }, project, [
+    artifact("research-brief", id, path),
+  ], [
+    { id: "inspect-research-brief", description: "Verify the immutable human-to-Agent research handoff", argv: ["research", "brief", "inspect", project.rootDir, "--brief", id], effect: "read-only" },
+    { id: "run-briefed-research", description: "Run the bound Lab with this exact human hypothesis context", argv: ["research", "run", project.rootDir, "--lab", labId, "--brief", id, "--iterations", "1", "--agent-command", "<command>"], effect: "mutates-project" },
+  ]);
+}
+
+export async function researchBriefInspectCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir);
+  const verified = await verifyResearchBrief(project.rootDir, id);
+  return success("research.brief.inspect", verified, project, [
+    artifact("research-brief", id, verified.path),
+  ], [
+    { id: "run-briefed-research", description: "Run the bound Lab with this exact human hypothesis context", argv: ["research", "run", project.rootDir, "--lab", verified.brief.lab.definition.id, "--brief", id, "--iterations", "1", "--agent-command", "<command>"], effect: "mutates-project" },
+  ]);
+}
+
 export async function researchLabInspectCommand(projectDir: string, id: string) {
-  const project = await loadProject(projectDir); const lab = await loadResearchLab(project.rootDir, id); const program = await readFile(confined(project.rootDir, lab.program), "utf8");
-  const benchmark = await loadBenchmark(project.rootDir, lab.benchmark); const lock = await requireBenchmarkLock(project, benchmark);
-  return success("research.inspect", { lab, programHash: sha256(program), benchmarkLockHash: lock.lockHash }, project, [], [
+  const project = await loadProject(projectDir); const binding = await researchLabBinding(project.rootDir, id);
+  return success("research.inspect", { lab: binding.lab, programHash: binding.programHash, benchmarkLockHash: binding.benchmarkLockHash }, project, [], [
     { id: "run-research", description: "Run one isolated source experiment through the locked Judge", argv: ["research", "run", project.rootDir, "--lab", id, "--iterations", "1", "--agent-command", "<command>"], effect: "mutates-project" },
+    { id: "prepare-human-brief", description: "Bind an explicit human observation before running this Lab", argv: ["research", "brief", project.rootDir, "--lab", id, "--observation", "<observation-id>"], effect: "creates-artifact" },
   ]);
 }
 
@@ -334,13 +502,17 @@ export async function researchLabStatusCommand(projectDir: string, id: string) {
   return success("research.status", { lab: id, sessions, head: sessions.at(-1) ?? null }, project);
 }
 
-export async function researchLabRunCommand(projectDir: string, id: string, requestedIterations: number, agentCommand: string) {
-  const project = await loadProject(projectDir); const lab = await loadResearchLab(project.rootDir, id); const benchmark = await loadBenchmark(project.rootDir, lab.benchmark); const lock = await requireBenchmarkLock(project, benchmark);
+export async function researchLabRunCommand(projectDir: string, id: string, requestedIterations: number, agentCommand: string, briefId?: string) {
+  const project = await loadProject(projectDir); const binding = await researchLabBinding(project.rootDir, id);
+  const { lab, benchmark, program, programHash, labHash } = binding;
+  const lock = { lockHash: binding.benchmarkLockHash };
+  const researchBrief = briefId ? await assertResearchBriefForBinding(project.rootDir, briefId, binding) : null;
   if (!Number.isInteger(requestedIterations) || requestedIterations <= 0) throw new Error("--iterations must be a positive integer");
   if (!agentCommand.trim()) throw new Error("Research Lab V2 requires --agent-command");
-  const iterations = Math.min(requestedIterations, lab.budget.maxExperiments); const program = await readFile(confined(project.rootDir, lab.program), "utf8"); const programHash = sha256(program); const labHash = hashJson(lab);
-  const startedAt = new Date().toISOString(); const sessionId = `session-${hashJson({ labHash, programHash, lockHash: lock.lockHash, startedAt }).slice(0, 16)}`; const sessionRoot = join(project.rootDir, "research-runs", id, "sessions", sessionId); const experimentsRoot = join(sessionRoot, "experiments");
+  const iterations = Math.min(requestedIterations, lab.budget.maxExperiments);
+  const startedAt = new Date().toISOString(); const sessionId = `session-${hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, startedAt }).slice(0, 16)}`; const sessionRoot = join(project.rootDir, "research-runs", id, "sessions", sessionId); const experimentsRoot = join(sessionRoot, "experiments");
   await mkdir(experimentsRoot, { recursive: true }); const ledgerPath = join(sessionRoot, "results.tsv");
+  if (researchBrief) await writeJson(join(sessionRoot, "brief.json"), researchBrief.brief);
   await writeFile(ledgerPath, "sequence\texperiment\tpolicy\tscore\tdelta\tviolations\tstatus\tstrategy\tdescription\n");
   const initial = await currentPrimary(project, lab, benchmark); let current = initial.current; let currentSubject = initial.subject; const objective = await loadObjective(project.rootDir, benchmark.objective);
   const summaries: any[] = []; const artifacts: Artifact[] = []; let exhausted = false;
@@ -352,7 +524,19 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
     let proposal: ResearchLabProposal | null = null; let researcher: { stderr: string; durationMs: number } | null = null; let patch = ""; let beforeSource: SourceHashes = {}; let afterSource: SourceHashes = {}; let execution: any = null; let candidate: Evaluation | null = null; let referencePrimary: Evaluation | null = null; let regressionResults: any[] = []; let decision: ReturnType<typeof researchDecision> | null = null; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH"; let errorMessage: string | null = null; let policyId: string | null = null; let revision: { id: string; path: string } | null = null; let finalChanged: string[] = []; let researcherChangedPaths: string[] = [];
     try {
       await copyProject(project.rootDir, workspace); beforeSource = await materializeEditableSnapshot(project.rootDir, beforeSnapshot, lab); const beforeGuard = await snapshotFiles(workspace, false);
-      const response = await invokeResearcher(agentCommand, workspace, { version: 2, lab, program, programHash, benchmarkLockHash: lock.lockHash, workspace, currentBest: current, history: summaries }, Math.max(1, deadlineMs - Date.now()));
+      const response = await invokeResearcher(agentCommand, workspace, {
+        version: 3,
+        lab,
+        program,
+        programHash,
+        benchmarkLockHash: lock.lockHash,
+        workspace,
+        currentBest: current,
+        history: summaries,
+        researchBrief: researchBrief?.brief ?? null,
+        researchBriefId: researchBrief?.id ?? null,
+        researchBriefHash: researchBrief?.briefHash ?? null,
+      }, Math.max(1, deadlineMs - Date.now()));
       proposal = response.proposal; researcher = { stderr: response.stderr, durationMs: response.durationMs };
       const afterGuard = await snapshotFiles(workspace, false); researcherChangedPaths = changedPaths(beforeGuard, afterGuard);
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
@@ -402,7 +586,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
         : candidateDecision;
       decision = finalDecision;
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); assertResearchLabEditableChanges(lab, finalChanged); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
-      const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), referenceResults: referencePrimary?.cases.map((item) => item.resultHash) ?? null, regressionResults: regressionResults.map((item) => ({ reference: item.reference?.cases.map((entry: any) => entry.resultHash) ?? null, candidate: item.candidate.cases.map((entry: any) => entry.resultHash) })), verdict });
+      const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), referenceResults: referencePrimary?.cases.map((item) => item.resultHash) ?? null, regressionResults: regressionResults.map((item) => ({ reference: item.reference?.cases.map((entry: any) => entry.resultHash) ?? null, candidate: item.candidate.cases.map((entry: any) => entry.resultHash) })), verdict });
       const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`;
       if (verdict === "KEEP") {
         const rollback = await applySourceTransaction(project.rootDir, workspace, beforeSource, afterSource, finalChanged);
@@ -425,19 +609,19 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeJson(join(directory, "execution.json"), execution);
         await writeJson(join(directory, "evaluation.json"), { primary: candidateEvaluation, referencePrimary, regressions: regressionResults });
         await writeJson(join(directory, "verdict.json"), { verdict, decision, revisionId: revision?.id ?? null });
-        await writeJson(join(directory, "manifest.json"), { version: 2, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, sourceHash: hashJson(afterSource), researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null, durationMs: Date.now() - experimentStarted, completed: true });
+        await writeJson(join(directory, "manifest.json"), { version: 3, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: hashJson(afterSource), researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null, durationMs: Date.now() - experimentStarted, completed: true });
       });
       const summary = { sequence, experimentId, proposal, policyId, score: candidateEvaluation.aggregateScore, delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision: finalDecision, revisionId: revision?.id ?? null, artifactPath };
       summaries.push(summary); artifacts.push(artifact("research-experiment", experimentId, artifactPath)); if (revision) artifacts.push(artifact(lab.promotion === "policy-revision" ? "policy-revision" : "revision", revision.id, revision.path));
       await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${candidateEvaluation.aggregateScore}\t${summary.delta}\t${finalDecision.candidateViolationCount}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${proposal.hypothesis.replace(/[\t\r\n]+/g, " ")}\n`);
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : String(error); const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, proposal, beforeSource, afterSource, researcherChangedPaths, errorMessage, verdict: "CRASH" }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(experimentsRoot, experimentId);
+      errorMessage = error instanceof Error ? error.message : String(error); const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, proposal, beforeSource, afterSource, researcherChangedPaths, errorMessage, verdict: "CRASH" }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(experimentsRoot, experimentId);
       if (!patch && await exists(beforeSnapshot) && await exists(afterSnapshot)) try { patch = await sourcePatch(beforeSnapshot, afterSnapshot); } catch {}
       await atomicDirectory(artifactPath, async (directory) => {
         await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch); await writeJson(join(directory, "execution.json"), execution);
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
         await writeJson(join(directory, "verdict.json"), { verdict: "CRASH", error: errorMessage });
-        await writeJson(join(directory, "manifest.json"), { version: 2, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, sourceHash: Object.keys(afterSource).length ? hashJson(afterSource) : null, researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, durationMs: Date.now() - experimentStarted, completed: true });
+        await writeJson(join(directory, "manifest.json"), { version: 3, id: experimentId, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: Object.keys(afterSource).length ? hashJson(afterSource) : null, researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, durationMs: Date.now() - experimentStarted, completed: true });
       });
       const summary = { sequence, experimentId, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, artifactPath }; summaries.push(summary); artifacts.push(artifact("research-experiment", experimentId, artifactPath));
       await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${current.aggregateScore}\t0\t-\tcrash\t${proposal?.strategy ?? "proposal-error"}\t${errorMessage.replace(/[\t\r\n]+/g, " ")}\n`);
@@ -446,7 +630,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
     }
   }
 
-  const endedAt = new Date().toISOString(); const sessionManifest = { version: 2, id: sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, startedAt, endedAt, iterationsRequested: requestedIterations, iterationsCompleted: summaries.length, initialScore: initial.current.aggregateScore, finalScore: current.aggregateScore, scoreDelta: current.aggregateScore - initial.current.aggregateScore, exhausted, experiments: summaries.map((item) => item.experimentId), completed: true };
+  const endedAt = new Date().toISOString(); const sessionManifest = { version: 3, id: sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, startedAt, endedAt, iterationsRequested: requestedIterations, iterationsCompleted: summaries.length, initialScore: initial.current.aggregateScore, finalScore: current.aggregateScore, scoreDelta: current.aggregateScore - initial.current.aggregateScore, exhausted, experiments: summaries.map((item) => item.experimentId), completed: true };
   await writeJson(join(sessionRoot, "manifest.json"), sessionManifest); artifacts.push(artifact("research-session", sessionId, sessionRoot));
   return success("research.run", { ...sessionManifest, lab, experiments: summaries, ledgerPath }, project, artifacts, [
     { id: "research-status", description: "Inspect Research Lab sessions and current head", argv: ["research", "status", project.rootDir, "--lab", id], effect: "read-only" },

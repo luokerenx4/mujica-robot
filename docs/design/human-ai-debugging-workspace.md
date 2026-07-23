@@ -55,10 +55,15 @@ Studio is deliberately offline and read-only:
    hashes, and publishes `human-observations/observation-<hash>/`.
 5. `observation list|inspect` exposes it to an Agent. A new Studio snapshot
    projects the same verified artifact.
+6. When the human explicitly chooses a Research Lab, `research brief` can bind
+   the Observation and its full context into a governed research handoff. The
+   Brief remains hypothesis-only and cannot widen the Lab or Judge.
 
 The artifact freezes `draft.json`, full `context.json`, and `manifest.json`.
 Its identity includes observer, timestamp, source, assessment, draft hash, and
 context hash. Editing any byte makes inspection and Studio projection fail.
+See [Human-guided Research Briefs](human-guided-research-briefs.md) for the
+optional Observation-to-Research lifecycle.
 
 ## Attention queue
 

@@ -28,6 +28,7 @@ describe("read-only Studio snapshot", () => {
       attentionEvent: { direction: "driver-to-host", message: { type: "lease-expired" } },
     });
     expect(first.snapshot.humanObservations).toEqual(second.snapshot.humanObservations);
+    expect(first.snapshot.researchBriefs).toEqual(second.snapshot.researchBriefs);
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
@@ -38,7 +39,12 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Research Lab ledger");
     expect(html).toContain("Attention queue");
     expect(html).toContain("Human observation → Agent hypothesis");
+    expect(html).toContain("Human hypothesis → governed Research Brief");
     expect(html).toContain("mujica-human-observation-draft");
+    expect(html).toContain("mujica-research-brief-selector");
+    expect(html).toContain("'research','brief'");
+    expect(html).toContain("humanInput:'hypothesis-only'");
+    expect(html).toContain("promotion:'locked-judge-only'");
     expect(html).toContain("mujica observation record");
     expect(html).toContain("Hardware Captures");
     expect(html).toContain("gate-regression");

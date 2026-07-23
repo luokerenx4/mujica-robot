@@ -42,7 +42,9 @@ mujica diagnose <project> --assembly ID --controller ID --benchmark ID [--json]
 mujica candidate <project> --candidate ID [--apply] [--json]
 mujica research list <project> [--json]
 mujica research inspect <project> --lab ID [--json]
-mujica research run <project> --lab ID --agent-command CMD [--iterations N] [--json]
+mujica research brief <project> --lab ID --observation ID [--observation ID] [--json]
+mujica research brief inspect <project> --brief ID [--json]
+mujica research run <project> --lab ID [--brief ID] --agent-command CMD [--iterations N] [--json]
 mujica research status <project> --lab ID [--json]
 mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica revisions <project> [--json]
@@ -88,6 +90,14 @@ changed result/capture hash, and publishes an immutable
 `authority=human` and `claimKind=hypothesis`; severity and confidence are triage
 metadata, never measured evidence. `observation list|inspect` gives Agents the
 ledger and verifies artifact bytes before returning it.
+
+`research brief` explicitly binds 1–16 unique, verified Human Observations to
+one Research Lab. It publishes deterministic `research-briefs/brief-<hash>/`
+bytes containing the complete source contexts, Lab definition/hash, program
+hash, primary Benchmark lock, and a closed hypothesis/Judge authority boundary.
+`research brief inspect` re-verifies the Brief and every referenced
+Observation. A Brief prioritizes investigation; it cannot change source,
+budgets, regressions, or promotion.
 
 `hardware export` freezes one Hardware Target, source Revision, Controller,
 optional Policy, selected Driver Package, Observation/Action contracts, safety envelope, and
@@ -181,7 +191,17 @@ kind; writing a stop request alone is not success.
 
 `policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
 
-`research list|inspect|run|status` is the V2 source-research interface. A Lab names one human `program.md`, a controller/policy/development execution lane, exact files or recursive `/**` directories the Agent owns, locked primary and regression Benchmarks, fixed budgets, and a promotion target. `run` executes the Agent command in a disposable project copy. The command receives JSON on stdin, edits files in its working directory, and returns only `strategy`, `hypothesis`, and `expectedEffect` metadata. Mujica derives the authoritative diff, rejects every undeclared write, then runs the fixed Judge.
+`research list|inspect|brief|run|status` is the V2 source-research interface. A
+Lab names one human `program.md`, a controller/policy/development execution
+lane, exact files or recursive `/**` directories the Agent owns, locked primary
+and regression Benchmarks, fixed budgets, and a promotion target. `run`
+executes the Agent command in a disposable project copy. The version-3 request
+contains the Lab, current evidence/history, and an optional verified
+`researchBrief`; the Agent edits files in its working directory and returns only
+`strategy`, `hypothesis`, and `expectedEffect` metadata. `--brief` rejects a
+Brief for another or changed Lab. Mujica derives the authoritative diff, rejects
+every undeclared write, then runs the fixed Judge. Session/Experiment manifests
+retain the Brief id and hash.
 
 Every V2 attempt creates an immutable Experiment containing the proposal, patch, before/after hashes, execution references, evaluations, and verdict. Policy attempts retain their immutable Training Run and frozen Policy even on REVERT. KEEP rechecks source hashes before atomically copying the candidate source and publishing the appropriate Revision. `status` reads completed Session ledgers without starting work.
 

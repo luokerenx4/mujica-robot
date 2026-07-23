@@ -47,6 +47,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.run")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.brief")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.brief.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train-research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy-revision.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
@@ -120,6 +122,8 @@ describe("agent CLI contract", () => {
       },
     }));
     let artifactPath: string | undefined;
+    let briefPath: string | undefined;
+    let researchSessionPath: string | undefined;
     try {
       const recorded = invoke(["observation", "record", "examples/quadruped", "--input", draftPath, "--observer", "Human reviewer", "--json"]);
       const envelope = JSON.parse(recorded.stdout);
@@ -138,6 +142,98 @@ describe("agent CLI contract", () => {
       expect(JSON.parse(inspected.stdout).data.context.contextHash).toBe(context.contextHash);
       const listed = invoke(["observation", "list", "examples/quadruped", "--json"]);
       expect(JSON.parse(listed.stdout).data.observations.map((item: any) => item.id)).toContain(envelope.data.id);
+      const briefed = invoke([
+        "research", "brief", "examples/quadruped",
+        "--lab", "motion-quality-residual-policy",
+        "--observation", envelope.data.id,
+        "--json",
+      ]);
+      expect({ code: briefed.code, stderr: briefed.stderr }).toEqual({ code: 0, stderr: "" });
+      const briefEnvelope = JSON.parse(briefed.stdout);
+      briefPath = briefEnvelope.data.path;
+      expect(briefEnvelope.data.brief).toMatchObject({
+        kind: "mujica-research-brief",
+        authority: "derived-handoff",
+        claimKind: "research-prioritization",
+        lab: { definition: { id: "motion-quality-residual-policy", execution: { kind: "policy" } } },
+        authorityBoundary: {
+          humanInput: "hypothesis-only",
+          sourceContext: "immutable-evidence",
+          sourceEdits: "lab-closure-only",
+          promotion: "locked-judge-only",
+        },
+      });
+      expect(briefEnvelope.data.brief.observations[0]).toMatchObject({
+        id: envelope.data.id,
+        observationHash: envelope.data.observationHash,
+        contextHash: context.contextHash,
+        context: { contextHash: context.contextHash },
+      });
+      expect(briefEnvelope.artifacts).toEqual([{ kind: "research-brief", id: briefEnvelope.data.id, path: briefPath, immutable: true }]);
+      const briefInspect = invoke(["research", "brief", "inspect", "examples/quadruped", "--brief", briefEnvelope.data.id, "--json"]);
+      expect(briefInspect.code).toBe(0);
+      expect(JSON.parse(briefInspect.stdout).data.briefHash).toBe(briefEnvelope.data.briefHash);
+      const sameBrief = invoke([
+        "research", "brief", "examples/quadruped",
+        "--lab", "motion-quality-residual-policy",
+        "--observation", envelope.data.id,
+        "--json",
+      ]);
+      expect(JSON.parse(sameBrief.stdout).data.id).toBe(briefEnvelope.data.id);
+      const duplicated = invoke([
+        "research", "brief", "examples/quadruped",
+        "--lab", "motion-quality-residual-policy",
+        "--observation", envelope.data.id,
+        "--observation", envelope.data.id,
+        "--json",
+      ]);
+      expect(duplicated.code).toBe(1);
+      expect(JSON.parse(duplicated.stderr).error.message).toContain("must be unique");
+      const verifyBriefAgent = "python3 -c 'import json,sys; r=json.load(sys.stdin); b=r[\"researchBrief\"]; assert r[\"version\"] == 3; assert r[\"researchBriefId\"].startswith(\"brief-\"); assert b[\"authorityBoundary\"][\"humanInput\"] == \"hypothesis-only\"; assert b[\"authorityBoundary\"][\"promotion\"] == \"locked-judge-only\"; print(json.dumps({\"strategy\":\"brief-transport-smoke\",\"hypothesis\":\"Verify exact Research Brief transport without editing source.\",\"expectedEffect\":\"The Harness should reject the no-change proposal after preserving Brief provenance.\"}))'";
+      const briefedRun = invoke([
+        "research", "run", "examples/quadruped",
+        "--lab", "motion-quality-residual-policy",
+        "--brief", briefEnvelope.data.id,
+        "--iterations", "1",
+        "--agent-command", verifyBriefAgent,
+        "--json",
+      ]);
+      expect({ code: briefedRun.code, stderr: briefedRun.stderr }).toEqual({ code: 0, stderr: "" });
+      const runEnvelope = JSON.parse(briefedRun.stdout);
+      expect(runEnvelope.data).toMatchObject({
+        researchBriefId: briefEnvelope.data.id,
+        researchBriefHash: briefEnvelope.data.briefHash,
+        iterationsCompleted: 1,
+      });
+      expect(runEnvelope.data.experiments[0]).toMatchObject({
+        verdict: "CRASH",
+        error: "Researcher produced no source changes",
+      });
+      const sessionArtifactPath = runEnvelope.artifacts.find((item: any) => item.kind === "research-session").path;
+      researchSessionPath = sessionArtifactPath;
+      expect(JSON.parse(await readFile(resolve(sessionArtifactPath, "brief.json"), "utf8"))).toEqual(briefEnvelope.data.brief);
+      const experimentManifest = JSON.parse(await readFile(resolve(runEnvelope.data.experiments[0].artifactPath, "manifest.json"), "utf8"));
+      expect(experimentManifest).toMatchObject({
+        version: 3,
+        researchBriefId: briefEnvelope.data.id,
+        researchBriefHash: briefEnvelope.data.briefHash,
+      });
+      const wrongLab = invoke([
+        "research", "run", "examples/quadruped",
+        "--lab", "upright-residual-policy",
+        "--brief", briefEnvelope.data.id,
+        "--iterations", "1",
+        "--agent-command", "false",
+        "--json",
+      ]);
+      expect(wrongLab.code).toBe(1);
+      expect(JSON.parse(wrongLab.stderr).error.message).toContain("stale or belongs to another");
+      const briefManifestPath = resolve(briefEnvelope.data.path, "manifest.json");
+      const briefManifest = JSON.parse(await readFile(briefManifestPath, "utf8"));
+      await writeFile(briefManifestPath, JSON.stringify({ ...briefManifest, manifestHash: "0".repeat(64) }));
+      const tamperedBrief = invoke(["research", "brief", "inspect", "examples/quadruped", "--brief", briefEnvelope.data.id, "--json"]);
+      expect(tamperedBrief.code).toBe(1);
+      expect(JSON.parse(tamperedBrief.stderr).error.message).toContain("invalid identity");
       const contextPath = resolve(envelope.data.path, "context.json");
       const storedContext = JSON.parse(await readFile(contextPath, "utf8"));
       await writeFile(contextPath, JSON.stringify({ ...storedContext, requestedTimeSeconds: 0.06 }));
@@ -154,10 +250,12 @@ describe("agent CLI contract", () => {
       expect(rejected.code).toBe(1);
       expect(JSON.parse(rejected.stderr).error.message).toContain("source identity differs");
     } finally {
+      if (researchSessionPath) rmSync(researchSessionPath, { recursive: true, force: true });
+      if (briefPath) rmSync(briefPath, { recursive: true, force: true });
       if (artifactPath) rmSync(artifactPath, { recursive: true, force: true });
       rmSync(temporary, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   test("Driver Package discovery exposes frozen deployment identity", () => {
     const result = invoke(["driver", "inspect", "examples/quadruped", "--driver", "mujoco-protocol-simulator", "--json"]); const envelope = JSON.parse(result.stdout);
@@ -626,7 +724,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-445d07accc35ef2b",
+      "--bundle", "hardware-b0bf1545307c8d5f",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

@@ -34,6 +34,7 @@ project/
   hardware-captures/<immutable-id>/...
   hardware-verifications/<immutable-id>/...
   human-observations/<immutable-id>/manifest.json + draft.json + context.json
+  research-briefs/<immutable-id>/manifest.json + brief.json
   runs/<immutable-id>/...
   calibration-runs/<immutable-id>/...
   training-runs/<immutable-id>/...
@@ -90,6 +91,15 @@ A Training Research definition similarly names one Training JSON file and promot
 A V2 Research Lab lives at `research/<id>/research.json` beside its human-owned `program.md`. It selects one `controller`, `policy`, or `development` execution lane; one locked primary Benchmark; zero or more locked regression Benchmarks; exact editable files or trailing-`/**` directory closures; experiment, wall-clock, and optional training-transition budgets; minimum improvement; and an evidence, Policy Revision, or Robot Revision promotion rule. The Agent owns only the declared source closure. Runtime, Harness, Benchmarks, locks, objectives, tasks, scenarios, generated artifacts, and every undeclared project path remain fixed.
 
 Each V2 invocation creates an immutable Session under `research-runs/<lab-id>/sessions/`. Its `results.tsv` is compact Agent memory; every Experiment directory contains proposal metadata, an authoritative source patch, before/after hashes, execution references, frozen evaluation evidence, verdict, and manifest. Candidate work occurs in a disposable project copy. REVERT and CRASH cannot modify source. KEEP uses stale-source checks and a rollback-capable source transaction before publishing the declared Revision. Large content-addressed Runs, Training Runs, Policies, and Revisions stay in their normal top-level stores and are referenced by identity.
+
+A Research Brief lives at `research-briefs/brief-<hash>/`. It deterministically
+binds one Lab/program/primary-Benchmark-lock identity to 1–16 immutable Human
+Observations and their complete evidence contexts. It is a derived,
+`research-prioritization` handoff—not source, measured evidence, or a verdict.
+Brief and Observation artifact roots are excluded from the Researcher's source
+snapshot; the verified Brief travels in the Agent request and is copied into the
+Session. `research run --brief` fails closed when the current Lab, program, lock,
+Brief, or referenced Observation bytes differ.
 
 Compiled Assemblies have two identities. `assemblyHash` covers the complete Base/Component package provenance; `executionHash` covers the composed MJCF bytes and ordered Observation/Action contracts. A metadata edit therefore changes provenance even when execution is identical. `policy requalify` may derive a new immutable Policy only when the old content-addressed MJCF and both contracts exactly match the new Assembly; otherwise retraining is mandatory.
 

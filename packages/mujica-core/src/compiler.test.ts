@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -244,6 +244,36 @@ describe("Robot Assembly compiler", () => {
       ...draft,
       source: { ...draft.source, comparisonRunId: "run-subject" },
     }).success).toBe(false);
+  });
+
+  test("Research Briefs preserve hypothesis and Judge authority boundaries", async () => {
+    const lab = await loadResearchLab(project, "motion-quality-residual-policy");
+    const context = { version: 1, kind: "mujica-run-frame-context", authority: "immutable-evidence", contextHash: "c".repeat(64) };
+    const brief = {
+      version: 1,
+      kind: "mujica-research-brief",
+      authority: "derived-handoff",
+      claimKind: "research-prioritization",
+      lab: { definition: lab, labHash: "a".repeat(64), programHash: "b".repeat(64), benchmarkLockHash: "d".repeat(64) },
+      observations: [{
+        id: "observation-example",
+        observationHash: "e".repeat(64),
+        contextHash: context.contextHash,
+        draftHash: "f".repeat(64),
+        observer: "Human reviewer",
+        recordedAt: "2026-07-23T12:00:00.000Z",
+        source: { kind: "run-frame", runId: "run-example", resultHash: "1".repeat(64), timeSeconds: 0.04 },
+        assessment: { category: "motion", severity: "investigate", confidence: "medium", summary: "The front foot appears to slap." },
+        context,
+      }],
+      authorityBoundary: { humanInput: "hypothesis-only", sourceContext: "immutable-evidence", sourceEdits: "lab-closure-only", promotion: "locked-judge-only" },
+    };
+    expect(researchBriefSchema.safeParse(brief).success).toBe(true);
+    expect(researchBriefSchema.safeParse({
+      ...brief,
+      authorityBoundary: { ...brief.authorityBoundary, promotion: "human-approved" },
+    }).success).toBe(false);
+    expect(researchBriefSchema.safeParse({ ...brief, observations: [] }).success).toBe(false);
   });
 
   test("training research names one bounded Training definition", async () => {
