@@ -1,9 +1,9 @@
 import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
-  assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, hashDirectory, hashJson, listAssemblyIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCandidate, loadComponent,
+  assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
   listDomainProfileIds, loadController, loadDomainProfile, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
-  type BenchmarkDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
+  type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
@@ -57,10 +57,10 @@ export async function validateCommand(projectDir: string) {
 }
 
 export async function inspectCommand(projectDir: string) {
-  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir);
-  const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
+  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir);
+  const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const calibrationRuns = await listManifestDirectories(join(project.rootDir, "calibration-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
   const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications"));
-  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, domainProfiles, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
+  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, calibrations: calibrations.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, domainProfiles, calibrations, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
 }
 
 export async function studioCommand(projectDir: string, run?: string, compareRun?: string) {
@@ -144,6 +144,107 @@ export async function domainListCommand(projectDir: string) {
 export async function domainInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const identity = await domainProfileIdentity(project.rootDir, id);
   return success("domain.inspect", { definition: identity.definition, evidenceHash: identity.evidenceHash, hash: identity.hash, path: confined(project.rootDir, `domain-profiles/${id}.domain.json`) }, project);
+}
+
+export async function calibrationListCommand(projectDir: string) {
+  const project = await loadProject(projectDir); const calibrations = [];
+  for (const id of await listCalibrationIds(project.rootDir)) {
+    const definition = await loadCalibration(project.rootDir, id);
+    const sourceHashes = [];
+    for (const source of definition.sources) {
+      const path = source.kind === "capture"
+        ? confined(project.rootDir, source.path)
+        : confined(project.rootDir, `runs/${source.run}/manifest.json`);
+      sourceHashes.push({ ...source, hash: sha256(await readFile(path)) });
+    }
+    calibrations.push({ definition, sourceHashes, hash: hashJson({ definition, sourceHashes }) });
+  }
+  return success("calibration.list", { calibrations }, project);
+}
+
+export async function calibrationInspectCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir); const definition = await loadCalibration(project.rootDir, id);
+  const sourceHashes = [];
+  for (const source of definition.sources) {
+    const path = source.kind === "capture"
+      ? confined(project.rootDir, source.path)
+      : confined(project.rootDir, `runs/${source.run}/manifest.json`);
+    sourceHashes.push({ ...source, hash: sha256(await readFile(path)) });
+  }
+  return success("calibration.inspect", { definition, sourceHashes, hash: hashJson({ definition, sourceHashes }), path: confined(project.rootDir, `calibrations/${id}.calibration.json`) }, project, [], [
+    { id: "run-calibration", description: "Fit the declared plant parameters and publish immutable Calibration evidence", argv: ["calibrate", project.rootDir, "--calibration", id], effect: "creates-artifact" },
+  ]);
+}
+
+async function calibrationRuntimeSources(project: ProjectContext, definition: CalibrationDefinition, assembly: CompiledAssembly) {
+  const sources = [];
+  for (let index = 0; index < definition.sources.length; index++) {
+    const source = definition.sources[index]!;
+    if (source.kind === "capture") {
+      const path = confined(project.rootDir, source.path);
+      sources.push({ kind: "capture", id: `capture-${index + 1}`, path, hash: sha256(await readFile(path)) });
+      continue;
+    }
+    const root = confined(project.rootDir, `runs/${source.run}`);
+    const manifestPath = join(root, "manifest.json"); const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (manifest.completed !== true || Number(manifest.version) < 3) throw new Error(`Calibration source Run '${source.run}' lacks commanded-Action/initial-state evidence`);
+    if (manifest.assemblyHash !== assembly.assemblyHash) throw new Error(`Calibration source Run '${source.run}' Assembly differs from '${assembly.id}'`);
+    const trajectoryPath = join(root, "trajectory.ndjson"); const initialStatePath = join(root, "inputs", "initial-state.json");
+    sources.push({
+      kind: "simulation-run", id: source.run, run: source.run,
+      manifestHash: sha256(await readFile(manifestPath)),
+      resultHash: manifest.resultHash,
+      trajectoryPath, trajectoryHash: sha256(await readFile(trajectoryPath)),
+      initialStatePath, initialStateHash: sha256(await readFile(initialStatePath)),
+    });
+  }
+  return sources;
+}
+
+export async function calibrateCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir); const calibration = await loadCalibration(project.rootDir, id); const assembly = await compileAssembly(project.rootDir, calibration.assembly);
+  const sources = await calibrationRuntimeSources(project, calibration, assembly);
+  const result = await invokeRuntime("calibrate", {
+    runtimeVersion,
+    runtimeSourceHash: await runtimeSourceHash(),
+    harnessSourceHash: await harnessSourceHash(),
+    projectDir: project.rootDir,
+    modelPath: assembly.modelPath,
+    compiled: runtimeCompiled(assembly),
+    calibration,
+    baseScenario: await loadScenario(project.rootDir, calibration.scenario),
+    sources,
+  });
+  return success("calibrate", result, project, [projectArtifact("calibration-run", result.calibrationRunId, result.artifactPath, true)], [
+    { id: "promote-profile", description: "Promote the validated Profile proposal into project source", argv: ["calibration", "promote", project.rootDir, "--run", result.calibrationRunId], effect: "mutates-project" },
+  ]);
+}
+
+export async function calibrationPromoteCommand(projectDir: string, runId: string) {
+  const project = await loadProject(projectDir); const root = confined(project.rootDir, `calibration-runs/${runId}`);
+  const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  if (manifest.id !== runId || manifest.completed !== true) throw new Error(`Calibration Run '${runId}' is incomplete or inconsistent`);
+  if (!Number.isFinite(manifest.validationLoss)) throw new Error(`Calibration Run '${runId}' has no validation evidence`);
+  if (manifest.runtimeSourceHash !== await runtimeSourceHash() || manifest.harnessSourceHash !== await harnessSourceHash()) throw new Error(`Calibration Run '${runId}' was produced by a different Runtime or Harness; rerun Calibration before promotion`);
+  const calibration = await loadCalibration(project.rootDir, manifest.calibration); const assembly = await compileAssembly(project.rootDir, calibration.assembly);
+  if (manifest.validationLoss > calibration.optimizer.maximumValidationLoss) throw new Error(`Calibration Run '${runId}' validation loss ${manifest.validationLoss} exceeds the promotion limit ${calibration.optimizer.maximumValidationLoss}`);
+  if (manifest.assemblyHash !== assembly.assemblyHash || manifest.modelHash !== assembly.modelHash) throw new Error(`Calibration Run '${runId}' model differs from the current Calibration Assembly`);
+  const baseScenario = await loadScenario(project.rootDir, calibration.scenario);
+  if (manifest.calibrationHash !== hashJson(calibration) || manifest.baseScenarioHash !== hashJson(baseScenario)) throw new Error(`Calibration Run '${runId}' definition or base Scenario changed; rerun Calibration before promotion`);
+  const currentSources = (await calibrationRuntimeSources(project, calibration, assembly)).map((source) => Object.fromEntries(Object.entries(source).filter(([key]) => !key.endsWith("Path") && key !== "path")));
+  if (stableJson(currentSources) !== stableJson(manifest.sources)) throw new Error(`Calibration Run '${runId}' source evidence changed; rerun Calibration before promotion`);
+  const profile = domainProfileSchema.parse(JSON.parse(await readFile(join(root, "profile-proposal.json"), "utf8")));
+  if (hashJson(profile) !== manifest.profileProposalHash) throw new Error(`Calibration Run '${runId}' Profile proposal hash differs from its manifest`);
+  if (profile.provenance.evidence !== `calibration-runs/${runId}/manifest.json`) throw new Error(`Calibration Run '${runId}' Profile does not bind its evidence manifest`);
+  const path = confined(project.rootDir, `domain-profiles/${profile.id}.domain.json`);
+  const cached = await exists(path);
+  if (cached) {
+    const current = domainProfileSchema.parse(JSON.parse(await readFile(path, "utf8")));
+    if (hashJson(current) !== hashJson(profile)) throw new Error(`Domain Profile '${profile.id}' already exists with different content`);
+  } else {
+    await writeJson(path, profile);
+  }
+  return success("calibration.promote", { run: runId, profile, hash: hashJson(profile), path, cached }, project);
 }
 
 async function controllerCompatibility(project: ProjectContext, definition: ControllerDefinition) {

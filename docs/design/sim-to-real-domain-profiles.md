@@ -36,6 +36,8 @@ observation noise is additive, and delay jitter is added to Scenario delay. A
 fixed payload is added after structural body-mass scaling, because it represents
 carried load rather than robot manufacturing tolerance. This preserves the
 distinction between an intentional task disturbance and plant uncertainty.
+Body inertia is scaled with body mass; changing only mass would produce a
+physically inconsistent rigid body.
 
 ## Evidence and authority
 
@@ -49,7 +51,14 @@ Evaluation never receives a Domain Profile. A locked Benchmark selects exact Sce
 
 ## Calibration boundary
 
-The first checked-in quadruped Profile is a `synthetic` pre-HIL envelope. Replacing it with `hil` or `real` requires a separately captured evidence artifact and a future system-identification operation; changing only the provenance string is not calibration.
+The first checked-in quadruped Profile is a hand-authored `synthetic` pre-HIL
+envelope. Mujica now also accepts content-hashed Run v3 or external capture
+series through an explicit Calibration definition. Its deterministic one-step
+estimator fits bounded plant parameters, reports a whole-source validation loss,
+and proposes a Profile bound to an immutable Calibration Run. Promotion is
+separate and fails closed when evidence, Runtime, model, or validation authority
+changes. A synthetic Calibration still remains synthetic; changing only the
+provenance string is never calibration.
 
 This boundary is deliberate:
 

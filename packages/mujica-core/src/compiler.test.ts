@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compareAssemblies, compileAssembly, domainProfileSchema, loadBenchmark, loadCandidate, loadComponent, loadController, loadDomainProfile, loadResearch, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, compareAssemblies, compileAssembly, domainProfileSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadResearch, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -136,6 +136,18 @@ describe("Robot Assembly compiler", () => {
     expect(training.domainProfile).toBe(profile.id);
     expect(domainProfileSchema.safeParse({ ...profile, parameters: { bodyMassScale: { minimum: 1.1, maximum: 0.9 } } }).success).toBe(false);
     expect(domainProfileSchema.safeParse({ ...profile, provenance: { kind: "real", evidence: null, notes: "" } }).success).toBe(false);
+  });
+
+  test("Calibration definitions preserve provenance and whole-source validation", async () => {
+    const calibration = await loadCalibration(project, "quadruped-synthetic-hidden-plant");
+    expect(calibration.provenance).toMatchObject({ kind: "synthetic", device: null });
+    expect(calibration.sources).toHaveLength(3);
+    expect(calibration.optimizer.validationSources).toBe(1);
+    expect(calibration.optimizer.maximumValidationLoss).toBe(0.01);
+    expect(calibration.parameters.actuatorDelaySteps).toEqual({ minimum: 0, maximum: 3 });
+    expect(calibrationSchema.safeParse({ ...calibration, provenance: { ...calibration.provenance, kind: "real" } }).success).toBe(false);
+    expect(calibrationSchema.safeParse({ ...calibration, optimizer: { ...calibration.optimizer, validationSources: 3 } }).success).toBe(false);
+    expect(calibrationSchema.safeParse({ ...calibration, optimizer: { ...calibration.optimizer, samplesPerAxis: 4 } }).success).toBe(false);
   });
 
   test("research definitions expose a bounded editable surface", async () => {

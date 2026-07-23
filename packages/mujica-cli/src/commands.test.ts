@@ -35,6 +35,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "domain.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibrate")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibration.promote")).toBe(true);
   });
 
   test("Domain Profile discovery exposes provenance and bounded dynamics", () => {
@@ -48,6 +50,16 @@ describe("agent CLI contract", () => {
       actuatorStrengthScale: { minimum: 0.9, maximum: 1.1 },
       actuatorDelayJitterSteps: { minimum: 0, maximum: 2 },
     });
+  });
+
+  test("Calibration discovery exposes immutable sources and validation split", () => {
+    const result = invoke(["calibration", "inspect", "examples/quadruped", "--calibration", "quadruped-synthetic-hidden-plant", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.hash).toHaveLength(64);
+    expect(envelope.data.definition.provenance).toMatchObject({ kind: "synthetic", device: null });
+    expect(envelope.data.definition.optimizer.validationSources).toBe(1);
+    expect(envelope.data.sourceHashes).toHaveLength(3);
+    expect(envelope.nextActions[0].argv.slice(0, 3)).toEqual(["calibrate", resolve(root, "examples/quadruped"), "--calibration"]);
   });
 
   test("Controller discovery exposes legal Assembly combinations", () => {
@@ -64,11 +76,18 @@ describe("agent CLI contract", () => {
     expect(result.code).toBe(1); expect(envelope.error.message).toContain("requires Observation 'actuator-delay-steps'"); expect(envelope.error.message).not.toContain("Python Runtime"); expect(envelope.error.message).not.toContain("KeyError");
   });
 
-  test("Studio is a read-only synchronized projection of completed quadruped Runs", () => {
+  test("Studio is a read-only synchronized projection of completed quadruped Runs", async () => {
     const simulated = invoke(["simulate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-forward-gait", "--task", "forward-walk", "--scenario", "nominal", "--objective", "forward-locomotion", "--seed", "709913", "--json"]);
     expect(simulated.code).toBe(0);
     const run = JSON.parse(simulated.stdout).data;
     try {
+      const manifest = JSON.parse(await readFile(resolve(run.artifactPath, "manifest.json"), "utf8"));
+      const initialState = JSON.parse(await readFile(resolve(run.artifactPath, "inputs/initial-state.json"), "utf8"));
+      const firstRow = JSON.parse((await readFile(resolve(run.artifactPath, "trajectory.ndjson"), "utf8")).split("\n")[0]!);
+      expect(manifest.version).toBe(3);
+      expect(initialState.qpos).toHaveLength(19);
+      expect(firstRow.commandedAction).toHaveLength(12);
+      expect(firstRow.appliedAction).toHaveLength(12);
       const result = invoke(["studio", "examples/quadruped", "--run", run.runId, "--compare-run", run.runId, "--json"]); const envelope = JSON.parse(result.stdout);
       expect(result.code).toBe(0);
       expect(envelope.data.selectedRun).toBe(run.runId);
@@ -99,7 +118,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
     expect(envelope.data.definitions.researchLabs).toBe(3);
-    expect(envelope.data.definitions.domainProfiles).toBe(1);
+    expect(envelope.data.definitions.domainProfiles).toBe(2);
+    expect(envelope.data.definitions.calibrations).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);

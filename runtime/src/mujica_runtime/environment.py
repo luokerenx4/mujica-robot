@@ -74,6 +74,7 @@ class RobotEnvironment:
 
     def _configure_scenario(self) -> None:
         self.model.body_mass[:] *= self.body_mass_scale
+        self.model.body_inertia[:] *= self.body_mass_scale
         self.model.dof_damping[:] *= self.joint_damping_scale
         self.model.actuator_gainprm[:, 0] *= self.actuator_strength_scale
         self.model.geom_friction[:, 0] = float(self.scenario["friction"])
@@ -264,4 +265,4 @@ class RobotEnvironment:
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()
-        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy(), "motionQuality": quality})
+        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "commandedAction": action.copy(), "appliedAction": applied.copy(), "motionQuality": quality})

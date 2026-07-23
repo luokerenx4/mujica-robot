@@ -8,6 +8,10 @@ mujica component list <project> [--json]
 mujica component inspect <project> --component ID [--json]
 mujica domain list <project> [--json]
 mujica domain inspect <project> --domain ID [--json]
+mujica calibration list <project> [--json]
+mujica calibration inspect <project> --calibration ID [--json]
+mujica calibration promote <project> --run ID [--json]
+mujica calibrate <project> --calibration ID [--json]
 mujica controller list <project> [--json]
 mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
@@ -45,6 +49,16 @@ provenance, optional evidence-file hash, and combined identity. A `synthetic`
 Profile may omit evidence but makes no calibration claim; `hil` and `real`
 Profiles require confined captured evidence. Domain Profiles are Training inputs
 only and are never sampled by `evaluate`.
+
+`calibration list|inspect` exposes the capture sources, device provenance,
+bounded fit parameters, whole-source validation split, and promotion threshold.
+`calibrate` deterministically fits MuJoCo one control interval at a time and
+writes an immutable Calibration Run with source hashes, search trace, fit and
+validation metrics, and a proposed Domain Profile. `calibration promote` is the
+only source-mutating step. It rechecks Runtime, Harness, model, definition,
+Scenario, every source, proposal identity, and maximum validation loss before
+writing the Profile. Simulation Runs can only support `synthetic` provenance;
+`hil` and `real` captures require a serialized device identity.
 
 `diagnose` evaluates the requested robot and the locked Benchmark baseline without publishing artifacts. It reports every enforced gate as a signed margin, ranks failing cases by normalized violation severity, preserves measured findings as `kind: evidence`, and labels possible intervention surfaces as `kind: hypothesis`. Its next action persists the worst case through `simulate` so events and trajectory can be inspected without confusing a heuristic with proof.
 

@@ -12,6 +12,7 @@ project/
   trainers/<id>/trainer.json + trainer.py + model.py
   training/<id>.training.json
   domain-profiles/<id>.domain.json
+  calibrations/<id>.calibration.json
   training-research/<id>.training-research.json
   tasks/<id>.task.json
   scenarios/<id>.scenario.json
@@ -30,6 +31,7 @@ project/
   hardware-bundles/<immutable-id>/...
   hardware-verifications/<immutable-id>/...
   runs/<immutable-id>/...
+  calibration-runs/<immutable-id>/...
   training-runs/<immutable-id>/...
   training-research-runs/<research-id>/results.tsv + <immutable-experiment>/...
 ```
@@ -57,6 +59,16 @@ and Policy artifacts. Benchmark evaluation remains fixed-Scenario and never
 receives a random profile. See [Sim-to-real Domain
 Profiles](design/sim-to-real-domain-profiles.md).
 
+A Calibration definition binds an Assembly and neutral base Scenario to at least
+two content-hashed Simulation Run v3 or external NDJSON capture sources. It
+declares synthetic, HIL, or real provenance, bounded plant parameters, a
+whole-source validation count, deterministic search budget, and maximum
+validation loss. HIL/real definitions require serialized device identity and
+cannot consume simulated Runs. The immutable Calibration Run records the search
+and proposes a Domain Profile; `calibration promote` separately revalidates all
+identities and copies the proposal into source. See [System-identification
+captures](design/system-identification-captures.md).
+
 A Research definition names one locked Benchmark, one Assembly, one program Controller, one Markdown instruction program, and one exact controller JSON file. V1 editable parameters are finite numeric `/config/<key>` values with explicit bounds, step size, and search order. Benchmark, task, scenario, objective, assembly, controller source, and runtime files are never delegated to the proposer.
 
 A Training Research definition similarly names one Training JSON file and promoted policy Controller. Candidate Training Runs and Policies are immutable even on REVERT. KEEP advances both mutable pointers and publishes an immutable Policy Revision. Policy identity includes Runtime and Harness source, dependency locks, Trainer, contracts, seed, budget, and model content.
@@ -73,6 +85,14 @@ Candidate preview computes a content-derived proposed Robot Revision hash before
 
 A Hardware Target binds a kept Robot Revision to one `dry-run`, `hil`, or `real` environment, a driver protocol, control rate, explicit device identity, latency/deadline gates, and a contract-sized emergency-stop Action. Exported bundles and verification records are immutable. External Evidence must carry exact bundle and contract hashes, driver hash, device serial, timestamps, sample count, timing measurements, emergency-stop count, and operator identity.
 
-Simulation Run v2 freezes the exact compiled `model.xml` beside its compiled Assembly, Controller, Task, Scenario, and Objective inputs. Its manifest records the model hash. Visual replay therefore never needs to infer an old robot from current source. Derived PNG replays live under ignored `.mujica/replays/<content-id>/`; their identity covers the Run result, frozen model, trajectory bytes, Runtime/MuJoCo renderer, camera, resolution, and stride. Legacy Runs can be replayed only while their matching content-addressed Assembly cache is still available.
+Simulation Run v3 freezes the exact compiled `model.xml` and initial `qpos`/`qvel`
+beside its compiled Assembly, Controller, Task, Scenario, and Objective inputs.
+Every trajectory row distinguishes the Controller's commanded Action from the
+delayed Action actually applied by MuJoCo. Its manifest records all content
+hashes, making the same Run suitable for visual replay and synthetic calibration.
+Derived PNG replays live under ignored `.mujica/replays/<content-id>/`; their
+identity covers the Run result, frozen model, trajectory bytes, Runtime/MuJoCo
+renderer, camera, resolution, and stride. Legacy Runs can be replayed only while
+their matching content-addressed Assembly cache is still available.
 
 `mujica-workspace.json` contains only a name, one projects directory, and an optional default project. Workspaces never provide shared components or policies.

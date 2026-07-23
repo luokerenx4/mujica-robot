@@ -171,6 +171,63 @@ export const trainingSchema = z.object({
   }).strict().optional(),
 }).strict();
 
+export const calibrationSchema = z.object({
+  version: z.literal(1),
+  id: idSchema,
+  name: z.string().min(1),
+  assembly: idSchema,
+  scenario: idSchema,
+  controlHz: z.number().positive(),
+  provenance: z.object({
+    kind: z.enum(["synthetic", "hil", "real"]),
+    device: z.object({
+      vendor: z.string().min(1),
+      model: z.string().min(1),
+      serial: z.string().min(1),
+    }).strict().nullable(),
+    capturedAt: z.string().datetime(),
+    operator: z.string().min(1),
+    notes: z.string(),
+  }).strict(),
+  sources: z.array(z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("simulation-run"), run: idSchema }).strict(),
+    z.object({ kind: z.literal("capture"), path: relativeFileSchema }).strict(),
+  ])).min(2),
+  parameters: z.object({
+    bodyMassScale: positiveDomainRangeSchema.optional(),
+    jointDampingScale: nonnegativeDomainRangeSchema.optional(),
+    actuatorStrengthScale: positiveDomainRangeSchema.optional(),
+    frictionScale: positiveDomainRangeSchema.optional(),
+    actuatorDelaySteps: z.object({ minimum: z.number().int().nonnegative(), maximum: z.number().int().nonnegative() }).strict()
+      .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum").optional(),
+  }).strict(),
+  optimizer: z.object({
+    rounds: z.number().int().min(1).max(6),
+    samplesPerAxis: z.number().int().min(3).max(11).refine((value) => value % 2 === 1, "samplesPerAxis must be odd"),
+    validationSources: z.number().int().positive(),
+    maximumValidationLoss: z.number().nonnegative(),
+  }).strict(),
+  profile: z.object({
+    id: idSchema,
+    name: z.string().min(1),
+    uncertaintyFraction: z.number().min(0).max(1),
+    delayMarginSteps: z.number().int().nonnegative(),
+  }).strict(),
+}).strict().superRefine((calibration, context) => {
+  if (Object.keys(calibration.parameters).length === 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["parameters"], message: "Calibration must fit at least one parameter" });
+  }
+  if (calibration.optimizer.validationSources >= calibration.sources.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["optimizer", "validationSources"], message: "Calibration must retain at least one fitting source" });
+  }
+  if (calibration.provenance.kind !== "synthetic" && calibration.provenance.device === null) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "device"], message: "HIL and real Calibration require serialized device identity" });
+  }
+  if (calibration.provenance.kind !== "synthetic" && calibration.sources.some((source) => source.kind === "simulation-run")) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["sources"], message: "Simulation Runs can only produce synthetic Calibration evidence" });
+  }
+});
+
 export const hardwareTargetSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), revision: idSchema, assembly: idSchema, controller: idSchema,
   environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
@@ -285,6 +342,7 @@ export type ObjectiveDefinition = z.output<typeof objectiveSchema>;
 export type BenchmarkDefinition = z.output<typeof benchmarkSchema>;
 export type TrainerDefinition = z.output<typeof trainerSchema>;
 export type TrainingDefinition = z.output<typeof trainingSchema>;
+export type CalibrationDefinition = z.output<typeof calibrationSchema>;
 export type HardwareTargetDefinition = z.output<typeof hardwareTargetSchema>;
 export type HardwareEvidence = z.output<typeof hardwareEvidenceSchema>;
 export type CandidateDefinition = z.output<typeof candidateSchema>;

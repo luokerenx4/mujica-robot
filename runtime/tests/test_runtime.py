@@ -5,9 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import mujoco
 import numpy as np
 import torch
 
+from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
 from mujica_runtime.io import hash_directory, hash_file
@@ -156,6 +158,7 @@ class RuntimeContractTest(unittest.TestCase):
         sample = {"bodyMassScale": 1.1, "jointDampingScale": 0.5, "actuatorStrengthScale": 0.8, "frictionScale": 0.6, "observationNoiseStd": 0.002, "actuatorDelayJitterSteps": 2}
         randomized = RobotEnvironment(model, compiled, task, scenario, 7, sample)
         self.assertAlmostEqual(float(randomized.model.body_mass.sum()), float(nominal.model.body_mass.sum()) * 1.1)
+        np.testing.assert_allclose(randomized.model.body_inertia, nominal.model.body_inertia * 1.1)
         np.testing.assert_allclose(randomized.model.dof_damping, nominal.model.dof_damping * 0.5)
         np.testing.assert_allclose(randomized.model.actuator_gainprm[:, 0], nominal.model.actuator_gainprm[:, 0] * 0.8)
         np.testing.assert_allclose(randomized.model.geom_friction[:, 0], float(scenario["friction"]) * 0.6)
@@ -163,6 +166,98 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(randomized.scenario["observationNoiseStd"], float(scenario["observationNoiseStd"]) + 0.002)
         randomized.reset()
         self.assertEqual(randomized.events[0]["plant"]["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
+
+    def test_system_identification_recovers_an_independent_hidden_plant(self):
+        hidden = {
+            "bodyMassScale": 1.125,
+            "jointDampingScale": 0.9,
+            "actuatorStrengthScale": 1.175,
+            "actuatorDelaySteps": 2,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            model = root / "pendulum.xml"
+            model.write_text("""<mujoco model="calibration-pendulum">
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <worldbody>
+    <body name="link-1" pos="0 0 0">
+      <joint name="joint-1" type="hinge" axis="0 1 0" damping="0.8"/>
+      <geom name="link-1-geom" type="capsule" fromto="0 0 0 0 0 -0.45" size="0.035" density="700"/>
+      <body name="link-2" pos="0 0 -0.45">
+        <joint name="joint-2" type="hinge" axis="0 1 0" damping="0.5"/>
+        <geom name="link-2-geom" type="capsule" fromto="0 0 0 0 0 -0.35" size="0.03" density="600"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="motor-1" joint="joint-1" gear="1" ctrllimited="true" ctrlrange="-8 8"/>
+    <motor name="motor-2" joint="joint-2" gear="1" ctrllimited="true" ctrlrange="-8 8"/>
+  </actuator>
+</mujoco>
+""")
+            hidden_model = mujoco.MjModel.from_xml_path(str(model))
+            hidden_model.body_mass[:] *= hidden["bodyMassScale"]
+            hidden_model.body_inertia[:] *= hidden["bodyMassScale"]
+            hidden_model.dof_damping[:] *= hidden["jointDampingScale"]
+            hidden_model.actuator_gainprm[:, 0] *= hidden["actuatorStrengthScale"]
+            sources = []
+            for source_index, seed in enumerate([101, 202, 303]):
+                data = mujoco.MjData(hidden_model)
+                data.qpos[:] = [0.15 * (source_index + 1), -0.1 * (source_index + 1)]
+                mujoco.mj_forward(hidden_model, data)
+                rng = np.random.default_rng(seed)
+                command_history = []
+                rows = []
+                action = np.zeros(hidden_model.nu)
+                for step in range(80):
+                    if step % 4 == 0:
+                        action = rng.uniform(-4.0, 4.0, hidden_model.nu)
+                    rows.append({
+                        "episode": f"excitation-{source_index + 1}",
+                        "step": step,
+                        "time": step / 50.0,
+                        "qpos": data.qpos.tolist(),
+                        "qvel": data.qvel.tolist(),
+                        "commandedAction": action.tolist(),
+                    })
+                    command_history.append(action.copy())
+                    delayed = command_history[step - hidden["actuatorDelaySteps"]] if step >= hidden["actuatorDelaySteps"] else np.zeros(hidden_model.nu)
+                    data.ctrl[:] = delayed
+                    for _ in range(10):
+                        mujoco.mj_step(hidden_model, data)
+                rows.append({
+                    "episode": f"excitation-{source_index + 1}",
+                    "step": len(rows),
+                    "time": len(rows) / 50.0,
+                    "qpos": data.qpos.tolist(),
+                    "qvel": data.qvel.tolist(),
+                    "commandedAction": np.zeros(hidden_model.nu).tolist(),
+                })
+                path = root / f"capture-{source_index + 1}.ndjson"
+                path.write_text("\n".join(json.dumps(row, separators=(",", ":")) for row in rows) + "\n")
+                sources.append({"kind": "capture", "id": f"capture-{source_index + 1}", "path": str(path), "hash": hash_file(path)})
+            definition = {
+                "sources": [{}, {}, {}],
+                "parameters": {
+                    "bodyMassScale": {"minimum": 0.9, "maximum": 1.2},
+                    "jointDampingScale": {"minimum": 0.6, "maximum": 1.2},
+                    "actuatorStrengthScale": {"minimum": 0.8, "maximum": 1.3},
+                    "actuatorDelaySteps": {"minimum": 0, "maximum": 3},
+                },
+                "optimizer": {"rounds": 3, "samplesPerAxis": 5, "validationSources": 1},
+            }
+            estimator = OneStepEstimator(model, 50.0, {"friction": 1.0, "payloadKg": 0.0}, sources)
+            first = _fit(estimator, definition)
+            second = _fit(estimator, definition)
+            self.assertEqual(first["parameters"], second["parameters"])
+            self.assertEqual(first["parameters"]["actuatorDelaySteps"], 2)
+            self.assertLess(first["validation"]["loss"], 0.001)
+            for name, expected in [
+                ("bodyMassScale", 1.125),
+                ("jointDampingScale", 0.9),
+                ("actuatorStrengthScale", 1.175),
+            ]:
+                self.assertAlmostEqual(first["parameters"][name], expected, delta=0.02)
     def test_survival_is_measured_against_the_requested_episode(self):
         self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)

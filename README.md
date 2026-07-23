@@ -33,6 +33,13 @@ bun run mujica diagnose examples/quadruped \
   --benchmark spatial-generalization
 bun run mujica train examples/quadruped --training forward-residual-locomotion --seed 42
 bun run mujica domain inspect examples/quadruped --domain quadruped-pre-hil-v1
+bun run mujica calibration inspect examples/quadruped \
+  --calibration quadruped-synthetic-hidden-plant
+bun run mujica calibrate examples/quadruped \
+  --calibration quadruped-synthetic-hidden-plant
+bun run mujica calibration promote examples/quadruped \
+  --run calibration-0953f26819aff930
+bun run mujica train examples/quadruped --training calibrated-residual-locomotion --seed 109
 bun run mujica train examples/quadruped --training sim-to-real-residual-locomotion --seed 91
 bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
@@ -66,6 +73,19 @@ hypotheses—double samples and double residual authority—were both automatica
 REVERT after capability regressions. This is evidence of a useful learning
 signal, not a claim of hardware readiness. See [sim-to-real Domain
 Profiles](docs/design/sim-to-real-domain-profiles.md).
+
+Calibration closes the inverse path from recorded motion back into the simulator.
+Run v3 freezes the exact initial state and records commanded and delayed/applied
+Action separately. `mujica calibrate` fits only declared bounded plant parameters
+from content-hashed sources, assigns whole sources to fit or validation, and
+writes an immutable Calibration Run. Promotion is a separate operation and
+fails on stale evidence or excessive validation loss. The checked-in synthetic
+proof recovered its hidden mass `1.125`, damping `0.9`, strength `1.175`, and
+two-step delay exactly; held-out loss was `0.00227`. Its first 4096-step Policy
+scored `44.0662` against the locked mismatch audit versus `44.3864` for the
+program baseline, so it remains useful frozen evidence rather than a claimed
+Controller improvement. See [system-identification
+captures](docs/design/system-identification-captures.md).
 
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
@@ -107,4 +127,4 @@ The traction lane now reaches `friction = 0.1` without exposing Scenario identit
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 
-Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

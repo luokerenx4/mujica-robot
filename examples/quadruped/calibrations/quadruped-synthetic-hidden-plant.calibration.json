@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "id": "quadruped-synthetic-hidden-plant",
+  "name": "Synthetic three-command quadruped system-identification proof",
+  "assembly": "command-conditioned-history-3dof",
+  "scenario": "nominal",
+  "controlHz": 50,
+  "provenance": {
+    "kind": "synthetic",
+    "device": null,
+    "capturedAt": "2026-07-23T10:00:00.000Z",
+    "operator": "Mujica deterministic synthetic verification",
+    "notes": "Three independent MuJoCo Runs generated from a hidden Scenario. This validates the calibration pipeline only and is not HIL or real-device evidence."
+  },
+  "sources": [
+    {
+      "kind": "simulation-run",
+      "run": "run-36391fc5109e6d38"
+    },
+    {
+      "kind": "simulation-run",
+      "run": "run-ef2286a393b0a997"
+    },
+    {
+      "kind": "simulation-run",
+      "run": "run-3c89a0ebe1617558"
+    }
+  ],
+  "parameters": {
+    "bodyMassScale": {
+      "minimum": 0.9,
+      "maximum": 1.2
+    },
+    "jointDampingScale": {
+      "minimum": 0.6,
+      "maximum": 1.2
+    },
+    "actuatorStrengthScale": {
+      "minimum": 0.8,
+      "maximum": 1.3
+    },
+    "actuatorDelaySteps": {
+      "minimum": 0,
+      "maximum": 3
+    }
+  },
+  "optimizer": {
+    "rounds": 3,
+    "samplesPerAxis": 5,
+    "validationSources": 1,
+    "maximumValidationLoss": 0.01
+  },
+  "profile": {
+    "id": "quadruped-synthetic-calibrated-v1",
+    "name": "Synthetic system-identified quadruped plant",
+    "uncertaintyFraction": 0.08,
+    "delayMarginSteps": 1
+  }
+}

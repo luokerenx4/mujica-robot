@@ -273,6 +273,11 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     controller.reset(int(request["seed"]))
     environment = RobotEnvironment(model_path, compiled, request["task"], request["scenario"], int(request["seed"]))
     observation = environment.reset()
+    initial_state = {
+        "time": float(environment.data.time),
+        "qpos": environment.data.qpos.tolist(),
+        "qvel": environment.data.qvel.tolist(),
+    }
     initial_position = environment.data.qpos[:3].copy()
     previous_position = initial_position.copy()
     distance_traveled = 0.0
@@ -316,7 +321,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         maximum_pitch = max(maximum_pitch, pitch)
         foot_contact_force = result.observation.get("foot-contact-force")
         foot_positions_world = environment.foot_positions_world()
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -344,7 +349,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})
     run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})
-    result_hash = hash_json({"runKey": run_key, "events": environment.events, "trajectory": trajectory, "metrics": metrics, "score": score})
+    result_hash = hash_json({"runKey": run_key, "initialState": initial_state, "events": environment.events, "trajectory": trajectory, "metrics": metrics, "score": score})
     output = {"runId": f"run-{run_key[:16]}", "runKey": run_key, "resultHash": result_hash, "metrics": metrics, "score": score, "events": environment.events}
     if not persist: return output
     target = project_dir / "runs" / output["runId"]
@@ -360,6 +365,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "inputs" / "task.json", request["task"])
         write_json(directory / "inputs" / "scenario.json", request["scenario"])
         write_json(directory / "inputs" / "objective.json", request["objective"])
+        write_json(directory / "inputs" / "initial-state.json", initial_state)
         with (directory / "events.ndjson").open("w") as stream:
             for event in environment.events: stream.write(json.dumps(event, separators=(",", ":")) + "\n")
         with (directory / "trajectory.ndjson").open("w") as stream:
@@ -367,6 +373,6 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "metrics.json", metrics)
         write_json(directory / "score.json", score)
         (directory / "report.md").write_text(f"# Mujica simulation run\n\n- Run: `{output['runId']}`\n- Score: `{score['total']:.6f}`\n- Survival: `{metrics['survivalRate']:.3f}`\n- Fell: `{metrics['fell']}`\n")
-        write_json(directory / "manifest.json", {"version": 2, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "modelHash": compiled["modelHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
+        write_json(directory / "manifest.json", {"version": 3, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "modelHash": compiled["modelHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
     atomic_directory(target, writer)
     return {**output, "artifactPath": str(target), "cached": False}
