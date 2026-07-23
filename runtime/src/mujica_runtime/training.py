@@ -18,6 +18,34 @@ from .environment import RobotEnvironment
 from .io import atomic_directory, hardware_info, hash_file, hash_json, write_json
 
 
+QUALITY_REWARD_REFERENCES = {
+    "jointAcceleration": 1000.0,
+    "bodyAngularAcceleration": 100.0,
+    "actionSlew": 800.0,
+    "actuatorSaturation": 1.0,
+    "footSlip": 1.0,
+    "footImpact": 20000.0,
+}
+QUALITY_REWARD_FEATURES = {
+    "jointAcceleration": "jointAccelerationMeanAbsRadPerSec2",
+    "bodyAngularAcceleration": "bodyAngularAccelerationMeanAbsRadPerSec2",
+    "actionSlew": "actionSlewMeanAbsPerSec",
+    "actuatorSaturation": "actuatorSaturationRate",
+    "footSlip": "footSlipMeanMps",
+    "footImpact": "footContactImpactMeanNPerSec",
+}
+
+
+def quality_reward_penalty(info: dict[str, Any], weights: dict[str, Any] | None) -> tuple[float, dict[str, float]]:
+    quality = info.get("motionQuality", {})
+    terms = {
+        name: float((weights or {}).get(name, 0.0)) * float(quality.get(feature, 0.0)) / reference
+        for name, reference in QUALITY_REWARD_REFERENCES.items()
+        for feature in [QUALITY_REWARD_FEATURES[name]]
+    }
+    return float(sum(terms.values())), terms
+
+
 class RunningNormalizer:
     def __init__(self, size: int):
         self.count = 1e-4
@@ -100,6 +128,7 @@ class PPOTrainer:
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
+            batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
                 normalizer.update(observation); normalized = normalizer.normalize(observation)
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
@@ -113,9 +142,13 @@ class PPOTrainer:
                     transformed = transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time))
                 action = np.clip(transformed, lows, highs)
                 result = environment.step(action)
-                episode_reward += result.reward
+                quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
+                learning_reward = result.reward - quality_penalty
+                episode_reward += learning_reward
                 done = result.terminated or result.truncated
-                batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(result.reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
+                batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(learning_reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
+                batch_base_rewards.append(result.reward); batch_quality_penalties.append(quality_penalty)
+                for name, value in quality_terms.items(): batch_quality_terms[name].append(value)
                 observation_map = result.observation; observation = environment.vector(observation_map); completed_steps += 1
                 if done:
                     completed_rewards.append(episode_reward); episode_reward = 0.0; environment = make_environment()
@@ -146,7 +179,11 @@ class PPOTrainer:
                     residual_penalty = float(config.get("residualPenalty", 0.0)) * torch.square(mean).mean()
                     loss = policy_loss + value_loss + residual_penalty - float(config["entropyCoefficient"]) * entropy
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
-            metrics.append({"steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
+            metrics.append({
+                "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
+                "meanBaseReward": float(np.mean(batch_base_rewards)), "meanQualityPenalty": float(np.mean(batch_quality_penalties)),
+                "meanQualityTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_quality_terms.items()},
+            })
 
         torch.save(network.state_dict(), output_dir / "model.pt")
         if action_transform and action_transform.get("kind") == "program-controller-residual":
@@ -155,7 +192,7 @@ class PPOTrainer:
             action_transform = {**action_transform, "controllerId": prior_definition["id"], "controllerHash": request["priorControllerHash"]}
         write_json(output_dir / "architecture.json", {**architecture, "actionTransform": action_transform})
         write_json(output_dir / "normalizer.json", {"count": normalizer.count, "mean": normalizer.mean.tolist(), "variance": normalizer.variance.tolist()})
-        write_json(output_dir / "training-metrics.json", {"updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
+        write_json(output_dir / "training-metrics.json", {"updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward, "qualityRewardReferences": QUALITY_REWARD_REFERENCES})
         return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}
 
 

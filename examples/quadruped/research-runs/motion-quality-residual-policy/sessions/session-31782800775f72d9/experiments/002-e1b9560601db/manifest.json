@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "002-e1b9560601db",
+  "sequence": 2,
+  "sessionId": "session-31782800775f72d9",
+  "researchId": "motion-quality-residual-policy",
+  "labHash": "401a95951da683873efcb255a898b90c986395eb62f7ac1ff4af7a8c660ecd79",
+  "programHash": "461b59eb3f0911a87effe28764683019522b6b366236e2cac848389737e05a2e",
+  "benchmarkLockHash": "514aec3a98035743ba3e454e74aa9444e88a93d1f23ad1d1ddfa68aa04570210",
+  "sourceHash": "3f864f1721aee640cca37758692d0e74177676044055a672baf7e7e38a2c22af",
+  "researcherChangedPaths": [
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/motion-quality-residual-gait/controller.json",
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "near-zero-teacher-recovery",
+    "hypothesis": "The next residual scale follows the prior verdict: cautiously expand a kept correction, or collapse a rejected one back toward the frozen program teacher.",
+    "expectedEffect": "Preserve every passing gate and improve quality severity without repeating the prior delayed tracking or backward-motion failure."
+  },
+  "policyId": "motion-quality-residual-locomotion-505d7237acc43813",
+  "score": 46.96864531496409,
+  "delta": -1.4372978857403922,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "delayed-forward: survival regressed from passing to failing",
+      "upright-locomotion: delayed-forward: survival regressed from passing to failing",
+      "upright-locomotion: delayed-forward: yaw-rate-tracking regressed from passing to failing",
+      "command-transitions: delayed-braking: planar-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 10,
+    "previousViolationSeverity": 7.718768986744092,
+    "candidateViolationSeverity": 7.5972629667828215,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 59506,
+  "completed": true
+}

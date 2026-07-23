@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "assembly": "command-conditioned-history-3dof",
+  "channels": [
+    {
+      "name": "joint-position",
+      "kind": "joint-position",
+      "size": 12,
+      "source": "qpos:joints",
+      "unit": "rad"
+    },
+    {
+      "name": "joint-velocity",
+      "kind": "joint-velocity",
+      "size": 12,
+      "source": "qvel:joints",
+      "unit": "rad-s"
+    },
+    {
+      "name": "base-height",
+      "kind": "body-state",
+      "size": 1,
+      "source": "qpos:root-height",
+      "unit": "m"
+    },
+    {
+      "name": "base-orientation",
+      "kind": "body-state",
+      "size": 4,
+      "source": "qpos:root-quaternion",
+      "unit": "quaternion"
+    },
+    {
+      "name": "base-velocity",
+      "kind": "body-state",
+      "size": 6,
+      "source": "qvel:root",
+      "unit": "mixed"
+    },
+    {
+      "name": "imu-angular-velocity",
+      "kind": "sensor",
+      "size": 3,
+      "source": "sensor:body-gyro",
+      "unit": "rad-s"
+    },
+    {
+      "name": "imu-linear-acceleration",
+      "kind": "sensor",
+      "size": 3,
+      "source": "sensor:body-accelerometer",
+      "unit": "m-s2"
+    },
+    {
+      "name": "command-action-history",
+      "kind": "sensor",
+      "size": 48,
+      "source": "control:command-history-4",
+      "unit": "nm"
+    },
+    {
+      "name": "applied-action-history",
+      "kind": "sensor",
+      "size": 48,
+      "source": "control:applied-history-4",
+      "unit": "nm"
+    },
+    {
+      "name": "actuator-delay-steps",
+      "kind": "sensor",
+      "size": 1,
+      "source": "control:actuator-delay-steps",
+      "unit": "control-step"
+    },
+    {
+      "name": "motion-command",
+      "kind": "command",
+      "size": 3,
+      "source": "task:motion-command",
+      "unit": "m/s,m/s,rad/s"
+    },
+    {
+      "name": "foot-contact-force",
+      "kind": "sensor",
+      "size": 4,
+      "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+      "unit": "n"
+    }
+  ],
+  "size": 145
+}

@@ -16,7 +16,9 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 ## Active plans
 
-None.
+| Plan | Outcome | Updated |
+| --- | --- | --- |
+| [ML motion-quality autoresearch](plans/ml-motion-quality-autoresearch.md) | Train and govern a quality-aware residual Policy through an AI-authored experiment, frozen-policy Judge evaluation, regression protection, and visual comparison. | 2026-07-23 |
 
 ## Completed plans
 

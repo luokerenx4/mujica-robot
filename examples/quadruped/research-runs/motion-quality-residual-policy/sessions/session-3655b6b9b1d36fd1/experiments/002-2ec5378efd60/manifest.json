@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "002-2ec5378efd60",
+  "sequence": 2,
+  "sessionId": "session-3655b6b9b1d36fd1",
+  "researchId": "motion-quality-residual-policy",
+  "labHash": "401a95951da683873efcb255a898b90c986395eb62f7ac1ff4af7a8c660ecd79",
+  "programHash": "461b59eb3f0911a87effe28764683019522b6b366236e2cac848389737e05a2e",
+  "benchmarkLockHash": "514aec3a98035743ba3e454e74aa9444e88a93d1f23ad1d1ddfa68aa04570210",
+  "sourceHash": "3533a4511a31c169f326ea02b1fea64d75db873c432e2c24c98d170f53644346",
+  "researcherChangedPaths": [
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/motion-quality-residual-gait/controller.json",
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "micro-residual-refinement",
+    "hypothesis": "The next residual remains inside the frozen program teacher's safe neighborhood, expanding only after a KEEP and shrinking after a rejection.",
+    "expectedEffect": "Retain the promoted feasibility tier while testing whether a micro-correction can improve locked motion quality without gate regressions."
+  },
+  "policyId": "motion-quality-residual-locomotion-19270ecf03a864e3",
+  "score": 48.59809050865674,
+  "delta": -1.0547735377151497,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "delayed-forward: lateral-drift regressed from passing to failing",
+      "upright-locomotion: delayed-forward: lateral-drift regressed from passing to failing",
+      "command-transitions: delayed-braking: transition-terminal-planar regressed from passing to failing",
+      "command-transitions: delayed-braking: planar-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 7,
+    "candidateViolationCount": 8,
+    "previousViolationSeverity": 2.600393243330552,
+    "candidateViolationSeverity": 4.5953442108981335,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 55902,
+  "completed": true
+}

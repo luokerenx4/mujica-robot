@@ -134,6 +134,10 @@ export const trainingSchema = z.object({
   learningRate: z.number().positive(), gamma: z.number().min(0).max(1), gaeLambda: z.number().min(0).max(1), clipRatio: z.number().positive(), entropyCoefficient: z.number().nonnegative(),
   residualScale: z.number().min(0).max(1).optional(),
   residualPenalty: z.number().nonnegative().optional(),
+  qualityReward: z.object({
+    jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
+    actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),
+  }).strict().optional(),
 }).strict();
 
 export const hardwareTargetSchema = z.object({

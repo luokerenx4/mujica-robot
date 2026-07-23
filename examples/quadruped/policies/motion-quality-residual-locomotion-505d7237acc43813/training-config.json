@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "motion-quality-residual-locomotion",
+  "name": "Quality-aware upright residual locomotion",
+  "assembly": "command-conditioned-history-3dof",
+  "trainer": "motion-quality-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal",
+    "actuator-delay-three-step"
+  ],
+  "priorController": "upright-traction-gait",
+  "totalSteps": 4096,
+  "rolloutSteps": 256,
+  "epochs": 2,
+  "minibatchSize": 64,
+  "learningRate": 2e-05,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0,
+  "residualScale": 0.015,
+  "residualPenalty": 10,
+  "qualityReward": {
+    "jointAcceleration": 0.3,
+    "bodyAngularAcceleration": 0.7,
+    "actionSlew": 0.4,
+    "actuatorSaturation": 0.5,
+    "footSlip": 1,
+    "footImpact": 0.8
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "id": "001-9f11d06088bc",
+  "sequence": 1,
+  "sessionId": "session-3655b6b9b1d36fd1",
+  "researchId": "motion-quality-residual-policy",
+  "labHash": "401a95951da683873efcb255a898b90c986395eb62f7ac1ff4af7a8c660ecd79",
+  "programHash": "461b59eb3f0911a87effe28764683019522b6b366236e2cac848389737e05a2e",
+  "benchmarkLockHash": "514aec3a98035743ba3e454e74aa9444e88a93d1f23ad1d1ddfa68aa04570210",
+  "sourceHash": "797f51779c3ee0f1b5e1d802b5a02fbe78a25be33b19549009b650756ecc2305",
+  "researcherChangedPaths": [
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/motion-quality-residual-gait/controller.json",
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "safety-first-residual-bootstrap",
+    "hypothesis": "An ultra-small learned residual with a strong zero-output penalty should inherit the reliable program teacher's feasibility before attempting larger quality corrections.",
+    "expectedEffect": "Recover the seven-violation program tier, preserve every passing delayed gate, and establish a promotable ML Policy baseline with live foot-quality evidence."
+  },
+  "policyId": "motion-quality-residual-locomotion-478335c4ce7fee99",
+  "score": 49.65286404637189,
+  "delta": 1.246920845667404,
+  "verdict": "KEEP",
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 7,
+    "previousViolationSeverity": 7.718768986744092,
+    "candidateViolationSeverity": 2.600393243330552,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "fewer-gate-violations"
+  },
+  "revisionId": "quadruped-p-a19af86be9ad",
+  "durationMs": 58909,
+  "completed": true
+}

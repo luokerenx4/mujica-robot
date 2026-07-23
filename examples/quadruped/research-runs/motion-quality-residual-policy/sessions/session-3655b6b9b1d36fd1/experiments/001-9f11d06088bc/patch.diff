@@ -1,0 +1,49 @@
+diff --git a/before/controllers/motion-quality-residual-gait/controller.json b/after/controllers/motion-quality-residual-gait/controller.json
+index dae150b..28dd414 100644
+--- a/before/controllers/motion-quality-residual-gait/controller.json
++++ b/after/controllers/motion-quality-residual-gait/controller.json
+@@ -3,6 +3,6 @@
+   "id": "motion-quality-residual-gait",
+   "name": "Frozen motion-quality residual policy",
+   "kind": "policy",
+-  "policy": "upright-residual-locomotion-1d4c901d04ccfabb",
++  "policy": "motion-quality-residual-locomotion-478335c4ce7fee99",
+   "deterministic": true
+ }
+diff --git a/before/training/motion-quality-residual-locomotion.training.json b/after/training/motion-quality-residual-locomotion.training.json
+index 957b1c9..8bf27d0 100644
+--- a/before/training/motion-quality-residual-locomotion.training.json
++++ b/after/training/motion-quality-residual-locomotion.training.json
+@@ -10,23 +10,23 @@
+     "nominal",
+     "actuator-delay-three-step"
+   ],
+-  "totalSteps": 2048,
++  "totalSteps": 4096,
+   "rolloutSteps": 256,
+   "epochs": 2,
+   "minibatchSize": 64,
+-  "learningRate": 0.0001,
++  "learningRate": 1e-05,
+   "gamma": 0.99,
+   "gaeLambda": 0.95,
+   "clipRatio": 0.15,
+-  "entropyCoefficient": 0.001,
+-  "residualScale": 0.15,
+-  "residualPenalty": 0.1,
++  "entropyCoefficient": 0.0,
++  "residualScale": 0.002,
++  "residualPenalty": 50.0,
+   "qualityReward": {
+     "jointAcceleration": 0.1,
+-    "bodyAngularAcceleration": 0.1,
++    "bodyAngularAcceleration": 0.2,
+     "actionSlew": 0.1,
+-    "actuatorSaturation": 0.1,
+-    "footSlip": 0.1,
+-    "footImpact": 0.1
++    "actuatorSaturation": 0.2,
++    "footSlip": 0.3,
++    "footImpact": 0.2
+   }
+ }

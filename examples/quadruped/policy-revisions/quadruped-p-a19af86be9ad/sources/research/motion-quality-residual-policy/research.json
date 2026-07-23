@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "id": "motion-quality-residual-policy",
+  "name": "Motion-quality residual Policy autoresearch",
+  "program": "research/motion-quality-residual-policy/program.md",
+  "benchmark": "motion-quality",
+  "regressions": [
+    "upright-locomotion",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "motion-quality-residual-locomotion",
+    "controller": "motion-quality-residual-gait",
+    "seed": 73
+  },
+  "editable": {
+    "paths": [
+      "trainers/motion-quality-residual-ppo/**",
+      "training/motion-quality-residual-locomotion.training.json",
+      "controllers/motion-quality-residual-gait/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 2,
+    "maxWallClockSeconds": 360,
+    "maximumTrainingSteps": 8192
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

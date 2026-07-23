@@ -40,6 +40,7 @@ def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]
 
 class RobotEnvironment:
     FOOT_SITE_NAMES = ("foot-fl-site", "foot-fr-site", "foot-rl-site", "foot-rr-site")
+    FOOT_SENSOR_NAMES = ("foot-force-fl", "foot-force-fr", "foot-force-rl", "foot-force-rr")
 
     def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
@@ -149,9 +150,25 @@ class RobotEnvironment:
             return None
         return np.asarray([self.data.site_xpos[site_id].copy() for site_id in site_ids], dtype=np.float64)
 
+    def foot_contact_forces(self) -> np.ndarray | None:
+        values: list[float] = []
+        for name in self.FOOT_SENSOR_NAMES:
+            sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, name)
+            if sensor_id < 0:
+                return None
+            start = int(self.model.sensor_adr[sensor_id]); size = int(self.model.sensor_dim[sensor_id])
+            if size != 1:
+                return None
+            values.append(float(self.data.sensordata[start]))
+        return np.asarray(values, dtype=np.float64)
+
     def step(self, action: np.ndarray) -> StepResult:
         command_step = self.step_index
         target = self.motion_command(command_step)
+        previous_joint_velocity = self.data.qvel[6:].copy()
+        previous_body_angular_velocity = self.data.qvel[3:6].copy()
+        previous_foot_positions = self.foot_positions_world()
+        previous_foot_forces = self.foot_contact_forces()
         if command_step > 0 and command_step in self.motion_command_by_step:
             self.events.append({"type": "motion-command.changed", "time": command_step * self.control_dt, "step": command_step, "motionCommand": target.tolist()})
         action = np.asarray(action, dtype=np.float64).reshape(-1)
@@ -195,9 +212,36 @@ class RobotEnvironment:
         upright = float(1.0 - min(1.0, np.linalg.norm(self.data.qpos[4:6])))
         energy = float(np.sum(np.abs(applied * self.data.qvel[6:])))
         smoothness = float(np.mean(np.square(applied - self.previous_action)))
+        action_slew = np.abs(applied - self.previous_action) / self.control_dt
+        control_low = np.asarray(self.compiled["actionLow"], dtype=np.float64)
+        control_high = np.asarray(self.compiled["actionHigh"], dtype=np.float64)
+        saturation_tolerance = 0.01 * np.maximum(np.abs(control_high - control_low), 1e-12)
+        saturation_rate = float(np.mean(np.logical_or(applied <= control_low + saturation_tolerance, applied >= control_high - saturation_tolerance)))
+        joint_acceleration = np.abs(self.data.qvel[6:] - previous_joint_velocity) / self.control_dt
+        body_angular_acceleration = np.abs(self.data.qvel[3:6] - previous_body_angular_velocity) / self.control_dt
+        current_foot_positions = self.foot_positions_world()
+        current_foot_forces = self.foot_contact_forces()
+        foot_slip_speeds: list[float] | None = None
+        foot_contact_impacts: list[float] | None = None
+        if previous_foot_positions is not None and previous_foot_forces is not None and current_foot_positions is not None and current_foot_forces is not None:
+            foot_slip_speeds = []
+            foot_contact_impacts = []
+            for foot_index in range(len(current_foot_forces)):
+                planted = previous_foot_forces[foot_index] > 1.0 and current_foot_forces[foot_index] > 1.0
+                foot_slip_speeds.append(float(np.linalg.norm(current_foot_positions[foot_index, :2] - previous_foot_positions[foot_index, :2]) / self.control_dt) if planted else 0.0)
+                foot_contact_impacts.append(max(0.0, float(current_foot_forces[foot_index] - previous_foot_forces[foot_index]) / self.control_dt))
+        quality = {
+            "jointAccelerationMeanAbsRadPerSec2": float(np.mean(joint_acceleration)),
+            "bodyAngularAccelerationMeanAbsRadPerSec2": float(np.mean(body_angular_acceleration)),
+            "actionSlewMeanAbsPerSec": float(np.mean(action_slew)),
+            "actuatorSaturationRate": saturation_rate,
+            "footEvidenceAvailable": foot_slip_speeds is not None,
+            "footSlipMeanMps": float(np.mean(foot_slip_speeds)) if foot_slip_speeds is not None else 0.0,
+            "footContactImpactMeanNPerSec": float(np.mean(foot_contact_impacts)) if foot_contact_impacts is not None else 0.0,
+        }
         velocity_reward = float(np.exp(-10.0 * velocity_error * velocity_error))
         reward = (1.0 if healthy else -1.0) + 1.5 * velocity_reward + 0.75 * normalized_progress_rate + upright - 2.0 * lateral_displacement - 0.002 * energy - 0.001 * smoothness
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()
-        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy()})
+        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "appliedAction": applied.copy(), "motionQuality": quality})

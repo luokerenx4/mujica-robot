@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "upright-locomotion",
+  "name": "Upright command-conditioned locomotion",
+  "weights": {
+    "survival": 30,
+    "velocityTracking": 30,
+    "forwardProgress": 25,
+    "upright": 20,
+    "lateralDrift": 10,
+    "transitionTracking": 0,
+    "energy": 0.005,
+    "smoothness": 0.001,
+    "componentMass": 0.2,
+    "sensorChannels": 0.01,
+    "trainingSteps": 0.0001
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0.2,
+    "minimumSignedForwardProgress": 0.2,
+    "maximumBackwardDisplacement": 0.02,
+    "maximumBackwardPitchRad": 0.5,
+    "maximumAbsolutePitchRad": 0.6,
+    "maximumBodyTiltRad": 0.65,
+    "maximumLateralDrift": 0.25,
+    "maximumPlanarVelocityTrackingError": 0.22,
+    "maximumYawRateTrackingError": 0.35,
+    "maximumRegression": 10
+  }
+}

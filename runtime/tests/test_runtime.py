@@ -13,7 +13,7 @@ from mujica_runtime.environment import RobotEnvironment, compile_motion_command_
 from mujica_runtime.io import hash_directory, hash_file
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
-from mujica_runtime.training import PPOTrainer, effective_action_transform
+from mujica_runtime.training import PPOTrainer, effective_action_transform, quality_reward_penalty
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -115,6 +115,20 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(base["residualScale"], 1.0)
         with self.assertRaisesRegex(RuntimeError, "requires a Trainer action transform"):
             effective_action_transform(None, {"residualScale": 0.25})
+
+    def test_quality_reward_is_explicit_normalized_and_neutral_when_omitted(self):
+        info = {"motionQuality": {
+            "jointAccelerationMeanAbsRadPerSec2": 500.0,
+            "bodyAngularAccelerationMeanAbsRadPerSec2": 50.0,
+            "actionSlewMeanAbsPerSec": 400.0,
+            "actuatorSaturationRate": 0.5,
+            "footSlipMeanMps": 0.5,
+            "footContactImpactMeanNPerSec": 10000.0,
+        }}
+        penalty, terms = quality_reward_penalty(info, {name: 1.0 for name in ["jointAcceleration", "bodyAngularAcceleration", "actionSlew", "actuatorSaturation", "footSlip", "footImpact"]})
+        self.assertAlmostEqual(penalty, 3.0)
+        self.assertEqual(terms, {name: 0.5 for name in terms})
+        self.assertEqual(quality_reward_penalty(info, None)[0], 0.0)
     def test_survival_is_measured_against_the_requested_episode(self):
         self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
@@ -388,6 +402,10 @@ class RuntimeContractTest(unittest.TestCase):
         observation = environment.reset()
         self.assertEqual(environment.vector(observation).shape, (37,))
         self.assertEqual(observation["foot-contact-force"].shape, (4,))
+        self.assertEqual(environment.foot_positions_world().shape, (4, 3))
+        self.assertEqual(environment.foot_contact_forces().shape, (4,))
+        result = environment.step(np.zeros(environment.model.nu))
+        self.assertTrue(result.info["motionQuality"]["footEvidenceAvailable"])
 
     def test_actuator_telemetry_exposes_commanded_and_delayed_actions(self):
         model, compiled = compiled_assembly("force-sensing-telemetry-3dof")

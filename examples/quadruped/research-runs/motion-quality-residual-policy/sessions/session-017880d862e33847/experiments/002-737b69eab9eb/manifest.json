@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "id": "002-737b69eab9eb",
+  "sequence": 2,
+  "sessionId": "session-017880d862e33847",
+  "researchId": "motion-quality-residual-policy",
+  "labHash": "401a95951da683873efcb255a898b90c986395eb62f7ac1ff4af7a8c660ecd79",
+  "programHash": "461b59eb3f0911a87effe28764683019522b6b366236e2cac848389737e05a2e",
+  "benchmarkLockHash": "513739acf928ad868b613e69298cd7416c5218b7997f16235af2aad0a7b86909",
+  "sourceHash": "fd5e6fd790fc7659bbabadbbe5a8179bde7eff029f580c91925dc0bf5b0bfb5f",
+  "researcherChangedPaths": [
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/motion-quality-residual-gait/controller.json",
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "conservative-quality-residual",
+    "hypothesis": "A smaller, more strongly regularized residual should retain any quality benefit while preventing delayed posture and drift regressions.",
+    "expectedEffect": "Preserve every previously passing gate and lower normalized violation severity, especially delayed body jerk, slip, and contact impact."
+  },
+  "policyId": "motion-quality-residual-locomotion-a671d05b549fef09",
+  "score": 42.04559477431081,
+  "delta": -6.360348426393678,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "delayed-forward: forward-progress regressed from passing to failing",
+      "delayed-forward: signed-forward-progress regressed from passing to failing",
+      "delayed-forward: backward-displacement regressed from passing to failing",
+      "delayed-forward: planar-velocity-tracking regressed from passing to failing",
+      "delayed-forward: score-regression regressed from passing to failing",
+      "upright-locomotion: delayed-forward: forward-progress regressed from passing to failing",
+      "upright-locomotion: delayed-forward: signed-forward-progress regressed from passing to failing",
+      "upright-locomotion: delayed-forward: backward-displacement regressed from passing to failing",
+      "upright-locomotion: delayed-forward: backward-pitch regressed from passing to failing",
+      "upright-locomotion: delayed-forward: score-regression regressed from passing to failing",
+      "command-transitions: forward-reverse-stop: unsettled-planar regressed from passing to failing",
+      "command-transitions: delayed-braking: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 15,
+    "previousViolationSeverity": 7.718768986744092,
+    "candidateViolationSeverity": 17.558007290850213,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 61775,
+  "completed": true
+}

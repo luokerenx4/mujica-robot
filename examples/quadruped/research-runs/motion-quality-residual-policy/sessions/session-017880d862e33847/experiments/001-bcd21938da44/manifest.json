@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "001-bcd21938da44",
+  "sequence": 1,
+  "sessionId": "session-017880d862e33847",
+  "researchId": "motion-quality-residual-policy",
+  "labHash": "401a95951da683873efcb255a898b90c986395eb62f7ac1ff4af7a8c660ecd79",
+  "programHash": "461b59eb3f0911a87effe28764683019522b6b366236e2cac848389737e05a2e",
+  "benchmarkLockHash": "513739acf928ad868b613e69298cd7416c5218b7997f16235af2aad0a7b86909",
+  "sourceHash": "fea3e0de4430014697f967b4cab3d0b6c32fdfc4da66cbb511da71b1c900f134",
+  "researcherChangedPaths": [
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/motion-quality-residual-gait/controller.json",
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "quality-aligned-residual",
+    "hypothesis": "Dense normalized quality penalties will keep the residual near the upright prior while teaching it to cancel high-frequency torque, planted slip, and hard touchdown.",
+    "expectedEffect": "Reduce the current residual Policy's ten violations toward the seven-violation program tier without regressing upright or transition gates."
+  },
+  "policyId": "motion-quality-residual-locomotion-a6d49829f5e63233",
+  "score": 47.419989233760646,
+  "delta": -0.9859539669438391,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "delayed-forward: planar-velocity-tracking regressed from passing to failing",
+      "upright-locomotion: delayed-forward: yaw-rate-tracking regressed from passing to failing",
+      "command-transitions: forward-reverse-stop: unsettled-planar regressed from passing to failing",
+      "command-transitions: delayed-braking: planar-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 10,
+    "previousViolationSeverity": 7.718768986744092,
+    "candidateViolationSeverity": 10.520465341025552,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 60434,
+  "completed": true
+}

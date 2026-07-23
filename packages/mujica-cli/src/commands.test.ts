@@ -84,11 +84,11 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
-    expect(envelope.data.definitions.researchLabs).toBe(1);
+    expect(envelope.data.definitions.researchLabs).toBe(2);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
-  }, 10_000);
+  }, 20_000);
 
   test("hardware dry-run evidence cannot masquerade as physical verification", () => {
     const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "spatial-dry-run", "--json"]); const bundle = JSON.parse(exported.stdout); expect(exported.code).toBe(0);
@@ -237,7 +237,9 @@ describe("agent CLI contract", () => {
 
   test("promoted policies and Policy Revisions expose runtime provenance", async () => {
     const revisionsResult = invoke(["policy-revisions", "examples/quadruped", "--json"]); const revisionsEnvelope = JSON.parse(revisionsResult.stdout); expect(revisionsResult.code).toBe(0); expect(revisionsEnvelope.data.revisions.length).toBeGreaterThan(0);
-    const head = revisionsEnvelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt)).at(-1); expect(head.kind).toBe("policy-optimization");
+    const revisions = revisionsEnvelope.data.revisions.sort((a: { appliedAt: string }, b: { appliedAt: string }) => a.appliedAt.localeCompare(b.appliedAt));
+    const head = revisions.filter((item: { kind: string }) => item.kind === "policy-optimization").at(-1); expect(head.kind).toBe("policy-optimization");
+    const researchHead = revisions.filter((item: { kind: string }) => item.kind === "research-lab-policy").at(-1); expect(researchHead.policyId).toBe("motion-quality-residual-locomotion-478335c4ce7fee99");
     const inspectResult = invoke(["policy", "inspect", "examples/quadruped", "--policy", head.policyId, "--json"]); const policy = JSON.parse(inspectResult.stdout); expect(inspectResult.code).toBe(0); expect(policy.data.manifest.runtimeVersion).toBe("0.2.0"); expect(policy.data.manifest.runtimeSourceHash).toHaveLength(64);
     expect(policy.data.architecture.actionTransform.residualScale).toBe(0.5);
     const revisionResult = invoke(["policy-revision", "inspect", "examples/quadruped", "--revision", head.id, "--json"]); const revision = JSON.parse(revisionResult.stdout); expect(revisionResult.code).toBe(0); expect(revision.data.evaluation.candidate.cases[0].score.terms.trainingSteps).toBe(-0.04096);

@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "id": "001-e36001260c15",
+  "sequence": 1,
+  "sessionId": "session-31782800775f72d9",
+  "researchId": "motion-quality-residual-policy",
+  "labHash": "401a95951da683873efcb255a898b90c986395eb62f7ac1ff4af7a8c660ecd79",
+  "programHash": "461b59eb3f0911a87effe28764683019522b6b366236e2cac848389737e05a2e",
+  "benchmarkLockHash": "514aec3a98035743ba3e454e74aa9444e88a93d1f23ad1d1ddfa68aa04570210",
+  "sourceHash": "5c3685f8433ad4cd5a9d7ff84a2796852a43c8fec521d7ab88c39c1977c3513f",
+  "researcherChangedPaths": [
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/motion-quality-residual-gait/controller.json",
+    "training/motion-quality-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "teacher-anchored-residual",
+    "hypothesis": "A low-rate actor with a strong zero-residual teacher anchor can learn only small quality corrections while remaining behaviorally close to the reliable upright program prior.",
+    "expectedEffect": "Return from the current ten-violation residual toward the seven-violation program tier while keeping foot-quality terms live and preserving delayed task gates."
+  },
+  "policyId": "motion-quality-residual-locomotion-788162b48c53b744",
+  "score": 51.466832765466066,
+  "delta": 3.060889564761581,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "upright-locomotion: delayed-forward: yaw-rate-tracking regressed from passing to failing",
+      "command-transitions: delayed-braking: planar-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 10,
+    "candidateViolationCount": 10,
+    "previousViolationSeverity": 7.718768986744092,
+    "candidateViolationSeverity": 9.568361687429498,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 62949,
+  "completed": true
+}
