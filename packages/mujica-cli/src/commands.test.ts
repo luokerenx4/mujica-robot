@@ -258,6 +258,144 @@ describe("agent CLI contract", () => {
     }
   }, 60_000);
 
+  test("device telemetry replay gives humans and Agents the same immutable Capture frame", async () => {
+    const captureId = "capture-5c09b673d06e0385";
+    const episodeId = "learned-policy-shadow";
+    const captureRoot = resolve(root, "examples/quadruped/hardware-captures", captureId);
+    const capture = JSON.parse(await readFile(resolve(captureRoot, "manifest.json"), "utf8"));
+    const episode = capture.episodes.find((item: any) => item.id === episodeId);
+
+    const inspected = invoke([
+      "evidence", "inspect", "examples/quadruped",
+      "--capture", captureId, "--episode", episodeId, "--time", "0.04", "--json",
+    ]);
+    expect({ code: inspected.code, stderr: inspected.stderr }).toEqual({ code: 0, stderr: "" });
+    const context = JSON.parse(inspected.stdout).data;
+    expect(context).toMatchObject({
+      kind: "mujica-hardware-capture-frame-context",
+      authority: "immutable-device-telemetry",
+      capture: {
+        id: captureId,
+        captureHash: capture.captureHash,
+        bundleHash: capture.bundleHash,
+        mode: "shadow",
+      },
+      episode: { id: episodeId, hash: episode.hash },
+      requestedTimeSeconds: 0.04,
+      rowTimeSeconds: 0.04,
+      deviceStep: 2,
+      row: {
+        episode: episodeId,
+        step: 2,
+        deviceHealth: { watchdogHealthy: true, estopEngaged: false },
+      },
+      projectionBoundary: {
+        kinematics: "device-reported",
+        geometry: "bundle-frozen-digital-twin",
+        visualGroundTruth: false,
+        hardwareVerification: "unchanged",
+      },
+    });
+    expect(context.row.qpos).toHaveLength(19);
+    expect(context.row.proposedAction).toHaveLength(12);
+    expect(context.row.commandedAction).toEqual(Array(12).fill(0));
+    expect(context.row.appliedAction).toEqual(Array(12).fill(0));
+
+    const studio = invoke([
+      "studio", "examples/quadruped",
+      "--capture", captureId, "--episode", episodeId, "--json",
+    ]);
+    expect({ code: studio.code, stderr: studio.stderr }).toEqual({ code: 0, stderr: "" });
+    const studioEnvelope = JSON.parse(studio.stdout);
+    expect(studioEnvelope.data).toMatchObject({
+      selectedRun: null,
+      comparisonRun: null,
+      hardwareCapture: {
+        id: captureId,
+        captureHash: capture.captureHash,
+        episodeId,
+        episodeHash: episode.hash,
+        mode: "shadow",
+      },
+      replay: { frameCount: 11 },
+    });
+    expect(studioEnvelope.artifacts.map((item: any) => item.kind)).toEqual(["hardware-replay", "studio-snapshot"]);
+    const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
+    expect(snapshot).toMatchObject({
+      version: 6,
+      selectedRun: null,
+      comparisonRun: null,
+      selectedHardwareCapture: {
+        id: captureId,
+        captureHash: capture.captureHash,
+        episode: { id: episodeId, hash: episode.hash },
+        authorityBoundary: {
+          kinematics: "device-reported",
+          geometry: "bundle-frozen-digital-twin",
+          visualGroundTruth: false,
+          hardwareVerification: "unchanged",
+          actuationAuthority: "unchanged",
+        },
+      },
+      selectedHardwareReplay: {
+        kind: "mujica-hardware-capture-replay",
+        frameBase: "hardware-replay/frames",
+        frameCount: 11,
+      },
+    });
+    const html = await readFile(resolve(studioEnvelope.data.path, "index.html"), "utf8");
+    expect(html).toContain("Device telemetry → frozen MuJoCo digital twin");
+    expect(html).toContain("mujica-hardware-capture-frame-selector");
+    expect(html).toContain("not camera footage, motion capture, physical contact truth");
+
+    const temporary = await mkdtemp(resolve(tmpdir(), "mujica-device-observation-"));
+    const draftPath = resolve(temporary, "draft.json");
+    await writeFile(draftPath, JSON.stringify({
+      version: 1,
+      kind: "mujica-human-observation-draft",
+      source: {
+        kind: "hardware-capture-frame",
+        captureId,
+        captureHash: capture.captureHash,
+        bundleHash: capture.bundleHash,
+        episodeId,
+        episodeHash: episode.hash,
+        timeSeconds: 0.04,
+      },
+      assessment: {
+        category: "control",
+        severity: "investigate",
+        confidence: "medium",
+        summary: "The proposed torque is visible while shadow mode correctly applies zero torque.",
+      },
+    }));
+    let observationPath: string | undefined;
+    try {
+      const recorded = invoke(["observation", "record", "examples/quadruped", "--input", draftPath, "--observer", "Device replay reviewer", "--json"]);
+      expect({ code: recorded.code, stderr: recorded.stderr }).toEqual({ code: 0, stderr: "" });
+      const observation = JSON.parse(recorded.stdout).data;
+      observationPath = observation.path;
+      expect(observation.manifest.source).toMatchObject({
+        kind: "hardware-capture-frame",
+        captureId,
+        episodeId,
+        episodeHash: episode.hash,
+        timeSeconds: 0.04,
+      });
+      const observationInspect = invoke(["observation", "inspect", "examples/quadruped", "--observation", observation.id, "--json"]);
+      expect(observationInspect.code).toBe(0);
+      expect(JSON.parse(observationInspect.stdout).data.context).toMatchObject({
+        kind: "mujica-hardware-capture-frame-context",
+        capture: { id: captureId },
+        episode: { id: episodeId },
+        deviceStep: 2,
+      });
+    } finally {
+      if (observationPath) rmSync(observationPath, { recursive: true, force: true });
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   test("Driver Package discovery exposes frozen deployment identity", () => {
     const result = invoke(["driver", "inspect", "examples/quadruped", "--driver", "mujoco-protocol-simulator", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
@@ -783,7 +921,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-457fe145a8371cf0",
+      "--bundle", "hardware-6d0dedb5e3d7f6aa",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

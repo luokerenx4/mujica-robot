@@ -15,6 +15,14 @@ from .io import atomic_directory, hash_file, hash_json, write_json
 RENDERER_ID = "mujica-runtime-mujoco-rgb-v1"
 
 
+def _is_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
 def _png_chunk(kind: bytes, payload: bytes) -> bytes:
     checksum = zlib.crc32(kind + payload) & 0xFFFFFFFF
     return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", checksum)
@@ -55,26 +63,53 @@ def render_replay(request: dict[str, Any]) -> dict[str, Any]:
     output_root = Path(request["outputRoot"]).resolve()
     if not model_path.is_file(): raise RuntimeError(f"Replay model is missing: {model_path}")
     if not trajectory_path.is_file(): raise RuntimeError(f"Replay trajectory is missing: {trajectory_path}")
-    if hash_file(model_path) != request["modelHash"]: raise RuntimeError("Replay model hash differs from the completed Run")
-    if hash_file(trajectory_path) != request["trajectoryHash"]: raise RuntimeError("Replay trajectory hash differs from the completed Run")
+    if hash_file(model_path) != request["modelHash"]: raise RuntimeError("Replay model hash differs from its immutable source")
+    if hash_file(trajectory_path) != request["trajectoryHash"]: raise RuntimeError("Replay trajectory hash differs from its immutable source")
 
     settings = request["settings"]
     width = int(settings["width"]); height = int(settings["height"]); stride = int(settings["stride"])
     if not 160 <= width <= 1920 or not 120 <= height <= 1080: raise RuntimeError("Replay resolution is outside the supported range")
     if stride < 1: raise RuntimeError("Replay stride must be positive")
 
-    identity = {
-        "renderer": RENDERER_ID,
-        "runtimeVersion": request["runtimeVersion"],
-        "runtimeSourceHash": request["runtimeSourceHash"],
-        "mujocoVersion": mujoco.__version__,
-        "runId": request["runId"],
-        "resultHash": request["resultHash"],
-        "assemblyHash": request["assemblyHash"],
-        "modelHash": request["modelHash"],
-        "trajectoryHash": request["trajectoryHash"],
-        "settings": settings,
-    }
+    source = request.get("source")
+    if source is None:
+        identity = {
+            "renderer": RENDERER_ID,
+            "runtimeVersion": request["runtimeVersion"],
+            "runtimeSourceHash": request["runtimeSourceHash"],
+            "mujocoVersion": mujoco.__version__,
+            "runId": request["runId"],
+            "resultHash": request["resultHash"],
+            "assemblyHash": request["assemblyHash"],
+            "modelHash": request["modelHash"],
+            "trajectoryHash": request["trajectoryHash"],
+            "settings": settings,
+        }
+        manifest_kind = "mujica-simulation-replay"
+        manifest_version = 1
+    else:
+        if source.get("kind") != "hardware-capture-episode":
+            raise RuntimeError("Replay source kind is unsupported")
+        required = ["captureId", "captureHash", "bundleId", "bundleHash", "episodeId", "episodeHash"]
+        if any(not isinstance(source.get(key), str) or not source[key] for key in required):
+            raise RuntimeError("Hardware Capture replay source identity is incomplete")
+        if any(not _is_sha256(source[key]) for key in ["captureHash", "bundleHash", "episodeHash"]):
+            raise RuntimeError("Hardware Capture replay source hashes are invalid")
+        if source["episodeHash"] != request["trajectoryHash"]:
+            raise RuntimeError("Hardware Capture episode hash differs from replay trajectory")
+        identity = {
+            "renderer": RENDERER_ID,
+            "runtimeVersion": request["runtimeVersion"],
+            "runtimeSourceHash": request["runtimeSourceHash"],
+            "mujocoVersion": mujoco.__version__,
+            "source": source,
+            "assemblyHash": request["assemblyHash"],
+            "modelHash": request["modelHash"],
+            "trajectoryHash": request["trajectoryHash"],
+            "settings": settings,
+        }
+        manifest_kind = "mujica-hardware-capture-replay"
+        manifest_version = 2
     replay_id = f"replay-{hash_json(identity)[:16]}"
     target = output_root / replay_id
     rows = [json.loads(line) for line in trajectory_path.read_text().splitlines() if line.strip()]
@@ -82,9 +117,9 @@ def render_replay(request: dict[str, Any]) -> dict[str, Any]:
     if not selected: raise RuntimeError("Replay trajectory has no frames")
 
     manifest = {
-        "version": 1,
+        "version": manifest_version,
         "id": replay_id,
-        "kind": "mujica-simulation-replay",
+        "kind": manifest_kind,
         **identity,
         "frameCount": len(selected),
         "sourceFrameCount": len(rows),

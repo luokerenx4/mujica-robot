@@ -95,6 +95,30 @@ class RuntimeContractTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "incomplete"):
                 render_replay(request)
 
+            capture_request = {
+                **request,
+                "source": {
+                    "kind": "hardware-capture-episode",
+                    "captureId": "capture-example",
+                    "captureHash": "a" * 64,
+                    "bundleId": "hardware-example",
+                    "bundleHash": "b" * 64,
+                    "episodeId": "commissioning",
+                    "episodeHash": hash_file(trajectory),
+                    "environment": "dry-run",
+                    "mode": "shadow",
+                },
+            }
+            capture = render_replay(capture_request)
+            self.assertEqual(capture["manifest"]["version"], 2)
+            self.assertEqual(capture["manifest"]["kind"], "mujica-hardware-capture-replay")
+            self.assertEqual(capture["manifest"]["source"]["episodeId"], "commissioning")
+            self.assertNotEqual(capture["id"], first["id"])
+            with self.assertRaisesRegex(RuntimeError, "episode hash"):
+                render_replay({**capture_request, "source": {**capture_request["source"], "episodeHash": "0" * 64}})
+            with self.assertRaisesRegex(RuntimeError, "source hashes are invalid"):
+                render_replay({**capture_request, "source": {**capture_request["source"], "captureHash": "capture"}})
+
     def test_program_prior_policy_freezes_the_exact_controller_source(self):
         policy_root = PROJECT / "policies" / "upright-residual-locomotion-1d4c901d04ccfabb"
         architecture = json.loads((policy_root / "architecture.json").read_text())

@@ -147,22 +147,95 @@ export async function captureEvidenceContext(projectRoot: string, captureId: str
   });
 }
 
+export async function captureEpisodeFrameContext(projectRoot: string, captureId: string, episodeId: string, timeSeconds: number) {
+  if (!Number.isFinite(timeSeconds) || timeSeconds < 0) throw new Error("Capture episode evidence --time must be a finite non-negative number");
+  const root = confined(projectRoot, `hardware-captures/${captureId}`);
+  const manifest = await verifyHardwareCaptureIntegrity(root);
+  const episode = (manifest.episodes ?? []).find((item: any) => item.id === episodeId);
+  if (!episode) throw new Error(`Hardware Capture '${captureId}' has no episode '${episodeId}'`);
+  if (episode.completed !== true || typeof episode.path !== "string" || typeof episode.hash !== "string") {
+    throw new Error(`Hardware Capture episode '${episodeId}' is not a completed immutable episode`);
+  }
+  const episodePath = confined(root, episode.path);
+  const bytes = await readFile(episodePath);
+  if (sha256(bytes) !== episode.hash) throw new Error(`Hardware Capture episode '${episodeId}' bytes changed`);
+  const rows = await readNdjson(episodePath);
+  if (!rows.length) throw new Error(`Hardware Capture episode '${episodeId}' has no telemetry rows`);
+  for (const [index, row] of rows.entries()) {
+    if (
+      row.episode !== episodeId
+      || !Number.isFinite(Number(row.time))
+      || !Array.isArray(row.qpos)
+      || !Array.isArray(row.qvel)
+      || !row.deviceHealth
+    ) throw new Error(`Hardware Capture episode '${episodeId}' row ${index} has an invalid telemetry contract`);
+  }
+  const rowIndex = atOrBefore(rows, timeSeconds);
+  const start = Math.max(0, rowIndex - 2);
+  const end = Math.min(rows.length, rowIndex + 3);
+  const row = rows[rowIndex]!;
+  return withContextHash({
+    version: 1,
+    kind: "mujica-hardware-capture-frame-context",
+    authority: "immutable-device-telemetry",
+    projectionBoundary: {
+      kinematics: "device-reported",
+      geometry: "bundle-frozen-digital-twin",
+      visualGroundTruth: false,
+      hardwareVerification: "unchanged",
+    },
+    capture: {
+      id: manifest.id,
+      captureHash: manifest.captureHash,
+      bundleHash: manifest.bundleHash,
+      status: manifest.status,
+      environment: manifest.environment,
+      mode: manifest.mode,
+      target: manifest.target,
+      device: manifest.device,
+      operator: manifest.operator,
+    },
+    episode: {
+      id: episode.id,
+      hash: episode.hash,
+      plannedSteps: episode.plannedSteps,
+      steps: episode.steps,
+      path: episode.path,
+    },
+    requestedTimeSeconds: timeSeconds,
+    rowIndex,
+    rowTimeSeconds: Number(row.time),
+    deviceStep: row.step ?? null,
+    row,
+    neighboringRows: rows.slice(start, end).map((item, offset) => ({ rowIndex: start + offset, row: item })),
+    artifactHashes: {
+      manifest: sha256(await readFile(join(root, "manifest.json"))),
+      episode: sha256(bytes),
+    },
+  });
+}
+
 export async function evidenceInspectCommand(
   projectDir: string,
-  options: { run?: string; time?: number; compareRun?: string; capture?: string; event?: number },
+  options: { run?: string; time?: number; compareRun?: string; capture?: string; event?: number; episode?: string },
 ) {
   const project = await loadProject(projectDir);
   if (Boolean(options.run) === Boolean(options.capture)) {
-    throw new Error("Usage: mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N)");
+    throw new Error("Usage: mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S))");
   }
   if (options.run) {
-    if (options.time === undefined || options.event !== undefined) throw new Error("Run evidence requires --time and does not accept --event");
+    if (options.time === undefined || options.event !== undefined || options.episode !== undefined) throw new Error("Run evidence requires --time and does not accept Capture selectors");
     return success("evidence.inspect", await runEvidenceContext(project.rootDir, options.run, options.time, options.compareRun), project);
   }
-  if (options.event === undefined || options.time !== undefined || options.compareRun !== undefined) {
-    throw new Error("Hardware Capture evidence requires --event and does not accept Run options");
+  if (options.compareRun !== undefined) throw new Error("Hardware Capture evidence does not accept --compare-run");
+  const eventMode = options.event !== undefined;
+  const episodeMode = options.episode !== undefined || options.time !== undefined;
+  if (eventMode === episodeMode) {
+    throw new Error("Hardware Capture evidence requires either --event N or --episode ID --time S");
   }
-  return success("evidence.inspect", await captureEvidenceContext(project.rootDir, options.capture!, options.event), project);
+  if (eventMode) return success("evidence.inspect", await captureEvidenceContext(project.rootDir, options.capture!, options.event!), project);
+  if (options.episode === undefined || options.time === undefined) throw new Error("Hardware Capture frame evidence requires --episode and --time together");
+  return success("evidence.inspect", await captureEpisodeFrameContext(project.rootDir, options.capture!, options.episode, options.time), project);
 }
 
 async function observationDirectories(root: string): Promise<string[]> {
@@ -221,6 +294,15 @@ async function contextForDraft(projectRoot: string, draft: HumanObservationDraft
     ) {
       throw new Error("Human observation Run source identity differs from current immutable evidence");
     }
+    return context;
+  }
+  if (draft.source.kind === "hardware-capture-frame") {
+    const context = await captureEpisodeFrameContext(projectRoot, draft.source.captureId, draft.source.episodeId, draft.source.timeSeconds);
+    if (
+      context.capture.captureHash !== draft.source.captureHash
+      || context.capture.bundleHash !== draft.source.bundleHash
+      || context.episode.hash !== draft.source.episodeHash
+    ) throw new Error("Human observation Capture frame source identity differs from current immutable evidence");
     return context;
   }
   const context = await captureEvidenceContext(projectRoot, draft.source.captureId, draft.source.eventIndex);

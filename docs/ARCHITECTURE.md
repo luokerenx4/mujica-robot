@@ -59,6 +59,12 @@ publishes the human assessment separately with `authority=human` and
 `claimKind=hypothesis`. Neither the browser nor the observation can mutate
 evidence, waive a gate, or become a Judge result. Studio renderer source is part
 of snapshot identity so a changed UI cannot silently reuse an old projection.
+Completed Capture episodes form a separate device-telemetry replay lane:
+device-reported `qpos/qvel` are projected through the exact Bundle-frozen
+digital twin while health and proposed/commanded/applied Actions remain
+attached to each frame. The projection is not visual/contact truth and cannot
+change hardware verification, Calibration, safety, or actuation authority; see
+[Device telemetry replay](design/device-telemetry-replay.md).
 
 Human-guided research adds one explicit derived boundary. `research brief`
 binds selected Observation/context hashes to one Lab, program, and primary
@@ -96,4 +102,4 @@ state. An acknowledged trip enters a stop-latched health window; continuously
 healthy evidence may recommend a new session, but the current process has no
 rearm transition and cannot recover actuation authority.
 
-See [the harness design](design/robot-development-harness.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [Human-guided Research Briefs](design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](design/human-reviewed-research-outcomes.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+See [the harness design](design/robot-development-harness.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [Device telemetry replay](design/device-telemetry-replay.md), [Human-guided Research Briefs](design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](design/human-reviewed-research-outcomes.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

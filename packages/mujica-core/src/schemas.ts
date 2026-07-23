@@ -481,6 +481,15 @@ export const humanObservationSourceSchema = z.discriminatedUnion("kind", [
     captureHash: sha256Schema,
     eventIndex: z.number().int().nonnegative(),
   }).strict(),
+  z.object({
+    kind: z.literal("hardware-capture-frame"),
+    captureId: idSchema,
+    captureHash: sha256Schema,
+    bundleHash: sha256Schema,
+    episodeId: idSchema,
+    episodeHash: sha256Schema,
+    timeSeconds: z.number().finite().nonnegative(),
+  }).strict(),
 ]);
 
 export const humanObservationAssessmentSchema = z.object({

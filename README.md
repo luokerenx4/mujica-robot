@@ -44,6 +44,10 @@ bun run mujica train examples/quadruped --training sim-to-real-residual-locomoti
 bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
 bun run mujica studio examples/quadruped --run run-3404db433e7eb644 --compare-run run-35cd362b2def8a20
+bun run mujica studio examples/quadruped \
+  --capture capture-5c09b673d06e0385 --episode learned-policy-shadow
+bun run mujica evidence inspect examples/quadruped \
+  --capture capture-5c09b673d06e0385 --episode learned-policy-shadow --time 0.04
 bun run mujica hardware export examples/quadruped --target spatial-dry-run
 bun run mujica capture inspect examples/quadruped \
   --plan quadruped-dry-run-identification
@@ -179,6 +183,15 @@ The follow-up adds a replayable four-step history contract, a bounded GRU histor
 
 `mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The Python Runtime reconstructs every recorded `qpos` with the Run's exact MuJoCo model and renders an authoritative 3D replay; Studio synchronizes it with play/pause, frame stepping, speed, scrubbing, semantic Event seeking, the top-down path, and frame telemetry. Add `--compare-run` to put a baseline and subject on one simulation-time clock with motion-quality deltas. Its attention queue puts Run failures and aborted/safety-tripped Hardware Captures first. A human can bind a typed visual observation to the current frame or exact Capture protocol event; the copied/downloaded draft remains a hypothesis until `mujica observation record` independently reconstructs its `mujica evidence inspect` context and publishes an immutable artifact.
 
+Completed Capture episodes now share that visual/headless loop. `studio
+--capture ... --episode ...` verifies the Capture and exact frozen Hardware
+Bundle, then projects device-reported `qpos` into MuJoCo while showing health and
+proposed/commanded/applied Action. `evidence inspect --capture ... --episode ...
+--time ...` returns the same immutable row to an Agent, and a Human Observation
+can bind it exactly. The projection is digital-twin geometry—not camera,
+motion-capture, contact, Calibration, or hardware-verification truth—and never
+widens actuation authority.
+
 Studio can then hand one recorded observation to one explicitly selected
 Research Lab. It copies a headless `research brief` command; the CLI freezes the
 Observation/context, Lab/program, and Benchmark lock into an immutable Brief.
@@ -241,4 +254,4 @@ The traction lane now reaches `friction = 0.1` without exposing Scenario identit
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 
-Read [the architecture](docs/ARCHITECTURE.md), [Human–AI debugging workspace](docs/design/human-ai-debugging-workspace.md), [Human-guided Research Briefs](docs/design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](docs/design/human-reviewed-research-outcomes.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [hardware capture protocol](docs/design/hardware-capture-protocol.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Read [the architecture](docs/ARCHITECTURE.md), [Human–AI debugging workspace](docs/design/human-ai-debugging-workspace.md), [device telemetry replay](docs/design/device-telemetry-replay.md), [Human-guided Research Briefs](docs/design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](docs/design/human-reviewed-research-outcomes.md), [Research Lab V2](docs/design/research-lab-v2.md), [ML motion-quality research](docs/design/ml-motion-quality-research.md), [sim-to-real Domain Profiles](docs/design/sim-to-real-domain-profiles.md), [system-identification captures](docs/design/system-identification-captures.md), [hardware capture protocol](docs/design/hardware-capture-protocol.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [visual simulation debugger](docs/design/visual-simulation-debugger.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

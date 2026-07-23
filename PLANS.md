@@ -24,6 +24,7 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Device Telemetry Replay](plans/device-telemetry-replay.md) | Projected integrity-checked Hardware Capture episodes through their frozen digital twin for shared human/Agent inspection. | 2026-07-24 |
 | [Human-reviewed Research Outcomes](plans/human-reviewed-research-outcomes.md) | Preserve exact accepted/candidate MuJoCo review pairs across KEEP and REVERT for the human half of the research loop. | 2026-07-24 |
 | [Human-guided Research Briefs](plans/human-guided-research-briefs.md) | Bound human visual hypotheses into governed Agent/ML experiments without widening Judge authority. | 2026-07-24 |
 | [Human–AI debugging workspace](plans/human-ai-debugging-workspace.md) | Gave humans and Coding Agents one provenance-bound visual and headless debugging context. | 2026-07-23 |

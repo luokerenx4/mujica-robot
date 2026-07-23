@@ -8,7 +8,7 @@ import { harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeSou
 async function exists(path: string): Promise<boolean> { try { await stat(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; } }
 const artifact = (kind: Artifact["kind"], id: string, path: string): Artifact => ({ kind, id, path, immutable: true });
 
-async function verifyBundleIntegrity(root: string, bundle: any): Promise<void> {
+export async function verifyHardwareBundleIntegrity(root: string, bundle: any): Promise<void> {
   const payload = {
     version: bundle.version, harnessSourceHash: bundle.harnessSourceHash, harnessDependencyLockHash: bundle.harnessDependencyLockHash,
     ...(typeof bundle.sourceKind === "string" ? { sourceKind: bundle.sourceKind } : {}),
@@ -209,7 +209,7 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
 
 export async function hardwareVerifyCommand(projectDir: string, bundleId: string, evidencePath: string) {
   const project = await loadProject(projectDir); const bundleRoot = confined(project.rootDir, `hardware-bundles/${bundleId}`); const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8"));
-  await verifyBundleIntegrity(bundleRoot, bundle); const target = hardwareTargetSchema.parse(bundle.target); const evidence = await readJson(resolve(evidencePath), hardwareEvidenceSchema);
+  await verifyHardwareBundleIntegrity(bundleRoot, bundle); const target = hardwareTargetSchema.parse(bundle.target); const evidence = await readJson(resolve(evidencePath), hardwareEvidenceSchema);
   const reasons: string[] = [];
   if (evidence.target !== target.id) reasons.push("evidence target does not match bundle"); if (evidence.bundleHash !== bundle.bundleHash) reasons.push("evidence bundle hash does not match");
   if (evidence.environment !== target.environment) reasons.push("evidence environment does not match target");
@@ -266,7 +266,7 @@ export async function hardwareCapturePlanListCommand(projectDir: string) {
 export async function hardwareCapturePlanInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const definition = await loadHardwareCapturePlan(project.rootDir, id);
   const bundleRoot = confined(project.rootDir, `hardware-bundles/${definition.bundle}`);
-  const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8")); await verifyBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, definition);
+  const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8")); await verifyHardwareBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, definition);
   assertCaptureDecisionDeadline(hardwareTargetSchema.parse(bundle.target), definition);
   return success("capture.inspect", { definition, hash: hashJson(definition), bundle: { id: bundle.id, hash: bundle.bundleHash, sourceKind: bundle.sourceKind ?? "legacy-robot-revision", maximumCaptureMode: bundle.maximumCaptureMode ?? "actuate", environment: bundle.target.environment }, path: confined(project.rootDir, `capture-plans/${id}.capture.json`) }, project);
 }
@@ -279,7 +279,7 @@ export async function hardwareCaptureInspectCommand(projectDir: string, id: stri
 export async function hardwareCaptureCommand(projectDir: string, planId: string, driver: string | undefined, driverArgs: string[], driverInputs: string[], operator: string, authorizationPath?: string) {
   const project = await loadProject(projectDir); const plan = await loadHardwareCapturePlan(project.rootDir, planId); const planHash = hashJson(plan);
   const bundleRoot = confined(project.rootDir, `hardware-bundles/${plan.bundle}`); const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8"));
-  await verifyBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, plan);
+  await verifyHardwareBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, plan);
   const [currentHarnessHash, currentDependencyHash] = await Promise.all([harnessSourceHash(), harnessDependencyLockHash()]);
   if (currentHarnessHash !== bundle.harnessSourceHash) throw new Error("Current Mujica Harness source differs from the authorized Hardware Bundle; export a new Bundle");
   if (currentDependencyHash !== bundle.harnessDependencyLockHash) throw new Error("Current Mujica Harness dependency lock differs from the authorized Hardware Bundle; export a new Bundle");

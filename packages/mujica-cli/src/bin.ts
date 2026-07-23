@@ -5,7 +5,7 @@ import { failure } from "./contract";
 import { hardwareCaptureCommand, hardwareCaptureInspectCommand, hardwareCapturePlanInspectCommand, hardwareCapturePlanListCommand, hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
   assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
-  policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
+  policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCaptureCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
@@ -31,7 +31,8 @@ USAGE
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
   mujica studio <project> --research-lab ID --session ID --experiment ID [--json]
-  mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]
+  mujica studio <project> --capture ID --episode ID [--json]
+  mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]
   mujica observation list <project> [--json]
   mujica observation inspect <project> --observation ID [--json]
   mujica observation record <project> --input PATH --observer NAME [--json]
@@ -81,8 +82,8 @@ const CAPABILITIES = [
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
-  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID) [--json]", effect: "creates-artifact" },
-  { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]", effect: "read-only" },
+  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID --session ID --experiment ID | --capture ID --episode ID) [--json]", effect: "creates-artifact" },
+  { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]", effect: "read-only" },
   { id: "observation.list", usage: "mujica observation list <project> [--json]", effect: "read-only" },
   { id: "observation.inspect", usage: "mujica observation inspect <project> --observation ID [--json]", effect: "read-only" },
   { id: "observation.record", usage: "mujica observation record <project> --input PATH --observer NAME [--json]", effect: "creates-artifact" },
@@ -128,7 +129,7 @@ function printHuman(command: string, data: any): void {
   else if (command === "controller.inspect") process.stdout.write(`controller=${data.definition.id}\nkind=${data.definition.kind}\nhash=${data.hash}\ncompatible=${data.compatibleAssemblies.join(",") || "none"}\nincompatible=${data.incompatibleAssemblies.length}\n`);
   else if (command === "assembly.compare") process.stdout.write(`Assembly ${data.from.id} -> ${data.to.id}\ncomponents +${data.components.added.length} -${data.components.removed.length} ~${data.components.changed.length}\nobservations +${data.observations.added.length} -${data.observations.removed.length}\nmass_delta_kg=${data.massDeltaKg}\ncost_delta=${data.costDelta}\n`);
   else if (command === "simulate") process.stdout.write(`run=${data.runId}\nscore=${data.score.total}\nsurvival=${data.metrics.survivalRate}\nartifact=${data.artifactPath}\n`);
-  else if (command === "studio") process.stdout.write(`studio=${data.id}\nrun=${data.selectedRun ?? "none"}\nopen=${data.indexPath}\n`);
+  else if (command === "studio") process.stdout.write(`studio=${data.id}\nsource=${data.hardwareCapture ? `${data.hardwareCapture.id}/${data.hardwareCapture.episodeId}` : data.selectedRun ?? "none"}\nopen=${data.indexPath}\n`);
   else if (command === "evidence.inspect") process.stdout.write(`context=${data.contextHash}\nkind=${data.kind}\nsource=${data.baseline?.runId ?? data.capture?.id}\n`);
   else if (command === "observation.list") process.stdout.write(`${data.observations.map((observation: any) => `${observation.id}\t${observation.assessment.severity}\t${observation.assessment.category}\t${observation.assessment.summary}`).join("\n")}\n`);
   else if (command === "observation.inspect") process.stdout.write(`observation=${data.manifest.id}\nclaim=${data.manifest.claimKind}\ncontext=${data.manifest.contextHash}\nsummary=${data.manifest.assessment.summary}\npath=${data.path}\n`);
@@ -173,23 +174,26 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   try {
     let envelope: any;
     if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
       if (command === "studio") {
         const reviewSelectorCount = [values["research-lab"], values.session, values.experiment].filter(Boolean).length;
+        const captureSelectorCount = [values.capture, values.episode].filter(Boolean).length;
         if (reviewSelectorCount !== 0 && reviewSelectorCount !== 3) throw new Error("Studio Research Review selection requires --research-lab, --session, and --experiment together");
-        if (reviewSelectorCount && (values.run || values["compare-run"])) throw new Error("Studio accepts either explicit Runs or one Research Review selector, not both");
+        if (captureSelectorCount !== 0 && captureSelectorCount !== 2) throw new Error("Studio Hardware Capture selection requires --capture and --episode together");
+        if ([Boolean(values.run || values["compare-run"]), Boolean(reviewSelectorCount), Boolean(captureSelectorCount)].filter(Boolean).length > 1) throw new Error("Studio accepts exactly one explicit Run, Research Review, or Hardware Capture source mode");
         if (reviewSelectorCount) {
           const inspected = await researchReviewInspectCommand(project, values["research-lab"]!, values.session!, values.experiment!);
           envelope = await studioCommand(project, inspected.data.review.accepted.id, inspected.data.review.candidate.id, {
             review: inspected.data.review,
             reviewHash: inspected.data.reviewHash,
           });
-        } else envelope = await studioCommand(project, values.run, values["compare-run"]);
+        } else if (captureSelectorCount) envelope = await studioCaptureCommand(project, values.capture!, values.episode!);
+        else envelope = await studioCommand(project, values.run, values["compare-run"]);
       } else envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : await revisionsCommand(project);
     } else if (command === "evidence") {
       const action = args.shift(); commandId = `evidence.${action}`;
       if (action !== "inspect") throw new Error("Usage: mujica evidence inspect ...");
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, time: { type: "string" }, "compare-run": { type: "string" }, capture: { type: "string" }, event: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, time: { type: "string" }, "compare-run": { type: "string" }, capture: { type: "string" }, event: { type: "string" }, episode: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
       const project = await resolveProjectDirectory(one(positionals, "mujica evidence inspect <project>"), values.project);
       envelope = await evidenceInspectCommand(project, {
         ...(values.run === undefined ? {} : { run: values.run }),
@@ -197,6 +201,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         ...(values["compare-run"] === undefined ? {} : { compareRun: values["compare-run"] }),
         ...(values.capture === undefined ? {} : { capture: values.capture }),
         ...(values.event === undefined ? {} : { event: Number(values.event) }),
+        ...(values.episode === undefined ? {} : { episode: values.episode }),
       });
     } else if (command === "observation") {
       const action = args.shift(); commandId = `observation.${action}`;

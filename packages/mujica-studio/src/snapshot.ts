@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { cp, lstat, mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join, resolve } from "node:path";
-import { atomicDirectory, compileAssembly, hashJson, humanObservationDraftSchema, listAssemblyIds, listComponentIds, loadComponent, loadProject, researchReviewSchema, sha256, writeJson, type ResearchReview } from "@mujica/core";
+import { atomicDirectory, compileAssembly, confined, hashJson, humanObservationDraftSchema, listAssemblyIds, listComponentIds, loadComponent, loadProject, researchReviewSchema, sha256, writeJson, type ResearchReview } from "@mujica/core";
 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
@@ -130,9 +130,9 @@ async function sampledNdjson(path: string, maximum: number): Promise<{ rows: unk
   return { rows, total, stride };
 }
 
-async function selectedRun(root: string, requested?: string) {
+async function selectedRun(root: string, requested?: string, selectDefault = true) {
   const manifests = await artifactManifests(join(root, "runs")) as Array<Record<string, unknown>>;
-  if (!manifests.length) return { summaries: [], selected: null };
+  if (!manifests.length || (!requested && !selectDefault)) return { summaries: manifests, selected: null };
   const id = requested ?? String(manifests.at(-1)?.id);
   if (!manifests.some((item) => item.id === id)) throw new Error(`Unknown completed run '${id}'`);
   const directory = join(root, "runs", id);
@@ -181,6 +181,28 @@ async function readNdjsonWithIndices(path: string): Promise<Array<{ index: numbe
 
 type ReplayInput = { path: string; manifest: Record<string, any> };
 type ResearchReviewInput = { review: ResearchReview; reviewHash: string };
+type HardwareCaptureInput = {
+  path: string;
+  manifest: Record<string, any>;
+  episodeId: string;
+  bundle: {
+    id: string;
+    bundleHash: string;
+    sourceKind: string;
+    maximumCaptureMode: string;
+    assemblyHash: string;
+    modelHash: string;
+  };
+  replay: ReplayInput;
+};
+type StudioSnapshotOptions = {
+  run?: string;
+  replay?: ReplayInput;
+  compareRun?: string;
+  compareReplay?: ReplayInput;
+  researchReview?: ResearchReviewInput;
+  hardwareCapture?: HardwareCaptureInput;
+};
 
 async function validateReplayInput(replay: ReplayInput): Promise<void> {
   const root = resolve(replay.path); const rootStat = await lstat(root);
@@ -211,7 +233,99 @@ async function verifyReplayForRun(replay: ReplayInput | undefined, run: Awaited<
   if (replay.manifest.completed !== true) throw new Error(`${label} visual replay is incomplete`);
 }
 
-export async function buildStudioSnapshot(projectDirectory: string, options: { run?: string; replay?: ReplayInput; compareRun?: string; compareReplay?: ReplayInput; researchReview?: ResearchReviewInput } = {}) {
+async function validateHardwareCaptureInput(input: HardwareCaptureInput) {
+  const root = resolve(input.path);
+  const rootStat = await lstat(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error("Hardware Capture path must be a real directory");
+  const diskManifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+  if (hashJson(diskManifest) !== hashJson(input.manifest)) throw new Error("Hardware Capture manifest differs from its verified artifact");
+  if (
+    typeof input.manifest.id !== "string"
+    || typeof input.manifest.captureHash !== "string"
+    || typeof input.manifest.bundleHash !== "string"
+    || input.manifest.status !== "COMPLETED"
+  ) throw new Error("Studio device replay requires a completed immutable Hardware Capture");
+  const episode = input.manifest.episodes?.find((item: any) => item.id === input.episodeId);
+  if (!episode || episode.completed !== true || typeof episode.path !== "string" || typeof episode.hash !== "string") {
+    throw new Error(`Hardware Capture episode '${input.episodeId}' is not a completed immutable episode`);
+  }
+  const episodePath = confined(root, episode.path);
+  const episodeStat = await lstat(episodePath);
+  if (!episodeStat.isFile() || episodeStat.isSymbolicLink()) throw new Error("Hardware Capture episode path must be a real file");
+  if (sha256(await readFile(episodePath)) !== episode.hash) throw new Error("Hardware Capture episode bytes changed");
+  const trajectory = await sampledNdjson(episodePath, 2_000);
+  if (!trajectory.total) throw new Error("Hardware Capture episode has no device telemetry");
+  for (const [index, value] of trajectory.rows.entries()) {
+    const row = value as Record<string, any>;
+    if (
+      row.episode !== episode.id
+      || !Number.isFinite(Number(row.time))
+      || !Number.isInteger(Number(row.step))
+      || !Array.isArray(row.qpos)
+      || !row.qpos.length
+      || row.qpos.some((item: unknown) => !Number.isFinite(Number(item)))
+      || !Array.isArray(row.qvel)
+      || row.qvel.some((item: unknown) => !Number.isFinite(Number(item)))
+      || !row.deviceHealth
+      || !Array.isArray(row.deviceHealth.faults)
+      || typeof row.deviceHealth.estopEngaged !== "boolean"
+      || typeof row.deviceHealth.watchdogHealthy !== "boolean"
+    ) throw new Error(`Hardware Capture episode row ${index} lacks the required device telemetry contract`);
+  }
+  if (
+    input.bundle.bundleHash !== input.manifest.bundleHash
+    || input.bundle.assemblyHash !== input.manifest.assemblyHash
+    || input.bundle.modelHash !== input.manifest.modelHash
+  ) throw new Error("Hardware Capture and frozen Bundle identities differ");
+  await validateReplayInput(input.replay);
+  const replay = input.replay.manifest;
+  if (
+    replay.version !== 2
+    || replay.kind !== "mujica-hardware-capture-replay"
+    || replay.completed !== true
+    || replay.trajectoryHash !== episode.hash
+    || replay.assemblyHash !== input.bundle.assemblyHash
+    || replay.modelHash !== input.bundle.modelHash
+    || replay.source?.kind !== "hardware-capture-episode"
+    || replay.source.captureId !== input.manifest.id
+    || replay.source.captureHash !== input.manifest.captureHash
+    || replay.source.bundleId !== input.bundle.id
+    || replay.source.bundleHash !== input.bundle.bundleHash
+    || replay.source.episodeId !== episode.id
+    || replay.source.episodeHash !== episode.hash
+  ) throw new Error("Device telemetry replay differs from its immutable Capture, episode, or frozen Bundle");
+  return {
+    id: input.manifest.id,
+    captureHash: input.manifest.captureHash,
+    status: input.manifest.status,
+    plan: input.manifest.plan,
+    target: input.manifest.target,
+    environment: input.manifest.environment,
+    device: input.manifest.device,
+    operator: input.manifest.operator,
+    mode: input.manifest.mode,
+    actuationAuthorized: input.manifest.actuationAuthorized,
+    bundleHash: input.manifest.bundleHash,
+    assembly: input.manifest.assembly,
+    assemblyHash: input.manifest.assemblyHash,
+    controller: input.manifest.controller,
+    episode,
+    trajectory,
+    bundle: input.bundle,
+    authorityBoundary: {
+      kinematics: "device-reported",
+      geometry: "bundle-frozen-digital-twin",
+      visualGroundTruth: false,
+      cameraOrMotionCapture: false,
+      physicalContactTruth: "reported-telemetry-only",
+      hardwareVerification: "unchanged",
+      calibrationAuthority: "unchanged",
+      actuationAuthority: "unchanged",
+    },
+  };
+}
+
+export async function buildStudioSnapshot(projectDirectory: string, options: StudioSnapshotOptions = {}) {
   const project = await loadProject(projectDirectory); const assemblies = [];
   for (const id of await listAssemblyIds(project.rootDir)) {
     const assembly = await compileAssembly(project.rootDir, id);
@@ -222,7 +336,11 @@ export async function buildStudioSnapshot(projectDirectory: string, options: { r
   }
   const components = [];
   for (const id of await listComponentIds(project.rootDir)) { const component = await loadComponent(project.rootDir, id); components.push({ ...component.manifest, hash: component.hash }); }
-  const runs = await selectedRun(project.rootDir, options.run);
+  const captureMode = Boolean(options.hardwareCapture);
+  if (captureMode && (options.run || options.replay || options.compareRun || options.compareReplay || options.researchReview)) {
+    throw new Error("A device telemetry Studio snapshot cannot mix Hardware Capture and simulation Run selectors");
+  }
+  const runs = await selectedRun(project.rootDir, options.run, !captureMode);
   const comparison = options.compareRun ? await selectedRun(project.rootDir, options.compareRun) : { summaries: runs.summaries, selected: null };
   if (options.compareReplay && !options.compareRun) throw new Error("A comparison visual replay requires --compare-run");
   await verifyReplayForRun(options.replay, runs.selected, "primary");
@@ -237,14 +355,19 @@ export async function buildStudioSnapshot(projectDirectory: string, options: { r
     || selectedResearchReview.review.accepted.resultHash !== runs.selected?.manifest?.resultHash
     || selectedResearchReview.review.candidate.resultHash !== comparison.selected?.manifest?.resultHash
   )) throw new Error("Selected Research Review differs from its immutable Run pair");
+  const selectedHardwareCapture = options.hardwareCapture
+    ? await validateHardwareCaptureInput(options.hardwareCapture)
+    : null;
   return {
-    version: 5, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-offline-v1", sourceHash: sha256(studioHtml.toString()) }, project: project.manifest,
-    selectedAssembly: project.manifest.defaults.assembly, assemblies, components,
+    version: 6, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-offline-v1", sourceHash: sha256(studioHtml.toString()) }, project: project.manifest,
+    selectedAssembly: selectedHardwareCapture?.assembly ?? project.manifest.defaults.assembly, assemblies, components,
     runs: runs.summaries, selectedRun: runs.selected,
     selectedReplay: options.replay ? { ...options.replay.manifest, frameBase: "replay/frames" } : null,
     comparisonRun: comparison.selected,
     comparisonReplay: options.compareReplay ? { ...options.compareReplay.manifest, frameBase: "comparison-replay/frames" } : null,
     selectedResearchReview,
+    selectedHardwareCapture,
+    selectedHardwareReplay: options.hardwareCapture ? { ...options.hardwareCapture.replay.manifest, frameBase: "hardware-replay/frames" } : null,
     policies: await artifactManifests(join(project.rootDir, "policies")),
     trainingRuns: await artifactManifests(join(project.rootDir, "training-runs")),
     hardwareBundles: await artifactManifests(join(project.rootDir, "hardware-bundles")),
@@ -271,13 +394,14 @@ function studioHtml(snapshot: Awaited<ReturnType<typeof buildStudioSnapshot>>): 
 :root{color-scheme:dark;--bg:#0b1015;--panel:#121a22;--line:#263442;--muted:#8ea0af;--text:#edf4f8;--a:#65d6ad;--b:#efc66b;--bad:#ff7b72}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}header{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px}h1,h2,h3{margin:0 0 10px;font-weight:600}h1{font-size:20px}h2{font-size:15px;color:var(--a)}h3{font-size:13px}.muted{color:var(--muted)}main{display:grid;grid-template-columns:minmax(360px,1.3fr) minmax(320px,.7fr);gap:14px;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}.wide{grid-column:1/-1}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.stat{border:1px solid var(--line);padding:10px;border-radius:6px}.stat strong{display:block;font-size:18px;color:var(--b)}select,input,button,textarea{font:inherit;color:var(--text);background:#0d151c;border:1px solid var(--line);border-radius:5px;padding:7px}button{cursor:pointer}button:hover{border-color:var(--a)}textarea{width:100%;min-height:76px;resize:vertical}.field{display:grid;gap:4px}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.form-grid .span-all{grid-column:1/-1}.source-chip{padding:9px;border:1px solid var(--line);border-radius:6px;background:#0d151c}.attention-row{display:grid;grid-template-columns:auto 1fr;gap:9px;padding:9px;border-bottom:1px solid var(--line);cursor:pointer}.attention-row:hover{background:#17232d}.severity-blocking{color:var(--bad);border-color:var(--bad)}.severity-investigate{color:var(--b);border-color:var(--b)}.severity-info{color:var(--a);border-color:var(--a)}canvas{width:100%;height:300px;background:#090e12;border:1px solid var(--line);border-radius:6px}.controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}.controls input{flex:1;min-width:160px}.split,.comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.replay-card{min-width:0}.replay-card h3 .tag{float:right}.list{max-height:340px;overflow:auto}.row{padding:7px 0;border-bottom:1px solid var(--line);word-break:break-word}.row.seek{cursor:pointer}.row.seek:hover{background:#17232d}.tag{display:inline-block;border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin:2px;color:var(--muted)}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:5px;border-bottom:1px solid var(--line)}code{color:var(--b)}.replay-stage{position:relative;background:#05080b;border:1px solid var(--line);border-radius:7px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center}.replay-stage img{display:block;width:100%;height:100%;object-fit:contain}.replay-stage .missing{padding:30px;text-align:center;color:var(--muted)}.live-badge{position:absolute;left:10px;top:10px;background:#07110dcc;border:1px solid var(--a);color:var(--a);border-radius:11px;padding:2px 8px}.telemetry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.telemetry .cell{border:1px solid var(--line);border-radius:5px;padding:7px}.telemetry strong{display:block;color:var(--b);font-size:12px}.ok{color:var(--a)}.bad{color:var(--bad)}.delta-good{color:var(--a)}.delta-bad{color:var(--bad)}#copy-status,#observation-status{min-height:20px}@media(max-width:850px){main{grid-template-columns:1fr}.split,.comparison-grid,.form-grid{grid-template-columns:1fr}.form-grid .span-all,.wide{grid-column:1}}
 </style></head><body><header><div><h1>Mujica Studio</h1><div>${title} · read-only evidence debugger</div></div><div class="muted">Source of truth: project files and immutable artifacts<br>No editing or evaluation occurs in Studio</div></header>
 <main><section class="panel wide"><div class="stats" id="stats"></div></section>
-<section class="panel wide"><h2>Attention queue</h2><div class="muted">Measured failures first, then human hypotheses. Click a Run event to seek; click a Capture to bind an observation draft to its exact protocol event.</div><div class="list" id="attention"></div></section>
-<section class="panel wide"><h2>Authoritative MuJoCo replay comparison</h2><div class="comparison-grid"><div class="replay-card"><h3>Baseline <span class="tag">A</span></h3><div class="replay-stage"><img id="replay-image" alt="Baseline MuJoCo robot replay"><div class="missing" id="replay-missing">No authoritative visual replay.</div><span class="live-badge" id="health">—</span></div><div id="frame-a">—</div><div class="telemetry" id="telemetry-a"></div></div><div class="replay-card" id="comparison-card"><h3>Subject <span class="tag">B</span></h3><div class="replay-stage"><img id="comparison-image" alt="Subject MuJoCo robot replay"><div class="missing" id="comparison-missing">Choose --compare-run to add a subject.</div><span class="live-badge" id="comparison-health">—</span></div><div id="frame-b">—</div><div class="telemetry" id="telemetry-b"></div></div></div><div class="controls"><button id="previous" title="Previous shared time">◀</button><button id="play">Play</button><button id="next" title="Next shared time">▶</button><input id="scrub" type="range" min="0" value="0"><select id="speed" title="Playback speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><div id="frame">—</div><div class="muted" id="replay-status"></div><div class="controls"><button id="copy-frame">Copy comparison context for Agent</button></div><div class="muted" id="copy-status"></div></section>
-<section class="panel wide"><h2>Research Review provenance</h2><div id="selected-research-review" class="source-chip">This Run pair is not bound to a Research Review.</div><div class="controls"><button id="copy-selected-review">Copy complete Research Review context</button></div><div class="muted" id="selected-review-status">Visual interpretation remains a human hypothesis; the locked Judge verdict is unchanged.</div></section>
+<section class="panel wide"><h2>Attention queue</h2><div class="muted" id="attention-guidance">Measured failures first, then human hypotheses. Click a Run event to seek; click a Capture to bind an observation draft to its exact protocol event.</div><div class="list" id="attention"></div></section>
+<section class="panel wide"><h2 id="replay-heading">Authoritative MuJoCo replay comparison</h2><div class="comparison-grid" id="replay-grid"><div class="replay-card"><h3 id="primary-heading">Baseline <span class="tag">A</span></h3><div class="replay-stage"><img id="replay-image" alt="Baseline MuJoCo robot replay"><div class="missing" id="replay-missing">No authoritative visual replay.</div><span class="live-badge" id="health">—</span></div><div id="frame-a">—</div><div class="telemetry" id="telemetry-a"></div></div><div class="replay-card" id="comparison-card"><h3>Subject <span class="tag">B</span></h3><div class="replay-stage"><img id="comparison-image" alt="Subject MuJoCo robot replay"><div class="missing" id="comparison-missing">Choose --compare-run to add a subject.</div><span class="live-badge" id="comparison-health">—</span></div><div id="frame-b">—</div><div class="telemetry" id="telemetry-b"></div></div></div><div class="controls"><button id="previous" title="Previous shared time">◀</button><button id="play">Play</button><button id="next" title="Next shared time">▶</button><input id="scrub" type="range" min="0" value="0"><select id="speed" title="Playback speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><div id="frame">—</div><div class="muted" id="replay-status"></div><div class="controls"><button id="copy-frame">Copy comparison context for Agent</button></div><div class="muted" id="copy-status"></div></section>
+<section class="panel wide" id="device-provenance" hidden><h2>Device telemetry projection boundary</h2><div class="source-chip" id="device-provenance-detail"></div><div class="muted">This view is reconstructed from device-reported kinematics through the exact frozen Hardware Bundle. It is not camera footage, motion capture, physical contact truth, or proof of calibration. Hardware verification and actuation authority do not change.</div></section>
+<section class="panel wide" id="research-review-provenance"><h2>Research Review provenance</h2><div id="selected-research-review" class="source-chip">This Run pair is not bound to a Research Review.</div><div class="controls"><button id="copy-selected-review">Copy complete Research Review context</button></div><div class="muted" id="selected-review-status">Visual interpretation remains a human hypothesis; the locked Judge verdict is unchanged.</div></section>
 <section class="panel wide"><h2>Human observation → Agent hypothesis</h2><div class="muted">This records what a person sees; it never becomes measured evidence or a Judge verdict.</div><div class="source-chip" id="observation-source">Current Run frame</div><div class="controls"><button id="use-current-frame">Use current replay frame</button></div><div class="form-grid"><label class="field">Category<select id="observation-category"><option>motion</option><option>stability</option><option>contact</option><option>control</option><option>timing</option><option>safety</option><option>other</option></select></label><label class="field">Severity<select id="observation-severity"><option>investigate</option><option>info</option><option>blocking</option></select></label><label class="field">Confidence<select id="observation-confidence"><option>medium</option><option>low</option><option>high</option></select></label><label class="field span-all">Summary<input id="observation-summary" maxlength="240" placeholder="What did you see?"></label><label class="field span-all">Details<textarea id="observation-details" maxlength="2000" placeholder="Describe the visible pattern and when it begins."></textarea></label><label class="field span-all">Suggested next action<input id="observation-next" maxlength="500" placeholder="What should the Agent inspect before changing code?"></label></div><div class="controls"><button id="copy-observation">Copy observation draft</button><button id="download-observation">Download draft JSON</button></div><div class="muted" id="observation-status">Record with <code>mujica observation record . --input draft.json --observer NAME</code>.</div></section>
-<section class="panel"><h2>Run evidence</h2><div id="run"></div></section>
+<section class="panel"><h2 id="evidence-heading">Run evidence</h2><div id="run"></div></section>
 <section class="panel"><h2>Top-down path</h2><canvas id="trajectory" width="900" height="420"></canvas><div class="muted" id="sampling"></div></section>
-<section class="panel"><h2>Motion-quality deltas</h2><table id="metrics"></table><div class="muted">Delta is subject − baseline; lower is better for every quality burden.</div></section>
+<section class="panel"><h2 id="metrics-heading">Motion-quality deltas</h2><table id="metrics"></table><div class="muted" id="metrics-note">Delta is subject − baseline; lower is better for every quality burden.</div></section>
 <section class="panel"><h2>Assembly and contracts</h2><select id="assembly"></select><div id="assembly-detail"></div></section>
 <section class="panel"><h2>Event timeline</h2><div class="list" id="events"></div></section>
 <section class="panel wide"><div class="split"><div><h2>Hardware Captures</h2><div class="list" id="captures"></div></div><div><h2>Human observations</h2><div class="list" id="human-observations"></div></div></div></section>
@@ -302,7 +426,11 @@ document.querySelectorAll('[data-event-index]').forEach(node=>node.onclick=()=>{
 q('#copy-frame').onclick=async()=>{const row=trajectory[trajectoryIndex(currentFrame)]??null,events=(selected?.events.rows??[]).filter(event=>Math.abs(Number(event.time??0)-Number(row?.time??0))<=.011),context={kind:'mujica-frame-context',runId:selected?.id,resultHash:selected?.manifest?.resultHash,replayId:replay?.id??null,replayFrame:currentFrame,simulationStep:row?.step??null,timeSeconds:row?.time??null,healthy:row?.healthy??null,pitchRad:row?.pitchRad??null,bodyTiltRad:row?.bodyTiltRad??null,motionCommand:row?.motionCommand??null,measuredMotion:row?.measuredMotion??null,footContactForce:row?.footContactForce??null,action:row?.action??null,events};const text=JSON.stringify(context,null,2);try{await navigator.clipboard.writeText(text);q('#copy-status').textContent='Copied exact Run/frame context. Paste it to your Coding Agent.'}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();q('#copy-status').textContent='Copied frame context.'}};
 q('#replay-status').textContent=replay?replay.renderer+' · MuJoCo '+replay.mujocoVersion+' · '+replay.frameCount+' exact qpos frames · '+replay.settings.width+'×'+replay.settings.height:'Generate this Run again with mujica studio to add an authoritative MuJoCo replay.';q('#sampling').textContent=selected?'trajectory '+selected.trajectory.total+' rows · displayed '+trajectory.length+' · stride '+selected.trajectory.stride:'';render(0);}
 
-const A={run:S.selectedRun,replay:S.selectedReplay},B={run:S.comparisonRun,replay:S.comparisonReplay};
+const H=S.selectedHardwareCapture??null;
+const A=H
+  ? {run:null,hardware:H,replay:S.selectedHardwareReplay,trajectory:H.trajectory.rows}
+  : {run:S.selectedRun,hardware:null,replay:S.selectedReplay};
+const B={run:S.comparisonRun,hardware:null,replay:S.comparisonReplay};
 const selectedReview=S.selectedResearchReview?.review??null;
 const researchReviewEntries=S.researchSessions.flatMap(session=>session.experiments.map(experiment=>({session,experiment,review:experiment.visualReview}))).filter(item=>item.review);
 q('#copy-selected-review').disabled=!selectedReview;
@@ -315,7 +443,7 @@ q('#selected-research-review').innerHTML=selectedReview
     +'<br><code>'+esc(selectedReview.accepted.id)+'</code> accepted → <code>'+esc(selectedReview.candidate.id)+'</code> candidate'
     +(selectedReview.judge.decision.gateReasons.length?'<br><span class="bad">'+selectedReview.judge.decision.gateReasons.map(esc).join(' · ')+'</span>':'')
   : 'This Run pair is not bound to a Research Review. Open one with <code>mujica studio . --research-lab ID --session ID --experiment ID</code>.';
-A.trajectory=A.run?.trajectory.rows??[];B.trajectory=B.run?.trajectory.rows??[];
+A.trajectory=A.trajectory??A.run?.trajectory.rows??[];B.trajectory=B.run?.trajectory.rows??[];
 const pad=i=>String(i).padStart(6,'0'),vector=v=>Array.isArray(v)?v.map(x=>Number(x).toFixed(3)).join(', '):'—';
 const timesFor=side=>side.replay?.frameTimes?.length?side.replay.frameTimes.map(Number):side.trajectory.map(row=>Number(row.time??0));
 A.times=timesFor(A);B.times=timesFor(B);
@@ -324,11 +452,25 @@ if(!clockTimes.length)clockTimes.push(0);
 const atOrBefore=(times,time)=>{let found=0;for(let i=0;i<times.length;i++){if(Number(times[i])<=time+1e-9)found=i;else break}return found};
 const rowAt=(side,time)=>side.trajectory[atOrBefore(side.trajectory.map(row=>Number(row.time??0)),time)]??null;
 const sideFrame=(side,time)=>side.times.length?atOrBefore(side.times,time):0;
-q('#stats').innerHTML=[['Assemblies',S.assemblies.length],['Runs',S.runs.length],['Compared Runs',B.run?2:A.run?1:0],['Rendered frames',(A.replay?.frameCount??0)+(B.replay?.frameCount??0)],['Hardware Captures',S.hardwareCaptures.length],['Human observations',S.humanObservations.length],['Research Briefs',S.researchBriefs.length],['Research Reviews',researchReviewEntries.length],['Policies',S.policies.length],['Robot revisions',S.revisions.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');
-const runEvidence=(label,side)=>side.run?'<div class="row"><span class="tag">'+label+'</span> <code>'+esc(side.run.id)+'</code></div><div class="row">seed '+esc(side.run.manifest?.seed)+' · result '+esc(side.run.manifest?.resultHash?.slice?.(0,12))+'</div>'+(side.replay?'<div class="row">replay <code>'+esc(side.replay.id)+'</code> · '+side.replay.frameCount+' frames</div>':''):'<div class="muted">'+label+' not selected.</div>';
-q('#run').innerHTML=runEvidence('baseline',A)+runEvidence('subject',B);
+q('#stats').innerHTML=[['Assemblies',S.assemblies.length],['Runs',S.runs.length],['Compared Runs',B.run?2:A.run?1:0],['Rendered frames',(A.replay?.frameCount??0)+(B.replay?.frameCount??0)],['Device replay',H?1:0],['Hardware Captures',S.hardwareCaptures.length],['Human observations',S.humanObservations.length],['Research Briefs',S.researchBriefs.length],['Research Reviews',researchReviewEntries.length],['Policies',S.policies.length],['Robot revisions',S.revisions.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');
+const runEvidence=(label,side)=>side.run?'<div class="row"><span class="tag">'+label+'</span> <code>'+esc(side.run.id)+'</code></div><div class="row">seed '+esc(side.run.manifest?.seed)+' · result '+esc(side.run.manifest?.resultHash?.slice?.(0,12))+'</div>'+(side.replay?'<div class="row">replay <code>'+esc(side.replay.id)+'</code> · '+side.replay.frameCount+' frames</div>':''):side.hardware?'<div class="row"><span class="tag">'+esc(side.hardware.mode)+'</span> <code>'+esc(side.hardware.id)+'</code></div><div class="row">episode <code>'+esc(side.hardware.episode.id)+'</code><br>capture '+esc(side.hardware.captureHash.slice(0,12))+' · episode '+esc(side.hardware.episode.hash.slice(0,12))+'</div><div class="row">bundle <code>'+esc(side.hardware.bundle.id)+'</code><br>'+esc(side.hardware.bundleHash.slice(0,12))+' · '+esc(side.hardware.environment)+'</div><div class="row">replay <code>'+esc(side.replay?.id)+'</code> · '+esc(side.replay?.frameCount)+' frames</div>':'<div class="muted">'+label+' not selected.</div>';
+q('#run').innerHTML=H?runEvidence('device telemetry',A):runEvidence('baseline',A)+runEvidence('subject',B);
 const qualityKeys=['meanJointJerkRadPerSec3','meanBodyAngularJerkRadPerSec3','meanActionSlewRatePerSec','actuatorSaturationRate','meanFootSlipSpeedMps','peakFootContactImpactNPerSec','totalFootSlipDistanceM'];
-q('#metrics').innerHTML='<tr><th>Metric</th><th>A</th><th>B</th><th>Δ</th></tr>'+qualityKeys.map(key=>{const a=Number(A.run?.metrics?.[key]),b=Number(B.run?.metrics?.[key]),hasA=Number.isFinite(a),hasB=Number.isFinite(b),delta=b-a;return '<tr><td>'+esc(key)+'</td><td>'+esc(hasA?a.toFixed(4):'—')+'</td><td>'+esc(hasB?b.toFixed(4):'—')+'</td><td class="'+(hasA&&hasB?(delta<=0?'delta-good':'delta-bad'):'')+'">'+esc(hasA&&hasB?(delta>=0?'+':'')+delta.toFixed(4):'—')+'</td></tr>'}).join('');
+q('#metrics').innerHTML=H
+  ? [['Capture mode',H.mode],['Actuation authorized',String(H.actuationAuthorized)],['Kinematics','device-reported'],['Geometry','frozen digital twin'],['Visual ground truth','false'],['Contact truth','reported telemetry only'],['Hardware verification','unchanged']].map(item=>'<tr><td>'+esc(item[0])+'</td><td>'+esc(item[1])+'</td></tr>').join('')
+  : '<tr><th>Metric</th><th>A</th><th>B</th><th>Δ</th></tr>'+qualityKeys.map(key=>{const a=Number(A.run?.metrics?.[key]),b=Number(B.run?.metrics?.[key]),hasA=Number.isFinite(a),hasB=Number.isFinite(b),delta=b-a;return '<tr><td>'+esc(key)+'</td><td>'+esc(hasA?a.toFixed(4):'—')+'</td><td>'+esc(hasB?b.toFixed(4):'—')+'</td><td class="'+(hasA&&hasB?(delta<=0?'delta-good':'delta-bad'):'')+'">'+esc(hasA&&hasB?(delta>=0?'+':'')+delta.toFixed(4):'—')+'</td></tr>'}).join('');
+if(H){
+  q('#replay-heading').textContent='Device telemetry → frozen MuJoCo digital twin';
+  q('#primary-heading').innerHTML='Device telemetry <span class="tag">'+esc(H.mode)+'</span>';
+  q('#comparison-card').hidden=true;q('#replay-grid').style.gridTemplateColumns='1fr';
+  q('#copy-frame').textContent='Copy exact device frame context for Agent';
+  q('#evidence-heading').textContent='Capture evidence';
+  q('#metrics-heading').textContent='Authority boundary';q('#metrics-note').textContent='Projection aids diagnosis; it grants no additional evidence or control authority.';
+  q('#device-provenance').hidden=false;
+  q('#research-review-provenance').hidden=true;
+  q('#attention-guidance').textContent='Only faults and recorded human hypotheses associated with this selected device episode belong in the focused queue.';
+  q('#device-provenance-detail').innerHTML='<code>'+esc(H.id)+'</code> / <code>'+esc(H.episode.id)+'</code><br>device-reported qpos/qvel → Bundle <code>'+esc(H.bundle.id)+'</code> → MuJoCo frames<br><span class="muted">source '+esc(H.bundle.sourceKind)+' · maximum bundle mode '+esc(H.bundle.maximumCaptureMode)+'</span>';
+}
 const sel=q('#assembly');sel.innerHTML=S.assemblies.map(a=>'<option '+(a.id===S.selectedAssembly?'selected':'')+' value="'+esc(a.id)+'">'+esc(a.id)+'</option>').join('');
 function showAssembly(){const a=S.assemblies.find(x=>x.id===sel.value);q('#assembly-detail').innerHTML='<div class="row">hash <code>'+esc(a.hash.slice(0,16))+'</code><br>mass '+a.totalMassKg.toFixed(3)+' kg · component cost '+a.componentCost+'</div><h3>Components</h3><div>'+a.components.map(c=>'<div class="row"><span class="tag">'+esc(c.componentId)+'</span> <code>'+esc(JSON.stringify(c.config||{}))+'</code></div>').join('')+'</div><h3>Observation '+a.observationContract.size+'</h3><div>'+a.observationContract.channels.map(c=>'<span class="tag">'+esc(c.name)+' ['+c.size+']</span>').join('')+'</div><h3>Action '+a.actionContract.size+'</h3><div>'+a.actionContract.channels.map(c=>'<span class="tag">'+esc(c.name)+' ['+c.size+']</span>').join('')+'</div>'}sel.onchange=showAssembly;showAssembly();
 const eventRows=[...(A.run?.events.rows??[]).map(event=>({side:'A',event})),...(B.run?.events.rows??[]).map(event=>({side:'B',event}))].sort((a,b)=>Number(a.event.time??0)-Number(b.event.time??0));
@@ -346,7 +488,7 @@ function selectedBriefLab(){return S.researchLabs.find(item=>item.id===briefLabS
 function updateBriefSource(){const observation=selectedBriefObservation(),lab=selectedBriefLab();q('#brief-source').innerHTML=observation&&lab?'Human hypothesis <code>'+esc(observation.id)+'</code> → <code>'+esc(lab.id)+'</code><br><span class="muted">Benchmark '+esc(lab.benchmark)+' · '+esc(lab.editable.paths.length)+' explicit editable path(s) · promotion '+esc(lab.promotion)+'</span>':'Record a human observation and select a Research Lab before preparing a Brief.'}
 briefObservationSelect.onchange=updateBriefSource;briefLabSelect.onchange=updateBriefSource;updateBriefSource();
 const runAttention=eventRows.filter(item=>String(item.event.type??'').includes('fall')||item.event.healthy===false||String(item.event.type??'').includes('failed')).map(item=>({kind:'run',severity:'blocking',title:item.side+' · '+item.event.type,detail:'Run '+(item.side==='A'?A.run?.id:B.run?.id)+' at '+Number(item.event.time??0).toFixed(3)+'s',time:Number(item.event.time??0),sortTime:Number.MAX_SAFE_INTEGER}));
-const captureAttention=captureRows.filter(capture=>capture.status==='ABORTED'||Number(capture.interventions??0)>0).map(capture=>({kind:'capture',severity:capture.status==='ABORTED'?'blocking':'investigate',title:capture.status+' · '+capture.id,detail:(capture.reasons?.join(' · ')||capture.interventions+' safety interventions')+' · protocol event '+capture.attentionEventIndex,capture,sortTime:Date.parse(capture.endedAt??'')||0}));
+const captureAttention=(H?captureRows.filter(capture=>capture.id===H.id):captureRows).filter(capture=>capture.status==='ABORTED'||Number(capture.interventions??0)>0).map(capture=>({kind:'capture',severity:capture.status==='ABORTED'?'blocking':'investigate',title:capture.status+' · '+capture.id,detail:(capture.reasons?.join(' · ')||capture.interventions+' safety interventions')+' · protocol event '+capture.attentionEventIndex,capture,sortTime:Date.parse(capture.endedAt??'')||0}));
 const observationAttention=humanObservations.map(observation=>({kind:'observation',severity:observation.assessment?.severity??'info',title:'Human · '+observation.assessment?.summary,detail:observation.id+' · hypothesis only',sortTime:Date.parse(observation.recordedAt??'')||0}));
 const attentionRank={blocking:0,investigate:1,info:2},attentionRows=[...runAttention,...captureAttention,...observationAttention].sort((a,b)=>attentionRank[a.severity]-attentionRank[b.severity]||b.sortTime-a.sortTime||String(a.title).localeCompare(String(b.title)));
 q('#attention').innerHTML=attentionRows.map((item,index)=>'<div class="attention-row" data-attention-index="'+index+'"><span class="tag severity-'+esc(item.severity)+'">'+esc(item.severity)+'</span><div><strong>'+esc(item.title)+'</strong><div class="muted">'+esc(item.detail)+'</div></div></div>').join('')||'<div class="muted">No anomalies or human hypotheses in this snapshot.</div>';
@@ -363,18 +505,18 @@ q('#benchmarks').innerHTML=S.benchmarks.map(b=>'<div class="row"><code>'+esc(b.i
 q('#candidates').innerHTML=S.candidates.map(c=>'<div class="row"><code>'+esc(c.id)+'</code> <span class="tag">'+esc(c.kind)+'</span><br><span class="muted">'+esc(c.baseline.assembly)+'/'+esc(c.baseline.controller)+' → '+esc(c.proposed.assembly)+'/'+esc(c.proposed.controller)+'</span></div>').join('');
 const canvas=q('#trajectory'),ctx=canvas.getContext('2d'),scrub=q('#scrub');scrub.max=String(Math.max(0,clockTimes.length-1));let timer=null,currentClock=0,selectedCapture=null;
 function drawPath(time){ctx.clearRect(0,0,canvas.width,canvas.height);const series=[{side:A,color:'#65d6ad'},{side:B,color:'#efc66b'}].filter(item=>item.side.trajectory.length);if(!series.length){ctx.fillStyle='#8ea0af';ctx.fillText('No trajectory selected',30,40);return}const all=series.flatMap(item=>item.side.trajectory.map(row=>[row.qpos?.[0]??0,row.qpos?.[1]??0])),xs=all.map(p=>p[0]),ys=all.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),span=Math.max(maxX-minX,maxY-minY,.25),map=p=>[60+(p[0]-minX)/span*(canvas.width-120),canvas.height-60-(p[1]-minY)/span*(canvas.height-120)];for(const item of series){const pts=item.side.trajectory.map(r=>[r.qpos?.[0]??0,r.qpos?.[1]??0]),index=atOrBefore(item.side.trajectory.map(row=>Number(row.time??0)),time);ctx.strokeStyle=item.color+'55';ctx.lineWidth=2;ctx.beginPath();pts.forEach((p,n)=>{const m=map(p);n?ctx.lineTo(...m):ctx.moveTo(...m)});ctx.stroke();ctx.strokeStyle=item.color;ctx.lineWidth=4;ctx.beginPath();pts.slice(0,index+1).forEach((p,n)=>{const m=map(p);n?ctx.lineTo(...m):ctx.moveTo(...m)});ctx.stroke();const m=map(pts[index]);ctx.fillStyle=item.color;ctx.beginPath();ctx.arc(...m,7,0,Math.PI*2);ctx.fill()}}
-function telemetry(side,row,target,health){const quality=row?.motionQuality??{},peak=values=>Array.isArray(values)?Math.max(0,...values.map(x=>Math.abs(Number(x)))):null,cells=[['Time',Number(row?.time??0).toFixed(3)+' s'],['Step',row?.step??'—'],['Pitch',Number(row?.pitchRad??0).toFixed(3)+' rad'],['Body tilt',Number(row?.bodyTiltRad??0).toFixed(3)+' rad'],['Command',vector(row?.motionCommand)],['Measured',vector(row?.measuredMotion)],['Action slew peak',peak(quality.actionSlewRatePerSec)?.toFixed(2)??'—'],['Joint jerk peak',peak(quality.jointJerkRadPerSec3)?.toFixed(2)??'—'],['Foot slip peak',peak(quality.footSlipSpeedMps)?.toFixed(3)??'—'],['Contact impact peak',peak(quality.footContactImpactNPerSec)?.toFixed(1)??'—']];q(target).innerHTML=cells.map(x=>'<div class="cell"><strong>'+esc(x[0])+'</strong>'+esc(x[1])+'</div>').join('');q(health).textContent=row?.healthy===false?'UNHEALTHY':row?'HEALTHY':'—';q(health).className='live-badge '+(row?.healthy===false?'bad':'ok')}
-function renderSide(side,time,imageId,missingId,frameId,telemetryId,healthId){const image=q(imageId),missing=q(missingId),frameIndex=sideFrame(side,time),row=rowAt(side,time);if(side.replay){image.hidden=false;missing.hidden=true;image.src=side.replay.frameBase+'/'+pad(frameIndex)+'.png';const preload=new Image();preload.src=side.replay.frameBase+'/'+pad(Math.min(side.replay.frameCount-1,frameIndex+1))+'.png'}else{image.hidden=true;missing.hidden=false}q(frameId).textContent=side.run?'frame '+(frameIndex+1)+' / '+Math.max(1,side.times.length)+' · mapped '+Number(side.times[frameIndex]??row?.time??0).toFixed(3)+'s':'No Run selected';telemetry(side,row,telemetryId,healthId);return {frameIndex,row}}
-function render(index){currentClock=Math.max(0,Math.min(clockTimes.length-1,Number(index)||0));const time=clockTimes[currentClock],a=renderSide(A,time,'#replay-image','#replay-missing','#frame-a','#telemetry-a','#health'),b=renderSide(B,time,'#comparison-image','#comparison-missing','#frame-b','#telemetry-b','#comparison-health');scrub.value=String(currentClock);q('#frame').textContent='shared simulation time '+time.toFixed(3)+'s · '+(currentClock+1)+' / '+clockTimes.length;drawPath(time);updateObservationSource();return {time,a,b}}
+function telemetry(side,row,target,health){const peak=values=>Array.isArray(values)?Math.max(0,...values.map(x=>Math.abs(Number(x)))):null,difference=(a,b)=>Array.isArray(a)&&Array.isArray(b)?Math.max(0,...a.map((value,index)=>Math.abs(Number(value)-Number(b[index]??0)))):null;let cells,unhealthy=false,label='—';if(side.hardware){const state=row?.deviceHealth??{},states=state.actuatorStates??[],faults=state.faults??[];unhealthy=Boolean(row&&(faults.length||state.estopEngaged===true||state.watchdogHealthy===false||states.some(value=>value!=='ready')));label=row?(unhealthy?'DEVICE FAULT':'DEVICE HEALTHY'):'—';cells=[['Device time',Number(row?.time??0).toFixed(3)+' s'],['Step',row?.step??'—'],['Base XYZ',vector(row?.qpos?.slice?.(0,3))],['Bus voltage',Number.isFinite(Number(state.busVoltageV))?Number(state.busVoltageV).toFixed(2)+' V':'—'],['Proposed peak',peak(row?.proposedAction)?.toFixed(3)??'—'],['Commanded peak',peak(row?.commandedAction)?.toFixed(3)??'—'],['Applied peak',peak(row?.appliedAction)?.toFixed(3)??'—'],['Proposed ↔ applied Δ',difference(row?.proposedAction,row?.appliedAction)?.toFixed(3)??'—'],['Watchdog',state.watchdogHealthy===true?'healthy':state.watchdogHealthy===false?'unhealthy':'—'],['E-stop',state.estopEngaged===true?'ENGAGED':state.estopEngaged===false?'clear':'—'],['Faults',faults.join(', ')||'none'],['Actuators',states.length?states.reduce((summary,value)=>(summary[value]=(summary[value]??0)+1,summary),{}):'—']]}else{const quality=row?.motionQuality??{};unhealthy=row?.healthy===false;label=row?(unhealthy?'UNHEALTHY':'HEALTHY'):'—';cells=[['Time',Number(row?.time??0).toFixed(3)+' s'],['Step',row?.step??'—'],['Pitch',Number(row?.pitchRad??0).toFixed(3)+' rad'],['Body tilt',Number(row?.bodyTiltRad??0).toFixed(3)+' rad'],['Command',vector(row?.motionCommand)],['Measured',vector(row?.measuredMotion)],['Action slew peak',peak(quality.actionSlewRatePerSec)?.toFixed(2)??'—'],['Joint jerk peak',peak(quality.jointJerkRadPerSec3)?.toFixed(2)??'—'],['Foot slip peak',peak(quality.footSlipSpeedMps)?.toFixed(3)??'—'],['Contact impact peak',peak(quality.footContactImpactNPerSec)?.toFixed(1)??'—']]}q(target).innerHTML=cells.map(x=>'<div class="cell"><strong>'+esc(x[0])+'</strong>'+esc(typeof x[1]==='object'?JSON.stringify(x[1]):x[1])+'</div>').join('');q(health).textContent=label;q(health).className='live-badge '+(unhealthy?'bad':'ok')}
+function renderSide(side,time,imageId,missingId,frameId,telemetryId,healthId){const image=q(imageId),missing=q(missingId),frameIndex=sideFrame(side,time),row=rowAt(side,time);if(side.replay){image.hidden=false;missing.hidden=true;image.src=side.replay.frameBase+'/'+pad(frameIndex)+'.png';const preload=new Image();preload.src=side.replay.frameBase+'/'+pad(Math.min(side.replay.frameCount-1,frameIndex+1))+'.png'}else{image.hidden=true;missing.hidden=false}q(frameId).textContent=side.run||side.hardware?'frame '+(frameIndex+1)+' / '+Math.max(1,side.times.length)+' · mapped '+Number(side.times[frameIndex]??row?.time??0).toFixed(3)+'s':'No source selected';telemetry(side,row,telemetryId,healthId);return {frameIndex,row}}
+function render(index){currentClock=Math.max(0,Math.min(clockTimes.length-1,Number(index)||0));const time=clockTimes[currentClock],a=renderSide(A,time,'#replay-image','#replay-missing','#frame-a','#telemetry-a','#health'),b=renderSide(B,time,'#comparison-image','#comparison-missing','#frame-b','#telemetry-b','#comparison-health');scrub.value=String(currentClock);q('#frame').textContent=(H?'device telemetry time ':'shared simulation time ')+time.toFixed(3)+'s · '+(currentClock+1)+' / '+clockTimes.length;drawPath(time);updateObservationSource();return {time,a,b}}
 function pause(){if(timer){clearTimeout(timer);timer=null}q('#play').textContent='Play'}function advance(){if(currentClock>=clockTimes.length-1){pause();return}const from=clockTimes[currentClock],to=clockTimes[currentClock+1],speed=Number(q('#speed').value)||1;render(currentClock+1);timer=setTimeout(advance,Math.max(8,1000*Math.max(.001,to-from)/speed))}
 q('#play').onclick=()=>{if(timer){pause();return}q('#play').textContent='Pause';advance()};q('#previous').onclick=()=>{pause();render(currentClock-1)};q('#next').onclick=()=>{pause();render(currentClock+1)};scrub.oninput=()=>{pause();render(Number(scrub.value))};
 document.querySelectorAll('[data-event-index]').forEach(node=>node.onclick=()=>{pause();const time=Number(eventRows[Number(node.dataset.eventIndex)].event.time??0);render(atOrBefore(clockTimes,time))});document.addEventListener('keydown',event=>{if(event.target?.matches?.('input,select,textarea'))return;if(event.key==='ArrowLeft'){event.preventDefault();q('#previous').click()}else if(event.key==='ArrowRight'){event.preventDefault();q('#next').click()}else if(event.key===' '){event.preventDefault();q('#play').click()}});
 document.querySelectorAll('[data-capture-index]').forEach(node=>node.onclick=()=>{selectedCapture=captureRows[Number(node.dataset.captureIndex)];updateObservationSource()});
 document.querySelectorAll('[data-attention-index]').forEach(node=>node.onclick=()=>{const item=attentionRows[Number(node.dataset.attentionIndex)];if(item.kind==='run'){selectedCapture=null;pause();render(atOrBefore(clockTimes,item.time))}else if(item.kind==='capture'){selectedCapture=item.capture;updateObservationSource()}});
-const sideContext=(side,time)=>{const frameIndex=sideFrame(side,time),row=rowAt(side,time);return side.run?{runId:side.run.id,resultHash:side.run.manifest?.resultHash,replayId:side.replay?.id??null,replayFrame:frameIndex,mappedFrameTimeSeconds:side.times[frameIndex]??null,simulationStep:row?.step??null,rowTimeSeconds:row?.time??null,healthy:row?.healthy??null,pitchRad:row?.pitchRad??null,bodyTiltRad:row?.bodyTiltRad??null,motionCommand:row?.motionCommand??null,measuredMotion:row?.measuredMotion??null,footContactForce:row?.footContactForce??null,motionQuality:row?.motionQuality??null,action:row?.action??null}:null};
-q('#copy-frame').onclick=async()=>{const time=clockTimes[currentClock],deltas=Object.fromEntries(qualityKeys.map(key=>[key,B.run&&A.run?Number(B.run.metrics?.[key]??0)-Number(A.run.metrics?.[key]??0):null])),context={kind:B.run?'mujica-run-comparison-context':'mujica-frame-context',authority:'immutable-evidence-selector',headlessArgv:['evidence','inspect','.', '--run',A.run.id,'--time',String(time),...(B.run?['--compare-run',B.run.id]:[])],sharedTimeSeconds:time,baseline:sideContext(A,time),subject:sideContext(B,time),motionQualityDeltaSubjectMinusBaseline:deltas,researchReview:selectedReview?{lineage:selectedReview.lineage,judge:selectedReview.judge,selectedCase:selectedReview.selectedCase,authorityBoundary:selectedReview.authorityBoundary}:null};const text=JSON.stringify(context,null,2);try{await navigator.clipboard.writeText(text);q('#copy-status').textContent='Copied exact evidence selector and headless reproduction command.'}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();q('#copy-status').textContent='Copied comparison context.'}};
-function observationSource(){if(selectedCapture)return{kind:'hardware-capture-event',captureId:selectedCapture.id,captureHash:selectedCapture.captureHash,eventIndex:selectedCapture.attentionEventIndex};const time=clockTimes[currentClock];return{kind:'run-frame',runId:A.run.id,resultHash:A.run.manifest.resultHash,timeSeconds:time,...(B.run?{comparisonRunId:B.run.id,comparisonResultHash:B.run.manifest.resultHash}:{})}}
-function updateObservationSource(){const source=observationSource();q('#observation-source').innerHTML=source.kind==='run-frame'?'Run frame · <code>'+esc(source.runId)+'</code> at '+Number(source.timeSeconds).toFixed(3)+'s'+(source.comparisonRunId?' compared with <code>'+esc(source.comparisonRunId)+'</code>':''):'Hardware Capture · <code>'+esc(source.captureId)+'</code> · transcript event '+source.eventIndex}
+const sideContext=(side,time)=>{const frameIndex=sideFrame(side,time),row=rowAt(side,time);if(side.hardware)return{captureId:side.hardware.id,captureHash:side.hardware.captureHash,bundleId:side.hardware.bundle.id,bundleHash:side.hardware.bundleHash,episodeId:side.hardware.episode.id,episodeHash:side.hardware.episode.hash,replayId:side.replay?.id??null,replayFrame:frameIndex,mappedFrameTimeSeconds:side.times[frameIndex]??null,deviceStep:row?.step??null,rowTimeSeconds:row?.time??null,qpos:row?.qpos??null,qvel:row?.qvel??null,proposedAction:row?.proposedAction??null,commandedAction:row?.commandedAction??null,appliedAction:row?.appliedAction??null,deviceHealth:row?.deviceHealth??null,authorityBoundary:side.hardware.authorityBoundary};return side.run?{runId:side.run.id,resultHash:side.run.manifest?.resultHash,replayId:side.replay?.id??null,replayFrame:frameIndex,mappedFrameTimeSeconds:side.times[frameIndex]??null,simulationStep:row?.step??null,rowTimeSeconds:row?.time??null,healthy:row?.healthy??null,pitchRad:row?.pitchRad??null,bodyTiltRad:row?.bodyTiltRad??null,motionCommand:row?.motionCommand??null,measuredMotion:row?.measuredMotion??null,footContactForce:row?.footContactForce??null,motionQuality:row?.motionQuality??null,action:row?.action??null}:null};
+q('#copy-frame').onclick=async()=>{const time=clockTimes[currentClock];let context;if(H){context={kind:'mujica-hardware-capture-frame-selector',authority:'immutable-device-telemetry',headlessArgv:['evidence','inspect','.', '--capture',H.id,'--episode',H.episode.id,'--time',String(time)],capture:sideContext(A,time),projectionBoundary:H.authorityBoundary}}else{const deltas=Object.fromEntries(qualityKeys.map(key=>[key,B.run&&A.run?Number(B.run.metrics?.[key]??0)-Number(A.run.metrics?.[key]??0):null]));context={kind:B.run?'mujica-run-comparison-context':'mujica-frame-context',authority:'immutable-evidence-selector',headlessArgv:['evidence','inspect','.', '--run',A.run.id,'--time',String(time),...(B.run?['--compare-run',B.run.id]:[])],sharedTimeSeconds:time,baseline:sideContext(A,time),subject:sideContext(B,time),motionQualityDeltaSubjectMinusBaseline:deltas,researchReview:selectedReview?{lineage:selectedReview.lineage,judge:selectedReview.judge,selectedCase:selectedReview.selectedCase,authorityBoundary:selectedReview.authorityBoundary}:null}}const text=JSON.stringify(context,null,2);try{await navigator.clipboard.writeText(text);q('#copy-status').textContent=H?'Copied exact device telemetry selector and headless reproduction command.':'Copied exact evidence selector and headless reproduction command.'}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();q('#copy-status').textContent=H?'Copied exact device telemetry selector.':'Copied exact frame context.'}};
+function observationSource(){if(selectedCapture)return{kind:'hardware-capture-event',captureId:selectedCapture.id,captureHash:selectedCapture.captureHash,eventIndex:selectedCapture.attentionEventIndex};const time=clockTimes[currentClock];if(H)return{kind:'hardware-capture-frame',captureId:H.id,captureHash:H.captureHash,bundleHash:H.bundleHash,episodeId:H.episode.id,episodeHash:H.episode.hash,timeSeconds:time};return{kind:'run-frame',runId:A.run.id,resultHash:A.run.manifest.resultHash,timeSeconds:time,...(B.run?{comparisonRunId:B.run.id,comparisonResultHash:B.run.manifest.resultHash}:{})}}
+function updateObservationSource(){const source=observationSource();q('#observation-source').innerHTML=source.kind==='run-frame'?'Run frame · <code>'+esc(source.runId)+'</code> at '+Number(source.timeSeconds).toFixed(3)+'s'+(source.comparisonRunId?' compared with <code>'+esc(source.comparisonRunId)+'</code>':''):source.kind==='hardware-capture-frame'?'Device telemetry frame · <code>'+esc(source.captureId)+'</code> / <code>'+esc(source.episodeId)+'</code> at '+Number(source.timeSeconds).toFixed(3)+'s':'Hardware Capture · <code>'+esc(source.captureId)+'</code> · transcript event '+source.eventIndex}
 function observationDraft(){const summary=q('#observation-summary').value.trim();if(!summary)throw new Error('Summary is required.');const details=q('#observation-details').value.trim(),next=q('#observation-next').value.trim();return{version:1,kind:'mujica-human-observation-draft',source:observationSource(),assessment:{category:q('#observation-category').value,severity:q('#observation-severity').value,confidence:q('#observation-confidence').value,summary,...(details?{details}:{}),...(next?{suggestedNextAction:next}:{})}}}
 async function copyText(text){try{await navigator.clipboard.writeText(text)}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove()}}
 const reviewHandoff=review=>({kind:'mujica-research-review-selector',authority:'derived-human-review',claimKind:'visual-witness',research:{lab:review.lineage.researchId,session:review.lineage.sessionId,experiment:review.lineage.experimentId,brief:review.lineage.researchBriefId,observations:review.lineage.observationIds},judge:{verdict:review.judge.verdict,decisionHash:review.judge.decisionHash},selectedCase:review.selectedCase,accepted:review.accepted,candidate:review.candidate,headlessArgv:['studio','.', '--research-lab',review.lineage.researchId,'--session',review.lineage.sessionId,'--experiment',review.lineage.experimentId],authorityBoundary:review.authorityBoundary});
@@ -384,19 +526,20 @@ q('#copy-research-brief').onclick=async()=>{const observation=selectedBriefObser
 q('#use-current-frame').onclick=()=>{selectedCapture=null;updateObservationSource()};
 q('#copy-observation').onclick=async()=>{try{await copyText(JSON.stringify(observationDraft(),null,2));q('#observation-status').textContent='Copied schema-valid human hypothesis draft. Record it explicitly with mujica observation record.'}catch(error){q('#observation-status').textContent=error.message}};
 q('#download-observation').onclick=()=>{try{const text=JSON.stringify(observationDraft(),null,2)+'\\n',blob=new Blob([text],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='mujica-observation-draft.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),0);q('#observation-status').textContent='Downloaded draft. Recording it remains an explicit CLI artifact action.'}catch(error){q('#observation-status').textContent=error.message}};
-q('#replay-status').textContent=[A.replay&&('A '+A.replay.renderer+' · '+A.replay.frameCount+' exact qpos frames'),B.replay&&('B '+B.replay.renderer+' · '+B.replay.frameCount+' exact qpos frames')].filter(Boolean).join(' · ')||'Generate a Run with mujica studio to add an authoritative MuJoCo replay.';
-q('#sampling').textContent=[A.run&&('A trajectory '+A.run.trajectory.total+' rows'),B.run&&('B trajectory '+B.run.trajectory.total+' rows')].filter(Boolean).join(' · ');
+q('#replay-status').textContent=H?'Device-reported qpos · '+A.replay.frameCount+' frames · geometry from frozen Bundle '+H.bundle.id+' · not visual ground truth':[A.replay&&('A '+A.replay.renderer+' · '+A.replay.frameCount+' exact qpos frames'),B.replay&&('B '+B.replay.renderer+' · '+B.replay.frameCount+' exact qpos frames')].filter(Boolean).join(' · ')||'Generate a Run with mujica studio to add an authoritative MuJoCo replay.';
+q('#sampling').textContent=H?'immutable episode '+H.trajectory.total+' rows · displayed '+H.trajectory.rows.length+' · stride '+H.trajectory.stride:[A.run&&('A trajectory '+A.run.trajectory.total+' rows'),B.run&&('B trajectory '+B.run.trajectory.total+' rows')].filter(Boolean).join(' · ');
 render(0);
 </script></body></html>`;
 }
 
-export async function writeStudioSnapshot(projectDirectory: string, options: { run?: string; replay?: ReplayInput; compareRun?: string; compareReplay?: ReplayInput; researchReview?: ResearchReviewInput } = {}) {
+export async function writeStudioSnapshot(projectDirectory: string, options: StudioSnapshotOptions = {}) {
   const project = await loadProject(projectDirectory); const snapshot = await buildStudioSnapshot(project.rootDir, options); const snapshotHash = hashJson(snapshot);
   const id = `studio-${snapshotHash.slice(0, 16)}`; const target = join(project.rootDir, ".mujica", "studio", id);
   if (!(await exists(join(target, "snapshot.json")))) await atomicDirectory(target, async (directory) => {
     await writeJson(join(directory, "snapshot.json"), snapshot);
     if (options.replay) await cp(options.replay.path, join(directory, "replay"), { recursive: true });
     if (options.compareReplay) await cp(options.compareReplay.path, join(directory, "comparison-replay"), { recursive: true });
+    if (options.hardwareCapture) await cp(options.hardwareCapture.replay.path, join(directory, "hardware-replay"), { recursive: true });
     await Bun.write(join(directory, "index.html"), studioHtml(snapshot));
   });
   return { id, snapshotHash, path: target, indexPath: join(target, "index.html"), selectedRun: snapshot.selectedRun?.id ?? null, comparisonRun: snapshot.comparisonRun?.id ?? null, snapshot };

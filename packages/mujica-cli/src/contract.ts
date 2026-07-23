@@ -1,7 +1,7 @@
 import type { MujicaValidationError, ProjectContext } from "@mujica/core";
 
 export const CLI_SCHEMA_VERSION = 1 as const;
-export interface Artifact { kind: "compiled-assembly" | "simulation-run" | "simulation-replay" | "training-run" | "policy" | "calibration-run" | "hardware-capture" | "benchmark-lock" | "research-session" | "research-experiment" | "research-review" | "training-research-experiment" | "policy-revision" | "revision" | "studio-snapshot" | "hardware-bundle" | "hardware-verification" | "human-observation" | "research-brief"; id: string; path: string; immutable: boolean }
+export interface Artifact { kind: "compiled-assembly" | "simulation-run" | "simulation-replay" | "hardware-replay" | "training-run" | "policy" | "calibration-run" | "hardware-capture" | "benchmark-lock" | "research-session" | "research-experiment" | "research-review" | "training-research-experiment" | "policy-revision" | "revision" | "studio-snapshot" | "hardware-bundle" | "hardware-verification" | "human-observation" | "research-brief"; id: string; path: string; immutable: boolean }
 export interface NextAction { id: string; description: string; argv: string[]; effect: "read-only" | "creates-artifact" | "mutates-project" }
 
 export function success<T>(command: string, data: T, project?: ProjectContext, artifacts: Artifact[] = [], nextActions: NextAction[] = []) {

@@ -7,7 +7,7 @@ import {
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
-import { verifyHardwareCaptureIntegrity } from "./hardware";
+import { verifyHardwareBundleIntegrity, verifyHardwareCaptureIntegrity } from "./hardware";
 import { dependencyLockHash, harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeCompiled, runtimeSourceHash, runtimeVersion } from "./runtime";
 import { writeStudioSnapshot } from "@mujica/studio";
 
@@ -152,6 +152,106 @@ export async function studioCommand(projectDir: string, run?: string, compareRun
     comparisonReplay: comparisonReplay ? { id: comparisonReplay.id, path: comparisonReplay.path, frameCount: comparisonReplay.manifest.frameCount, cached: comparisonReplay.cached } : null,
     researchReview: researchReview ? { experimentId: researchReview.review.lineage.experimentId, reviewHash: researchReview.reviewHash } : null,
   }, project, artifacts);
+}
+
+export async function studioCaptureCommand(projectDir: string, captureId: string, episodeId: string) {
+  const project = await loadProject(projectDir);
+  const captureRoot = confined(project.rootDir, `hardware-captures/${captureId}`);
+  const capture = await verifyHardwareCaptureIntegrity(captureRoot);
+  const episode = (capture.episodes ?? []).find((item: any) => item.id === episodeId);
+  if (!episode) throw new Error(`Hardware Capture '${captureId}' has no episode '${episodeId}'`);
+  if (episode.completed !== true || typeof episode.path !== "string" || typeof episode.hash !== "string") {
+    throw new Error(`Hardware Capture episode '${episodeId}' is not a completed immutable episode`);
+  }
+  const trajectoryPath = confined(captureRoot, episode.path);
+  const trajectoryHash = sha256(await readFile(trajectoryPath));
+  if (trajectoryHash !== episode.hash) throw new Error(`Hardware Capture episode '${episodeId}' bytes changed`);
+
+  const bundleCandidates = [];
+  const bundlesRoot = join(project.rootDir, "hardware-bundles");
+  for (const entry of await readdir(bundlesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    const manifestPath = join(bundlesRoot, entry.name, "manifest.json");
+    if (!(await exists(manifestPath))) continue;
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (manifest.bundleHash === capture.bundleHash) bundleCandidates.push({ root: join(bundlesRoot, entry.name), manifest });
+  }
+  if (bundleCandidates.length !== 1) {
+    throw new Error(`Hardware Capture '${captureId}' requires exactly one matching frozen Hardware Bundle; found ${bundleCandidates.length}`);
+  }
+  const bundle = bundleCandidates[0]!;
+  await verifyHardwareBundleIntegrity(bundle.root, bundle.manifest);
+  const compiledPath = join(bundle.root, "revision", "compiled", "compiled-assembly.json");
+  const modelPath = join(bundle.root, "revision", "compiled", "model.xml");
+  const compiled = JSON.parse(await readFile(compiledPath, "utf8"));
+  const modelHash = sha256(await readFile(modelPath));
+  if (
+    compiled.assemblyHash !== bundle.manifest.assemblyHash
+    || modelHash !== bundle.manifest.modelXmlHash
+    || capture.assemblyHash !== bundle.manifest.assemblyHash
+  ) throw new Error("Hardware Capture and frozen Bundle digital twin identities differ");
+
+  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
+  const replay = await invokeRuntime("render-replay", {
+    runtimeVersion,
+    runtimeSourceHash: await runtimeSourceHash(),
+    source: {
+      kind: "hardware-capture-episode",
+      captureId: capture.id,
+      captureHash: capture.captureHash,
+      bundleId: bundle.manifest.id,
+      bundleHash: bundle.manifest.bundleHash,
+      episodeId: episode.id,
+      episodeHash: episode.hash,
+      environment: capture.environment,
+      mode: capture.mode,
+    },
+    assemblyHash: bundle.manifest.assemblyHash,
+    modelHash,
+    modelPath,
+    trajectoryPath,
+    trajectoryHash,
+    outputRoot: join(project.rootDir, ".mujica", "replays"),
+    settings,
+  });
+  const result = await writeStudioSnapshot(project.rootDir, {
+    hardwareCapture: {
+      path: captureRoot,
+      manifest: capture,
+      episodeId,
+      bundle: {
+        id: bundle.manifest.id,
+        bundleHash: bundle.manifest.bundleHash,
+        sourceKind: bundle.manifest.sourceKind ?? "legacy-robot-revision",
+        maximumCaptureMode: bundle.manifest.maximumCaptureMode ?? "actuate",
+        assemblyHash: bundle.manifest.assemblyHash,
+        modelHash,
+      },
+      replay: { path: replay.path, manifest: replay.manifest },
+    },
+  });
+  return success("studio", {
+    id: result.id,
+    snapshotHash: result.snapshotHash,
+    path: result.path,
+    indexPath: result.indexPath,
+    selectedRun: null,
+    comparisonRun: null,
+    hardwareCapture: {
+      id: capture.id,
+      captureHash: capture.captureHash,
+      episodeId: episode.id,
+      episodeHash: episode.hash,
+      environment: capture.environment,
+      mode: capture.mode,
+    },
+    replay: { id: replay.id, path: replay.path, frameCount: replay.manifest.frameCount, cached: replay.cached },
+    comparisonReplay: null,
+    researchReview: null,
+  }, project, [
+    projectArtifact("hardware-replay", replay.id, replay.path, true),
+    projectArtifact("studio-snapshot", result.id, result.path, false),
+  ]);
 }
 
 export async function componentListCommand(projectDir: string) {

@@ -22,6 +22,15 @@ first verifies Capture identity and transcript bytes. It then returns the exact
 protocol event, a bounded two-event window on each side, Capture status/reasons,
 transcript hashes, and a `contextHash`.
 
+A completed governed episode also supports
+`mujica evidence inspect --capture ... --episode ... --time ...`. It verifies
+the episode bytes and returns the device row at or before the requested time,
+two neighboring rows on each side, `qpos/qvel`, device health,
+proposed/commanded/applied Action, and source hashes. Studio can project that
+same `qpos` through the Capture's exact frozen Bundle model. This is
+device-kinematic evidence rendered with digital-twin geometry, not camera,
+motion-capture, contact, Calibration, or hardware-verification evidence.
+
 Studio uses those same selectors. A copied frame contains an executable
 `headlessArgv`; a human-observation draft contains only the exact source ids,
 hashes, time or event index, and the typed assessment. Recording the draft makes
@@ -34,7 +43,7 @@ Three claims must remain visibly different:
 
 | Claim | Authority | May decide KEEP / safety? |
 | --- | --- | --- |
-| Run/Capture measurement | `immutable-evidence` | Only through its fixed Judge or safety contract |
+| Run/Capture measurement | `immutable-evidence` or `immutable-device-telemetry` | Only through its fixed Judge or safety contract |
 | Human visual observation | `human`, `hypothesis` | No |
 | Agent diagnosis/intervention | `hypothesis` | No |
 
@@ -47,7 +56,8 @@ expresses the observer's confidence, not statistical certainty.
 
 Studio is deliberately offline and read-only:
 
-1. The human seeks a Run frame or clicks a Capture item in the attention queue.
+1. The human seeks a Run frame, a completed Capture episode frame, or clicks a
+   Capture protocol event in the attention queue.
 2. Studio composes a `mujica-human-observation-draft` in browser memory.
 3. The human copies or downloads the JSON.
 4. `mujica observation record --input ... --observer ...` validates the closed
@@ -76,8 +86,9 @@ Studio orders measured blocking failures before investigations and informational
 human hypotheses. Selected Run falls/failed Events are seekable. Aborted or
 safety-intervened Hardware Captures expose an exact transcript event, including
 Driver-originated lease expiry. Clicking a Capture changes only the observation
-draft source; it never fabricates a 3D replay from device telemetry that did not
-record renderable `qpos`.
+draft source. A completed episode is renderable only when it recorded verified
+`qpos` and remains bound to its exact frozen Bundle; transcript-only state is
+never promoted into an invented pose.
 
 ## Snapshot identity
 

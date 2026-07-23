@@ -227,6 +227,13 @@ Each immutable Hardware Capture contains:
   samples, duration, eligibility, and new-session requirement;
 - a report and manifest declaring `COMPLETED`, `ABORTED`, or `FAILED`.
 
+A completed episode with verified `qpos/qvel` can be projected through its exact
+Bundle-frozen MuJoCo model using `mujica studio --capture ... --episode ...`.
+This is a diagnostic digital-twin replay of reported kinematics. It cannot
+upgrade the Capture's provenance, Calibration eligibility, hardware
+verification, safety state, or actuation authority; see
+[Device telemetry replay](device-telemetry-replay.md).
+
 Only an actuation-authorized `COMPLETED` episode may enter a Calibration
 definition. Calibration rechecks the Capture manifest, mode, episode hash,
 Assembly, environment, provenance, and serialized device identity before

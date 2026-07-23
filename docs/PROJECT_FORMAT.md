@@ -45,7 +45,8 @@ IDs use lowercase letters, digits, and hyphens and must match their directory or
 
 A Human Observation is a separate immutable hypothesis, never part of a Run,
 Capture, or Judge result. Its draft selects one Run time (and optional comparison
-Run) or one verified Hardware Capture transcript event by exact artifact hash.
+Run), one verified Hardware Capture transcript event, or one completed Capture
+episode time by exact Capture, Bundle, and episode hashes.
 Recording reconstructs and freezes the complete evidence context, then binds
 observer, timestamp, category, triage severity, confidence, summary, optional
 detail/next action, draft hash, and context hash. See [Human–AI debugging
@@ -188,5 +189,13 @@ Derived PNG replays live under ignored `.mujica/replays/<content-id>/`; their
 identity covers the Run result, frozen model, trajectory bytes, Runtime/MuJoCo
 renderer, camera, resolution, and stride. Legacy Runs can be replayed only while
 their matching content-addressed Assembly cache is still available.
+
+Completed Hardware Capture episodes use the same renderer only after Capture
+and Bundle integrity verification. Their v2
+`mujica-hardware-capture-replay` identity covers Capture, Bundle, episode,
+frozen model, Runtime/MuJoCo renderer, and settings. The frames project
+device-reported kinematics through Bundle geometry; they are not camera,
+motion-capture, physical-contact, Calibration, or hardware-verification
+evidence.
 
 `mujica-workspace.json` contains only a name, one projects directory, and an optional default project. Workspaces never provide shared components or policies.
