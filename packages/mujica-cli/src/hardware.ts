@@ -9,7 +9,15 @@ async function exists(path: string): Promise<boolean> { try { await stat(path); 
 const artifact = (kind: Artifact["kind"], id: string, path: string): Artifact => ({ kind, id, path, immutable: true });
 
 async function verifyBundleIntegrity(root: string, bundle: any): Promise<void> {
-  const payload = { version: bundle.version, harnessSourceHash: bundle.harnessSourceHash, harnessDependencyLockHash: bundle.harnessDependencyLockHash, target: bundle.target, revisionId: bundle.revisionId, revisionHash: bundle.revisionHash, assemblyHash: bundle.assemblyHash, ...(typeof bundle.modelXmlHash === "string" ? { modelXmlHash: bundle.modelXmlHash } : {}), controllerHash: bundle.controllerHash, ...(typeof bundle.policyHash === "string" ? { policyHash: bundle.policyHash } : {}), observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash, protocol: bundle.protocol };
+  const payload = {
+    version: bundle.version, harnessSourceHash: bundle.harnessSourceHash, harnessDependencyLockHash: bundle.harnessDependencyLockHash,
+    ...(typeof bundle.sourceKind === "string" ? { sourceKind: bundle.sourceKind } : {}),
+    ...(typeof bundle.maximumCaptureMode === "string" ? { maximumCaptureMode: bundle.maximumCaptureMode } : {}),
+    target: bundle.target, revisionId: bundle.revisionId, revisionHash: bundle.revisionHash, assemblyHash: bundle.assemblyHash,
+    ...(typeof bundle.modelXmlHash === "string" ? { modelXmlHash: bundle.modelXmlHash } : {}),
+    controllerHash: bundle.controllerHash, ...(typeof bundle.policyHash === "string" ? { policyHash: bundle.policyHash } : {}),
+    observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash, protocol: bundle.protocol,
+  };
   if (hashJson(payload) !== bundle.bundleHash) throw new Error("Hardware Bundle manifest identity is invalid");
   if (await hashDirectory(join(root, "revision")) !== bundle.revisionHash) throw new Error("Hardware Bundle Revision snapshot was modified");
   if (await hashDirectory(join(root, "controller")) !== bundle.controllerHash) throw new Error("Hardware Bundle Controller snapshot was modified");
@@ -32,6 +40,12 @@ export function validateCaptureAuthorization(target: HardwareTargetDefinition, p
   if (authorization.operator !== operator) throw new Error("Capture operator does not match authorization");
   if (authorization.maximumEpisodes < plan.episodes.length) throw new Error("Capture authorization episode ceiling is below the Plan");
   if (Date.parse(authorization.approvedAt) > now || Date.parse(authorization.expiresAt) <= now || Date.parse(authorization.expiresAt) <= Date.parse(authorization.approvedAt)) throw new Error("Capture authorization is not currently valid");
+}
+
+export function assertCaptureModeAllowed(bundle: any, plan: HardwareCapturePlanDefinition): void {
+  if (bundle.maximumCaptureMode === "shadow" && plan.mode !== "shadow") {
+    throw new Error(`Capture Plan '${plan.id}' cannot actuate shadow-only ${bundle.sourceKind === "policy-revision" ? "Policy Revision" : "Hardware"} Bundle '${bundle.id}'`);
+  }
 }
 
 export async function verifyHardwareCaptureIntegrity(root: string): Promise<any> {
@@ -95,12 +109,20 @@ function frozenRuntimeCompiled(compiled: any, modelHash: string) {
 
 export async function hardwareExportCommand(projectDir: string, targetId: string) {
   const project = await loadProject(projectDir); const target = await loadHardwareTarget(project.rootDir, targetId);
-  const revisionRoot = confined(project.rootDir, `revisions/${target.revision}`); const revision = JSON.parse(await readFile(join(revisionRoot, "manifest.json"), "utf8"));
-  if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error("Hardware Target does not match its Robot Revision");
+  const sourceKind = (target.revisionKind ?? "robot") === "policy" ? "policy-revision" : "robot-revision";
+  const maximumCaptureMode = sourceKind === "policy-revision" ? "shadow" : "actuate";
+  const revisionRoot = confined(project.rootDir, `${sourceKind === "policy-revision" ? "policy-revisions" : "revisions"}/${target.revision}`); const revision = JSON.parse(await readFile(join(revisionRoot, "manifest.json"), "utf8"));
+  if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target does not match its ${sourceKind === "policy-revision" ? "Policy" : "Robot"} Revision`);
+  if (sourceKind === "policy-revision") {
+    if (revision.kind !== "research-lab-policy") throw new Error("Hardware Target source is not a Policy Revision");
+    const evaluation = JSON.parse(await readFile(join(revisionRoot, "evaluation.json"), "utf8"));
+    if (evaluation.decision?.verdict !== "KEEP") throw new Error("Policy Revision was not kept by its locked Judge");
+  }
   const compiledRoot = join(revisionRoot, "compiled"); const compiled = JSON.parse(await readFile(join(compiledRoot, "compiled-assembly.json"), "utf8"));
   const observationContract = JSON.parse(await readFile(join(compiledRoot, "observation-contract.json"), "utf8")); const actionContract = JSON.parse(await readFile(join(compiledRoot, "action-contract.json"), "utf8"));
-  if (revision.assemblyHash !== compiled.assemblyHash) throw new Error("Robot Revision compiled snapshot identity is invalid");
-  const controllerRoot = join(revisionRoot, "sources", "controllers", target.controller); if (!(await exists(join(controllerRoot, "controller.json")))) throw new Error("Robot Revision does not contain its Controller source snapshot");
+  const observationContractHash = hashJson(observationContract); const actionContractHash = hashJson(actionContract);
+  if (revision.assemblyHash !== compiled.assemblyHash) throw new Error("Hardware source Revision compiled snapshot identity is invalid");
+  const controllerRoot = join(revisionRoot, "sources", "controllers", target.controller); if (!(await exists(join(controllerRoot, "controller.json")))) throw new Error("Hardware source Revision does not contain its Controller source snapshot");
   const controllerDefinition = JSON.parse(await readFile(join(controllerRoot, "controller.json"), "utf8"));
   let policyRoot: string | null = null; let policyHash: string | null = null;
   if (controllerDefinition.kind === "policy") {
@@ -109,10 +131,14 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
     const policyManifest = JSON.parse(await readFile(join(policyRoot, "manifest.json"), "utf8"));
     if (policyManifest.id !== controllerDefinition.policy) throw new Error("Hardware Target Controller and Revision Policy differ");
     policyHash = await hashDirectory(policyRoot);
+    if (typeof revision.policyHash === "string" && revision.policyHash !== policyHash) throw new Error("Policy Revision frozen Policy identity is invalid");
+    if (policyManifest.assemblyHash !== revision.assemblyHash || policyManifest.observationContractHash !== observationContractHash || policyManifest.actionContractHash !== actionContractHash) throw new Error("Policy Revision frozen Policy contracts do not match its compiled Assembly");
+  } else if (sourceKind === "policy-revision") {
+    throw new Error("Policy Revision Hardware Target requires a Policy Controller");
   }
   const controllerHash = await hashDirectory(controllerRoot); const [harnessHash, dependencyHash] = await Promise.all([harnessSourceHash(), harnessDependencyLockHash()]);
-  const observationContractHash = hashJson(observationContract); const actionContractHash = hashJson(actionContract); const modelXmlHash = sha256(await readFile(join(compiledRoot, "model.xml")));
-  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, ...(policyHash ? { policyHash } : {}), observationContractHash, actionContractHash, protocol: target.protocol };
+  const modelXmlHash = sha256(await readFile(join(compiledRoot, "model.xml")));
+  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, sourceKind, maximumCaptureMode, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, ...(policyHash ? { policyHash } : {}), observationContractHash, actionContractHash, protocol: target.protocol };
   const bundleHash = hashJson(payload); const id = `hardware-${bundleHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-bundles", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await cp(revisionRoot, join(directory, "revision"), { recursive: true }); await cp(controllerRoot, join(directory, "controller"), { recursive: true });
@@ -128,7 +154,7 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
     });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
   });
-  return success("hardware.export", { id, bundleHash, path: root, target, observationContractHash, actionContractHash, verificationStatus: "UNVERIFIED" }, project, [artifact("hardware-bundle", id, root)]);
+  return success("hardware.export", { id, bundleHash, path: root, sourceKind, maximumCaptureMode, target, observationContractHash, actionContractHash, verificationStatus: "UNVERIFIED" }, project, [artifact("hardware-bundle", id, root)]);
 }
 
 export async function hardwareVerifyCommand(projectDir: string, bundleId: string, evidencePath: string) {
@@ -148,14 +174,14 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   if (target.safety.maximumStateAgeMs !== undefined && evidence.emergencyStopAcknowledgements === undefined) reasons.push("evidence does not report emergency-stop acknowledgements");
   else if (evidence.emergencyStopAcknowledgements !== undefined && evidence.emergencyStopAcknowledgements < evidence.emergencyStops) reasons.push("not every emergency stop was acknowledged");
   if (!evidence.passed) reasons.push("driver reported failure");
-  const status = reasons.length ? "FAILED" : evidence.environment === "dry-run" ? "PROTOCOL-VERIFIED" : "HARDWARE-VERIFIED";
+  const status = reasons.length ? "FAILED" : bundle.maximumCaptureMode === "shadow" ? "SHADOW-VERIFIED" : evidence.environment === "dry-run" ? "PROTOCOL-VERIFIED" : "HARDWARE-VERIFIED";
   const verificationHash = hashJson({ bundleHash: bundle.bundleHash, evidence }); const id = `verification-${verificationHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-verifications", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await writeFile(join(directory, "evidence.json"), await readFile(resolve(evidencePath))); await writeJson(join(directory, "bundle-manifest.json"), bundle);
-    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
-    await writeJson(join(directory, "manifest.json"), { version: 1, id, verificationHash, bundleId, bundleHash: bundle.bundleHash, target: target.id, environment: evidence.environment, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", reasons, completed: true });
+    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Source: ${bundle.sourceKind ?? "legacy-robot-revision"}\n- Maximum capture mode: ${bundle.maximumCaptureMode ?? "actuate"}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
+    await writeJson(join(directory, "manifest.json"), { version: 1, id, verificationHash, bundleId, bundleHash: bundle.bundleHash, sourceKind: bundle.sourceKind ?? "legacy-robot-revision", maximumCaptureMode: bundle.maximumCaptureMode ?? "actuate", target: target.id, environment: evidence.environment, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", actuationQualified: status === "HARDWARE-VERIFIED" && bundle.maximumCaptureMode !== "shadow", reasons, completed: true });
   });
-  return success("hardware.verify", { id, path: root, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", reasons, evidence }, project, [artifact("hardware-verification", id, root)]);
+  return success("hardware.verify", { id, path: root, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", actuationQualified: status === "HARDWARE-VERIFIED" && bundle.maximumCaptureMode !== "shadow", reasons, evidence }, project, [artifact("hardware-verification", id, root)]);
 }
 
 export async function hardwareCapturePlanListCommand(projectDir: string) {
@@ -178,8 +204,8 @@ export async function hardwareCapturePlanListCommand(projectDir: string) {
 export async function hardwareCapturePlanInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const definition = await loadHardwareCapturePlan(project.rootDir, id);
   const bundleRoot = confined(project.rootDir, `hardware-bundles/${definition.bundle}`);
-  const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8")); await verifyBundleIntegrity(bundleRoot, bundle);
-  return success("capture.inspect", { definition, hash: hashJson(definition), bundle: { id: bundle.id, hash: bundle.bundleHash, environment: bundle.target.environment }, path: confined(project.rootDir, `capture-plans/${id}.capture.json`) }, project);
+  const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8")); await verifyBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, definition);
+  return success("capture.inspect", { definition, hash: hashJson(definition), bundle: { id: bundle.id, hash: bundle.bundleHash, sourceKind: bundle.sourceKind ?? "legacy-robot-revision", maximumCaptureMode: bundle.maximumCaptureMode ?? "actuate", environment: bundle.target.environment }, path: confined(project.rootDir, `capture-plans/${id}.capture.json`) }, project);
 }
 
 export async function hardwareCaptureInspectCommand(projectDir: string, id: string) {
@@ -190,7 +216,7 @@ export async function hardwareCaptureInspectCommand(projectDir: string, id: stri
 export async function hardwareCaptureCommand(projectDir: string, planId: string, driver: string, driverArgs: string[], driverInputs: string[], operator: string, authorizationPath?: string) {
   const project = await loadProject(projectDir); const plan = await loadHardwareCapturePlan(project.rootDir, planId); const planHash = hashJson(plan);
   const bundleRoot = confined(project.rootDir, `hardware-bundles/${plan.bundle}`); const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8"));
-  await verifyBundleIntegrity(bundleRoot, bundle);
+  await verifyBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, plan);
   if (bundle.target.id !== plan.target) throw new Error(`Capture Plan '${plan.id}' target differs from Hardware Bundle '${bundle.id}'`);
   const executable = resolve(driver); const driverStat = await lstat(executable);
   if (!driverStat.isFile() || driverStat.isSymbolicLink()) throw new Error("Capture driver must be a regular non-symlink executable file");

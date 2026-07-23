@@ -231,7 +231,9 @@ export const calibrationSchema = z.object({
 });
 
 export const hardwareTargetSchema = z.object({
-  version: z.literal(1), id: idSchema, name: z.string().min(1), revision: idSchema, assembly: idSchema, controller: idSchema,
+  version: z.literal(1), id: idSchema, name: z.string().min(1), revision: idSchema,
+  revisionKind: z.enum(["robot", "policy"]).optional(),
+  assembly: idSchema, controller: idSchema,
   environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
   safety: z.object({
     maximumLatencyMs: z.number().positive(),

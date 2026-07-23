@@ -1,0 +1,24 @@
+{
+  "kind": "history-gru-actor-critic",
+  "observationSize": 142,
+  "actionSize": 12,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "history": {
+    "commandStart": 41,
+    "appliedStart": 89,
+    "steps": 4,
+    "actionSize": 12,
+    "recurrentSize": 32
+  },
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScale": 0.002,
+    "controllerId": "latency-aware-spatial-gait",
+    "controllerHash": "64425f55739afca19a89c5500a20bca43b5e057b570a1d88ea354197e2efc4e9"
+  }
+}

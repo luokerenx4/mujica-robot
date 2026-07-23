@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
 import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, domainProfileSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DomainProfileDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
-import { confined, readJson, stableJson } from "./utils";
+import { confined, hashJson, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
 
 export async function loadController(projectDir: string, id: string): Promise<{ definition: ControllerDefinition; rootDir: string }> {
@@ -202,21 +202,43 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   const hardwareTargetIds = await fileIds(join(root, "hardware-targets"), ".hardware.json");
   for (const id of hardwareTargetIds) {
     const target = await loadHardwareTarget(root, id); if (target.id !== id) throw new Error(`Hardware Target id '${target.id}' must match filename '${id}'`);
-    const revisionPath = confined(root, `revisions/${target.revision}`); await requireFile(join(revisionPath, "manifest.json"), `Hardware Target '${id}' Revision`);
+    const revisionKind = target.revisionKind ?? "robot";
+    const revisionPath = confined(root, `${revisionKind === "policy" ? "policy-revisions" : "revisions"}/${target.revision}`); await requireFile(join(revisionPath, "manifest.json"), `Hardware Target '${id}' Revision`);
     const revision = JSON.parse(await Bun.file(join(revisionPath, "manifest.json")).text());
-    if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target '${id}' must match its Robot Revision Assembly and Controller`);
-    const compiled = await compileAssembly(root, target.assembly); const controller = await loadController(root, target.controller); assertProgramControllerCompatible(controller.definition, compiled); if (target.safety.emergencyStopAction.length !== compiled.actionContract.size) throw new Error(`Hardware Target '${id}' emergency stop Action size does not match contract`);
-    const lows = compiled.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.low ?? Number.NEGATIVE_INFINITY)); const highs = compiled.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.high ?? Number.POSITIVE_INFINITY));
+    if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target '${id}' must match its ${revisionKind === "policy" ? "Policy" : "Robot"} Revision Assembly and Controller`);
+    let actionContract: { size: number; channels: Array<{ size: number; low?: number; high?: number }> };
+    if (revisionKind === "policy") {
+      if (revision.kind !== "research-lab-policy") throw new Error(`Hardware Target '${id}' revision is not a Policy Revision`);
+      const evaluation = JSON.parse(await Bun.file(join(revisionPath, "evaluation.json")).text());
+      if (evaluation.decision?.verdict !== "KEEP") throw new Error(`Hardware Target '${id}' Policy Revision was not kept by its locked Judge`);
+      const compiled = JSON.parse(await Bun.file(join(revisionPath, "compiled", "compiled-assembly.json")).text());
+      if (compiled.assemblyHash !== revision.assemblyHash) throw new Error(`Hardware Target '${id}' Policy Revision Assembly identity is invalid`);
+      const controller = controllerSchema.parse(JSON.parse(await Bun.file(join(revisionPath, "sources", "controllers", target.controller, "controller.json")).text()));
+      if (controller.kind !== "policy" || controller.policy !== revision.policyId) throw new Error(`Hardware Target '${id}' Policy Revision Controller does not reference its frozen Policy`);
+      const policy = JSON.parse(await Bun.file(join(revisionPath, "policy", "manifest.json")).text());
+      const observationContract = JSON.parse(await Bun.file(join(revisionPath, "compiled", "observation-contract.json")).text());
+      actionContract = JSON.parse(await Bun.file(join(revisionPath, "compiled", "action-contract.json")).text());
+      if (policy.id !== revision.policyId || policy.assemblyHash !== revision.assemblyHash || policy.observationContractHash !== hashJson(observationContract) || policy.actionContractHash !== hashJson(actionContract)) throw new Error(`Hardware Target '${id}' frozen Policy contracts do not match its Policy Revision`);
+    } else {
+      const compiled = await compileAssembly(root, target.assembly); const controller = await loadController(root, target.controller); assertProgramControllerCompatible(controller.definition, compiled);
+      actionContract = compiled.actionContract;
+    }
+    if (target.safety.emergencyStopAction.length !== actionContract.size) throw new Error(`Hardware Target '${id}' emergency stop Action size does not match contract`);
+    const lows = actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.low ?? Number.NEGATIVE_INFINITY)); const highs = actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.high ?? Number.POSITIVE_INFINITY));
     for (let index = 0; index < target.safety.emergencyStopAction.length; index++) if (target.safety.emergencyStopAction[index]! < lows[index]! || target.safety.emergencyStopAction[index]! > highs[index]!) throw new Error(`Hardware Target '${id}' emergency stop Action exceeds channel bounds`);
   }
   const capturePlanIds = await listHardwareCapturePlanIds(root);
   for (const id of capturePlanIds) {
     const plan = await loadHardwareCapturePlan(root, id); if (plan.id !== id) throw new Error(`Capture Plan id '${plan.id}' must match filename '${id}'`);
-    const target = await loadHardwareTarget(root, plan.target); const assembly = await compileAssembly(root, target.assembly); const controller = await loadController(root, target.controller);
-    assertProgramControllerCompatible(controller.definition, assembly);
+    const target = await loadHardwareTarget(root, plan.target); const revisionKind = target.revisionKind ?? "robot";
+    if (revisionKind === "robot") {
+      const assembly = await compileAssembly(root, target.assembly); const controller = await loadController(root, target.controller);
+      assertProgramControllerCompatible(controller.definition, assembly);
+    }
     const bundlePath = confined(root, `hardware-bundles/${plan.bundle}/manifest.json`); await requireFile(bundlePath, `Capture Plan '${id}' Hardware Bundle`);
     const bundle = JSON.parse(await Bun.file(bundlePath).text());
-    if (bundle.id !== plan.bundle || bundle.target?.id !== target.id || bundle.target?.assembly !== assembly.id) throw new Error(`Capture Plan '${id}' Hardware Bundle does not match its Target and Assembly`);
+    if (bundle.id !== plan.bundle || bundle.target?.id !== target.id || bundle.target?.assembly !== target.assembly) throw new Error(`Capture Plan '${id}' Hardware Bundle does not match its Target and Assembly`);
+    if (bundle.maximumCaptureMode === "shadow" && plan.mode !== "shadow") throw new Error(`Capture Plan '${id}' cannot actuate a shadow-only Policy Revision Bundle`);
     if (plan.action.maximumSlewPerSecond * plan.action.scale <= 0) throw new Error(`Capture Plan '${id}' Action authority must be positive`);
   }
   const researchIds = await fileIds(join(root, "research"), ".research.json");
