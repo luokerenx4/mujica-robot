@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "id": "001-5b4eb703087a",
+  "sequence": 1,
+  "sessionId": "session-64964e8b1bfdea57",
+  "researchId": "capture-calibrated-robust-policy",
+  "labHash": "475b58bd04ffd020dacc4b57a252d73674940f152d0fe2efb0c5b94a1fe261e3",
+  "programHash": "6b7a9211ce5ab3667905470614ddd176c1869dc1e217a3d50cc571836e9b7b21",
+  "benchmarkLockHash": "469c79cb2dcad0235621c10e88c7c92409e48774c85d973707b18817b9da40ea",
+  "sourceHash": "0b7ab0d97c5c299704fec7b3d891d9895a4e743e4463951676acda1c5c1e7af9",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-spatial-residual-gait/controller.json",
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "quality-guarded-micro-residual",
+    "hypothesis": "The first two hard-case Policies improved score but crossed reset and motion-quality gates; a micro residual with explicit saturation/impact costs should retain the push correction inside the prior's safe neighborhood.",
+    "expectedEffect": "Recover strong-push survival without losing reset survival, delayed recovery, saturation, or impact gates."
+  },
+  "policyId": "capture-calibrated-spatial-residual-locomotion-aa488a31bfc4a061",
+  "score": 60.34220849442005,
+  "delta": -0.2985008466590955,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "spatial-generalization: delay-20ms: lateral-drift regressed from passing to failing",
+      "spatial-generalization: delay-60ms: forward-progress regressed from passing to failing",
+      "spatial-generalization: delay-plus-reset: forward-progress regressed from passing to failing",
+      "motion-quality: delayed-forward: forward-progress regressed from passing to failing",
+      "motion-quality: delayed-forward: signed-forward-progress regressed from passing to failing",
+      "motion-quality: delayed-forward: actuator-saturation regressed from passing to failing",
+      "motion-quality: delayed-forward: foot-impact regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 2,
+    "previousViolationSeverity": 1.987968381549881,
+    "candidateViolationSeverity": 1.8052163680059774,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 37200,
+  "completed": true
+}

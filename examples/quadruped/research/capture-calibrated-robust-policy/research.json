@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "id": "capture-calibrated-robust-policy",
+  "name": "Capture-calibrated robust Policy autoresearch",
+  "program": "research/capture-calibrated-robust-policy/program.md",
+  "benchmark": "spatial-robustness",
+  "regressions": [
+    "spatial-generalization",
+    "motion-quality"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "capture-calibrated-spatial-residual-locomotion",
+    "controller": "capture-calibrated-spatial-residual-gait",
+    "seed": 4204
+  },
+  "editable": {
+    "paths": [
+      "trainers/capture-spatial-residual-ppo/**",
+      "training/capture-calibrated-spatial-residual-locomotion.training.json",
+      "controllers/capture-calibrated-spatial-residual-gait/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 360,
+    "maximumTrainingSteps": 16384
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

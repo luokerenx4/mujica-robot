@@ -115,6 +115,18 @@ not promoted: it still fails low-friction progress and adds a strong-push
 survival violation. Mujica therefore preserves a small aggregate ML gain without
 misreporting robot capability.
 
+A governed follow-up let a Coding Agent train five additional
+capture-calibrated Policies against the omitted low-friction and strong-push
+Scenarios. The larger residuals raised aggregate score as high as `61.3694` but
+increased primary violations; three quality-guarded micro-residuals reduced
+primary violations `3 → 2` and recovered strong-push survival, yet each lost a
+previously passing delay-generalization or motion-quality gate. All were
+automatically REVERT and the source head stayed unchanged. This is a useful
+co-design diagnosis: further PPO tuning on the 3-DOF observation contract is
+not evidence of a deployable improvement; bounded actuator history and a
+delay-aware prior are the next architectural input. See
+[capture-calibrated Policy research](docs/design/capture-calibrated-policy-research.md).
+
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
 The same hardware change also has an independent frozen-policy Development Candidate. It explicitly records the Assembly, contract, training configuration, Controller, and Policy transition. That candidate is honestly REVERT: the 1024-step force-aware PPO policy scores `43.3281` versus `44.0822` and misses every survival gate. Mujica records this as evidence that a real training run is not automatically a successful robot revision.

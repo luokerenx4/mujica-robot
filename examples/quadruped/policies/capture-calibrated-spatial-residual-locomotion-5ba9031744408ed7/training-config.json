@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "capture-calibrated-spatial-residual-locomotion",
+  "name": "Protocol-capture-calibrated spatial residual locomotion",
+  "assembly": "force-sensing-3dof",
+  "trainer": "capture-spatial-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal",
+    "reset-perturbation",
+    "low-friction",
+    "strong-lateral-push"
+  ],
+  "domainProfile": "quadruped-dry-run-capture-calibrated-v1",
+  "totalSteps": 8192,
+  "rolloutSteps": 512,
+  "epochs": 2,
+  "minibatchSize": 128,
+  "learningRate": 5e-05,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0,
+  "residualScale": 0.05,
+  "residualPenalty": 2
+}

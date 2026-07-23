@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "002-ea6a72ff30e8",
+  "sequence": 2,
+  "sessionId": "session-472bb9fdf9106129",
+  "researchId": "capture-calibrated-robust-policy",
+  "labHash": "475b58bd04ffd020dacc4b57a252d73674940f152d0fe2efb0c5b94a1fe261e3",
+  "programHash": "6b7a9211ce5ab3667905470614ddd176c1869dc1e217a3d50cc571836e9b7b21",
+  "benchmarkLockHash": "469c79cb2dcad0235621c10e88c7c92409e48774c85d973707b18817b9da40ea",
+  "sourceHash": "046efabebfafa2479df932da9de81876843f7ba75dfdf938e9d8281e90b6fe55",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-spatial-residual-gait/controller.json",
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "recovery-case-distillation",
+    "hypothesis": "Low-friction exposure produced no progress signal while diluting reset and delay recovery, so concentrate a smaller residual on the three recoverable failure families.",
+    "expectedEffect": "Preserve reset and delayed gates while correcting the strong-push failure; leave low friction honestly unsolved."
+  },
+  "policyId": "capture-calibrated-spatial-residual-locomotion-f8795575160973e1",
+  "score": 60.185968604625835,
+  "delta": -0.45474073645331003,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "spatial-generalization: delay-plus-push: survival regressed from passing to failing",
+      "spatial-generalization: delay-plus-reset: forward-progress regressed from passing to failing",
+      "motion-quality: delayed-forward: actuator-saturation regressed from passing to failing",
+      "motion-quality: delayed-forward: foot-impact regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 2,
+    "previousViolationSeverity": 1.987968381549881,
+    "candidateViolationSeverity": 1.811295722719808,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 43401,
+  "completed": true
+}

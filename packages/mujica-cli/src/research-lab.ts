@@ -136,10 +136,32 @@ async function importImmutableDirectory(source: string, target: string): Promise
   await atomicDirectory(target, async (temporary) => { await cp(source, temporary, { recursive: true }); });
 }
 
+export function trainingRunStableResultIdentity(value: any): unknown {
+  return {
+    trainingRunId: value.trainingRunId,
+    policyId: value.policyId,
+    modelHash: value.modelHash,
+    trainingMetrics: value.trainingMetrics,
+  };
+}
+
 async function importTrainingArtifacts(stagedRoot: string, projectRoot: string, result: any): Promise<{ trainingRunPath: string; policyPath: string }> {
   const trainingRunPath = confined(projectRoot, `training-runs/${result.trainingRunId}`); const policyPath = confined(projectRoot, `policies/${result.policyId}`);
-  await importImmutableDirectory(confined(stagedRoot, `training-runs/${result.trainingRunId}`), trainingRunPath);
-  await importImmutableDirectory(confined(stagedRoot, `policies/${result.policyId}`), policyPath);
+  const stagedRun = confined(stagedRoot, `training-runs/${result.trainingRunId}`); const stagedPolicy = confined(stagedRoot, `policies/${result.policyId}`);
+  await importImmutableDirectory(stagedPolicy, policyPath);
+  if (await exists(trainingRunPath)) {
+    const [stagedManifest, existingManifest, stagedResult, existingResult] = await Promise.all([
+      readFile(join(stagedRun, "manifest.json"), "utf8").then(JSON.parse),
+      readFile(join(trainingRunPath, "manifest.json"), "utf8").then(JSON.parse),
+      readFile(join(stagedRun, "result.json"), "utf8").then(JSON.parse),
+      readFile(join(trainingRunPath, "result.json"), "utf8").then(JSON.parse),
+    ]);
+    if (hashJson(stagedManifest) !== hashJson(existingManifest) || hashJson(trainingRunStableResultIdentity(stagedResult)) !== hashJson(trainingRunStableResultIdentity(existingResult))) {
+      throw new Error(`Immutable Training Run identity collision at ${trainingRunPath}`);
+    }
+  } else {
+    await importImmutableDirectory(stagedRun, trainingRunPath);
+  }
   return { trainingRunPath, policyPath };
 }
 

@@ -4,7 +4,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
-import { assertResearchLabEditableChanges, researchPathIsEditable } from "./research-lab";
+import { assertResearchLabEditableChanges, researchPathIsEditable, trainingRunStableResultIdentity } from "./research-lab";
 import { validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
@@ -161,7 +161,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
-    expect(envelope.data.definitions.researchLabs).toBe(3);
+    expect(envelope.data.definitions.researchLabs).toBe(4);
     expect(envelope.data.definitions.domainProfiles).toBe(3);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(2);
@@ -306,6 +306,14 @@ describe("agent CLI contract", () => {
     expect(() => assertResearchLabEditableChanges(lab, [])).toThrow("no source changes");
     const inspect = invoke(["research", "inspect", "examples/quadruped", "--lab", lab.id, "--json"]); const envelope = JSON.parse(inspect.stdout);
     expect(inspect.code).toBe(0); expect(envelope.data.lab.version).toBe(2); expect(envelope.data.benchmarkLockHash).toHaveLength(64);
+  });
+
+  test("Research Lab reuses deterministic Training evidence without treating volatile paths as identity", () => {
+    const stable = { trainingRunId: "training-fixed", policyId: "policy-fixed", modelHash: "a".repeat(64), trainingMetrics: { totalSteps: 4096, episodes: 16 } };
+    expect(trainingRunStableResultIdentity({ ...stable, policyPath: "/tmp/workspace-a/policies/policy-fixed", elapsedSeconds: 1.2 }))
+      .toEqual(trainingRunStableResultIdentity({ ...stable, policyPath: "/tmp/workspace-b/policies/policy-fixed", elapsedSeconds: 9.8 }));
+    expect(trainingRunStableResultIdentity({ ...stable, modelHash: "b".repeat(64) }))
+      .not.toEqual(trainingRunStableResultIdentity(stable));
   });
 
   test("a frozen program-prior residual Policy runs without mutable Controller source", () => {

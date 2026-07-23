@@ -1,0 +1,369 @@
+{
+  "runtimeVersion": "0.2.0",
+  "runtimeSourceHash": "a79e5142dd9b7d7532bee718e0264287797c2449ee873e989724355663ba03e8",
+  "harnessSourceHash": "3976b1e86c059b21337a13de3d2c1cad2e3c2ffa968741eb0aaaf51a67cfb0f1",
+  "harnessDependencyLockHash": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+  "projectDir": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-capture-calibrated-robust-policy-A887y6/project",
+  "modelPath": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-capture-calibrated-robust-policy-A887y6/project/.mujica/cache/assemblies/2a4d4ebb6b248337d4154bf8a69783cc79f9a6108e43883f3b531dd7d267dd4c/model.xml",
+  "compiled": {
+    "version": 1,
+    "id": "force-sensing-3dof",
+    "assemblyHash": "2a4d4ebb6b248337d4154bf8a69783cc79f9a6108e43883f3b531dd7d267dd4c",
+    "executionHash": "69a0d1f7e2ba14a56917e15a305c65f3f544f90e35dbbde8ce62000449cfe8b9",
+    "modelHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+    "baseHash": "ca633abf9c5a9e1ef276621935f6f369726f329fdf1f0493bde42b099ce89762",
+    "catalogHash": "c4b22565d8d4a1b9320432a35b507b6c1756d651e80d700c57a714b45d0f5ea7",
+    "totalMassKg": 6.03,
+    "componentCost": 5,
+    "components": [
+      {
+        "instanceId": "body-imu",
+        "componentId": "body-imu",
+        "mount": "torso-sensor",
+        "config": {},
+        "hash": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+        "massKg": 0.03,
+        "cost": 1,
+        "physical": {
+          "centerOfMassM": [
+            0,
+            0,
+            0
+          ],
+          "inertiaDiagonalKgM2": [
+            1e-05,
+            1e-05,
+            1e-05
+          ]
+        },
+        "geometry": [],
+        "joints": [],
+        "actuators": [],
+        "sensors": [
+          {
+            "name": "body-gyro",
+            "kind": "gyro",
+            "source": "mjcf"
+          },
+          {
+            "name": "body-accelerometer",
+            "kind": "accelerometer",
+            "source": "mjcf"
+          }
+        ]
+      },
+      {
+        "instanceId": "foot-force-kit",
+        "componentId": "foot-force-sensor",
+        "mount": "foot-array",
+        "config": {},
+        "hash": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c",
+        "massKg": 0.08,
+        "cost": 4,
+        "physical": {
+          "centerOfMassM": [
+            0,
+            0,
+            0
+          ],
+          "inertiaDiagonalKgM2": [
+            2e-05,
+            2e-05,
+            2e-05
+          ]
+        },
+        "geometry": [],
+        "joints": [],
+        "actuators": [],
+        "sensors": [
+          {
+            "name": "foot-force-fl",
+            "kind": "touch",
+            "source": "mjcf"
+          },
+          {
+            "name": "foot-force-fr",
+            "kind": "touch",
+            "source": "mjcf"
+          },
+          {
+            "name": "foot-force-rl",
+            "kind": "touch",
+            "source": "mjcf"
+          },
+          {
+            "name": "foot-force-rr",
+            "kind": "touch",
+            "source": "mjcf"
+          }
+        ]
+      }
+    ],
+    "observationContract": {
+      "version": 1,
+      "assembly": "force-sensing-3dof",
+      "channels": [
+        {
+          "name": "joint-position",
+          "kind": "joint-position",
+          "size": 12,
+          "source": "qpos:joints",
+          "unit": "rad"
+        },
+        {
+          "name": "joint-velocity",
+          "kind": "joint-velocity",
+          "size": 12,
+          "source": "qvel:joints",
+          "unit": "rad-s"
+        },
+        {
+          "name": "base-height",
+          "kind": "body-state",
+          "size": 1,
+          "source": "qpos:root-height",
+          "unit": "m"
+        },
+        {
+          "name": "base-orientation",
+          "kind": "body-state",
+          "size": 4,
+          "source": "qpos:root-quaternion",
+          "unit": "quaternion"
+        },
+        {
+          "name": "base-velocity",
+          "kind": "body-state",
+          "size": 6,
+          "source": "qvel:root",
+          "unit": "mixed"
+        },
+        {
+          "name": "imu-angular-velocity",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-gyro",
+          "unit": "rad-s"
+        },
+        {
+          "name": "imu-linear-acceleration",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-accelerometer",
+          "unit": "m-s2"
+        },
+        {
+          "name": "foot-contact-force",
+          "kind": "sensor",
+          "size": 4,
+          "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+          "unit": "n"
+        }
+      ],
+      "size": 45
+    },
+    "actionContract": {
+      "version": 1,
+      "assembly": "force-sensing-3dof",
+      "channels": [
+        {
+          "name": "joint-torque",
+          "kind": "actuator",
+          "size": 12,
+          "source": "actuator:all",
+          "unit": "nm",
+          "low": -8,
+          "high": 8
+        }
+      ],
+      "size": 12
+    },
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+    "actionLow": [
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8
+    ],
+    "actionHigh": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8
+    ],
+    "sensorChannelCount": 10
+  },
+  "training": {
+    "version": 1,
+    "id": "capture-calibrated-spatial-residual-locomotion",
+    "name": "Protocol-capture-calibrated spatial residual locomotion",
+    "assembly": "force-sensing-3dof",
+    "trainer": "capture-spatial-residual-ppo",
+    "task": "forward-walk",
+    "scenarios": [
+      "nominal",
+      "reset-perturbation",
+      "low-friction",
+      "strong-lateral-push"
+    ],
+    "domainProfile": "quadruped-dry-run-capture-calibrated-v1",
+    "totalSteps": 8192,
+    "rolloutSteps": 512,
+    "epochs": 2,
+    "minibatchSize": 128,
+    "learningRate": 5e-05,
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+    "clipRatio": 0.15,
+    "entropyCoefficient": 0,
+    "residualScale": 0.05,
+    "residualPenalty": 2
+  },
+  "trainer": {
+    "version": 1,
+    "id": "capture-spatial-residual-ppo",
+    "name": "Capture-calibrated robust spatial residual PPO",
+    "kind": "ppo",
+    "entry": "trainer.py",
+    "model": "model.py"
+  },
+  "trainerRoot": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-capture-calibrated-robust-policy-A887y6/project/trainers/capture-spatial-residual-ppo",
+  "trainerHash": "80ce0e7778f86d8434398a687eee9444bffb962851065652abc05f89527cd1cd",
+  "priorController": null,
+  "priorControllerRoot": null,
+  "priorControllerHash": null,
+  "domainProfile": {
+    "version": 1,
+    "id": "quadruped-dry-run-capture-calibrated-v1",
+    "name": "Dry-run protocol-captured quadruped plant",
+    "provenance": {
+      "kind": "synthetic",
+      "evidence": "calibration-runs/calibration-727dc76775d22881/manifest.json",
+      "notes": "Generated by Calibration 'quadruped-dry-run-capture-hidden-plant' from 3 content-hashed sources. This is synthetic evidence and does not upgrade its own authority."
+    },
+    "parameters": {
+      "bodyMassScale": {
+        "minimum": 0.9660000000000003,
+        "maximum": 1.1340000000000003
+      },
+      "jointDampingScale": {
+        "minimum": 0.7589999999999999,
+        "maximum": 0.8909999999999999
+      },
+      "actuatorStrengthScale": {
+        "minimum": 1.0810000000000002,
+        "maximum": 1.2690000000000001
+      },
+      "actuatorDelayJitterSteps": {
+        "minimum": 1,
+        "maximum": 3
+      }
+    }
+  },
+  "domainProfileHash": "59134c20fa90d978fb29903d660e42774814dd72ada4c47fbefa20bc62658cbd",
+  "domainProfileEvidenceHash": "f49fd32bf56f7042102abf50db0e3fea4bcaa4f419e86556e031739cd13a7d8a",
+  "task": {
+    "version": 2,
+    "id": "forward-walk",
+    "name": "Walk forward at 0.25 metres per second",
+    "durationSeconds": 5,
+    "controlHz": 50,
+    "healthyHeight": [
+      0.19,
+      0.7
+    ],
+    "terminateOnFall": true,
+    "motionCommand": {
+      "frame": "world",
+      "linearVelocityMps": [
+        0.25,
+        0
+      ],
+      "yawRateRadPerSec": 0
+    }
+  },
+  "scenarios": [
+    {
+      "version": 1,
+      "id": "nominal",
+      "name": "Nominal laboratory floor",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "reset-perturbation",
+      "name": "Seeded joint-state and observation perturbations",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0.002,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0.025,
+      "initialJointVelocityNoiseStd": 0.08
+    },
+    {
+      "version": 1,
+      "id": "low-friction",
+      "name": "Low-friction floor",
+      "friction": 0.35,
+      "payloadKg": 0,
+      "lateralPush": null,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    },
+    {
+      "version": 1,
+      "id": "strong-lateral-push",
+      "name": "Discriminating lateral impulse for spatial recovery",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "lateralPush": {
+        "timeSeconds": 0.7,
+        "durationSeconds": 0.12,
+        "forceNewton": 50
+      },
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0
+    }
+  ],
+  "seed": 4204,
+  "dependencyLockHash": "31c72b7f3628fe95f426b475b75057c7c6c1ac169491ef97c28d85327ce18efd",
+  "sourceHashes": {
+    "runtime": "a79e5142dd9b7d7532bee718e0264287797c2449ee873e989724355663ba03e8",
+    "harness": "3976b1e86c059b21337a13de3d2c1cad2e3c2ffa968741eb0aaaf51a67cfb0f1",
+    "harnessDependencies": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+    "trainer": "80ce0e7778f86d8434398a687eee9444bffb962851065652abc05f89527cd1cd",
+    "priorController": null,
+    "domainProfile": "59134c20fa90d978fb29903d660e42774814dd72ada4c47fbefa20bc62658cbd",
+    "assembly": "2a4d4ebb6b248337d4154bf8a69783cc79f9a6108e43883f3b531dd7d267dd4c",
+    "catalog": "c4b22565d8d4a1b9320432a35b507b6c1756d651e80d700c57a714b45d0f5ea7",
+    "training": "edf8b48ab44cba0be02bab902b85426e37a44182919888ece830c8560887908e"
+  }
+}

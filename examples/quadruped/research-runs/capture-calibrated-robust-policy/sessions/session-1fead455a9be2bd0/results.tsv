@@ -1,0 +1,4 @@
+sequence	experiment	policy	score	delta	violations	status	strategy	description
+1	001-bd3d28dee9ad	capture-calibrated-spatial-residual-locomotion-f41c38bbde7d42fd	61.36941903293761	0.7287096918584623	5	revert	hard-case-small-residual	Expose PPO to both measured failures while halving residual authority and exploration so it can learn corrections without overriding the spatial program prior.
+2	002-e2055565a10f	capture-calibrated-spatial-residual-locomotion-5ba9031744408ed7	60.92170195323552	0.28099261215637483	3	revert	program-prior-recovery	The rejected residual left the safe neighborhood, so shrink stochastic authority and regularize the actor toward the frozen program prior.
+3	003-f1f4def56675	capture-calibrated-spatial-residual-locomotion-5ba9031744408ed7	60.640709341079145	0	-	crash	program-prior-recovery	Immutable artifact collision at /Users/ame/Documents/2607toydev/mujica/examples/quadruped/training-runs/training-0e3f967e0107ea29

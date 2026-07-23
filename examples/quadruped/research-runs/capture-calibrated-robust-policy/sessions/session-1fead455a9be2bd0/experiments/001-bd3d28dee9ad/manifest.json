@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "001-bd3d28dee9ad",
+  "sequence": 1,
+  "sessionId": "session-1fead455a9be2bd0",
+  "researchId": "capture-calibrated-robust-policy",
+  "labHash": "475b58bd04ffd020dacc4b57a252d73674940f152d0fe2efb0c5b94a1fe261e3",
+  "programHash": "6b7a9211ce5ab3667905470614ddd176c1869dc1e217a3d50cc571836e9b7b21",
+  "benchmarkLockHash": "46158ea0758f033420c500b2f17f89356b6edb504e0884c516a272a2395e6adb",
+  "sourceHash": "95661f6699cc68090d3fe97bf1d2a49ae6a1bce31f05a92eda444756e383f712",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-spatial-residual-gait/controller.json",
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "hard-case-small-residual",
+    "hypothesis": "Expose PPO to both measured failures while halving residual authority and exploration so it can learn corrections without overriding the spatial program prior.",
+    "expectedEffect": "Recover strong-push survival and improve low-friction signed progress without adding spatial-generalization or motion-quality violations."
+  },
+  "policyId": "capture-calibrated-spatial-residual-locomotion-f41c38bbde7d42fd",
+  "score": 61.36941903293761,
+  "delta": 0.7287096918584623,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reset-b: survival regressed from passing to failing",
+      "actuator-delay: lateral-drift regressed from passing to failing",
+      "spatial-generalization: delay-plus-push: survival regressed from passing to failing",
+      "motion-quality: delayed-forward: actuator-saturation regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 5,
+    "previousViolationSeverity": 1.987968381549881,
+    "candidateViolationSeverity": 2.35110933475197,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 37739,
+  "completed": true
+}

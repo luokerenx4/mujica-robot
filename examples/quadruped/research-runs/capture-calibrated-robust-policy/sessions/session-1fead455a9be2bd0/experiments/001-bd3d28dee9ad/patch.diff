@@ -1,0 +1,42 @@
+diff --git a/before/controllers/capture-calibrated-spatial-residual-gait/controller.json b/after/controllers/capture-calibrated-spatial-residual-gait/controller.json
+index ced131e..7b1c4fb 100644
+--- a/before/controllers/capture-calibrated-spatial-residual-gait/controller.json
++++ b/after/controllers/capture-calibrated-spatial-residual-gait/controller.json
+@@ -3,6 +3,6 @@
+   "id": "capture-calibrated-spatial-residual-gait",
+   "name": "Frozen protocol-capture-calibrated residual policy",
+   "kind": "policy",
+-  "policy": "capture-calibrated-spatial-residual-locomotion-9539500c844b2ddc",
++  "policy": "capture-calibrated-spatial-residual-locomotion-f41c38bbde7d42fd",
+   "deterministic": true
+ }
+diff --git a/before/training/capture-calibrated-spatial-residual-locomotion.training.json b/after/training/capture-calibrated-spatial-residual-locomotion.training.json
+index 5d6fdfd..3621d98 100644
+--- a/before/training/capture-calibrated-spatial-residual-locomotion.training.json
++++ b/after/training/capture-calibrated-spatial-residual-locomotion.training.json
+@@ -8,16 +8,19 @@
+   "task": "forward-walk",
+   "scenarios": [
+     "nominal",
+-    "reset-perturbation"
++    "reset-perturbation",
++    "low-friction",
++    "strong-lateral-push"
+   ],
+-  "totalSteps": 4096,
+-  "rolloutSteps": 256,
++  "totalSteps": 8192,
++  "rolloutSteps": 512,
+   "epochs": 2,
+-  "minibatchSize": 64,
++  "minibatchSize": 128,
+   "learningRate": 0.0001,
+   "gamma": 0.99,
+   "gaeLambda": 0.95,
+   "clipRatio": 0.15,
+-  "entropyCoefficient": 0.001,
+-  "residualScale": 0.25
++  "entropyCoefficient": 0.0005,
++  "residualScale": 0.1,
++  "residualPenalty": 0.25
+ }

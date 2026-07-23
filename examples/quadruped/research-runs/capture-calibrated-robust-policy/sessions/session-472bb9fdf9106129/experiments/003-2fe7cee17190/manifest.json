@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "id": "003-2fe7cee17190",
+  "sequence": 3,
+  "sessionId": "session-472bb9fdf9106129",
+  "researchId": "capture-calibrated-robust-policy",
+  "labHash": "475b58bd04ffd020dacc4b57a252d73674940f152d0fe2efb0c5b94a1fe261e3",
+  "programHash": "6b7a9211ce5ab3667905470614ddd176c1869dc1e217a3d50cc571836e9b7b21",
+  "benchmarkLockHash": "469c79cb2dcad0235621c10e88c7c92409e48774c85d973707b18817b9da40ea",
+  "sourceHash": "7eac9c6922c24cad3c52ba0342be2f768406fd5ada2fcb27e12269ff72f0d746",
+  "researcherChangedPaths": [
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/capture-calibrated-spatial-residual-gait/controller.json",
+    "training/capture-calibrated-spatial-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "program-prior-recovery",
+    "hypothesis": "Two rejected residuals left the safe neighborhood, so test the smallest useful correction with strong regularization toward the frozen program prior.",
+    "expectedEffect": "Remove the strong-push regression first while preserving the prior's low-friction failure as an explicit frontier."
+  },
+  "policyId": "capture-calibrated-spatial-residual-locomotion-58b654e2ba8917d7",
+  "score": 60.436602692772105,
+  "delta": -0.2041066483070395,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "spatial-generalization: delay-plus-push: survival regressed from passing to failing",
+      "spatial-generalization: delay-plus-reset: forward-progress regressed from passing to failing",
+      "motion-quality: delayed-forward: actuator-saturation regressed from passing to failing",
+      "motion-quality: delayed-forward: foot-impact regressed from passing to failing"
+    ],
+    "previousViolationCount": 3,
+    "candidateViolationCount": 2,
+    "previousViolationSeverity": 1.987968381549881,
+    "candidateViolationSeverity": 1.8037062325561266,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 41797,
+  "completed": true
+}
