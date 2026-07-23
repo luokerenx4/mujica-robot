@@ -6,7 +6,7 @@ Status: implemented vertical slice.
 
 Studio is a debugger for evidence already produced by the file-native Harness. It is not a robot editor, simulator, evaluator, or mutable database. The authoritative inputs remain `mujica.json`, Robot Assemblies and Components, compiled contracts, immutable Runs and Policies, locked Benchmarks, Candidates, and Revision manifests.
 
-`mujica studio <project> [--run ID]` reads those inputs, creates or reuses a content-addressed MuJoCo replay beneath `.mujica/replays/<replay-id>/`, and writes an offline projection beneath `.mujica/studio/<snapshot-id>/`. The snapshot contains `snapshot.json`, `index.html`, and a verified copy of the replay frames; it has no external network assets and uses a restrictive Content Security Policy. Repeating the command over identical evidence yields the same ids.
+`mujica studio <project> [--run ID] [--compare-run ID]` reads those inputs, creates or reuses one independently content-addressed MuJoCo replay per selected Run beneath `.mujica/replays/<replay-id>/`, and writes an offline projection beneath `.mujica/studio/<snapshot-id>/`. The snapshot contains `snapshot.json`, `index.html`, and verified copies of the replay frames; it has no external network assets and uses a restrictive Content Security Policy. Repeating the command over identical evidence yields the same ids.
 
 ## Debugging surfaces
 
@@ -15,6 +15,7 @@ The V1 projection shows:
 - every compiled Assembly, component membership, mass/cost proxy, and ordered Observation/Action contract;
 - a selected completed Simulation Run, its metrics, score identity, semantic Event timeline, and top-down trajectory playback;
 - actual MuJoCo-rendered 3D poses synchronized with play/pause, stepping, speed, scrubbing, Event seeking, health, attitude, motion, contact, and Action telemetry;
+- optional baseline/subject replay on a shared simulation-time cursor with motion-quality deltas and copyable dual-Run context;
 - bounded deterministic sampling for long NDJSON trajectories and event streams, with total row count and stride made visible;
 - Robot Revision lineage and Policy Revision identities;
 - Training Run and frozen Policy inventory;

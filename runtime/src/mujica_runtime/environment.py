@@ -39,6 +39,8 @@ def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]
 
 
 class RobotEnvironment:
+    FOOT_SITE_NAMES = ("foot-fl-site", "foot-fr-site", "foot-rl-site", "foot-rr-site")
+
     def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
@@ -140,6 +142,12 @@ class RobotEnvironment:
 
     def vector(self, observation: dict[str, np.ndarray]) -> np.ndarray:
         return np.concatenate([observation[channel["name"]] for channel in self.compiled["observationContract"]["channels"]]).astype(np.float32)
+
+    def foot_positions_world(self) -> np.ndarray | None:
+        site_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name) for name in self.FOOT_SITE_NAMES]
+        if any(site_id < 0 for site_id in site_ids):
+            return None
+        return np.asarray([self.data.site_xpos[site_id].copy() for site_id in site_ids], dtype=np.float64)
 
     def step(self, action: np.ndarray) -> StepResult:
         command_step = self.step_index

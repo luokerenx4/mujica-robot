@@ -12,7 +12,7 @@ from mujica_runtime.controllers import create_policy_network, load_program_contr
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
 from mujica_runtime.io import hash_directory, hash_file
 from mujica_runtime.replay import RENDERER_ID, render_replay
-from mujica_runtime.simulation import episode_survival_rate, motion_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
 
 
@@ -118,6 +118,34 @@ class RuntimeContractTest(unittest.TestCase):
     def test_survival_is_measured_against_the_requested_episode(self):
         self.assertAlmostEqual(episode_survival_rate(56, 250), 0.224)
         self.assertAlmostEqual(episode_survival_rate(250, 250), 1.0)
+
+    def test_motion_quality_uses_control_grid_applied_action_and_planted_foot_sites(self):
+        positions = [
+            np.zeros((4, 3)),
+            np.tile([0.01, 0.0, 0.0], (4, 1)),
+            np.tile([0.03, 0.0, 0.0], (4, 1)),
+        ]
+        rows = []
+        for index, (joint_velocity, action, force) in enumerate([(0.0, 0.0, 2.0), (1.0, 0.5, 3.0), (3.0, 1.0, 1.0)]):
+            qvel = np.zeros(8); qvel[3:6] = [0.0, 0.0, joint_velocity]; qvel[6:] = joint_velocity
+            rows.append({"qvel": qvel.tolist(), "action": [action, action], "footPositionWorld": positions[index].tolist(), "footContactForce": [force] * 4})
+        metrics = motion_quality_metrics(rows, 10, [-1, -1], [1, 1])
+        self.assertTrue(metrics["motionQualityFootEvidenceAvailable"])
+        self.assertAlmostEqual(metrics["meanJointJerkRadPerSec3"], 100.0)
+        self.assertAlmostEqual(metrics["peakBodyAngularJerkRadPerSec3"], 100.0)
+        self.assertAlmostEqual(metrics["meanActionSlewRatePerSec"], 5.0)
+        self.assertAlmostEqual(metrics["actuatorSaturationRate"], 1.0 / 3.0)
+        self.assertAlmostEqual(metrics["meanFootSlipSpeedMps"], 0.1)
+        self.assertAlmostEqual(metrics["totalFootSlipDistanceM"], 0.04)
+        self.assertAlmostEqual(metrics["peakFootContactImpactNPerSec"], 10.0)
+        self.assertEqual(rows[2]["motionQuality"]["jointJerkRadPerSec3"], [100.0, 100.0])
+
+    def test_motion_quality_marks_missing_foot_evidence_without_inventing_slip(self):
+        rows = [{"qvel": [0.0] * 8, "action": [0.0, 0.0], "footPositionWorld": None, "footContactForce": None}]
+        metrics = motion_quality_metrics(rows, 50, [-1, -1], [1, 1])
+        self.assertFalse(metrics["motionQualityFootEvidenceAvailable"])
+        self.assertEqual(metrics["meanFootSlipSpeedMps"], 0.0)
+        self.assertIsNone(rows[0]["motionQuality"]["footSlipSpeedMps"])
 
     def test_pitch_uses_mujoco_wxyz_sign_and_radian_conventions(self):
         angle = 0.4

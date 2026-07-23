@@ -22,6 +22,7 @@ None.
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Motion-quality judgement and comparison](plans/motion-quality-comparison.md) | Made visible gait defects measurable and let humans compare two authoritative MuJoCo Runs on one synchronized Studio clock. | 2026-07-23 |
 | [Visual simulation debugger](plans/visual-simulation-debugger.md) | Rendered authoritative MuJoCo motion in Studio with synchronized frame, Event, telemetry, and copyable Agent context for human-Agent debugging. | 2026-07-23 |
 | [Research Lab V2](plans/research-lab-v2.md) | Unified controller, ML, and complete-robot autoresearch behind one isolated source-editing protocol, immutable experiments, frozen-policy evaluation, and locked robot judgement. | 2026-07-23 |
 | [Upright locomotion quality](plans/upright-locomotion-quality.md) | Added yaw-invariant torso tilt evidence and published a zero-violation upright Controller across twelve hard cases while retaining four completed capability suites. | 2026-07-23 |

@@ -34,6 +34,7 @@ bun run mujica diagnose examples/quadruped \
 bun run mujica train examples/quadruped --training forward-residual-locomotion --seed 42
 bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
+bun run mujica studio examples/quadruped --run run-3404db433e7eb644 --compare-run run-35cd362b2def8a20
 bun run mujica hardware export examples/quadruped --target spatial-dry-run
 bun run mujica research list examples/quadruped
 bun run mujica research inspect examples/quadruped --lab upright-residual-policy
@@ -66,7 +67,7 @@ A separate held-out audit tests mirrored pushes, unseen delay durations, and com
 
 The follow-up adds a replayable four-step history contract, a bounded GRU history encoder, calibrated-latency priors, and governed residual regularization. Pure 20–60 ms latency was solved analytically. Evidence-guided compound research then reduced held-out violations from two to zero: all seven cases survive and progress, delay-plus-push drifts `0.1013 m`, and delay-plus-reset drifts `0.0676 m`, producing Robot Revision `quadruped-r-cb6b31bc8f4a`.
 
-`mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The Python Runtime reconstructs every recorded `qpos` with the Run's exact MuJoCo model and renders an authoritative 3D replay; Studio synchronizes it with play/pause, frame stepping, speed, scrubbing, semantic Event seeking, the top-down path, and frame telemetry. A human can copy the exact Run/frame context back to a Coding Agent without making the browser a second simulator or evaluator.
+`mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The Python Runtime reconstructs every recorded `qpos` with the Run's exact MuJoCo model and renders an authoritative 3D replay; Studio synchronizes it with play/pause, frame stepping, speed, scrubbing, semantic Event seeking, the top-down path, and frame telemetry. Add `--compare-run` to put a baseline and subject on one simulation-time clock with motion-quality deltas. A human can copy the exact immutable Run/frame comparison back to a Coding Agent without making the browser a second simulator or evaluator.
 
 The hardware boundary exports a kept Robot Revision as an immutable, contract-bound driver Bundle and validates separately captured Evidence. The checked-in 250-sample conformance run is deliberately labeled `PROTOCOL-VERIFIED` and `hardwareVerified=false`; Mujica will not represent a simulated serial number as HIL or real-robot proof.
 

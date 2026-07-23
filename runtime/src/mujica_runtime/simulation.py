@@ -122,6 +122,110 @@ def episode_survival_rate(healthy_steps: int, planned_steps: int) -> float:
     return float(healthy_steps) / max(1, int(planned_steps))
 
 
+def motion_quality_metrics(
+    trajectory: list[dict[str, Any]],
+    control_hz: float,
+    action_low: list[float] | np.ndarray,
+    action_high: list[float] | np.ndarray,
+    contact_threshold_newton: float = 1.0,
+) -> dict[str, Any]:
+    """Annotate trajectory rows and aggregate unitful control-grid motion quality."""
+    dt = 1.0 / float(control_hz)
+    low = np.asarray(action_low, dtype=np.float64)
+    high = np.asarray(action_high, dtype=np.float64)
+    joint_accelerations: list[np.ndarray | None] = []
+    body_angular_accelerations: list[np.ndarray | None] = []
+    joint_jerk_samples: list[float] = []
+    body_jerk_samples: list[float] = []
+    action_slew_samples: list[float] = []
+    saturation_samples: list[float] = []
+    slip_speed_samples: list[float] = []
+    slip_distance_total = 0.0
+    impact_samples: list[float] = []
+    contact_force_samples: list[float] = []
+    foot_evidence_available = bool(trajectory) and all(row.get("footPositionWorld") is not None and row.get("footContactForce") is not None for row in trajectory)
+
+    for index, row in enumerate(trajectory):
+        qvel = np.asarray(row["qvel"], dtype=np.float64)
+        action = np.asarray(row["action"], dtype=np.float64)
+        joint_acceleration = None if index == 0 else (qvel[6:] - np.asarray(trajectory[index - 1]["qvel"], dtype=np.float64)[6:]) / dt
+        body_acceleration = None if index == 0 else (qvel[3:6] - np.asarray(trajectory[index - 1]["qvel"], dtype=np.float64)[3:6]) / dt
+        joint_accelerations.append(joint_acceleration)
+        body_angular_accelerations.append(body_acceleration)
+
+        joint_jerk = np.zeros_like(qvel[6:])
+        body_jerk = np.zeros(3, dtype=np.float64)
+        if index >= 2 and joint_acceleration is not None and joint_accelerations[index - 1] is not None:
+            joint_jerk = (joint_acceleration - joint_accelerations[index - 1]) / dt
+            joint_jerk_samples.extend(np.abs(joint_jerk).tolist())
+        if index >= 2 and body_acceleration is not None and body_angular_accelerations[index - 1] is not None:
+            body_jerk = (body_acceleration - body_angular_accelerations[index - 1]) / dt
+            body_jerk_samples.extend(np.abs(body_jerk).tolist())
+
+        action_slew = np.zeros_like(action)
+        if index >= 1:
+            action_slew = (action - np.asarray(trajectory[index - 1]["action"], dtype=np.float64)) / dt
+            action_slew_samples.extend(np.abs(action_slew).tolist())
+        tolerance = 0.01 * np.maximum(np.abs(high - low), 1e-12)
+        saturated = np.logical_or(action <= low + tolerance, action >= high - tolerance)
+        saturation_rate = float(np.mean(saturated)) if action.size else 0.0
+        saturation_samples.append(saturation_rate)
+
+        foot_slip_speed: list[float] | None = None
+        contact_impact: list[float] | None = None
+        if foot_evidence_available:
+            force = np.asarray(row["footContactForce"], dtype=np.float64)
+            contact_force_samples.extend(force.tolist())
+            foot_slip_speed = [0.0] * len(force)
+            contact_impact = [0.0] * len(force)
+            if index >= 1:
+                previous_force = np.asarray(trajectory[index - 1]["footContactForce"], dtype=np.float64)
+                positions = np.asarray(row["footPositionWorld"], dtype=np.float64)
+                previous_positions = np.asarray(trajectory[index - 1]["footPositionWorld"], dtype=np.float64)
+                for foot_index in range(len(force)):
+                    if force[foot_index] > contact_threshold_newton and previous_force[foot_index] > contact_threshold_newton:
+                        speed = float(np.linalg.norm(positions[foot_index, :2] - previous_positions[foot_index, :2]) / dt)
+                        foot_slip_speed[foot_index] = speed
+                        slip_speed_samples.append(speed)
+                        slip_distance_total += speed * dt
+                    impact = max(0.0, float(force[foot_index] - previous_force[foot_index]) / dt)
+                    contact_impact[foot_index] = impact
+                    impact_samples.append(impact)
+
+        row["motionQuality"] = {
+            "jointJerkRadPerSec3": joint_jerk.tolist(),
+            "bodyAngularJerkRadPerSec3": body_jerk.tolist(),
+            "actionSlewRatePerSec": action_slew.tolist(),
+            "actuatorSaturationRate": saturation_rate,
+            "footSlipSpeedMps": foot_slip_speed,
+            "footContactImpactNPerSec": contact_impact,
+        }
+
+    def mean(values: list[float]) -> float:
+        return float(np.mean(values)) if values else 0.0
+
+    def peak(values: list[float]) -> float:
+        return max(values, default=0.0)
+
+    return {
+        "motionQualityFootEvidenceAvailable": foot_evidence_available,
+        "motionQualityContactThresholdNewton": float(contact_threshold_newton),
+        "meanJointJerkRadPerSec3": mean(joint_jerk_samples),
+        "peakJointJerkRadPerSec3": peak(joint_jerk_samples),
+        "meanBodyAngularJerkRadPerSec3": mean(body_jerk_samples),
+        "peakBodyAngularJerkRadPerSec3": peak(body_jerk_samples),
+        "meanActionSlewRatePerSec": mean(action_slew_samples),
+        "peakActionSlewRatePerSec": peak(action_slew_samples),
+        "actuatorSaturationRate": mean(saturation_samples),
+        "meanFootSlipSpeedMps": mean(slip_speed_samples),
+        "peakFootSlipSpeedMps": peak(slip_speed_samples),
+        "totalFootSlipDistanceM": float(slip_distance_total),
+        "meanFootContactImpactNPerSec": mean(impact_samples),
+        "peakFootContactImpactNPerSec": peak(impact_samples),
+        "peakFootContactForceNewton": peak(contact_force_samples),
+    }
+
+
 def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: dict[str, Any], training_steps: int = 0) -> dict[str, Any]:
     weights = objective["weights"]
     transient_burden = metrics.get("maximumTransitionTerminalPlanarTrackingError", 0.0) + metrics.get("maximumTransitionTerminalYawRateTrackingError", 0.0) + metrics.get("maximumPlanarSettlingTimeSeconds", 0.0) + metrics.get("maximumYawRateSettlingTimeSeconds", 0.0) + metrics.get("maximumPlanarOvershootMps", 0.0) + metrics.get("maximumYawRateOvershootRadPerSec", 0.0)
@@ -134,6 +238,12 @@ def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: 
         "transitionTracking": weights.get("transitionTracking", 0.0) * (1.0 / (1.0 + transient_burden)),
         "energy": -weights["energy"] * metrics["meanEnergy"],
         "smoothness": -weights["smoothness"] * metrics["meanSmoothness"],
+        "jointJerk": -weights.get("jointJerk", 0.0) * metrics.get("meanJointJerkRadPerSec3", 0.0),
+        "bodyAngularJerk": -weights.get("bodyAngularJerk", 0.0) * metrics.get("meanBodyAngularJerkRadPerSec3", 0.0),
+        "actionSlew": -weights.get("actionSlew", 0.0) * metrics.get("meanActionSlewRatePerSec", 0.0),
+        "actuatorSaturation": -weights.get("actuatorSaturation", 0.0) * metrics.get("actuatorSaturationRate", 0.0),
+        "footSlip": -weights.get("footSlip", 0.0) * metrics.get("meanFootSlipSpeedMps", 0.0),
+        "footImpact": -weights.get("footImpact", 0.0) * metrics.get("meanFootContactImpactNPerSec", 0.0),
         "componentMass": -weights["componentMass"] * compiled["totalMassKg"],
         "sensorChannels": -weights["sensorChannels"] * compiled["sensorChannelCount"],
         "trainingSteps": -weights["trainingSteps"] * training_steps,
@@ -205,7 +315,8 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         minimum_pitch = min(minimum_pitch, pitch)
         maximum_pitch = max(maximum_pitch, pitch)
         foot_contact_force = result.observation.get("foot-contact-force")
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        foot_positions_world = environment.foot_positions_world()
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -215,6 +326,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     mean_measured_motion = measured_motion_total / steps
     mean_motion_command = motion_command_total / steps
     transition_metrics = transition_response_metrics(trajectory, request["task"], request["objective"])
+    quality_metrics = motion_quality_metrics(trajectory, float(request["task"]["controlHz"]), compiled["actionLow"], compiled["actionHigh"])
     metrics = {
         "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.max_steps),
         "fell": fell, "motionCommand": mean_motion_command.tolist(), "meanMotionCommand": mean_motion_command.tolist(), "meanMeasuredMotion": mean_measured_motion.tolist(),
@@ -225,6 +337,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "meanBodyTiltRad": body_tilt_total / steps, "maximumBodyTiltRad": maximum_body_tilt,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
+        **quality_metrics,
         **transition_metrics,
         **motion_metrics(initial_position, environment.data.qpos[:3], distance_traveled, request["task"], float(environment.data.time)),
     }

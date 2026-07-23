@@ -41,6 +41,8 @@ Controls include play/pause, previous and next frame, quarter/half/real/double s
 
 Copying context does not edit the robot or Run. It gives the human an exact reference to paste into a Coding Agent conversation. The Agent can then inspect the same trajectory row, Events, and fixed inputs instead of working from an ambiguous visual description.
 
+An optional comparison Run adds a second independently verified replay to the same snapshot. Both panels follow one simulation-time cursor and map that time to their own nearest recorded frame, so unequal episode lengths or render strides do not create false synchronization. Aggregate quality deltas and copied comparison context follow the [Motion-quality Judge](motion-quality-judge.md) contract.
+
 ## Camera and visual semantics
 
 The first renderer uses a tracking perspective camera centered on the robot torso. MuJoCo renders the actual MJCF geoms, lighting, floor, body attitude, and articulated joints at `640 × 480`.

@@ -55,46 +55,62 @@ export async function inspectCommand(projectDir: string) {
   return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length }, components, assemblies, controllers, policies, runs, trainingRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications }, project);
 }
 
-export async function studioCommand(projectDir: string, run?: string) {
+export async function studioCommand(projectDir: string, run?: string, compareRun?: string) {
   const project = await loadProject(projectDir); const runIds = await listManifestDirectories(join(project.rootDir, "runs")); const runId = run ?? runIds.at(-1);
   if (!runId) throw new Error("Studio requires at least one completed Simulation Run");
-  if (!runIds.includes(runId)) throw new Error(`Unknown completed run '${runId}'`);
-  const runRoot = confined(project.rootDir, `runs/${runId}`); const manifest = JSON.parse(await readFile(join(runRoot, "manifest.json"), "utf8"));
-  if (manifest.completed !== true) throw new Error(`Simulation Run '${runId}' is incomplete`);
-  const compiledInput = JSON.parse(await readFile(join(runRoot, "inputs", "compiled-assembly.json"), "utf8"));
-  if (compiledInput.assemblyHash !== manifest.assemblyHash) throw new Error(`Simulation Run '${runId}' compiled Assembly hash is inconsistent`);
-  let modelPath = join(runRoot, "inputs", "model.xml");
-  if (await exists(modelPath)) {
-    const frozenHash = sha256(await readFile(modelPath));
-    if (compiledInput.modelHash !== frozenHash || manifest.modelHash !== frozenHash) throw new Error(`Simulation Run '${runId}' frozen model hash is inconsistent`);
-  } else {
-    const legacyRoot = confined(project.rootDir, `.mujica/cache/assemblies/${manifest.assemblyHash}`);
-    const legacyManifestPath = join(legacyRoot, "compiled-assembly.json"); modelPath = join(legacyRoot, "model.xml");
-    if (!(await exists(legacyManifestPath)) || !(await exists(modelPath))) throw new Error(`Simulation Run '${runId}' exact compiled model is unavailable`);
-    const legacy = JSON.parse(await readFile(legacyManifestPath, "utf8"));
-    if (legacy.assemblyHash !== manifest.assemblyHash || legacy.id !== compiledInput.id) throw new Error(`Simulation Run '${runId}' legacy compiled model cache is inconsistent`);
-  }
-  const modelHash = sha256(await readFile(modelPath));
-  const trajectoryPath = join(runRoot, "trajectory.ndjson"); const trajectoryHash = sha256(await readFile(trajectoryPath));
-  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
-  const replay = await invokeRuntime("render-replay", {
-    runtimeVersion,
-    runtimeSourceHash: await runtimeSourceHash(),
-    runId,
-    resultHash: manifest.resultHash,
-    assemblyHash: manifest.assemblyHash,
-    modelHash,
-    modelPath,
-    trajectoryPath,
-    trajectoryHash,
-    outputRoot: join(project.rootDir, ".mujica", "replays"),
-    settings,
+
+  const render = async (selectedRunId: string) => {
+    if (!runIds.includes(selectedRunId)) throw new Error(`Unknown completed run '${selectedRunId}'`);
+    const runId = selectedRunId;
+    const runRoot = confined(project.rootDir, `runs/${runId}`); const manifest = JSON.parse(await readFile(join(runRoot, "manifest.json"), "utf8"));
+    if (manifest.completed !== true) throw new Error(`Simulation Run '${runId}' is incomplete`);
+    const compiledInput = JSON.parse(await readFile(join(runRoot, "inputs", "compiled-assembly.json"), "utf8"));
+    if (compiledInput.assemblyHash !== manifest.assemblyHash) throw new Error(`Simulation Run '${runId}' compiled Assembly hash is inconsistent`);
+    let modelPath = join(runRoot, "inputs", "model.xml");
+    if (await exists(modelPath)) {
+      const frozenHash = sha256(await readFile(modelPath));
+      if (compiledInput.modelHash !== frozenHash || manifest.modelHash !== frozenHash) throw new Error(`Simulation Run '${runId}' frozen model hash is inconsistent`);
+    } else {
+      const legacyRoot = confined(project.rootDir, `.mujica/cache/assemblies/${manifest.assemblyHash}`);
+      const legacyManifestPath = join(legacyRoot, "compiled-assembly.json"); modelPath = join(legacyRoot, "model.xml");
+      if (!(await exists(legacyManifestPath)) || !(await exists(modelPath))) throw new Error(`Simulation Run '${runId}' exact compiled model is unavailable`);
+      const legacy = JSON.parse(await readFile(legacyManifestPath, "utf8"));
+      if (legacy.assemblyHash !== manifest.assemblyHash || legacy.id !== compiledInput.id) throw new Error(`Simulation Run '${runId}' legacy compiled model cache is inconsistent`);
+    }
+    const modelHash = sha256(await readFile(modelPath));
+    const trajectoryPath = join(runRoot, "trajectory.ndjson"); const trajectoryHash = sha256(await readFile(trajectoryPath));
+    const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
+    return invokeRuntime("render-replay", {
+      runtimeVersion,
+      runtimeSourceHash: await runtimeSourceHash(),
+      runId,
+      resultHash: manifest.resultHash,
+      assemblyHash: manifest.assemblyHash,
+      modelHash,
+      modelPath,
+      trajectoryPath,
+      trajectoryHash,
+      outputRoot: join(project.rootDir, ".mujica", "replays"),
+      settings,
+    });
+  };
+
+  const replay = await render(runId);
+  const comparisonReplay = compareRun ? await render(compareRun) : null;
+  const result = await writeStudioSnapshot(project.rootDir, {
+    run: runId, replay: { path: replay.path, manifest: replay.manifest },
+    ...(compareRun && comparisonReplay ? { compareRun, compareReplay: { path: comparisonReplay.path, manifest: comparisonReplay.manifest } } : {}),
   });
-  const result = await writeStudioSnapshot(project.rootDir, { run: runId, replay: { path: replay.path, manifest: replay.manifest } });
-  return success("studio", { id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun, replay: { id: replay.id, path: replay.path, frameCount: replay.manifest.frameCount, cached: replay.cached } }, project, [
+  const artifacts = [
     projectArtifact("simulation-replay", replay.id, replay.path, true),
     projectArtifact("studio-snapshot", result.id, result.path, false),
-  ]);
+  ];
+  if (comparisonReplay && comparisonReplay.id !== replay.id) artifacts.splice(1, 0, projectArtifact("simulation-replay", comparisonReplay.id, comparisonReplay.path, true));
+  return success("studio", {
+    id: result.id, snapshotHash: result.snapshotHash, path: result.path, indexPath: result.indexPath, selectedRun: result.selectedRun, comparisonRun: result.comparisonRun,
+    replay: { id: replay.id, path: replay.path, frameCount: replay.manifest.frameCount, cached: replay.cached },
+    comparisonReplay: comparisonReplay ? { id: comparisonReplay.id, path: comparisonReplay.path, frameCount: comparisonReplay.manifest.frameCount, cached: comparisonReplay.cached } : null,
+  }, project, artifacts);
 }
 
 export async function componentListCommand(projectDir: string) {
@@ -341,7 +357,7 @@ export function candidateSelection(gateReasons: string[], scoreDelta: number, ba
 }
 
 type GateAssessment = {
-  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "score-regression";
+  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "joint-jerk" | "body-angular-jerk" | "action-slew" | "actuator-saturation" | "foot-slip" | "foot-impact" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
 
@@ -374,6 +390,12 @@ function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, c
   gates.push(upper("yaw-overshoot", "maximumYawRateOvershootRadPerSec", candidate.metrics.maximumYawRateOvershootRadPerSec ?? 0, objective.gates.maximumYawRateOvershootRadPerSec));
   gates.push(upper("unsettled-planar", "unsettledPlanarTransitionCount", candidate.metrics.unsettledPlanarTransitionCount ?? 0, objective.gates.maximumUnsettledPlanarTransitions, 1));
   gates.push(upper("unsettled-yaw", "unsettledYawRateTransitionCount", candidate.metrics.unsettledYawRateTransitionCount ?? 0, objective.gates.maximumUnsettledYawRateTransitions, 1));
+  gates.push(upper("joint-jerk", "meanJointJerkRadPerSec3", candidate.metrics.meanJointJerkRadPerSec3 ?? 0, objective.gates.maximumMeanJointJerkRadPerSec3 ?? 1_000_000));
+  gates.push(upper("body-angular-jerk", "meanBodyAngularJerkRadPerSec3", candidate.metrics.meanBodyAngularJerkRadPerSec3 ?? 0, objective.gates.maximumMeanBodyAngularJerkRadPerSec3 ?? 1_000_000));
+  gates.push(upper("action-slew", "meanActionSlewRatePerSec", candidate.metrics.meanActionSlewRatePerSec ?? 0, objective.gates.maximumMeanActionSlewRatePerSec ?? 1_000_000));
+  gates.push(upper("actuator-saturation", "actuatorSaturationRate", candidate.metrics.actuatorSaturationRate ?? 0, objective.gates.maximumActuatorSaturationRate ?? 1, 1));
+  gates.push(upper("foot-slip", "meanFootSlipSpeedMps", candidate.metrics.meanFootSlipSpeedMps ?? 0, objective.gates.maximumMeanFootSlipSpeedMps ?? 1_000_000));
+  gates.push(upper("foot-impact", "peakFootContactImpactNPerSec", candidate.metrics.peakFootContactImpactNPerSec ?? 0, objective.gates.maximumPeakFootContactImpactNPerSec ?? 1_000_000));
   if (baseline) gates.push(lower("score-regression", "scoreDelta", candidate.score.total - baseline.score.total, -objective.gates.maximumRegression));
   return gates;
 }
@@ -388,6 +410,10 @@ function diagnosticHypotheses(violations: GateAssessment[]) {
   if (violations.some((gate) => gate.id === "yaw-rate-tracking")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Test a bounded left-right or front-rear steering differential against measured body yaw rate.", rationale: "The measured yaw-rate error exceeded the locked command-tracking gate." });
   if (violations.some((gate) => gate.id === "transition-terminal-planar" || gate.id === "planar-settling-time" || gate.id === "planar-braking-settling-time" || gate.id === "planar-overshoot" || gate.id === "unsettled-planar")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.", rationale: "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command." });
   if (violations.some((gate) => gate.id === "transition-terminal-yaw" || gate.id === "yaw-settling-time" || gate.id === "yaw-overshoot" || gate.id === "unsettled-yaw")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect yaw response after the exact boundary and test bounded steering damping against current measured yaw rate.", rationale: "The measured yaw transient ended too far from target, settled too slowly, failed to remain settled, or overshot the new command." });
+  if (violations.some((gate) => gate.id === "joint-jerk" || gate.id === "body-angular-jerk")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect frame-local jerk peaks, gait phase discontinuities, feedback gains, and command-boundary behavior before changing the fixed task.", rationale: "Control-grid joint or root-angular jerk exceeded the locked motion-quality envelope." });
+  if (violations.some((gate) => gate.id === "action-slew" || gate.id === "actuator-saturation")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect applied-Action slew and saturation together, then test bounded output shaping, gain wind-up, delay compensation, or actuator authority.", rationale: "The applied control stream changed too quickly or spent too much time at declared control bounds." });
+  if (violations.some((gate) => gate.id === "foot-slip")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect planted-foot intervals, load transfer, contact timing, and foot placement without changing the locked friction case.", rationale: "Exact MuJoCo foot-site motion while contact persisted exceeded the planted-slip gate." });
+  if (violations.some((gate) => gate.id === "foot-impact")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect touchdown frames and test bounded clearance, phase timing, vertical landing speed, or joint damping.", rationale: "The positive touch-force derivative exceeded the locked contact-impact gate." });
   if (violations.some((gate) => gate.id === "score-regression")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.", rationale: "The case regressed beyond the locked baseline allowance." });
   return hypotheses;
 }

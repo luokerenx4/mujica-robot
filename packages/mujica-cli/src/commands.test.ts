@@ -50,21 +50,23 @@ describe("agent CLI contract", () => {
     expect(result.code).toBe(1); expect(envelope.error.message).toContain("requires Observation 'actuator-delay-steps'"); expect(envelope.error.message).not.toContain("Python Runtime"); expect(envelope.error.message).not.toContain("KeyError");
   });
 
-  test("Studio is a read-only projection of a completed quadruped run", () => {
+  test("Studio is a read-only synchronized projection of completed quadruped Runs", () => {
     const simulated = invoke(["simulate", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-forward-gait", "--task", "forward-walk", "--scenario", "nominal", "--objective", "forward-locomotion", "--seed", "709913", "--json"]);
     expect(simulated.code).toBe(0);
     const run = JSON.parse(simulated.stdout).data;
     try {
-      const result = invoke(["studio", "examples/quadruped", "--run", run.runId, "--json"]); const envelope = JSON.parse(result.stdout);
+      const result = invoke(["studio", "examples/quadruped", "--run", run.runId, "--compare-run", run.runId, "--json"]); const envelope = JSON.parse(result.stdout);
       expect(result.code).toBe(0);
       expect(envelope.data.selectedRun).toBe(run.runId);
+      expect(envelope.data.comparisonRun).toBe(run.runId);
       expect(envelope.data.snapshotHash).toHaveLength(64);
       expect(envelope.data.replay.frameCount).toBe(250);
+      expect(envelope.data.comparisonReplay).toMatchObject({ id: envelope.data.replay.id, frameCount: 250 });
       expect(envelope.artifacts).toEqual([
         { kind: "simulation-replay", id: envelope.data.replay.id, path: envelope.data.replay.path, immutable: true },
         { kind: "studio-snapshot", id: envelope.data.id, path: envelope.data.path, immutable: false },
       ]);
-      const cached = invoke(["studio", "examples/quadruped", "--run", run.runId, "--json"]);
+      const cached = invoke(["studio", "examples/quadruped", "--run", run.runId, "--compare-run", run.runId, "--json"]);
       expect(cached.code).toBe(0);
       expect(JSON.parse(cached.stdout).data.replay).toMatchObject({ id: envelope.data.replay.id, cached: true });
     } finally {

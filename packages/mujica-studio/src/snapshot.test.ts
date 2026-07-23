@@ -15,7 +15,7 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
-    expect(first.snapshot.benchmarks).toHaveLength(11);
+    expect(first.snapshot.benchmarks).toHaveLength(12);
     expect(first.snapshot.candidates).toHaveLength(9);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
@@ -24,7 +24,7 @@ describe("read-only Studio snapshot", () => {
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
     const html = await readFile(first.indexPath, "utf8");
     expect(html).toContain("read-only evidence debugger");
-    expect(html).toContain("Actual MuJoCo 3D replay");
+    expect(html).toContain("Authoritative MuJoCo replay comparison");
     expect(html).toContain("Top-down path");
     expect(html).toContain("Research Lab ledger");
     expect(html).toContain("gate-regression");
@@ -33,6 +33,17 @@ describe("read-only Studio snapshot", () => {
 
   test("refuses to invent a missing run", async () => {
     await expect(buildStudioSnapshot(project, { run: "run-does-not-exist" })).rejects.toThrow("Unknown completed run");
+  });
+
+  test("projects two Runs onto one simulation-time comparison", async () => {
+    const result = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123", compareRun: "run-0307db1a1c3dc228" });
+    expect(result.snapshot.selectedRun?.id).toBe("run-e8bd80892b0f0123");
+    expect(result.snapshot.comparisonRun?.id).toBe("run-0307db1a1c3dc228");
+    const html = await readFile(result.indexPath, "utf8");
+    expect(html).toContain("shared simulation time");
+    expect(html).toContain("Motion-quality deltas");
+    expect(html).toContain("mujica-run-comparison-context");
+    expect(html).toContain("subject − baseline");
   });
 
   test("copies a verified MuJoCo replay into the offline snapshot", async () => {
@@ -63,8 +74,8 @@ describe("read-only Studio snapshot", () => {
       expect(result.snapshot.selectedReplay).toMatchObject({ id: "replay-test", frameBase: "replay/frames" });
       expect(await readFile(join(result.path, "replay", "frames", "000000.png"))).toEqual(frameBytes);
       const html = await readFile(result.indexPath, "utf8");
-      expect(html).toContain("Actual MuJoCo 3D replay");
-      expect(html).toContain("Copy frame context for Agent");
+      expect(html).toContain("Authoritative MuJoCo replay comparison");
+      expect(html).toContain("Copy comparison context for Agent");
       expect(html).toContain("mujica-runtime-mujoco-rgb-v1");
       expect(html).toContain("img-src 'self' data:");
     } finally {

@@ -20,7 +20,7 @@ USAGE
   mujica assembly inspect|compile <project> --assembly ID [--json]
   mujica assembly compare <project> --from ID --to ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
-  mujica studio <project> [--run ID] [--json]
+  mujica studio <project> [--run ID] [--compare-run ID] [--json]
   mujica hardware export <project> --target ID [--json]
   mujica hardware verify <project> --bundle ID --evidence PATH [--json]
   mujica train <project> --training ID [--seed N]
@@ -53,7 +53,7 @@ const CAPABILITIES = [
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
-  { id: "studio", usage: "mujica studio <project> [--run ID] [--json]", effect: "creates-artifact" },
+  { id: "studio", usage: "mujica studio <project> [--run ID] [--compare-run ID] [--json]", effect: "creates-artifact" },
   { id: "hardware.export", usage: "mujica hardware export <project> --target ID [--json]", effect: "creates-artifact" },
   { id: "hardware.verify", usage: "mujica hardware verify <project> --bundle ID --evidence PATH [--json]", effect: "creates-artifact" },
   { id: "train", usage: "mujica train <project> --training ID [--seed N] [--json]", effect: "creates-artifact" },
@@ -115,8 +115,8 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   try {
     let envelope: any;
     if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
-      envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : command === "studio" ? await studioCommand(project, values.run) : await revisionsCommand(project);
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
+      envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : command === "studio" ? await studioCommand(project, values.run, values["compare-run"]) : await revisionsCommand(project);
     } else if (command === "component") {
       const action = args.shift(); commandId = `component.${action}`; const { values, positionals } = parseArgs({ args, options: { component: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica component ${action} <project>`), values.project);
       if (action === "list") envelope = await componentListCommand(project); else if (action === "inspect") envelope = await componentInspectCommand(project, required(values.component, "component")); else throw new Error("Usage: mujica component list|inspect ...");

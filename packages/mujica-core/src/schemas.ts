@@ -95,6 +95,8 @@ export const objectiveSchema = z.object({
   weights: z.object({
     survival: z.number(), velocityTracking: z.number(), forwardProgress: z.number().default(0), upright: z.number(), lateralDrift: z.number().default(0),
     transitionTracking: z.number().default(0), energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
+    jointJerk: z.number().default(0), bodyAngularJerk: z.number().default(0), actionSlew: z.number().default(0),
+    actuatorSaturation: z.number().default(0), footSlip: z.number().default(0), footImpact: z.number().default(0),
   }).strict(),
   transientMeasurement: z.object({
     planarToleranceMps: z.number().finite().nonnegative(), yawRateToleranceRadPerSec: z.number().finite().nonnegative(), holdSeconds: z.number().finite().positive(),
@@ -110,6 +112,9 @@ export const objectiveSchema = z.object({
     maximumYawRateSettlingTimeSeconds: z.number().nonnegative().default(1_000_000),
     maximumPlanarOvershootMps: z.number().nonnegative().default(1_000_000), maximumYawRateOvershootRadPerSec: z.number().nonnegative().default(1_000_000),
     maximumUnsettledPlanarTransitions: z.number().int().nonnegative().default(1_000_000), maximumUnsettledYawRateTransitions: z.number().int().nonnegative().default(1_000_000),
+    maximumMeanJointJerkRadPerSec3: z.number().nonnegative().default(1_000_000), maximumMeanBodyAngularJerkRadPerSec3: z.number().nonnegative().default(1_000_000),
+    maximumMeanActionSlewRatePerSec: z.number().nonnegative().default(1_000_000), maximumActuatorSaturationRate: z.number().min(0).max(1).default(1),
+    maximumMeanFootSlipSpeedMps: z.number().nonnegative().default(1_000_000), maximumPeakFootContactImpactNPerSec: z.number().nonnegative().default(1_000_000),
     maximumRegression: z.number().nonnegative(),
   }).strict(),
 }).strict();
