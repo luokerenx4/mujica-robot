@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +14,7 @@ import torch
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.hardware_capture import _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
+from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
@@ -619,6 +621,107 @@ class RuntimeContractTest(unittest.TestCase):
             _driver_deadline_rejection(rejected, "fit-a", 1)
         with self.assertRaisesRegex(RuntimeError, "finite nonnegative"):
             _driver_deadline_rejection({**rejected, "observedDecisionLatencyMs": float("nan")}, "fit-a", 0)
+
+    def test_driver_command_lease_expiration_is_bounded_and_applies_emergency_action(self):
+        health = {
+            "motorTemperatureC": [40.0, 40.0],
+            "motorCurrentA": [0.0, 0.0],
+            "actuatorStates": ["ready", "ready"],
+            "busVoltageV": 24.0,
+            "faults": [],
+            "estopEngaged": False,
+            "watchdogHealthy": True,
+        }
+        expiration = {
+            "type": "lease-expired",
+            "episode": "host-loss",
+            "lastAcceptedStep": 0,
+            "commandLeaseMs": 100,
+            "observedSilenceMs": 105.0,
+            "stopLatched": True,
+            "appliedAction": [0.0, 0.0],
+            "deviceHealth": health,
+        }
+        parsed = _command_lease_expiration(expiration, "host-loss", 0, 100, 25.0, 2, np.zeros(2))
+        self.assertEqual(parsed["lastAcceptedStep"], 0)
+        self.assertEqual(parsed["appliedAction"], [0.0, 0.0])
+        with self.assertRaisesRegex(RuntimeError, "before the frozen lease"):
+            _command_lease_expiration({**expiration, "observedSilenceMs": 99.9}, "host-loss", 0, 100, 25.0, 2, np.zeros(2))
+        with self.assertRaisesRegex(RuntimeError, "overrun bound"):
+            _command_lease_expiration({**expiration, "observedSilenceMs": 125.1}, "host-loss", 0, 100, 25.0, 2, np.zeros(2))
+        with self.assertRaisesRegex(RuntimeError, "emergency-stop Action"):
+            _command_lease_expiration({**expiration, "appliedAction": [0.1, 0.0]}, "host-loss", 0, 100, 25.0, 2, np.zeros(2))
+
+    def test_protocol_driver_rejects_control_after_autonomous_lease_stop(self):
+        capture_plan = json.loads((PROJECT / "capture-plans" / "quadruped-host-loss-trip.capture.json").read_text())
+        bundle_root = PROJECT / "hardware-bundles" / capture_plan["bundle"]
+        bundle = json.loads((bundle_root / "manifest.json").read_text())
+        action_size = int(json.loads((bundle_root / "action-contract.json").read_text())["size"])
+        target = bundle["target"]
+        driver = PROJECT / "hardware-drivers" / "mujoco-protocol-simulator" / "driver.py"
+        scenario = PROJECT / "scenarios" / "hardware-capture-hidden-plant.scenario.json"
+        process = subprocess.Popen(
+            [str(driver), "--scenario", str(scenario)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            env={**os.environ, "MUJICA_HARDWARE_BUNDLE": str(bundle_root)},
+        )
+        self.assertIsNotNone(process.stdin)
+        self.assertIsNotNone(process.stdout)
+
+        def exchange(message):
+            process.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
+            process.stdin.flush()
+            return json.loads(process.stdout.readline())
+
+        try:
+            hello = exchange({
+                "type": "hello",
+                "protocol": "stdio-jsonl-v1",
+                "version": 1,
+                "bundleHash": bundle["bundleHash"],
+                "observationContractHash": bundle["observationContractHash"],
+                "actionContractHash": bundle["actionContractHash"],
+                "driverHash": bundle["driverExecutableHash"],
+                "environment": target["environment"],
+                "commandLeaseMs": target["safety"]["commandLeaseMs"],
+            })
+            self.assertIn("command-lease", hello["capabilities"])
+            initial = exchange({
+                "type": "start-episode",
+                "episode": "direct-host-loss",
+                "seed": 91,
+                "steps": 2,
+                "controlHz": target["controlHz"],
+                "commandLeaseMs": target["safety"]["commandLeaseMs"],
+            })
+            self.assertEqual(initial["step"], 0)
+            expired = json.loads(process.stdout.readline())
+            self.assertEqual(expired["type"], "lease-expired")
+            self.assertTrue(expired["stopLatched"])
+            rejected = exchange({
+                "type": "action",
+                "episode": "direct-host-loss",
+                "step": 0,
+                "commandLeaseMs": target["safety"]["commandLeaseMs"],
+                "action": [0.0] * action_size,
+            })
+            self.assertEqual(rejected["type"], "control-rejected")
+            self.assertEqual(rejected["reason"], "stop-latched")
+            health = exchange({"type": "health-check", "episode": "direct-host-loss", "sequence": 0})
+            self.assertTrue(health["stopLatched"])
+            self.assertEqual(exchange({"type": "close"})["type"], "completed")
+            self.assertEqual(process.wait(timeout=2), 0)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=2)
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None:
+                    stream.close()
 
     def test_hardware_capture_device_health_is_typed_and_fail_closed(self):
         healthy = {

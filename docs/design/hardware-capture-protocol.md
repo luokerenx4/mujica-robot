@@ -34,6 +34,8 @@ host hello → driver hello
 host start-episode → driver state(step=0)
 host action(step=n) → driver state(step=n+1)
 host action(step=n) → driver deadline-rejected(step=n)
+host sends nothing → driver lease-expired(stopLatched=true)
+host action after latch → driver control-rejected(reason=stop-latched)
 host safe-stop → driver stopped
 host emergency-stop → driver stopped
 host health-check(sequence=n) → driver health-state(stopLatched=true)
@@ -42,10 +44,10 @@ host close → driver completed
 ```
 
 The hello message fixes protocol version, Bundle and contract hashes,
-environment, and driver hash. The driver returns its vendor/model/serial identity
+environment, driver hash, and Target command lease. The driver returns its vendor/model/serial identity
 and an explicit capability set. Commissioning requires `shadow-action`,
-`applied-action`, `state-age-ms`, `device-health`, `latched-stop-health`, and
-`stop-ack`. Every state contains full
+`applied-action`, `command-lease`, `state-age-ms`, `device-health`,
+`latched-stop-health`, and `stop-ack`. Every state contains full
 `qpos`, `qvel`, the ordered Observation vector, the Action the device actually
 applied, the device-measured state age, and typed Driver health telemetry.
 
@@ -98,6 +100,36 @@ Any rejection aborts the synchronous episode. The host does not use
 `maximumConsecutiveMisses` to continue after an expired command because there
 is no safe state transition to assume. Captures distinguish host pre-dispatch
 misses from driver rejections and preserve both clocks' measurements.
+
+### Command lease and host loss
+
+The decision deadline rejects a command that arrived too late. The command lease
+covers the opposite case: no command arrives at all because the host Runtime,
+IPC path, or Coding Agent stalled. A new Bundle fixes both `commandLeaseMs` and
+`maximumCommandLeaseOverrunMs`; the host cannot widen either at session time.
+
+`start-episode` arms the lease when the Driver publishes the initial state.
+Every accepted `action` or `shadow-action` carries the same frozen duration and
+renews it on the Driver's monotonic clock. If it expires, the Driver must:
+
+1. apply the exact Bundle emergency-stop Action without waiting for the host;
+2. latch stop and reject subsequent control in the same session;
+3. emit one `lease-expired` containing the episode, last accepted step, exact
+   lease, measured silence, applied Action, device health, and
+   `stopLatched=true`.
+
+The measured silence must be at least the lease and no greater than lease plus
+the Target overrun. An explicit Plan `hostLossTest` withholds the next control
+message after a named state and waits for this asynchronous event. The
+transcript must contain no host Action or stop after that state. Capture enters
+the existing health-only stop window directly: it does not send a redundant
+emergency stop, and healthy samples cannot turn a command-loss trip into a
+recovery candidate.
+
+This protocol proof does not make a user-space Python timer a physical safety
+device. A production Driver must place the same or tighter lease in the motor
+controller, fieldbus device, or independently supervised real-time process so
+the protection survives failure of the Driver process itself.
 
 ### Device health
 
@@ -154,8 +186,9 @@ Before each Action the host checks:
 - maximum joint speed;
 - optional free-base height and yaw-invariant tilt;
 - host decision deadline and driver-local receipt deadline;
+- Driver command lease and bounded expiration overrun;
 
-Any violation ends the episode, sends the Bundle's emergency-stop Action, and
+Any host-observed violation ends the episode, sends the Bundle's emergency-stop Action, and
 publishes an `ABORTED` artifact that is not calibration-eligible. A stop is not
 considered executed merely because the host wrote a message: the driver must
 return `stopped` with the exact episode and `safe-stop` or `emergency-stop`
@@ -163,6 +196,9 @@ kind. A missing or mismatched acknowledgement makes the session `FAILED`.
 When post-stop checking is required, any mismatched sequence, unlocked response,
 or malformed health state also makes the session `FAILED`; persistent but
 well-formed unhealthy health keeps it `ABORTED` and recovery-ineligible.
+Command-lease expiration is the exception to host-issued stop: the validated
+Driver event already proves that the emergency Action was applied and stop was
+latched, so Capture proceeds directly to health-only observation.
 
 State age is device-authored evidence about acquisition/estimation freshness.
 Host dispatch or round-trip latency cannot substitute for it. The check occurs

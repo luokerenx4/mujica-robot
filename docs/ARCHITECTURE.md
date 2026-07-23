@@ -58,7 +58,11 @@ Mechanical Components enter MuJoCo through explicit Base-owned Mount slots. Root
 Hardware export is downstream of Revision governance. The Bundle freezes the deployable contracts, safety envelope, and complete project Driver Package; verification never trusts a mutable project pointer and re-hashes the embedded Revision, Controller, Target, contracts, Driver package, and executable entry. Capture launches only the Bundle copy and requires the executing Harness source and dependency lock to match the authorized identity. Dry-run protocol conformance is explicitly distinct from HIL or physical-hardware evidence.
 
 The executable device boundary negotiates freshness, applied-Action,
-decision-deadline, stop acknowledgement, and device-health capabilities.
+decision-deadline, command-lease, stop acknowledgement, and device-health capabilities.
+The decision deadline rejects stale commands; the independent lease handles
+missing commands and bounds both expiry duration and allowed overrun. A
+Driver-originated lease trip applies the emergency Action and enters the same
+one-way stop-latched observation state without waiting for a host stop request.
 Per-motor temperature/current and typed actuator state, bus voltage, Driver
 faults, physical E-stop, and watchdog state are checked before Controller
 evaluation. A learned Policy therefore cannot emit a proposal from a faulted

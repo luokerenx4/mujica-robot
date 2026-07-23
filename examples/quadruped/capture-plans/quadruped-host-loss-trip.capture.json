@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "quadruped-host-loss-trip",
+  "name": "Driver-autonomous host-loss stop proof",
+  "target": "spatial-dry-run",
+  "bundle": "hardware-4e461b759f1533d5",
+  "mode": "actuate",
+  "episodes": [
+    { "id": "host-loss-trip", "seed": 4305, "steps": 10 }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "hostLossTest": {
+    "episode": "host-loss-trip",
+    "afterStateStep": 1
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 30,
+    "maximumDecisionLatencyMs": 10,
+    "minimumBaseHeightM": 0.12,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Dry-run negative proof: after one accepted Action the host intentionally withholds all commands and waits for the frozen Driver command lease to expire and latch stop."
+}

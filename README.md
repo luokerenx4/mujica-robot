@@ -116,6 +116,14 @@ message delayed in transport is independently rejected by the Driver before it
 advances MuJoCo or physical actuation. The checked-in negative proofs preserve
 both outcomes and their acknowledged emergency stops.
 
+Command loss is a separate failure mode from a late command. Every new Hardware
+Target now fixes a Driver-enforced command lease and maximum expiration
+overrun. Episode start arms it and each accepted Action renews it. In the
+checked-in host-loss proof Mujica deliberately goes silent after one Action:
+the Driver applies the exact emergency-stop vector, emits `lease-expired`,
+remains stop-latched through the health window, and records zero host-issued
+stop messages. The aborted session cannot enter Calibration or recover in place.
+
 The same boundary now treats Driver health as executable input to safety rather
 than an operator-side note. Every required state carries motor temperature and
 current, bus voltage, fault codes, physical E-stop state, and watchdog health.

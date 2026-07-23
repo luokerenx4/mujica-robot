@@ -131,7 +131,7 @@ describe("agent CLI contract", () => {
       const bundleManifest = JSON.parse(await readFile(resolve(root, `examples/quadruped/hardware-bundles/${plan.data.definition.bundle}/manifest.json`), "utf8"));
       expect(manifest.driverPackageHash).toBe(bundleManifest.driverPackageHash);
       expect(manifest.driverHash).toBe(bundleManifest.driverExecutableHash);
-      expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"]);
+      expect(manifest.protocolCapabilities).toEqual(["applied-action", "command-lease", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"]);
       expect(manifest.stateAge.samples).toBeGreaterThan(0);
       expect(manifest.deviceHealth).toMatchObject({
         maximumMotorTemperatureC: 40,
@@ -394,6 +394,55 @@ describe("agent CLI contract", () => {
     }
   }, 15_000);
 
+  test("the Driver autonomously latches stop when host commands disappear", async () => {
+    const captured = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "quadruped-host-loss-trip",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test", "--json",
+    ]);
+    expect(captured.code).toBe(0);
+    const envelope = JSON.parse(captured.stdout); const artifactPath = envelope.data.artifactPath;
+    try {
+      expect(envelope.data).toMatchObject({
+        status: "ABORTED",
+        commandLeaseMs: 100,
+        commandLeaseExpirations: 1,
+        driverAutonomousStops: 1,
+        emergencyStops: 0,
+        emergencyStopAcknowledgements: 0,
+        postStopHealthChecks: 3,
+        postStopRecoveryCandidates: 0,
+        recoveryEligible: false,
+        realTimeQualified: false,
+        calibrationEligible: false,
+      });
+      expect(envelope.data.maximumObservedCommandSilenceMs).toBeGreaterThanOrEqual(100);
+      expect(envelope.data.maximumObservedCommandSilenceMs).toBeLessThanOrEqual(125);
+      const transcript = (await readFile(resolve(artifactPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostControlOrStop = transcript.filter((row) =>
+        row.direction === "host-to-driver"
+        && ["action", "shadow-action", "safe-stop", "emergency-stop"].includes(row.message.type)
+      );
+      expect(hostControlOrStop.map((row) => row.message.type)).toEqual(["action"]);
+      const expiration = transcript.find((row) => row.direction === "driver-to-host" && row.message.type === "lease-expired");
+      expect(expiration.message).toMatchObject({
+        episode: "host-loss-trip",
+        lastAcceptedStep: 0,
+        commandLeaseMs: 100,
+        stopLatched: true,
+        appliedAction: Array(12).fill(0),
+      });
+      const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
+      expect(manifest.commandLease).toMatchObject({ durationMs: 100, maximumOverrunMs: 25, expirations: 1, autonomousStops: 1, automaticRearm: false });
+      expect(manifest.stopRecovery.windows[0].stateTransitions).toEqual(["armed", "tripped", "driver-autonomous-stop", "health-checking", "recovery-blocked"]);
+      const inspected = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
+      expect(inspected.code).toBe(0);
+    } finally {
+      rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   test("physical Capture requires matching, live, external operator authorization", () => {
     const target: any = { version: 1, id: "robot-target", name: "Robot", revision: "robot-r1", assembly: "robot", controller: "control", environment: "real", protocol: "stdio-jsonl-v1", controlHz: 50, safety: { maximumLatencyMs: 10, maximumConsecutiveMisses: 1, emergencyStopAction: [0] }, device: { vendor: "Vendor", model: "Robot", serialRequired: true } };
     const plan: any = { version: 1, id: "capture-plan", name: "Capture", target: target.id, bundle: "hardware-a", episodes: [{ id: "one", seed: 1, steps: 10 }], action: { scale: 0.5, maximumSlewPerSecond: 1 }, safety: { maximumJointVelocityRadPerSec: 1 }, notes: "" };
@@ -465,7 +514,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.researchLabs).toBe(5);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
-    expect(envelope.data.definitions.capturePlans).toBe(6);
+    expect(envelope.data.definitions.capturePlans).toBe(7);
     expect(envelope.data.definitions.driverPackages).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
@@ -477,10 +526,11 @@ describe("agent CLI contract", () => {
     const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
     expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
     expect(result.data.evidence.samples).toBe(250); expect(result.data.evidence.deviceHealthSamples).toBe(250); expect(result.data.evidence.deviceHealthTrips).toBe(1);
+    expect(result.data.evidence.commandLeaseExpirations).toBe(1); expect(result.data.evidence.driverAutonomousStops).toBe(1);
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-e998df153171b306",
+      "--bundle", "hardware-12ba10be31d7dfcc",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -502,6 +552,9 @@ describe("agent CLI contract", () => {
       evidence.actuatorIsolationTrips = 0;
       evidence.postStopHealthChecks = 0;
       evidence.postStopRecoveryCandidates = 0;
+      evidence.commandLeaseExpirations = 0;
+      evidence.driverAutonomousStops = 0;
+      evidence.maximumObservedCommandSilenceMs = 0;
       const evidencePath = resolve(temporaryRoot, "stale.json");
       await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
       const rejected = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", evidencePath, "--json"]);
@@ -512,6 +565,9 @@ describe("agent CLI contract", () => {
         "evidence Driver Package hash does not match bundle",
         "evidence Driver executable hash does not match bundle",
         "observed state age exceeds safety limit",
+        "evidence does not prove Driver command-lease expiration",
+        "evidence does not prove a Driver-autonomous stop",
+        "evidence command silence did not reach the Target lease",
         "evidence does not prove a device health safety trip",
         "evidence does not prove per-actuator fault isolation",
         "evidence does not prove the required stop-latched health window",

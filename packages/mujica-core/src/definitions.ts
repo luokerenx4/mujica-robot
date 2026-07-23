@@ -227,6 +227,7 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
       if (driver.protocol !== target.protocol || !driver.environments.includes(target.environment)) throw new Error(`Hardware Target '${id}' Driver Package does not support its protocol/environment`);
       if (driver.device.vendor !== target.device.vendor || driver.device.model !== target.device.model) throw new Error(`Hardware Target '${id}' Driver Package device identity differs`);
       const requiredCapabilities = new Set(["stop-ack"]);
+      if (target.safety.commandLeaseMs !== undefined) requiredCapabilities.add("command-lease");
       if (target.safety.maximumStateAgeMs !== undefined) { requiredCapabilities.add("applied-action"); requiredCapabilities.add("state-age-ms"); }
       if (target.safety.requireDecisionDeadline) requiredCapabilities.add("decision-deadline");
       if (target.safety.requireDeviceHealth) requiredCapabilities.add("device-health");

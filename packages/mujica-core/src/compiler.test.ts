@@ -170,6 +170,7 @@ describe("Robot Assembly compiler", () => {
       device: { vendor: "Mujica", model: "Protocol simulator" },
     });
     expect(driver.definition.capabilities).toContain("latched-stop-health");
+    expect(driver.definition.capabilities).toContain("command-lease");
     expect(driverPackageSchema.safeParse({ ...driver.definition, executable: "../escape.py" }).success).toBe(false);
     expect(driverPackageSchema.safeParse({ ...driver.definition, capabilities: [...driver.definition.capabilities, "stop-ack"] }).success).toBe(false);
     const plan = await loadHardwareCapturePlan(project, "quadruped-dry-run-identification");
@@ -182,6 +183,10 @@ describe("Robot Assembly compiler", () => {
     expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, maximumDecisionLatencyMs: 5 } }).success).toBe(true);
     expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, maximumDecisionLatencyMs: 0 } }).success).toBe(false);
     expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, minimumBaseHeightM: 0.9, maximumBaseHeightM: 0.8 } }).success).toBe(false);
+    const hostLossPlan = await loadHardwareCapturePlan(project, "quadruped-host-loss-trip");
+    expect(hostLossPlan.hostLossTest).toEqual({ episode: "host-loss-trip", afterStateStep: 1 });
+    expect(hardwareCapturePlanSchema.safeParse({ ...hostLossPlan, hostLossTest: { episode: "missing", afterStateStep: 1 } }).success).toBe(false);
+    expect(hardwareCapturePlanSchema.safeParse({ ...hostLossPlan, hostLossTest: { episode: "host-loss-trip", afterStateStep: 10 } }).success).toBe(false);
     const authorization = {
       version: 1, plan: plan.id, planHash: "a".repeat(64), target: "physical-target", bundleHash: "b".repeat(64), environment: "real",
       device: { vendor: "Vendor", model: "Robot", serial: "robot-001" }, operator: "Operator",
@@ -197,6 +202,8 @@ describe("Robot Assembly compiler", () => {
       controller: "capture-calibrated-history-residual-gait",
       driver: "mujoco-protocol-simulator",
       safety: {
+        commandLeaseMs: 100,
+        maximumCommandLeaseOverrunMs: 25,
         requireDecisionDeadline: true,
         requireDeviceHealth: true,
         maximumMotorTemperatureC: 80,
@@ -213,6 +220,7 @@ describe("Robot Assembly compiler", () => {
     expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, requireDeviceHealth: false } }).success).toBe(false);
     expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, postStopHealthySamples: undefined } }).success).toBe(false);
     expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, requirePostStopHealthCheck: false } }).success).toBe(false);
+    expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, maximumCommandLeaseOverrunMs: undefined } }).success).toBe(false);
   });
 
   test("research definitions expose a bounded editable surface", async () => {

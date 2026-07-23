@@ -1,0 +1,141 @@
+{
+  "capturePlan": {
+    "version": 1,
+    "id": "quadruped-host-loss-trip",
+    "name": "Driver-autonomous host-loss stop proof",
+    "target": "spatial-dry-run",
+    "bundle": "hardware-4e461b759f1533d5",
+    "mode": "actuate",
+    "episodes": [
+      {
+        "id": "host-loss-trip",
+        "seed": 4305,
+        "steps": 10
+      }
+    ],
+    "action": {
+      "scale": 1,
+      "maximumSlewPerSecond": 400
+    },
+    "hostLossTest": {
+      "episode": "host-loss-trip",
+      "afterStateStep": 1
+    },
+    "safety": {
+      "maximumJointVelocityRadPerSec": 30,
+      "maximumDecisionLatencyMs": 10,
+      "minimumBaseHeightM": 0.12,
+      "maximumBaseHeightM": 0.8,
+      "maximumBodyTiltRad": 1.5
+    },
+    "notes": "Dry-run negative proof: after one accepted Action the host intentionally withholds all commands and waits for the frozen Driver command lease to expire and latch stop."
+  },
+  "planHash": "adb1735f4924ba0c04a29b3f8c111f3de166c92bb52ae605c60e560499373631",
+  "bundle": {
+    "version": 1,
+    "harnessSourceHash": "ad6c20f06cb766c784ea632303d932e4649de489787338668fefb3bb7a7d77d4",
+    "harnessDependencyLockHash": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+    "sourceKind": "robot-revision",
+    "maximumCaptureMode": "actuate",
+    "target": {
+      "version": 1,
+      "id": "spatial-dry-run",
+      "name": "3-DOF quadruped driver protocol dry-run",
+      "revision": "quadruped-r-b1a3d1f7161a",
+      "assembly": "force-sensing-3dof",
+      "controller": "spatial-forward-gait",
+      "driver": "mujoco-protocol-simulator",
+      "environment": "dry-run",
+      "protocol": "stdio-jsonl-v1",
+      "controlHz": 50,
+      "safety": {
+        "maximumLatencyMs": 10,
+        "commandLeaseMs": 100,
+        "maximumCommandLeaseOverrunMs": 25,
+        "maximumStateAgeMs": 20,
+        "requireDecisionDeadline": true,
+        "requireDeviceHealth": true,
+        "maximumMotorTemperatureC": 80,
+        "maximumMotorCurrentA": 20,
+        "minimumBusVoltageV": 20,
+        "maximumBusVoltageV": 30,
+        "requirePostStopHealthCheck": true,
+        "postStopHealthySamples": 3,
+        "postStopMinimumHealthyDurationMs": 20,
+        "maximumConsecutiveMisses": 2,
+        "emergencyStopAction": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "device": {
+        "vendor": "Mujica",
+        "model": "Protocol simulator",
+        "serialRequired": false
+      }
+    },
+    "revisionId": "quadruped-r-b1a3d1f7161a",
+    "revisionHash": "7d17d19c5cb9010f11d61be290a8ee73952d3427a9dc0cce3af1f05c646dce98",
+    "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+    "modelXmlHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+    "controllerHash": "ae8378692ed5574aa14dfdda529032535e15cbf5803156b24286bea9026f095c",
+    "driverPackage": {
+      "version": 1,
+      "id": "mujoco-protocol-simulator",
+      "name": "MuJoCo stdio protocol simulator",
+      "protocol": "stdio-jsonl-v1",
+      "executable": "driver.py",
+      "environments": [
+        "dry-run"
+      ],
+      "device": {
+        "vendor": "Mujica",
+        "model": "Protocol simulator"
+      },
+      "capabilities": [
+        "applied-action",
+        "command-lease",
+        "decision-deadline",
+        "device-health",
+        "latched-stop-health",
+        "shadow-action",
+        "state-age-ms",
+        "stop-ack"
+      ]
+    },
+    "driverPackageHash": "a11faeba3d4cd6d8b1422763425f5063b325eb982ebcaf176673513e012123d0",
+    "driverExecutableHash": "cf035443f35464d99990cc802926c14f08188692da6412fab019cb7f8f452841",
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+    "protocol": "stdio-jsonl-v1",
+    "id": "hardware-4e461b759f1533d5",
+    "bundleHash": "4e461b759f1533d5fcf1a60c66a40ea4c221df09aed4a3d2107d0236101365f6",
+    "completed": true
+  },
+  "driver": {
+    "hash": "cf035443f35464d99990cc802926c14f08188692da6412fab019cb7f8f452841",
+    "packageHash": "a11faeba3d4cd6d8b1422763425f5063b325eb982ebcaf176673513e012123d0",
+    "arguments": [
+      "--scenario",
+      "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+    ],
+    "inputs": [
+      {
+        "name": "hardware-capture-hidden-plant.scenario.json",
+        "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+      }
+    ]
+  },
+  "operator": "local-developer",
+  "authorization": null
+}

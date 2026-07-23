@@ -7,7 +7,8 @@ to a `dry-run`, `hil`, or `real` environment. It may instead name a Judge-kept
 Policy Revision for observe-only learned-policy testing. It fixes
 `stdio-jsonl-v1`, control frequency, device identity requirements, maximum
 latency, tolerated consecutive deadline misses, and the exact emergency-stop
-Action. It also names one project Driver Package with a confined executable,
+Action. It fixes a command lease and maximum expiration overrun separately from
+the per-command decision deadline. It also names one project Driver Package with a confined executable,
 device identity, supported environments, and explicit capabilities.
 
 `mujica hardware export` publishes a content-addressed Hardware Bundle containing
@@ -25,6 +26,10 @@ and executable hashes, exact bundle/contract hashes, timestamps, samples, latenc
 misses, driver-local deadline rejections, emergency stops, operator, and notes.
 When a Target requires the decision-deadline capability, Evidence without at
 least one exercised Driver rejection fails verification.
+When it declares a command lease, Evidence must contain an exercised expiration,
+a Driver-autonomous stop, and measured command silence within the Target's
+lease/overrun interval. A watchdog-health bit without this transition is not
+host-loss evidence.
 When it requires device health, Evidence must also contain health samples and at
 least one exercised health trip; a nominal-only trace does not prove the
 interlock.
@@ -50,6 +55,15 @@ an expired message before applying it. These checks use separate monotonic
 clocks, so transport delay is covered without clock synchronization. An expired
 message always aborts the episode; tolerated consecutive misses remain a
 verification-evidence ceiling, not permission to apply stale control.
+
+Every new Bundle also requires `command-lease`. Episode start arms the frozen
+duration and accepted control messages renew it. Absence of a command makes the
+Driver apply the emergency Action and publish a stop-latched `lease-expired`
+without a host request. Capture can intentionally exercise this boundary by
+going silent; that transcript must show the Driver event before any later
+health-check and contain no host stop. Expiration timing that exceeds the
+Target's maximum overrun fails rather than being reported as a successful
+watchdog.
 
 Targets may also require `device-health`. Every state then carries per-motor
 temperature/current and typed actuator state, bus voltage, fault codes, physical
@@ -87,5 +101,7 @@ synthetic and calibration-eligible; a second Capture intentionally trips the
 body-tilt gate, emits an emergency stop, and is ineligible. Both retain
 `hardwareVerified=false`. Two additional negative proofs show that a learned
 Policy late on the host produces no control message, and that a delayed ordinary
-Action is rejected by the Driver without advancing MuJoCo. No MuJoCo run and no
+Action is rejected by the Driver without advancing MuJoCo. A host-loss proof
+withholds the next Action and records a Driver-autonomous stop with no host stop
+message. No MuJoCo run and no
 simulated device can satisfy a physical verification claim.

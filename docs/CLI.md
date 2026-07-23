@@ -77,7 +77,9 @@ optional Policy, selected Driver Package, Observation/Action contracts, safety e
 actuate. A Target may explicitly name a Judge-kept Policy Revision, but its
 Bundle is derived as `maximumCaptureMode=shadow`; a Plan cannot widen that
 authority. New exports require a Driver Package whose protocol, environment,
-device identity, and declared capabilities satisfy the Target.
+device identity, and declared capabilities satisfy the Target. They also require
+a bounded command lease and maximum expiration overrun supplied by the frozen
+Driver.
 
 `driver list|inspect` exposes each project-owned `hardware-drivers/<id>/`
 package, its closed manifest, whole-package hash, executable entry point, and
@@ -93,6 +95,9 @@ actuate-capable Robot Revision Bundle can become `HARDWARE-VERIFIED`.
 Targets that declare `maximumStateAgeMs` require verification Evidence to report
 the maximum observed device state age and enough acknowledgements to cover every
 emergency stop. Missing, stale, or unacknowledged evidence fails verification.
+Targets with a command lease additionally require an exercised expiration, a
+Driver-autonomous stop, and observed silence inside the exact
+`lease..lease+overrun` interval.
 
 `capture list|inspect|run` is the executable device-session boundary. A Capture
 Plan binds a finite episode set to one Bundle and may only reduce its authority
@@ -107,6 +112,12 @@ artifact contains raw protocol bytes,
 driver stderr, proposed/commanded/applied Actions, state-age telemetry, typed
 stop acknowledgements, per-episode calibration NDJSON, timing, safety
 interventions, and all source hashes.
+
+A Plan may declare one `hostLossTest` episode/state. At that state Capture sends
+no next control or stop message and waits for the Driver-originated
+`lease-expired`. The event must report the exact frozen lease, last accepted
+step, measured silence within the Target overrun bound, locked stop, and exact
+emergency-stop Action. Post-stop checks remain read-only and cannot rearm.
 
 Frozen Policy networks execute two stateless warm-up passes before the driver is
 started. Capture reports preserve the warm-up count and strict

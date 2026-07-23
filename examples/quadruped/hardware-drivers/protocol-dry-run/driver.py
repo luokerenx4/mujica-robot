@@ -30,6 +30,16 @@ def main() -> None:
         or "deadline-rejected" not in protocol.get("messages", [])
     ):
         raise RuntimeError("Bundle protocol lacks required decision-deadline rejection")
+    command_lease_ms = target["safety"].get("commandLeaseMs")
+    if command_lease_ms is not None and (
+        "command-lease" not in protocol.get("capabilities", [])
+        or "lease-expired" not in protocol.get("messages", [])
+        or "control-rejected" not in protocol.get("messages", [])
+        or protocol.get("commandLease", {}).get("durationMs") != command_lease_ms
+        or protocol.get("commandLease", {}).get("maximumOverrunMs") != target["safety"].get("maximumCommandLeaseOverrunMs")
+        or protocol.get("commandLease", {}).get("automaticRearm") is not False
+    ):
+        raise RuntimeError("Bundle protocol lacks the frozen Driver command lease")
     require_device_health = bool(target["safety"].get("requireDeviceHealth", False))
     if require_device_health and (
         "device-health" not in protocol.get("capabilities", [])
@@ -137,6 +147,9 @@ def main() -> None:
         "emergencyStops": 1,
         "emergencyStopAcknowledgements": 1,
         "decisionDeadlineRejections": 1 if require_decision_deadline else 0,
+        "commandLeaseExpirations": 1 if command_lease_ms is not None else 0,
+        "driverAutonomousStops": 1 if command_lease_ms is not None else 0,
+        "maximumObservedCommandSilenceMs": float(command_lease_ms or 0) + (0.125 if command_lease_ms is not None else 0.0),
         "deviceHealthSamples": samples if require_device_health else 0,
         "deviceHealthTrips": device_health_trips,
         "actuatorIsolationTrips": actuator_isolation_trips,
@@ -144,7 +157,7 @@ def main() -> None:
         "postStopRecoveryCandidates": post_stop_recovery_candidates,
         "passed": True,
         "operator": "automated protocol conformance",
-        "notes": "Serialization, sequence, Observation/Action/device-health shape, authored over-temperature and isolated-actuator trips, stop-latched healthy window with new-session-only recovery, handshake identity, and emergency-stop shape only; no physical hardware was present.",
+        "notes": "Serialization, sequence, Observation/Action/device-health shape, authored decision-deadline and command-lease expirations, Driver-autonomous stop, over-temperature and isolated-actuator trips, stop-latched healthy window with new-session-only recovery, handshake identity, and emergency-stop shape only; no physical hardware was present.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(evidence, indent=2) + "\n")

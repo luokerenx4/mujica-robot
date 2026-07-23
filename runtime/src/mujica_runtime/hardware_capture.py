@@ -290,7 +290,7 @@ def _post_stop_health_window(
         "stateTransitions": [
             "armed",
             "tripped",
-            "stop-acknowledged",
+            "driver-autonomous-stop" if trip.get("kind") == "command-lease" else "stop-acknowledged",
             "health-checking",
             "recovery-eligible" if recovery_eligible else "recovery-blocked",
         ],
@@ -306,6 +306,43 @@ def _driver_deadline_rejection(message: dict[str, Any], episode_id: str, step: i
     if not np.isfinite(observed_ms) or observed_ms < 0:
         raise RuntimeError("Driver deadline rejection lacks a finite nonnegative observedDecisionLatencyMs")
     return observed_ms
+
+
+def _command_lease_expiration(
+    message: dict[str, Any],
+    episode_id: str,
+    last_accepted_step: int | None,
+    command_lease_ms: int,
+    maximum_overrun_ms: float,
+    action_size: int,
+    emergency_action: np.ndarray,
+) -> dict[str, Any]:
+    if message.get("type") != "lease-expired" or message.get("episode") != episode_id:
+        raise RuntimeError(f"Expected Driver command-lease expiration for episode '{episode_id}'")
+    if message.get("lastAcceptedStep") != last_accepted_step:
+        raise RuntimeError("Driver command-lease expiration lastAcceptedStep is invalid")
+    if message.get("commandLeaseMs") != command_lease_ms:
+        raise RuntimeError("Driver command-lease expiration differs from the frozen Target")
+    observed_silence_ms = float(message.get("observedSilenceMs", float("nan")))
+    if not np.isfinite(observed_silence_ms) or observed_silence_ms < float(command_lease_ms):
+        raise RuntimeError("Driver command-lease expiration occurred before the frozen lease elapsed")
+    if observed_silence_ms > float(command_lease_ms) + maximum_overrun_ms:
+        raise RuntimeError("Driver command-lease expiration exceeded the frozen overrun bound")
+    if message.get("stopLatched") is not True:
+        raise RuntimeError("Driver command-lease expiration did not latch stop")
+    applied_action = _finite_vector(message.get("appliedAction"), action_size, "command-lease appliedAction")
+    if not np.array_equal(applied_action, emergency_action):
+        raise RuntimeError("Driver command-lease expiration did not apply the emergency-stop Action")
+    device_health = _device_health(message.get("deviceHealth"), action_size, episode_id, max(0, (last_accepted_step or -1) + 1), True)
+    return {
+        "episode": episode_id,
+        "lastAcceptedStep": last_accepted_step,
+        "commandLeaseMs": command_lease_ms,
+        "observedSilenceMs": observed_silence_ms,
+        "stopLatched": True,
+        "appliedAction": applied_action.tolist(),
+        "deviceHealth": device_health,
+    }
 
 
 def _state_safety_reasons(model: mujoco.MjModel, qpos: np.ndarray, qvel: np.ndarray, safety: dict[str, Any]) -> list[str]:
@@ -359,6 +396,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     decision_latencies_ms: list[float] = []
     dispatch_latencies_ms: list[float] = []
     driver_rejection_latencies_ms: list[float] = []
+    command_lease_expirations: list[dict[str, Any]] = []
     state_ages_ms: list[float] = []
     device_health_samples: list[dict[str, Any]] = []
     device_health_trips: list[dict[str, Any]] = []
@@ -379,6 +417,12 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     timeout_seconds = max(1.0, 5.0 / float(target["controlHz"]))
     startup_timeout_seconds = max(5.0, timeout_seconds)
     maximum_decision_latency_ms = float(plan["safety"].get("maximumDecisionLatencyMs", target["safety"]["maximumLatencyMs"]))
+    command_lease_ms = target["safety"].get("commandLeaseMs")
+    if type(command_lease_ms) is not int or command_lease_ms < 10:
+        raise RuntimeError("Hardware Target commandLeaseMs must be an integer of at least 10 ms")
+    maximum_command_lease_overrun_ms = float(target["safety"].get("maximumCommandLeaseOverrunMs", float("nan")))
+    if not np.isfinite(maximum_command_lease_overrun_ms) or maximum_command_lease_overrun_ms <= 0:
+        raise RuntimeError("Hardware Target maximumCommandLeaseOverrunMs must be finite and positive")
     if maximum_decision_latency_ms > float(target["safety"]["maximumLatencyMs"]):
         raise RuntimeError("Capture Plan decision deadline exceeds Hardware Target maximumLatencyMs")
 
@@ -399,6 +443,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "actionContractHash": bundle["actionContractHash"],
             "driverHash": request["driverHash"],
             "environment": target["environment"],
+            "commandLeaseMs": command_lease_ms,
         })
         hello, _ = session.receive(startup_timeout_seconds)
         expected_hello = {
@@ -408,6 +453,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "actionContractHash": bundle["actionContractHash"],
             "driverHash": request["driverHash"],
             "environment": target["environment"],
+            "commandLeaseMs": command_lease_ms,
         }
         for key, expected in expected_hello.items():
             if hello.get(key) != expected:
@@ -435,6 +481,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             if protocol_capabilities != declared_capabilities:
                 raise RuntimeError("Driver hello capabilities differ from its frozen Driver Package")
         required_capabilities = {"stop-ack"}
+        required_capabilities.add("command-lease")
         if target["safety"].get("maximumStateAgeMs") is not None:
             required_capabilities.update({"applied-action", "state-age-ms"})
         if plan["mode"] == "shadow":
@@ -466,7 +513,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             completed_steps = 0
             episode_reason: str | None = None
             episode_trip: dict[str, Any] | None = None
-            session.send({"type": "start-episode", "episode": episode_id, "seed": int(episode["seed"]), "steps": planned_steps, "controlHz": float(target["controlHz"])})
+            session.send({"type": "start-episode", "episode": episode_id, "seed": int(episode["seed"]), "steps": planned_steps, "controlHz": float(target["controlHz"]), "commandLeaseMs": command_lease_ms})
             message, received_ns = session.receive(startup_timeout_seconds)
             qpos, qvel, observation_vector, current_applied, state_age_ms, device_health = _state_vectors(
                 message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, 0, require_telemetry, require_device_health,
@@ -503,6 +550,43 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                             "scope": "robot",
                         }
                     episode_reason = "; ".join(state_reasons)
+                    break
+                host_loss_test = plan.get("hostLossTest")
+                if (
+                    isinstance(host_loss_test, dict)
+                    and host_loss_test.get("episode") == episode_id
+                    and int(host_loss_test.get("afterStateStep", -1)) == step
+                ):
+                    message, received_ns = session.receive(max(timeout_seconds, command_lease_ms / 1000.0 + 1.0))
+                    expiration = _command_lease_expiration(
+                        message,
+                        episode_id,
+                        None if step == 0 else step - 1,
+                        command_lease_ms,
+                        maximum_command_lease_overrun_ms,
+                        model.nu,
+                        emergency_action,
+                    )
+                    command_lease_expirations.append(expiration)
+                    if expiration["deviceHealth"] is not None:
+                        device_health_samples.append(expiration["deviceHealth"])
+                    current_applied = emergency_action.copy()
+                    episode_reason = (
+                        f"Driver autonomously stopped after {expiration['observedSilenceMs']:.6f} ms "
+                        f"without a host command (lease {command_lease_ms} ms)"
+                    )
+                    episode_trip = {
+                        "episode": episode_id,
+                        "step": step,
+                        "kind": "command-lease",
+                        "reasons": [episode_reason],
+                        "affectedActuatorIndices": [],
+                        "scope": "driver",
+                        "lastAcceptedStep": expiration["lastAcceptedStep"],
+                        "commandLeaseMs": command_lease_ms,
+                        "observedSilenceMs": expiration["observedSilenceMs"],
+                    }
+                    interventions.append(episode_trip)
                     break
                 observation = _observation_map(observation_vector, compiled["observationContract"]["channels"])
                 try:
@@ -558,6 +642,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     "type": "action" if plan["mode"] == "actuate" else "shadow-action",
                     "episode": episode_id,
                     "step": step,
+                    "commandLeaseMs": command_lease_ms,
                     **({"action": action.tolist()} if plan["mode"] == "actuate" else {"proposedAction": action.tolist()}),
                 }
                 if driver_deadline_enabled:
@@ -668,13 +753,15 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             else:
                 status = "ABORTED"
                 reasons.append(f"{episode_id}: {episode_reason}")
-                session.send({"type": "emergency-stop", "episode": episode_id, "action": emergency_action.tolist(), "reason": episode_reason})
-                emergency_stops += 1
+                driver_already_stopped = episode_trip is not None and episode_trip.get("kind") == "command-lease"
                 try:
-                    stopped, _ = session.receive(timeout_seconds)
-                    if not _stopped_acknowledged(stopped, episode_id, "emergency-stop"):
-                        raise RuntimeError(f"Driver returned an invalid emergency-stop acknowledgement for '{episode_id}'")
-                    emergency_stop_acknowledgements += 1
+                    if not driver_already_stopped:
+                        session.send({"type": "emergency-stop", "episode": episode_id, "action": emergency_action.tolist(), "reason": episode_reason})
+                        emergency_stops += 1
+                        stopped, _ = session.receive(timeout_seconds)
+                        if not _stopped_acknowledged(stopped, episode_id, "emergency-stop"):
+                            raise RuntimeError(f"Driver returned an invalid emergency-stop acknowledgement for '{episode_id}'")
+                        emergency_stop_acknowledgements += 1
                     if bool(target["safety"].get("requirePostStopHealthCheck", False)):
                         trip = episode_trip or {
                             "episode": episode_id,
@@ -689,7 +776,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                         ))
                 except Exception as error:
                     status = "FAILED"
-                    reasons.append(f"{episode_id}: emergency stop or post-stop health check failed: {error}")
+                    reasons.append(f"{episode_id}: stop containment or post-stop health check failed: {error}")
                 episode_results.append({"id": episode_id, "seed": int(episode["seed"]), "plannedSteps": planned_steps, "steps": completed_steps, "completed": False, "reason": episode_reason})
                 break
     except Exception as error:
@@ -760,8 +847,10 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     recovery_candidates = sum(bool(window["recoveryEligible"]) for window in post_stop_windows)
     maximum_decision_latency = max(decision_latencies_ms, default=0.0)
     mean_decision_latency = float(np.mean(decision_latencies_ms)) if decision_latencies_ms else 0.0
+    maximum_command_silence_ms = max((float(item["observedSilenceMs"]) for item in command_lease_expirations), default=0.0)
+    driver_autonomous_stops = len(command_lease_expirations)
     actuation_authorized = plan["mode"] == "actuate"
-    real_time_qualified = deadline_misses == 0
+    real_time_qualified = deadline_misses == 0 and driver_autonomous_stops == 0
     state_age_evidence = {
         "samples": len(state_ages_ms),
         "maximumMs": maximum_state_age,
@@ -778,6 +867,14 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "samples": len(decision_latencies_ms),
         "hostPreDispatchMisses": host_pre_dispatch_deadline_misses,
         "driverRejections": driver_deadline_rejections,
+    }
+    command_lease_identity = {
+        "durationMicroseconds": command_lease_ms * 1000,
+        "maximumOverrunMicroseconds": round(maximum_command_lease_overrun_ms * 1000.0),
+        "expirations": len(command_lease_expirations),
+        "autonomousStops": driver_autonomous_stops,
+        "maximumObservedSilenceMicroseconds": round(maximum_command_silence_ms * 1000.0),
+        "lastAcceptedSteps": [item["lastAcceptedStep"] for item in command_lease_expirations],
     }
     device_health_identity = {
         "samples": len(device_health_samples),
@@ -829,6 +926,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "protocolCapabilities": protocol_capabilities,
         "stateAgeIdentity": state_age_identity,
         "decisionDeadlineIdentity": decision_deadline_identity,
+        "commandLeaseIdentity": command_lease_identity,
         "deviceHealthIdentity": device_health_identity,
         "postStopHealthIdentity": post_stop_health_identity,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
@@ -906,6 +1004,15 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 "driverRejections": driver_deadline_rejections,
                 "maximumDriverRejectedLatencyMs": max(driver_rejection_latencies_ms, default=0.0),
             },
+            "commandLease": {
+                "durationMs": command_lease_ms,
+                "maximumOverrunMs": maximum_command_lease_overrun_ms,
+                "expirations": len(command_lease_expirations),
+                "autonomousStops": driver_autonomous_stops,
+                "maximumObservedSilenceMs": maximum_command_silence_ms,
+                "events": command_lease_expirations,
+                "automaticRearm": False,
+            },
             "deviceHealth": {
                 "samples": len(device_health_samples),
                 "maximumMotorTemperatureC": maximum_motor_temperature,
@@ -952,6 +1059,9 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             f"- Decision latency max/mean/limit: {maximum_decision_latency:.6f}/{mean_decision_latency:.6f}/{maximum_decision_latency_ms:.6f} ms\n"
             f"- Host pre-dispatch deadline misses: {host_pre_dispatch_deadline_misses}\n"
             f"- Driver deadline rejections: {driver_deadline_rejections}\n"
+            f"- Command lease / maximum overrun: {command_lease_ms} / {maximum_command_lease_overrun_ms:.6f} ms\n"
+            f"- Command-lease expirations / autonomous stops: {len(command_lease_expirations)} / {driver_autonomous_stops}\n"
+            f"- Maximum observed command silence: {maximum_command_silence_ms:.6f} ms\n"
             f"- Device health samples: {len(device_health_samples)}\n"
             f"- Motor temperature/current max: {maximum_motor_temperature:.6f} C / {maximum_motor_current:.6f} A\n"
             f"- Bus voltage min/max: {minimum_bus_voltage:.6f}/{maximum_bus_voltage:.6f} V\n"
@@ -995,6 +1105,10 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "deadlineMisses": deadline_misses,
         "hostPreDispatchDeadlineMisses": host_pre_dispatch_deadline_misses,
         "driverDeadlineRejections": driver_deadline_rejections,
+        "commandLeaseMs": command_lease_ms,
+        "commandLeaseExpirations": len(command_lease_expirations),
+        "driverAutonomousStops": driver_autonomous_stops,
+        "maximumObservedCommandSilenceMs": maximum_command_silence_ms,
         "deviceHealthSamples": len(device_health_samples),
         "maximumMotorTemperatureC": maximum_motor_temperature,
         "maximumMotorCurrentA": maximum_motor_current,

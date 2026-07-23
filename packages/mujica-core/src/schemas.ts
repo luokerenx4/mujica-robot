@@ -248,6 +248,8 @@ export const hardwareTargetSchema = z.object({
   environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
   safety: z.object({
     maximumLatencyMs: z.number().positive(),
+    commandLeaseMs: z.number().int().min(10).max(60_000).optional(),
+    maximumCommandLeaseOverrunMs: z.number().positive().max(1_000).optional(),
     maximumStateAgeMs: z.number().positive().optional(),
     requireDecisionDeadline: z.boolean().optional(),
     requireDeviceHealth: z.boolean().optional(),
@@ -263,6 +265,12 @@ export const hardwareTargetSchema = z.object({
   }).strict().superRefine((safety, context) => {
     const healthFields = ["maximumMotorTemperatureC", "maximumMotorCurrentA", "minimumBusVoltageV", "maximumBusVoltageV"] as const;
     const recoveryFields = ["postStopHealthySamples", "postStopMinimumHealthyDurationMs"] as const;
+    if (safety.commandLeaseMs === undefined && safety.maximumCommandLeaseOverrunMs !== undefined) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["commandLeaseMs"], message: "commandLeaseMs is required when maximumCommandLeaseOverrunMs is declared" });
+    }
+    if (safety.commandLeaseMs !== undefined && safety.maximumCommandLeaseOverrunMs === undefined) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["maximumCommandLeaseOverrunMs"], message: "maximumCommandLeaseOverrunMs is required when commandLeaseMs is declared" });
+    }
     if (safety.minimumBusVoltageV !== undefined && safety.maximumBusVoltageV !== undefined && safety.minimumBusVoltageV >= safety.maximumBusVoltageV) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["minimumBusVoltageV"], message: "minimumBusVoltageV must be below maximumBusVoltageV" });
     }
@@ -303,6 +311,10 @@ export const hardwareCapturePlanSchema = z.object({
     scale: z.number().positive().max(1),
     maximumSlewPerSecond: z.number().positive(),
   }).strict(),
+  hostLossTest: z.object({
+    episode: idSchema,
+    afterStateStep: z.number().int().nonnegative(),
+  }).strict().optional(),
   safety: z.object({
     maximumJointVelocityRadPerSec: z.number().positive(),
     maximumDecisionLatencyMs: z.number().positive().optional(),
@@ -314,6 +326,14 @@ export const hardwareCapturePlanSchema = z.object({
 }).strict().superRefine((plan, context) => {
   if (plan.safety.minimumBaseHeightM !== undefined && plan.safety.maximumBaseHeightM !== undefined && plan.safety.minimumBaseHeightM >= plan.safety.maximumBaseHeightM) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["safety"], message: "minimumBaseHeightM must be below maximumBaseHeightM" });
+  }
+  if (plan.hostLossTest !== undefined) {
+    const episode = plan.episodes.find((item) => item.id === plan.hostLossTest?.episode);
+    if (!episode) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["hostLossTest", "episode"], message: "hostLossTest episode must name one Capture episode" });
+    } else if (plan.hostLossTest.afterStateStep >= episode.steps) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["hostLossTest", "afterStateStep"], message: "hostLossTest afterStateStep must be before the episode terminal state" });
+    }
   }
 });
 
@@ -347,6 +367,9 @@ export const hardwareEvidenceSchema = z.object({
   actuatorIsolationTrips: z.number().int().nonnegative().optional(),
   postStopHealthChecks: z.number().int().nonnegative().optional(),
   postStopRecoveryCandidates: z.number().int().nonnegative().optional(),
+  commandLeaseExpirations: z.number().int().nonnegative().optional(),
+  driverAutonomousStops: z.number().int().nonnegative().optional(),
+  maximumObservedCommandSilenceMs: z.number().nonnegative().optional(),
   passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
 }).strict();
 

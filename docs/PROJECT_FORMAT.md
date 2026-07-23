@@ -91,7 +91,8 @@ Candidate preview computes a content-derived proposed Robot Revision hash before
 A Hardware Target binds a kept Robot Revision, or explicitly a Judge-kept Policy
 Revision, to one `dry-run`, `hil`, or `real` environment, a driver protocol,
 one project Driver Package, control rate, explicit device identity,
-latency/deadline and optional state-age gates, and a contract-sized
+latency/deadline, a command lease with bounded expiration overrun, optional
+state-age gates, and a contract-sized
 emergency-stop Action. It may require typed device health and must then declare
 motor-temperature/current ceilings and a valid bus-voltage interval. Device
 health includes one `ready|derated|faulted|offline` state per Action channel.
@@ -114,6 +115,9 @@ device serial, timestamps, sample count, timing measurements, emergency-stop
 count and acknowledgements, and operator identity. A Target with a state-age
 gate also requires maximum observed device state age; a Target requiring
 decision deadlines also requires Evidence of a Driver-local rejection. Required
+command leases require one expiration whose measured silence is no shorter than
+the lease and no longer than lease plus overrun, plus a Driver-autonomous stop.
+Required
 device health adds health sample and exercised-trip evidence. Required
 post-stop checking additionally requires an isolated-actuator trip, a complete
 stop-latched health window, and at least one recovery candidate; none of those
@@ -134,6 +138,10 @@ exceed the Target's `maximumLatencyMs`. A Target may require the
 Driver-local pre-application rejection mandatory. Additional per-session driver
 inputs are content-hashed and frozen but cannot replace or modify the Bundle
 Driver Package.
+A Plan may name one `hostLossTest` episode and state. That is an intentional
+negative commissioning test: after the selected state the host withholds both
+control and stop requests until the Driver independently expires its frozen
+lease. The resulting artifact is necessarily aborted and calibration-ineligible.
 HIL/real execution additionally requires a separate expiring authorization with
 the exact Plan/Bundle/operator/device identity and episode ceiling. Shadow mode
 transmits only non-authoritative Controller proposals and is never
