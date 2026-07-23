@@ -160,6 +160,14 @@ Action, while auditing device-applied Action, state freshness, and exact stop
 acknowledgements. Stale state fails before Action dispatch, and shadow evidence
 cannot be used for Calibration.
 
+Experimental learned Policies no longer need to masquerade as the promoted
+robot to reach that boundary. A Judge-kept Policy Revision can export a
+content-addressed, shadow-only Bundle containing its exact model, contracts,
+Controller pointer, weights, and evaluation evidence. The Runtime preheats the
+frozen network before connecting the driver and records real-time qualification;
+neither a Capture Plan nor operator authorization can turn that Bundle into an
+actuating deployment.
+
 Components now carry explicit physical, geometry/collision, joint, actuator, and sensor inventories. This metadata migration changed every Assembly provenance hash but not one MJCF byte. Six frozen Policies were requalified into new immutable artifacts using old/new model and contract hash proofs. A later Runtime audit found that low-friction scenarios had changed only the floor geom; corrected contact friction invalidates the old all-seven-gates interpretation while preserving those immutable artifacts as historical evidence.
 
 Component instance parameters are executable too: closed primitive schemas bind explicitly into MJCF with `{{config.<key>}}`, resolved defaults appear in semantic diffs, and inert or out-of-range values fail compilation. The configurable IMU example compiles 50 Hz and 200 Hz variants into distinct MuJoCo models without changing their Observation/Action ABI.

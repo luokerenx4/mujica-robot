@@ -3,9 +3,15 @@
 ## Boundary
 
 A Capture Plan binds one exported Hardware Bundle to a finite set of seeded
-episodes. The Bundle freezes the Robot Revision, compiled model and contracts,
-and Controller source. The Plan may only reduce authority through `shadow` mode,
-Action scaling, slew limiting, shorter duration, and tighter state gates.
+episodes. The Bundle freezes either a Robot Revision or Policy Revision, compiled
+model and contracts, Controller source, and optional neural Policy. The Plan may
+only reduce authority through `shadow` mode, Action scaling, slew limiting,
+shorter duration, and tighter state gates.
+
+Robot Revision Bundles may support `actuate`. Policy Revision Bundles are
+unconditionally `shadow`-only. This lets a locally improved learned lane collect
+HIL evidence without being misrepresented as the promoted robot and without any
+source edit granting it ordinary Action authority.
 
 The driver is an executable file, not an arbitrary shell command. Mujica hashes
 its exact bytes before launch and records every argument separately. JSONL over
@@ -51,6 +57,13 @@ Safe-stop and emergency-stop remain available in both modes because a connected
 device may already be moving independently. Shadow artifacts always declare
 `actuationAuthorized=false` and can never enter Calibration.
 
+Policy networks are loaded and run through two stateless inference warm-up
+passes before the driver process is started. This removes lazy PyTorch kernel
+initialization from the first device deadline without mutating model weights,
+normalization, recurrent history inputs, or the serialized program prior.
+Captures record the warm-up count and `realTimeQualified`; any deadline miss
+makes the latter false and prevents calibration eligibility.
+
 ## Safety and authority
 
 Before each Action the host checks:
@@ -90,7 +103,8 @@ Each immutable Hardware Capture contains:
 - raw bidirectional protocol transcript and driver stderr;
 - one calibration NDJSON file per completed episode;
 - proposed/commanded/applied Actions, state-age distribution, stop
-  acknowledgements, dispatch latency/deadline metrics, and every intervention;
+  acknowledgements, Controller warm-up count, real-time qualification,
+  dispatch latency/deadline metrics, and every intervention;
 - a report and manifest declaring `COMPLETED`, `ABORTED`, or `FAILED`.
 
 Only an actuation-authorized `COMPLETED` episode may enter a Calibration

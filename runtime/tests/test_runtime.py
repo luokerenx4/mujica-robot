@@ -10,10 +10,10 @@ import numpy as np
 import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
-from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
+from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _state_age_reason, _state_safety_reasons, _stopped_acknowledged
-from mujica_runtime.io import hash_directory, hash_file
+from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
@@ -102,6 +102,15 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(hash_directory(policy_root / "prior"), transform["controllerHash"])
         prior = json.loads((policy_root / "prior" / "controller.json").read_text())
         self.assertEqual(prior["id"], transform["controllerId"])
+
+    def test_frozen_policy_is_preheated_before_a_device_can_connect(self):
+        _, compiled = compiled_assembly("force-sensing-history-3dof")
+        compiled["observationContractHash"] = hash_json(compiled["observationContract"])
+        compiled["actionContractHash"] = hash_json(compiled["actionContract"])
+        definition = json.loads((PROJECT / "controllers" / "capture-calibrated-history-residual-gait" / "controller.json").read_text())
+        controller = load_policy_controller(PROJECT, definition, compiled)
+        self.assertEqual(POLICY_WARMUP_PASSES, 2)
+        self.assertEqual(controller.warmup_passes, POLICY_WARMUP_PASSES)
 
     def test_latency_controller_integrates_lateral_velocity_from_reset(self):
         root = PROJECT / "controllers" / "latency-aware-spatial-gait"

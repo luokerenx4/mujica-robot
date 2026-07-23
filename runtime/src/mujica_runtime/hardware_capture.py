@@ -184,6 +184,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         controller = load_program_controller(bundle_root / "controller", controller_definition)
     else:
         controller = load_policy_controller(bundle_root, controller_definition, compiled)
+    controller_warmup_passes = int(getattr(controller, "warmup_passes", 0))
 
     transcript: list[dict[str, Any]] = []
     episode_rows: dict[str, list[dict[str, Any]]] = {}
@@ -412,6 +413,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     maximum_state_age = max(state_ages_ms, default=0.0)
     mean_state_age = float(np.mean(state_ages_ms)) if state_ages_ms else 0.0
     actuation_authorized = plan["mode"] == "actuate"
+    real_time_qualified = deadline_misses == 0
     state_age_evidence = {
         "samples": len(state_ages_ms),
         "maximumMs": maximum_state_age,
@@ -444,6 +446,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "protocolCapabilities": protocol_capabilities,
         "stateAgeIdentity": state_age_identity,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
+        "controllerWarmupPasses": controller_warmup_passes,
+        "realTimeQualified": real_time_qualified,
     }
     capture_hash = hash_json(identity)
     capture_id = f"capture-{capture_hash[:16]}"
@@ -509,7 +513,9 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "emergencyStops": emergency_stops,
             "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
             "reasons": reasons,
-            "calibrationEligible": actuation_authorized and status == "COMPLETED" and all(item["completed"] for item in completed_episodes),
+            "realTimeQualified": real_time_qualified,
+            "controllerWarmupPasses": controller_warmup_passes,
+            "calibrationEligible": actuation_authorized and real_time_qualified and status == "COMPLETED" and all(item["completed"] for item in completed_episodes),
             "completed": True,
         }
         write_json(directory / "manifest.json", manifest)
@@ -527,6 +533,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             f"- Safety interventions: {len(interventions)}\n"
             f"- Emergency stops: {emergency_stops}\n"
             f"- Emergency-stop acknowledgements: {emergency_stop_acknowledgements}\n"
+            f"- Controller warm-up passes before driver connection: {controller_warmup_passes}\n"
+            f"- Real-time qualified: {str(real_time_qualified).lower()}\n"
             f"- Calibration eligible: {str(manifest['calibrationEligible']).lower()}\n"
             + "".join(f"- Reason: {reason}\n" for reason in reasons)
         )
@@ -553,6 +561,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "interventions": len(interventions),
         "emergencyStops": emergency_stops,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
-        "calibrationEligible": actuation_authorized and status == "COMPLETED" and len(episode_rows) == len(plan["episodes"]),
+        "controllerWarmupPasses": controller_warmup_passes,
+        "realTimeQualified": real_time_qualified,
+        "calibrationEligible": actuation_authorized and real_time_qualified and status == "COMPLETED" and len(episode_rows) == len(plan["episodes"]),
         "reasons": reasons,
     }

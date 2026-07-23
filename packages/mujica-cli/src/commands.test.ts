@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, trainingRunStableResultIdentity } from "./research-lab";
-import { validateCaptureAuthorization } from "./hardware";
+import { assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -175,6 +175,52 @@ describe("agent CLI contract", () => {
     }
   }, 10_000);
 
+  test("a kept experimental Policy Revision can deploy only as a prewarmed shadow Bundle", async () => {
+    const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "history-policy-shadow-dry-run", "--json"]);
+    expect(exported.code).toBe(0);
+    const bundle = JSON.parse(exported.stdout);
+    expect(bundle.data).toMatchObject({
+      sourceKind: "policy-revision",
+      maximumCaptureMode: "shadow",
+      target: { revision: "quadruped-p-ed7ad2ff20dd", revisionKind: "policy" },
+    });
+    expect(() => assertCaptureModeAllowed(
+      { id: bundle.data.id, sourceKind: "policy-revision", maximumCaptureMode: "shadow" },
+      { id: "forbidden-policy-actuation", mode: "actuate" } as any,
+    )).toThrow("cannot actuate shadow-only Policy Revision Bundle");
+
+    const captured = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "history-policy-shadow-dry-run",
+      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-arg=--state-age-ms", "--driver-arg=0",
+      "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test", "--json",
+    ]);
+    expect(captured.code).toBe(0);
+    const envelope = JSON.parse(captured.stdout); const artifactPath = envelope.data.artifactPath;
+    try {
+      expect(envelope.data).toMatchObject({
+        status: "COMPLETED", mode: "shadow", actuationAuthorized: false,
+        controllerWarmupPasses: 2, calibrationEligible: false,
+      });
+      expect(typeof envelope.data.realTimeQualified).toBe("boolean");
+      const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
+      expect(manifest.controllerWarmupPasses).toBe(2);
+      const transcript = (await readFile(resolve(artifactPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      expect(hostTypes).toContain("shadow-action");
+      expect(hostTypes).not.toContain("action");
+      const rows = (await readFile(resolve(artifactPath, manifest.episodes[0].path), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      expect(rows.some((row) => row.proposedAction.some((value: number) => Math.abs(value) > 0.001))).toBe(true);
+      expect(rows.every((row) => row.appliedAction.every((value: number) => value === 0))).toBe(true);
+      const inspected = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
+      expect(inspected.code).toBe(0);
+    } finally {
+      rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   test("physical Capture requires matching, live, external operator authorization", () => {
     const target: any = { version: 1, id: "robot-target", name: "Robot", revision: "robot-r1", assembly: "robot", controller: "control", environment: "real", protocol: "stdio-jsonl-v1", controlHz: 50, safety: { maximumLatencyMs: 10, maximumConsecutiveMisses: 1, emergencyStopAction: [0] }, device: { vendor: "Vendor", model: "Robot", serialRequired: true } };
     const plan: any = { version: 1, id: "capture-plan", name: "Capture", target: target.id, bundle: "hardware-a", episodes: [{ id: "one", seed: 1, steps: 10 }], action: { scale: 0.5, maximumSlewPerSecond: 1 }, safety: { maximumJointVelocityRadPerSec: 1 }, notes: "" };
@@ -240,11 +286,11 @@ describe("agent CLI contract", () => {
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.hardwareTargets).toBe(1);
+    expect(envelope.data.definitions.hardwareTargets).toBe(2);
     expect(envelope.data.definitions.researchLabs).toBe(5);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
-    expect(envelope.data.definitions.capturePlans).toBe(3);
+    expect(envelope.data.definitions.capturePlans).toBe(4);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
@@ -255,6 +301,19 @@ describe("agent CLI contract", () => {
     const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
     expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
     expect(result.data.evidence.samples).toBe(250); expect(result.data.reasons).toEqual([]);
+    const policyVerified = invoke([
+      "hardware", "verify", "examples/quadruped",
+      "--bundle", "hardware-113d1063cfc83f6b",
+      "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
+      "--json",
+    ]);
+    expect(policyVerified.code).toBe(0);
+    expect(JSON.parse(policyVerified.stdout).data).toMatchObject({
+      status: "SHADOW-VERIFIED",
+      hardwareVerified: false,
+      protocolVerified: true,
+      actuationQualified: false,
+    });
     const temporaryRoot = await mkdtemp(resolve(tmpdir(), "mujica-stale-evidence-"));
     try {
       const evidence = JSON.parse(await readFile(resolve(root, "examples/quadruped/hardware-evidence/spatial-dry-run.json"), "utf8"));

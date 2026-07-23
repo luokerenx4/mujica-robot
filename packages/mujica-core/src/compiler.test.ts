@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -178,6 +178,13 @@ describe("Robot Assembly compiler", () => {
     };
     expect(hardwareCaptureAuthorizationSchema.safeParse(authorization).success).toBe(true);
     expect(hardwareCaptureAuthorizationSchema.safeParse({ ...authorization, environment: "dry-run" }).success).toBe(false);
+    const policyTarget = await loadHardwareTarget(project, "history-policy-shadow-dry-run");
+    expect(policyTarget).toMatchObject({
+      revision: "quadruped-p-ed7ad2ff20dd",
+      revisionKind: "policy",
+      assembly: "force-sensing-history-3dof",
+      controller: "capture-calibrated-history-residual-gait",
+    });
   });
 
   test("research definitions expose a bounded editable surface", async () => {

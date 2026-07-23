@@ -31,7 +31,8 @@ mujica.json + Robot Base + Component packages + Robot Assembly
   -> evidence/hypothesis-separated gate diagnosis
   -> Candidate review or bounded Research proposal
   -> KEEP/REVERT/CRASH evidence and optional child Robot Revision
-  -> immutable Hardware Bundle -> external driver Evidence -> protocol/HIL/real verification
+  -> Robot Revision actuation Bundle or Policy Revision shadow-only Bundle
+  -> external driver Evidence -> shadow/protocol/HIL/real verification
 ```
 
 The autonomous path borrows autoresearch's small loop—human program, one editable surface, fixed evaluator, compact memory, keep/discard—but keeps authority in Core. The proposer may suggest bounded numeric controller values; it cannot write project files, change the evaluator, waive gates, or publish revisions.

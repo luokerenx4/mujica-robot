@@ -69,7 +69,18 @@ writing the Profile. Simulation Runs can only support `synthetic` provenance;
 
 The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. “Copy frame context for Agent” places structured Run identity and exact frame evidence on the clipboard. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode.
 
-`hardware export` freezes one Hardware Target, kept Robot Revision, Controller, Observation/Action contracts, safety envelope, and `stdio-jsonl-v1` handshake into an immutable bundle. `hardware verify` validates separately collected driver Evidence and publishes an immutable verification. A `dry-run` can only become `PROTOCOL-VERIFIED`; only passing `hil` or `real` Evidence with a required device serial can become `HARDWARE-VERIFIED`.
+`hardware export` freezes one Hardware Target, source Revision, Controller,
+optional Policy, Observation/Action contracts, safety envelope, and
+`stdio-jsonl-v1` handshake into an immutable bundle. Robot Revision Bundles may
+actuate. A Target may explicitly name a Judge-kept Policy Revision, but its
+Bundle is derived as `maximumCaptureMode=shadow`; a Plan cannot widen that
+authority.
+
+`hardware verify` validates separately collected driver Evidence and publishes
+an immutable verification. A normal `dry-run` can only become
+`PROTOCOL-VERIFIED`; a Policy Revision Bundle becomes `SHADOW-VERIFIED` and is
+never `actuationQualified`; only passing `hil` or `real` Evidence for an
+actuate-capable Robot Revision Bundle can become `HARDWARE-VERIFIED`.
 
 Targets that declare `maximumStateAgeMs` require verification Evidence to report
 the maximum observed device state age and enough acknowledgements to cover every
@@ -84,6 +95,11 @@ Bundle-frozen Controller. A completed artifact contains raw protocol bytes,
 driver stderr, proposed/commanded/applied Actions, state-age telemetry, typed
 stop acknowledgements, per-episode calibration NDJSON, timing, safety
 interventions, and all source hashes.
+
+Frozen Policy networks execute two stateless warm-up passes before the driver is
+started. Capture reports preserve the warm-up count and strict
+`realTimeQualified` evidence; any missed Controller-to-driver deadline makes the
+capture ineligible for Calibration.
 
 Every Plan explicitly selects `actuate` or `shadow`. Shadow commissioning sends
 Controller output only as a non-authoritative `proposedAction`; the driver

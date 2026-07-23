@@ -12,6 +12,9 @@ import torch
 from .io import hash_directory
 
 
+POLICY_WARMUP_PASSES = 2
+
+
 class Controller(Protocol):
     def reset(self, seed: int) -> None: ...
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray: ...
@@ -156,6 +159,7 @@ class FrozenPolicyController:
     deterministic: bool
     action_transform: dict[str, Any] | None
     program_prior: Controller | None = None
+    warmup_passes: int = 0
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
@@ -200,6 +204,10 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
     network = create_policy_network(architecture)
     network.load_state_dict(torch.load(policy_dir / "model.pt", map_location="cpu", weights_only=True))
     network.eval()
+    with torch.no_grad():
+        warmup_observation = torch.zeros((1, int(architecture["observationSize"])), dtype=torch.float32)
+        for _ in range(POLICY_WARMUP_PASSES):
+            network(warmup_observation)
     lows = np.array(compiled["actionLow"], dtype=np.float32)
     highs = np.array(compiled["actionHigh"], dtype=np.float32)
     action_transform = architecture.get("actionTransform")
@@ -213,4 +221,4 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
         if controller_hash and hash_directory(prior_root) != controller_hash:
             raise RuntimeError("Serialized program prior hash does not match Policy architecture")
         program_prior = load_program_controller(prior_root, prior_definition)
-    return FrozenPolicyController(network, compiled["observationContract"]["channels"], np.array(normalizer["mean"], dtype=np.float32), np.array(normalizer["variance"], dtype=np.float32), lows, highs, bool(definition.get("deterministic", True)), action_transform, program_prior)
+    return FrozenPolicyController(network, compiled["observationContract"]["channels"], np.array(normalizer["mean"], dtype=np.float32), np.array(normalizer["variance"], dtype=np.float32), lows, highs, bool(definition.get("deterministic", True)), action_transform, program_prior, POLICY_WARMUP_PASSES)

@@ -87,14 +87,20 @@ A Candidate contains a strict `changes` declaration for components, Observation 
 
 Candidate preview computes a content-derived proposed Robot Revision hash before apply. Selection is feasibility-first: a zero-violation Candidate may KEEP by eliminating locked baseline violations even when its aggregate score is lower, provided every per-case regression gate still passes; when both sides are feasible, aggregate score must improve. A KEEP Revision records component-package hashes, Observation/Action contract hashes, Controller identity, optional Policy identity, the verified semantic change set, exact changed files, fixed Benchmark identity, full evaluation evidence, and the selection reason. Policy-backed Revisions copy the referenced immutable Policy Artifact into their own snapshot so replay does not depend on a mutable pointer.
 
-A Hardware Target binds a kept Robot Revision to one `dry-run`, `hil`, or `real`
-environment, a driver protocol, control rate, explicit device identity,
+A Hardware Target binds a kept Robot Revision, or explicitly a Judge-kept Policy
+Revision, to one `dry-run`, `hil`, or `real` environment, a driver protocol,
+control rate, explicit device identity,
 latency/deadline and optional state-age gates, and a contract-sized
 emergency-stop Action. Exported bundles and verification records are immutable.
 External Evidence must carry exact bundle and contract hashes, driver hash,
 device serial, timestamps, sample count, timing measurements, emergency-stop
 count and acknowledgements, and operator identity. A Target with a state-age
 gate also requires maximum observed device state age.
+
+`revisionKind` defaults to `robot`. A `policy` Target is exported with
+`sourceKind=policy-revision` and a derived `maximumCaptureMode=shadow`. The
+Bundle freezes the Policy Revision, neural Policy, Controller pointer, compiled
+model, and locked Judge evidence. Authored files cannot raise that ceiling.
 
 A Capture Plan binds one such Bundle to 1–32 finite episodes, explicitly in
 `shadow` or `actuate` mode. Each episode has an ID, seed, and bounded step count;

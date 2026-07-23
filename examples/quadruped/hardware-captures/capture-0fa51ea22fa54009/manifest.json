@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "planHash": "0ef977ec64f62edc7cb983e04cf22a6ddbd98d3b78f3bc988fedf04c0474f354",
+  "bundleHash": "113d1063cfc83f6bf77e2dc166cccbe1834aa61beb31cad4f700b66de1634a8b",
+  "driverHash": "82b63a781fffe0c63259b85d2166b929bdc47911a7a930e8e8bd449566fe94ce",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+    "--state-age-ms",
+    "0"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "Mujica learned policy audit",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T12:48:52.214853Z",
+  "endedAt": "2026-07-23T12:48:52.361273Z",
+  "status": "COMPLETED",
+  "transcriptHash": "8559c21d69cdada7a03583a7736cb06d33470c86c43ae0454da95f3b16ac6c95",
+  "episodeHashes": {
+    "learned-policy-shadow": "677eeafb8ffbd2665b63ac67f7badbc6c714fc5628c4431325bd988679ffd50d"
+  },
+  "runtimeSourceHash": "06841b5e8b8abccdfdecc264c25d9142e69bed68bf5d57517edd24cac12c6271",
+  "harnessSourceHash": "a0d26f524aa8a220874f938296a25dd3f83c89a0cf6c08ce59eef8be7c9a20d5",
+  "mode": "shadow",
+  "actuationAuthorized": false,
+  "protocolCapabilities": [
+    "applied-action",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 11,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "emergencyStopAcknowledgements": 0,
+  "controllerWarmupPasses": 2,
+  "realTimeQualified": true,
+  "id": "capture-0fa51ea22fa54009",
+  "captureHash": "0fa51ea22fa5400924d566143abab2dd697efe8b1604c37a7c8c5edb401a4b6c",
+  "plan": "history-policy-shadow-dry-run",
+  "target": "history-policy-shadow-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-history-3dof",
+  "assemblyHash": "547647c66ff536a486ed3134902d24173597e08b6321be404fbda47300886f84",
+  "executionHash": "e6e345bf462080612f784fdde084a0e732bf41634e6668c76e813ed0c0c693d3",
+  "modelHash": "5433c9eca695980694a51e121a2888f1e52d7c7280c37ec72815cffaf9d9f5c0",
+  "controller": "capture-calibrated-history-residual-gait",
+  "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+  "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+  "episodes": [
+    {
+      "id": "learned-policy-shadow",
+      "seed": 4302,
+      "plannedSteps": 10,
+      "steps": 10,
+      "completed": true,
+      "reason": null,
+      "path": "captures/learned-policy-shadow.ndjson",
+      "hash": "677eeafb8ffbd2665b63ac67f7badbc6c714fc5628c4431325bd988679ffd50d"
+    }
+  ],
+  "dispatch": {
+    "samples": 10,
+    "maximumLatencyMs": 1.042625,
+    "meanLatencyMs": 0.34775,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "stateAge": {
+    "samples": 11,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [],
+  "safeStops": 1,
+  "emergencyStops": 0,
+  "reasons": [],
+  "calibrationEligible": false,
+  "completed": true
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "protocol": "stdio-jsonl-v1",
+  "handshake": {
+    "bundleHash": "113d1063cfc83f6bf77e2dc166cccbe1834aa61beb31cad4f700b66de1634a8b",
+    "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+    "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8"
+  },
+  "capabilities": [
+    "applied-action",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "messages": [
+    "hello",
+    "start-episode",
+    "state",
+    "action",
+    "shadow-action",
+    "safe-stop",
+    "emergency-stop",
+    "stopped",
+    "close",
+    "completed"
+  ],
+  "state": {
+    "required": [
+      "episode",
+      "step",
+      "qpos",
+      "qvel",
+      "observation",
+      "appliedAction",
+      "stateAgeMs"
+    ]
+  }
+}

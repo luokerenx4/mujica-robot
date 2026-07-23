@@ -24,6 +24,7 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Policy Revision shadow deployment](plans/policy-revision-shadow-deployment.md) | Ran a Judge-kept experimental neural Policy against device telemetry without promoting it or granting actuation authority, and removed its first-frame inference miss. | 2026-07-23 |
 | [Shadow hardware commissioning](plans/shadow-hardware-commissioning.md) | Connected a frozen Controller observe-only, proved applied Actions and state freshness, and required audited stop acknowledgements before ordinary actuation. | 2026-07-23 |
 | [Plant-compatible history-aware Policy](plans/plant-compatible-history-policy.md) | Transferred capture-derived physical calibration to a bounded-history Assembly and enforced program-reference gates on delay-aware learned residuals. | 2026-07-23 |
 | [Capture-calibrated robust Policy research](plans/capture-calibrated-robust-policy-research.md) | Let an Agent run governed PPO experiments against capture-derived dynamics while gate-first robot Benchmarks prevent average-score regressions. | 2026-07-23 |

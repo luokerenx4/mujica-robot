@@ -76,6 +76,8 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
     protocolCapabilities: manifest.protocolCapabilities,
     stateAgeIdentity: manifest.stateAgeIdentity,
     emergencyStopAcknowledgements: manifest.emergencyStopAcknowledgements,
+    ...(typeof manifest.controllerWarmupPasses === "number" ? { controllerWarmupPasses: manifest.controllerWarmupPasses } : {}),
+    ...(typeof manifest.realTimeQualified === "boolean" ? { realTimeQualified: manifest.realTimeQualified } : {}),
   } : {};
   const identity = {
     version: manifest.version,

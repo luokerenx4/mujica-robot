@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "history-policy-shadow-dry-run",
+  "name": "Frozen history Policy observe-only deployment",
+  "target": "history-policy-shadow-dry-run",
+  "bundle": "hardware-113d1063cfc83f6b",
+  "mode": "shadow",
+  "episodes": [
+    {
+      "id": "learned-policy-shadow",
+      "seed": 4302,
+      "steps": 10
+    }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 8,
+    "minimumBaseHeightM": 0.18,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Runs the exact frozen Policy Revision against driver telemetry. Bundle authority is shadow-only and cannot be widened by this Plan."
+}
