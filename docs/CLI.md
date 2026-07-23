@@ -18,6 +18,10 @@ mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
 mujica studio <project> [--run ID] [--compare-run ID] [--json]
+mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]
+mujica observation list <project> [--json]
+mujica observation inspect <project> --observation ID [--json]
+mujica observation record <project> --input PATH --observer NAME [--json]
 mujica hardware export <project> --target ID [--json]
 mujica hardware verify <project> --bundle ID --evidence PATH [--json]
 mujica driver list <project> [--json]
@@ -69,7 +73,21 @@ writing the Profile. Simulation Runs can only support `synthetic` provenance;
 
 `studio` creates or reuses an immutable MuJoCo replay under `<project>/.mujica/replays/`, then copies it into a content-addressed offline projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run; without it, the deterministic last run id is selected. The Runtime loads the Run's frozen `model.xml`, reconstructs every recorded `qpos`, and renders PNG frames. The browser only synchronizes those frames with trajectory, Events, health, attitude, command, measured motion, contact force, and Action telemetry.
 
-The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. “Copy frame context for Agent” places structured Run identity and exact frame evidence on the clipboard. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode.
+The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. The attention queue ranks measured Run/Capture failures before human hypotheses. “Copy frame context for Agent” includes a directly executable `evidence inspect` argv. Studio may copy or download an observation draft, but it cannot write project state. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode; renderer source participates in snapshot identity.
+
+`evidence inspect` is the Agent/headless side of the same workspace. Run mode
+returns the exact row at or before `--time`, nearby Events, metrics, score, file
+hashes, optional comparison and quality deltas. Capture mode first verifies the
+immutable Capture, then returns transcript event `--event` with two neighboring
+events on each side. Both return a `contextHash`.
+
+`observation record` accepts only a closed
+`mujica-human-observation-draft`, re-resolves its Run/Capture source, rejects a
+changed result/capture hash, and publishes an immutable
+`human-observations/observation-<hash>/` artifact. Its manifest fixes
+`authority=human` and `claimKind=hypothesis`; severity and confidence are triage
+metadata, never measured evidence. `observation list|inspect` gives Agents the
+ledger and verifies artifact bytes before returning it.
 
 `hardware export` freezes one Hardware Target, source Revision, Controller,
 optional Policy, selected Driver Package, Observation/Action contracts, safety envelope, and

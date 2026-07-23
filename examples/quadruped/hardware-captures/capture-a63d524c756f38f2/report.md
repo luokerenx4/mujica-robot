@@ -1,0 +1,33 @@
+# Hardware capture
+
+- Status: ABORTED
+- Environment: dry-run
+- Mode: actuate
+- Actuation authorized: true
+- Device: Mujica Protocol simulator (simulated)
+- Driver Package / executable hash: a11faeba3d4cd6d8b1422763425f5063b325eb982ebcaf176673513e012123d0 / cf035443f35464d99990cc802926c14f08188692da6412fab019cb7f8f452841
+- Episodes: 0/1
+- Dispatch latency max/mean: 0.539917/0.539917 ms
+- Decision latency max/mean/limit: 0.531708/0.531708/10.000000 ms
+- Host pre-dispatch deadline misses: 0
+- Driver deadline rejections: 0
+- Command lease / maximum overrun: 100 / 25.000000 ms
+- Command-lease expirations / autonomous stops: 1 / 1
+- Maximum observed command silence: 104.674500 ms
+- Device health samples: 3
+- Motor temperature/current max: 40.000000 C / 0.000000 A
+- Bus voltage min/max: 24.000000/24.000000 V
+- Driver fault/E-stop/watchdog-unhealthy samples: 0/0/0
+- Actuator states ready/derated/faulted/offline: 36/0/0/0
+- Device-health trips / affected actuator indices: 0 / []
+- Stop-latched health windows/samples/healthy: 1/3/3
+- Recovery candidates (new session required): 0
+- State age max/mean: 0.000000/0.000000 ms
+- Deadline misses: 0
+- Safety interventions: 1
+- Emergency stops: 0
+- Emergency-stop acknowledgements: 0
+- Controller warm-up passes before driver connection: 0
+- Real-time qualified: false
+- Calibration eligible: false
+- Reason: host-loss-trip: Driver autonomously stopped after 104.674500 ms without a host command (lease 100 ms)

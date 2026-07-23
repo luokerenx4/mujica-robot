@@ -50,6 +50,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train-research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy-revision.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "evidence.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "observation.record")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.export")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.verify")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "capture.run")).toBe(true);
@@ -61,6 +63,100 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "driver.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibrate")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibration.promote")).toBe(true);
+  });
+
+  test("human and Agent debugging share exact Run and Capture evidence contexts", async () => {
+    const runId = "run-e8bd80892b0f0123";
+    const comparisonRunId = "run-0307db1a1c3dc228";
+    const runManifest = JSON.parse(await readFile(resolve(root, `examples/quadruped/runs/${runId}/manifest.json`), "utf8"));
+    const comparisonManifest = JSON.parse(await readFile(resolve(root, `examples/quadruped/runs/${comparisonRunId}/manifest.json`), "utf8"));
+    const contextResult = invoke(["evidence", "inspect", "examples/quadruped", "--run", runId, "--time", "0.04", "--compare-run", comparisonRunId, "--json"]);
+    const context = JSON.parse(contextResult.stdout).data;
+    expect(contextResult.code).toBe(0);
+    expect(context).toMatchObject({
+      kind: "mujica-run-frame-context",
+      authority: "immutable-evidence",
+      baseline: { runId, resultHash: runManifest.resultHash, simulationStep: 2 },
+      subject: { runId: comparisonRunId, resultHash: comparisonManifest.resultHash },
+    });
+    expect(context.contextHash).toHaveLength(64);
+    expect(context.baseline.artifactHashes.trajectory).toHaveLength(64);
+    expect(context.motionQualityDeltaSubjectMinusBaseline).toHaveProperty("meanJointJerkRadPerSec3");
+
+    const captureId = "capture-91a394ba19589331";
+    const captureManifest = JSON.parse(await readFile(resolve(root, `examples/quadruped/hardware-captures/${captureId}/manifest.json`), "utf8"));
+    const captureResult = invoke(["evidence", "inspect", "examples/quadruped", "--capture", captureId, "--event", "6", "--json"]);
+    const captureContext = JSON.parse(captureResult.stdout).data;
+    expect(captureResult.code).toBe(0);
+    expect(captureContext).toMatchObject({
+      kind: "mujica-hardware-capture-event-context",
+      authority: "immutable-evidence",
+      capture: { id: captureId, captureHash: captureManifest.captureHash, status: "ABORTED" },
+      eventIndex: 6,
+      event: { direction: "driver-to-host", message: { type: "lease-expired" } },
+    });
+    expect(captureContext.neighboringEvents.map((item: any) => item.eventIndex)).toEqual([4, 5, 6, 7, 8]);
+
+    const temporary = await mkdtemp(resolve(tmpdir(), "mujica-human-observation-"));
+    const draftPath = resolve(temporary, "draft.json");
+    await writeFile(draftPath, JSON.stringify({
+      version: 1,
+      kind: "mujica-human-observation-draft",
+      source: {
+        kind: "run-frame",
+        runId,
+        resultHash: runManifest.resultHash,
+        timeSeconds: 0.04,
+        comparisonRunId,
+        comparisonResultHash: comparisonManifest.resultHash,
+      },
+      assessment: {
+        category: "motion",
+        severity: "investigate",
+        confidence: "high",
+        summary: "The subject front feet appear to slap down sooner than the baseline.",
+        details: "Inspect contact impact and Action slew around this shared frame.",
+        suggestedNextAction: "Compare contact-impact peaks before changing the reward.",
+      },
+    }));
+    let artifactPath: string | undefined;
+    try {
+      const recorded = invoke(["observation", "record", "examples/quadruped", "--input", draftPath, "--observer", "Human reviewer", "--json"]);
+      const envelope = JSON.parse(recorded.stdout);
+      expect(recorded.code).toBe(0);
+      artifactPath = envelope.data.path;
+      expect(envelope.data.manifest).toMatchObject({
+        kind: "mujica-human-observation",
+        authority: "human",
+        claimKind: "hypothesis",
+        observer: "Human reviewer",
+        contextHash: context.contextHash,
+      });
+      expect(envelope.artifacts).toEqual([{ kind: "human-observation", id: envelope.data.id, path: artifactPath, immutable: true }]);
+      const inspected = invoke(["observation", "inspect", "examples/quadruped", "--observation", envelope.data.id, "--json"]);
+      expect(inspected.code).toBe(0);
+      expect(JSON.parse(inspected.stdout).data.context.contextHash).toBe(context.contextHash);
+      const listed = invoke(["observation", "list", "examples/quadruped", "--json"]);
+      expect(JSON.parse(listed.stdout).data.observations.map((item: any) => item.id)).toContain(envelope.data.id);
+      const contextPath = resolve(envelope.data.path, "context.json");
+      const storedContext = JSON.parse(await readFile(contextPath, "utf8"));
+      await writeFile(contextPath, JSON.stringify({ ...storedContext, requestedTimeSeconds: 0.06 }));
+      const tampered = invoke(["observation", "inspect", "examples/quadruped", "--observation", envelope.data.id, "--json"]);
+      expect(tampered.code).toBe(1);
+      expect(JSON.parse(tampered.stderr).error.message).toContain("context identity is invalid");
+
+      const invalidDraftPath = resolve(temporary, "invalid.json");
+      await writeFile(invalidDraftPath, JSON.stringify({
+        ...JSON.parse(await readFile(draftPath, "utf8")),
+        source: { ...JSON.parse(await readFile(draftPath, "utf8")).source, resultHash: "0".repeat(64) },
+      }));
+      const rejected = invoke(["observation", "record", "examples/quadruped", "--input", invalidDraftPath, "--observer", "Human reviewer", "--json"]);
+      expect(rejected.code).toBe(1);
+      expect(JSON.parse(rejected.stderr).error.message).toContain("source identity differs");
+    } finally {
+      if (artifactPath) rmSync(artifactPath, { recursive: true, force: true });
+      rmSync(temporary, { recursive: true, force: true });
+    }
   });
 
   test("Driver Package discovery exposes frozen deployment identity", () => {
@@ -530,7 +626,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-12ba10be31d7dfcc",
+      "--bundle", "hardware-445d07accc35ef2b",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

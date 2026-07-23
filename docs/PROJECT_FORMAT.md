@@ -33,6 +33,7 @@ project/
   capture-plans/<id>.capture.json
   hardware-captures/<immutable-id>/...
   hardware-verifications/<immutable-id>/...
+  human-observations/<immutable-id>/manifest.json + draft.json + context.json
   runs/<immutable-id>/...
   calibration-runs/<immutable-id>/...
   training-runs/<immutable-id>/...
@@ -40,6 +41,14 @@ project/
 ```
 
 IDs use lowercase letters, digits, and hyphens and must match their directory or filename. Relative paths are confined beneath the project or package that owns them. Unknown JSON keys fail validation so typos cannot silently change a robot.
+
+A Human Observation is a separate immutable hypothesis, never part of a Run,
+Capture, or Judge result. Its draft selects one Run time (and optional comparison
+Run) or one verified Hardware Capture transcript event by exact artifact hash.
+Recording reconstructs and freezes the complete evidence context, then binds
+observer, timestamp, category, triage severity, confidence, summary, optional
+detail/next action, draft hash, and context hash. See [Human–AI debugging
+workspace](design/human-ai-debugging-workspace.md).
 
 Every Component manifest explicitly declares center of mass, diagonal inertia, geometry/collision inventory, joints, actuators, sensors, Observation/Action channels, dependencies, configuration schema, mass/cost proxies, license, and attribution. Empty inventories are explicit—for example a Runtime-only telemetry component has no geometry or MJCF joint. Core validates instance configuration, inventory uniqueness, Sensor-to-Observation coverage, and that MJCF-backed inventory names exist in the fragment.
 

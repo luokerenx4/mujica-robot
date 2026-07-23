@@ -51,6 +51,15 @@ Motion intent is executable input, not Controller configuration folklore. Task v
 
 Benchmark diagnosis is deterministic and read-only. It computes signed gate margins from the same locked Objective and fixed cases, ranks bottlenecks, and emits exact reproduction commands. Measurements are explicitly tagged as evidence; suggested Controller, Assembly, or training interventions are hypotheses and never affect KEEP or REVERT authority.
 
+Human–AI debugging follows the same split. Studio ranks measured Run Events and
+Hardware Capture failures, synchronizes the human's current visual frame, and
+composes a portable observation draft. `evidence inspect` reconstructs that
+Run/Capture context headlessly with source-file hashes; `observation record`
+publishes the human assessment separately with `authority=human` and
+`claimKind=hypothesis`. Neither the browser nor the observation can mutate
+evidence, waive a gate, or become a Judge result. Studio renderer source is part
+of snapshot identity so a changed UI cannot silently reuse an old projection.
+
 Traction evidence preserves sign instead of clipping every target-direction displacement to `[0, 1]`. `signedForwardProgress` and `backwardDisplacement` coexist with the original score-compatible `forwardProgress`, while signed pitch/pitch-rate evidence and optional per-foot forces make sagittal divergence and early unloading inspectable from immutable trajectories. The bounded traction Controller uses only deployable Observation channels: measured progress for zero-delay slip, signed pitch to latch lower severe-slip authority, contact unloading plus declared actuator delay for a conservative delayed gait, and bounded release state when a command changes. Scenario friction and future Task segments remain outside the Controller ABI.
 
 Mechanical Components enter MuJoCo through explicit Base-owned Mount slots. Root fragments remain suitable for global sensor/actuator sections; mount fragments are inserted only into their selected body context. The compiler enforces slot cardinality and occupancy and removes unused markers from executable MJCF.
@@ -70,4 +79,4 @@ state. An acknowledged trip enters a stop-latched health window; continuously
 healthy evidence may recommend a new session, but the current process has no
 rearm transition and cannot recover actuation authority.
 
-See [the harness design](design/robot-development-harness.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+See [the harness design](design/robot-development-harness.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

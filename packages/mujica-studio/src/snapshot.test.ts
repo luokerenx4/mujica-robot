@@ -12,6 +12,8 @@ describe("read-only Studio snapshot", () => {
     const first = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     const second = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     expect(second.id).toBe(first.id);
+    expect(first.snapshot.renderer).toMatchObject({ id: "mujica-studio-offline-v1" });
+    expect(first.snapshot.renderer.sourceHash).toHaveLength(64);
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
@@ -19,6 +21,13 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.candidates).toHaveLength(9);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
+    expect(first.snapshot.hardwareCaptures.length).toBeGreaterThanOrEqual(1);
+    expect(first.snapshot.hardwareCaptures.find((item) => item.id === "capture-91a394ba19589331")).toMatchObject({
+      status: "ABORTED",
+      attentionEventIndex: 6,
+      attentionEvent: { direction: "driver-to-host", message: { type: "lease-expired" } },
+    });
+    expect(first.snapshot.humanObservations).toEqual(second.snapshot.humanObservations);
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
@@ -27,6 +36,11 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Authoritative MuJoCo replay comparison");
     expect(html).toContain("Top-down path");
     expect(html).toContain("Research Lab ledger");
+    expect(html).toContain("Attention queue");
+    expect(html).toContain("Human observation → Agent hypothesis");
+    expect(html).toContain("mujica-human-observation-draft");
+    expect(html).toContain("mujica observation record");
+    expect(html).toContain("Hardware Captures");
     expect(html).toContain("gate-regression");
     expect(html).toContain("Content-Security-Policy");
   });
@@ -43,6 +57,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("shared simulation time");
     expect(html).toContain("Motion-quality deltas");
     expect(html).toContain("mujica-run-comparison-context");
+    expect(html).toContain("headlessArgv");
+    expect(html).toContain("'evidence','inspect'");
     expect(html).toContain("subject − baseline");
   });
 

@@ -8,6 +8,7 @@ import {
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 import { researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand } from "./research-lab";
+import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
 
 const HELP = `mujica — AI-native robot development harness
 
@@ -29,6 +30,10 @@ USAGE
   mujica assembly compare <project> --from ID --to ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
+  mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]
+  mujica observation list <project> [--json]
+  mujica observation inspect <project> --observation ID [--json]
+  mujica observation record <project> --input PATH --observer NAME [--json]
   mujica hardware export <project> --target ID [--json]
   mujica hardware verify <project> --bundle ID --evidence PATH [--json]
   mujica capture list <project> [--json]
@@ -73,6 +78,10 @@ const CAPABILITIES = [
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
   { id: "studio", usage: "mujica studio <project> [--run ID] [--compare-run ID] [--json]", effect: "creates-artifact" },
+  { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID --event N) [--json]", effect: "read-only" },
+  { id: "observation.list", usage: "mujica observation list <project> [--json]", effect: "read-only" },
+  { id: "observation.inspect", usage: "mujica observation inspect <project> --observation ID [--json]", effect: "read-only" },
+  { id: "observation.record", usage: "mujica observation record <project> --input PATH --observer NAME [--json]", effect: "creates-artifact" },
   { id: "hardware.export", usage: "mujica hardware export <project> --target ID [--json]", effect: "creates-artifact" },
   { id: "hardware.verify", usage: "mujica hardware verify <project> --bundle ID --evidence PATH [--json]", effect: "creates-artifact" },
   { id: "capture.list", usage: "mujica capture list <project> [--json]", effect: "read-only" },
@@ -113,6 +122,10 @@ function printHuman(command: string, data: any): void {
   else if (command === "assembly.compare") process.stdout.write(`Assembly ${data.from.id} -> ${data.to.id}\ncomponents +${data.components.added.length} -${data.components.removed.length} ~${data.components.changed.length}\nobservations +${data.observations.added.length} -${data.observations.removed.length}\nmass_delta_kg=${data.massDeltaKg}\ncost_delta=${data.costDelta}\n`);
   else if (command === "simulate") process.stdout.write(`run=${data.runId}\nscore=${data.score.total}\nsurvival=${data.metrics.survivalRate}\nartifact=${data.artifactPath}\n`);
   else if (command === "studio") process.stdout.write(`studio=${data.id}\nrun=${data.selectedRun ?? "none"}\nopen=${data.indexPath}\n`);
+  else if (command === "evidence.inspect") process.stdout.write(`context=${data.contextHash}\nkind=${data.kind}\nsource=${data.baseline?.runId ?? data.capture?.id}\n`);
+  else if (command === "observation.list") process.stdout.write(`${data.observations.map((observation: any) => `${observation.id}\t${observation.assessment.severity}\t${observation.assessment.category}\t${observation.assessment.summary}`).join("\n")}\n`);
+  else if (command === "observation.inspect") process.stdout.write(`observation=${data.manifest.id}\nclaim=${data.manifest.claimKind}\ncontext=${data.manifest.contextHash}\nsummary=${data.manifest.assessment.summary}\npath=${data.path}\n`);
+  else if (command === "observation.record") process.stdout.write(`observation=${data.id}\nclaim=${data.manifest.claimKind}\ncontext=${data.manifest.contextHash}\nartifact=${data.path}\n`);
   else if (command === "hardware.export") process.stdout.write(`bundle=${data.id}\nhash=${data.bundleHash}\nstatus=${data.verificationStatus}\nartifact=${data.path}\n`);
   else if (command === "hardware.verify") process.stdout.write(`verification=${data.id}\nstatus=${data.status}\nhardware_verified=${data.hardwareVerified}\nartifact=${data.path}\n`);
   else if (command === "capture.list") process.stdout.write(`${[
@@ -153,6 +166,26 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
       const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
       envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : command === "studio" ? await studioCommand(project, values.run, values["compare-run"]) : await revisionsCommand(project);
+    } else if (command === "evidence") {
+      const action = args.shift(); commandId = `evidence.${action}`;
+      if (action !== "inspect") throw new Error("Usage: mujica evidence inspect ...");
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, time: { type: "string" }, "compare-run": { type: "string" }, capture: { type: "string" }, event: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const project = await resolveProjectDirectory(one(positionals, "mujica evidence inspect <project>"), values.project);
+      envelope = await evidenceInspectCommand(project, {
+        ...(values.run === undefined ? {} : { run: values.run }),
+        ...(values.time === undefined ? {} : { time: Number(values.time) }),
+        ...(values["compare-run"] === undefined ? {} : { compareRun: values["compare-run"] }),
+        ...(values.capture === undefined ? {} : { capture: values.capture }),
+        ...(values.event === undefined ? {} : { event: Number(values.event) }),
+      });
+    } else if (command === "observation") {
+      const action = args.shift(); commandId = `observation.${action}`;
+      const { values, positionals } = parseArgs({ args, options: { observation: { type: "string" }, input: { type: "string" }, observer: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const project = await resolveProjectDirectory(one(positionals, `mujica observation ${action} <project>`), values.project);
+      if (action === "list") envelope = await observationListCommand(project);
+      else if (action === "inspect") envelope = await observationInspectCommand(project, required(values.observation, "observation"));
+      else if (action === "record") envelope = await observationRecordCommand(project, required(values.input, "input"), required(values.observer, "observer"));
+      else throw new Error("Usage: mujica observation list|inspect|record ...");
     } else if (command === "component") {
       const action = args.shift(); commandId = `component.${action}`; const { values, positionals } = parseArgs({ args, options: { component: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica component ${action} <project>`), values.project);
       if (action === "list") envelope = await componentListCommand(project); else if (action === "inspect") envelope = await componentInspectCommand(project, required(values.component, "component")); else throw new Error("Usage: mujica component list|inspect ...");

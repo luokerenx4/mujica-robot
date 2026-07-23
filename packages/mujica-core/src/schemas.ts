@@ -464,6 +464,44 @@ export const researchLabProposalSchema = z.object({
   expectedEffect: z.string().min(1),
 }).strict();
 
+const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/, "must be a lowercase SHA-256 digest");
+
+export const humanObservationDraftSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("mujica-human-observation-draft"),
+  source: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("run-frame"),
+      runId: idSchema,
+      resultHash: sha256Schema,
+      timeSeconds: z.number().finite().nonnegative(),
+      comparisonRunId: idSchema.optional(),
+      comparisonResultHash: sha256Schema.optional(),
+    }).strict(),
+    z.object({
+      kind: z.literal("hardware-capture-event"),
+      captureId: idSchema,
+      captureHash: sha256Schema,
+      eventIndex: z.number().int().nonnegative(),
+    }).strict(),
+  ]),
+  assessment: z.object({
+    category: z.enum(["motion", "stability", "contact", "control", "timing", "safety", "other"]),
+    severity: z.enum(["info", "investigate", "blocking"]),
+    confidence: z.enum(["low", "medium", "high"]),
+    summary: z.string().trim().min(1).max(240),
+    details: z.string().trim().max(2_000).optional(),
+    suggestedNextAction: z.string().trim().max(500).optional(),
+  }).strict(),
+}).strict().superRefine((draft, context) => {
+  if (
+    draft.source.kind === "run-frame"
+    && (draft.source.comparisonRunId === undefined) !== (draft.source.comparisonResultHash === undefined)
+  ) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["source"], message: "comparison Run id and result hash must be supplied together" });
+  }
+});
+
 export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
@@ -484,3 +522,4 @@ export type ResearchProposal = z.output<typeof researchProposalSchema>;
 export type TrainingResearchDefinition = z.output<typeof trainingResearchSchema>;
 export type ResearchLabDefinition = z.output<typeof researchLabSchema>;
 export type ResearchLabProposal = z.output<typeof researchLabProposalSchema>;
+export type HumanObservationDraft = z.output<typeof humanObservationDraftSchema>;

@@ -18,12 +18,13 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-_None._
+| — | No active capability slice. | 2026-07-23 |
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Human–AI debugging workspace](plans/human-ai-debugging-workspace.md) | Gave humans and Coding Agents one provenance-bound visual and headless debugging context. | 2026-07-23 |
 | [Driver command-lease watchdog](plans/driver-command-lease-watchdog.md) | Make the frozen Driver autonomously stop and latch when host commands disappear. | 2026-07-23 |
 | [Frozen Driver Package deployment](plans/frozen-driver-package-deployment.md) | Bound the exact device-I/O package, executable, Harness source, and dependency locks to Bundle authorization, Capture, and Verification identities. | 2026-07-23 |
 | [Latched-stop fault isolation](plans/latched-stop-fault-isolation.md) | Isolated unsafe actuator channels, proved health while the Driver remained stop-latched, and required a new authorized session before any recovery actuation. | 2026-07-23 |

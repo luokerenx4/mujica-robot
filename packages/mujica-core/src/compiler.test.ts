@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -229,6 +229,21 @@ describe("Robot Assembly compiler", () => {
     expect(research.editable.parameters.map((item) => item.path)).toContain("/config/contactGain");
     expect(researchProposalSchema.safeParse({ strategy: "badStrategy", hypothesis: "x", expectedEffect: "y", values: { "/config/kp": 26 } }).success).toBe(false);
     const compound = await loadResearch(project, "compound-recovery"); expect(compound.assembly).toBe("force-sensing-history-3dof"); expect(compound.editable.parameters.map((item) => item.path)).toContain("/config/lateralVelocityGain");
+  });
+
+  test("human observations stay typed as source-bound hypotheses", () => {
+    const draft = {
+      version: 1,
+      kind: "mujica-human-observation-draft",
+      source: { kind: "run-frame", runId: "run-example", resultHash: "a".repeat(64), timeSeconds: 0.04 },
+      assessment: { category: "motion", severity: "investigate", confidence: "medium", summary: "The front foot appears to slap." },
+    };
+    expect(humanObservationDraftSchema.safeParse(draft).success).toBe(true);
+    expect(humanObservationDraftSchema.safeParse({ ...draft, assessment: { ...draft.assessment, severity: "verified" } }).success).toBe(false);
+    expect(humanObservationDraftSchema.safeParse({
+      ...draft,
+      source: { ...draft.source, comparisonRunId: "run-subject" },
+    }).success).toBe(false);
   });
 
   test("training research names one bounded Training definition", async () => {
