@@ -244,10 +244,14 @@ export const hardwareTargetSchema = z.object({
     maximumMotorCurrentA: z.number().positive().optional(),
     minimumBusVoltageV: z.number().positive().optional(),
     maximumBusVoltageV: z.number().positive().optional(),
+    requirePostStopHealthCheck: z.boolean().optional(),
+    postStopHealthySamples: z.number().int().min(2).max(100).optional(),
+    postStopMinimumHealthyDurationMs: z.number().positive().max(60_000).optional(),
     maximumConsecutiveMisses: z.number().int().nonnegative(),
     emergencyStopAction: z.array(z.number().finite()).min(1),
   }).strict().superRefine((safety, context) => {
     const healthFields = ["maximumMotorTemperatureC", "maximumMotorCurrentA", "minimumBusVoltageV", "maximumBusVoltageV"] as const;
+    const recoveryFields = ["postStopHealthySamples", "postStopMinimumHealthyDurationMs"] as const;
     if (safety.minimumBusVoltageV !== undefined && safety.maximumBusVoltageV !== undefined && safety.minimumBusVoltageV >= safety.maximumBusVoltageV) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["minimumBusVoltageV"], message: "minimumBusVoltageV must be below maximumBusVoltageV" });
     }
@@ -257,6 +261,15 @@ export const hardwareTargetSchema = z.object({
     if (safety.requireDeviceHealth) {
       for (const field of healthFields) {
         if (safety[field] === undefined) context.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: `${field} is required when requireDeviceHealth is true` });
+      }
+    }
+    if (!safety.requirePostStopHealthCheck && recoveryFields.some((field) => safety[field] !== undefined)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["requirePostStopHealthCheck"], message: "requirePostStopHealthCheck must be true when post-stop health limits are declared" });
+    }
+    if (safety.requirePostStopHealthCheck) {
+      if (!safety.requireDeviceHealth) context.addIssue({ code: z.ZodIssueCode.custom, path: ["requireDeviceHealth"], message: "requireDeviceHealth must be true when requirePostStopHealthCheck is true" });
+      for (const field of recoveryFields) {
+        if (safety[field] === undefined) context.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: `${field} is required when requirePostStopHealthCheck is true` });
       }
     }
   }),
@@ -319,6 +332,9 @@ export const hardwareEvidenceSchema = z.object({
   decisionDeadlineRejections: z.number().int().nonnegative().optional(),
   deviceHealthSamples: z.number().int().nonnegative().optional(),
   deviceHealthTrips: z.number().int().nonnegative().optional(),
+  actuatorIsolationTrips: z.number().int().nonnegative().optional(),
+  postStopHealthChecks: z.number().int().nonnegative().optional(),
+  postStopRecoveryCandidates: z.number().int().nonnegative().optional(),
   passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
 }).strict();
 

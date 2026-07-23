@@ -172,6 +172,14 @@ Action, while auditing device-applied Action, state freshness, and exact stop
 acknowledgements. Stale state fails before Action dispatch, and shadow evidence
 cannot be used for Calibration.
 
+The device boundary now isolates health at Action-channel granularity. Every
+motor reports `ready`, `derated`, `faulted`, or `offline`; any non-ready channel
+stops before program or learned-Policy evaluation and the Capture records its
+exact index. After an acknowledged emergency stop, the Driver remains latched
+while Mujica collects a bounded health window. Stable health creates only a
+`requiresNewSession` recovery candidate: the tripped Capture stays `ABORTED`,
+sends no later Action or proposal, and cannot rearm itself.
+
 Experimental learned Policies no longer need to masquerade as the promoted
 robot to reach that boundary. A Judge-kept Policy Revision can export a
 content-addressed, shadow-only Bundle containing its exact model, contracts,

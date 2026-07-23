@@ -193,11 +193,16 @@ describe("Robot Assembly compiler", () => {
         maximumMotorCurrentA: 20,
         minimumBusVoltageV: 20,
         maximumBusVoltageV: 30,
+        requirePostStopHealthCheck: true,
+        postStopHealthySamples: 3,
+        postStopMinimumHealthyDurationMs: 20,
       },
     });
     expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, maximumMotorTemperatureC: undefined } }).success).toBe(false);
     expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, minimumBusVoltageV: 31 } }).success).toBe(false);
     expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, requireDeviceHealth: false } }).success).toBe(false);
+    expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, postStopHealthySamples: undefined } }).success).toBe(false);
+    expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, requirePostStopHealthCheck: false } }).success).toBe(false);
   });
 
   test("research definitions expose a bounded editable surface", async () => {

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "id": "force-sensing-3dof",
+  "name": "Spatial quadruped with body IMU and foot contact sensing",
+  "projectId": "quadruped",
+  "modelPath": "model.xml",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "baseHash": "9af4ae9dc5ab4f7ba42ab05a4d71da0af0b6982686fc4ad28bc1a17bd5252fb5",
+  "catalogHash": "d055331cd9e65d93fb3711192e90110ac63a743fe18a54599af385819bbacc27",
+  "totalMassKg": 6.03,
+  "componentCost": 5,
+  "components": [
+    {
+      "instanceId": "body-imu",
+      "componentId": "body-imu",
+      "mount": "torso-sensor",
+      "hash": "d520fb64aaf0b7e326dbd74724d63938565fe4728fee8196eea7f3f67a685223",
+      "massKg": 0.03,
+      "cost": 1
+    },
+    {
+      "instanceId": "foot-force-kit",
+      "componentId": "foot-force-sensor",
+      "mount": "foot-array",
+      "hash": "76341a477884a41a2bea80b531b44f735ef65823f4482cccd977229963041869",
+      "massKg": 0.08,
+      "cost": 4
+    }
+  ],
+  "observationContract": {
+    "version": 1,
+    "assembly": "force-sensing-3dof",
+    "channels": [
+      {
+        "name": "joint-position",
+        "kind": "joint-position",
+        "size": 12,
+        "source": "qpos:joints",
+        "unit": "rad"
+      },
+      {
+        "name": "joint-velocity",
+        "kind": "joint-velocity",
+        "size": 12,
+        "source": "qvel:joints",
+        "unit": "rad-s"
+      },
+      {
+        "name": "base-height",
+        "kind": "body-state",
+        "size": 1,
+        "source": "qpos:root-height",
+        "unit": "m"
+      },
+      {
+        "name": "base-orientation",
+        "kind": "body-state",
+        "size": 4,
+        "source": "qpos:root-quaternion",
+        "unit": "quaternion"
+      },
+      {
+        "name": "base-velocity",
+        "kind": "body-state",
+        "size": 6,
+        "source": "qvel:root",
+        "unit": "mixed"
+      },
+      {
+        "name": "imu-angular-velocity",
+        "kind": "sensor",
+        "size": 3,
+        "source": "sensor:body-gyro",
+        "unit": "rad-s"
+      },
+      {
+        "name": "imu-linear-acceleration",
+        "kind": "sensor",
+        "size": 3,
+        "source": "sensor:body-accelerometer",
+        "unit": "m-s2"
+      },
+      {
+        "name": "foot-contact-force",
+        "kind": "sensor",
+        "size": 4,
+        "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+        "unit": "n"
+      }
+    ],
+    "size": 45
+  },
+  "actionContract": {
+    "version": 1,
+    "assembly": "force-sensing-3dof",
+    "channels": [
+      {
+        "name": "joint-torque",
+        "kind": "actuator",
+        "size": 12,
+        "source": "actuator:all",
+        "unit": "nm",
+        "low": -8,
+        "high": 8
+      }
+    ],
+    "size": 12
+  },
+  "sourceFiles": [
+    "assemblies/force-sensing-3dof.robot.json",
+    "robots/quadruped-3dof/robot.json",
+    "robots/quadruped-3dof/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml"
+  ]
+}

@@ -42,8 +42,10 @@ def main() -> None:
     parser.add_argument("--motor-current-a", type=float, default=0.0)
     parser.add_argument("--bus-voltage-v", type=float, default=24.0)
     parser.add_argument("--fault", action="append", default=[])
+    parser.add_argument("--actuator-state", action="append", default=[])
     parser.add_argument("--estop-engaged", action="store_true")
     parser.add_argument("--watchdog-unhealthy", action="store_true")
+    parser.add_argument("--post-stop-clear-health", action="store_true")
     arguments = parser.parse_args()
     if any(not np.isfinite(value) or value < 0 for value in (
         arguments.receive_delay_ms,
@@ -61,18 +63,47 @@ def main() -> None:
     scenario = json.loads(Path(arguments.scenario).read_text())
     target = bundle["target"]
     action_size = int(compiled["actionContract"]["size"])
+    actuator_states = ["ready"] * action_size
+    for specification in arguments.actuator_state:
+        try:
+            raw_index, state = specification.split(":", 1)
+            index = int(raw_index)
+        except ValueError as error:
+            raise RuntimeError("--actuator-state must use INDEX:ready|derated|faulted|offline") from error
+        if index < 0 or index >= action_size or state not in {"ready", "derated", "faulted", "offline"}:
+            raise RuntimeError("--actuator-state index or state is invalid for this Action contract")
+        actuator_states[index] = state
     device_health = {
         "motorTemperatureC": [arguments.motor_temperature_c] * action_size,
         "motorCurrentA": [arguments.motor_current_a] * action_size,
+        "actuatorStates": actuator_states,
         "busVoltageV": arguments.bus_voltage_v,
         "faults": list(arguments.fault),
         "estopEngaged": bool(arguments.estop_engaged),
         "watchdogHealthy": not bool(arguments.watchdog_unhealthy),
     }
+    post_stop_device_health = {
+        **device_health,
+        "motorTemperatureC": list(device_health["motorTemperatureC"]),
+        "motorCurrentA": list(device_health["motorCurrentA"]),
+        "actuatorStates": list(device_health["actuatorStates"]),
+        "faults": list(device_health["faults"]),
+    }
+    if arguments.post_stop_clear_health:
+        post_stop_device_health = {
+            "motorTemperatureC": [40.0] * action_size,
+            "motorCurrentA": [0.0] * action_size,
+            "actuatorStates": ["ready"] * action_size,
+            "busVoltageV": 24.0,
+            "faults": [],
+            "estopEngaged": False,
+            "watchdogHealthy": True,
+        }
     environment: RobotEnvironment | None = None
     observation: dict[str, np.ndarray] | None = None
     active_episode: str | None = None
     state_sent_ns: int | None = None
+    stop_latched = False
     last_applied = np.asarray(target["safety"]["emergencyStopAction"], dtype=np.float64)
 
     hello = receive()
@@ -85,13 +116,15 @@ def main() -> None:
             "model": target["device"]["model"],
             "serial": "simulated",
         },
-        "capabilities": ["applied-action", "decision-deadline", "device-health", "shadow-action", "state-age-ms", "stop-ack"],
+        "capabilities": ["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"],
     })
 
     while True:
         message = receive()
         kind = message.get("type")
         if kind == "start-episode":
+            if stop_latched:
+                raise RuntimeError("cannot start an episode while the Driver stop is latched")
             active_episode = str(message["episode"])
             control_hz = float(message["controlHz"])
             steps = int(message["steps"])
@@ -167,6 +200,17 @@ def main() -> None:
             environment = None
             observation = None
             active_episode = None
+            stop_latched = kind == "emergency-stop"
+        elif kind == "health-check":
+            if not stop_latched:
+                raise RuntimeError("health-check requires a latched emergency stop")
+            send({
+                "type": "health-state",
+                "episode": message.get("episode"),
+                "sequence": message.get("sequence"),
+                "stopLatched": True,
+                "deviceHealth": post_stop_device_health,
+            })
         elif kind == "close":
             send({"type": "completed"})
             return

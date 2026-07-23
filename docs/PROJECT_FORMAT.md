@@ -92,14 +92,20 @@ Revision, to one `dry-run`, `hil`, or `real` environment, a driver protocol,
 control rate, explicit device identity,
 latency/deadline and optional state-age gates, and a contract-sized
 emergency-stop Action. It may require typed device health and must then declare
-motor-temperature/current ceilings and a valid bus-voltage interval. Exported
-bundles and verification records are immutable.
+motor-temperature/current ceilings and a valid bus-voltage interval. Device
+health includes one `ready|derated|faulted|offline` state per Action channel.
+Optional required post-stop checking binds a healthy sample count and minimum
+duration; the resulting recovery candidate always requires a new session.
+Exported bundles and verification records are immutable.
 External Evidence must carry exact bundle and contract hashes, driver hash,
 device serial, timestamps, sample count, timing measurements, emergency-stop
 count and acknowledgements, and operator identity. A Target with a state-age
 gate also requires maximum observed device state age; a Target requiring
 decision deadlines also requires Evidence of a Driver-local rejection. Required
-device health adds health sample and exercised-trip evidence.
+device health adds health sample and exercised-trip evidence. Required
+post-stop checking additionally requires an isolated-actuator trip, a complete
+stop-latched health window, and at least one recovery candidate; none of those
+protocol-only facts grant actuation authority.
 
 `revisionKind` defaults to `robot`. A `policy` Target is exported with
 `sourceKind=policy-revision` and a derived `maximumCaptureMode=shadow`. The

@@ -26,6 +26,9 @@ least one exercised Driver rejection fails verification.
 When it requires device health, Evidence must also contain health samples and at
 least one exercised health trip; a nominal-only trace does not prove the
 interlock.
+When it requires post-stop health checking, Evidence must additionally exercise
+one isolated actuator trip, the configured stop-latched sample window, and one
+new-session-only recovery candidate.
 
 `mujica capture run` closes the executable half of this boundary without
 weakening verification semantics. A Capture Plan fixes finite episodes and a
@@ -44,10 +47,17 @@ message always aborts the episode; tolerated consecutive misses remain a
 verification-evidence ceiling, not permission to apply stale control.
 
 Targets may also require `device-health`. Every state then carries per-motor
-temperature/current, bus voltage, fault codes, physical E-stop state, and Driver
-watchdog state. Missing or unsafe health aborts before Controller evaluation.
-Capture records the exact telemetry and separate health intervention evidence;
-this remains additive to, never a replacement for, firmware and physical safety.
+temperature/current and typed actuator state, bus voltage, fault codes, physical
+E-stop state, and Driver watchdog state. Missing or unsafe health aborts before
+Controller evaluation. Capture records exact affected Action-channel indices
+and separate health intervention evidence; this remains additive to, never a
+replacement for, firmware and physical safety.
+
+Post-stop health is deliberately one-way. After acknowledgement, the Driver
+must prove it remains latched while Mujica observes a bounded healthy window.
+The result may be called a recovery candidate only; the tripped Capture stays
+aborted, no rearm message exists, and HIL/real authority can return only through
+a new externally authorized session.
 
 Physical authority is external. HIL/real Capture Plans require an unexpired
 authorization naming the exact Plan, Bundle, Target, environment, operator,

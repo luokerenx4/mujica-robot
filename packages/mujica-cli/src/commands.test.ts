@@ -105,7 +105,7 @@ describe("agent CLI contract", () => {
       expect(envelope.data.episodes.every((episode: any) => episode.completed)).toBe(true);
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.device.serial).toBe("simulated");
-      expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "device-health", "shadow-action", "state-age-ms", "stop-ack"]);
+      expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"]);
       expect(manifest.stateAge.samples).toBeGreaterThan(0);
       expect(manifest.deviceHealth).toMatchObject({
         maximumMotorTemperatureC: 40,
@@ -123,6 +123,7 @@ describe("agent CLI contract", () => {
       expect(firstRow.commandedAction).toHaveLength(12);
       expect(firstRow.appliedAction).toHaveLength(12);
       expect(firstRow.deviceHealth.motorTemperatureC).toHaveLength(12);
+      expect(firstRow.deviceHealth.actuatorStates).toEqual(Array(12).fill("ready"));
       const inputPath = resolve(artifactPath, "driver-inputs/00-hardware-capture-hidden-plant.scenario.json");
       expect(await readFile(inputPath, "utf8")).toContain("\"bodyMassScale\": 1.1");
       const inspectedCapture = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
@@ -173,6 +174,7 @@ describe("agent CLI contract", () => {
       expect(staleEnvelope.data).toMatchObject({
         status: "ABORTED", mode: "shadow", actuationAuthorized: false,
         calibrationEligible: false, emergencyStops: 1, emergencyStopAcknowledgements: 1,
+        postStopHealthChecks: 3, postStopRecoveryCandidates: 0, recoveryEligible: false,
       });
       expect(staleEnvelope.data.reasons.join(" ")).toContain("state age 50.000000 ms exceeds maximum 20.000000 ms");
       const transcript = (await readFile(resolve(stalePath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
@@ -253,11 +255,67 @@ describe("agent CLI contract", () => {
       expect(envelope.data.reasons.join(" ")).toContain("motor temperature 90.000000 C exceeds maximum 80.000000 C");
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.deviceHealth).toMatchObject({ samples: 1, maximumMotorTemperatureC: 90 });
+      expect(manifest.stopRecovery).toMatchObject({
+        samples: 3, healthySamples: 0, recoveryCandidates: 0, requiresNewSession: true,
+      });
+      expect(envelope.data).toMatchObject({
+        postStopHealthChecks: 3, postStopRecoveryCandidates: 0,
+        recoveryEligible: false, recoveryRequiresNewSession: true,
+      });
       const transcript = (await readFile(resolve(artifactPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
       const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
       expect(hostTypes).toContain("emergency-stop");
+      expect(hostTypes.filter((type) => type === "health-check")).toHaveLength(3);
       expect(hostTypes).not.toContain("action");
       expect(hostTypes).not.toContain("shadow-action");
+    } finally {
+      rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  test("an isolated actuator trip can become only a new-session recovery candidate", async () => {
+    const captured = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "history-policy-shadow-dry-run",
+      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-arg=--actuator-state", "--driver-arg=7:faulted",
+      "--driver-arg=--post-stop-clear-health",
+      "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test", "--json",
+    ]);
+    expect(captured.code).toBe(0);
+    const envelope = JSON.parse(captured.stdout); const artifactPath = envelope.data.artifactPath;
+    try {
+      expect(envelope.data).toMatchObject({
+        status: "ABORTED", mode: "shadow", actuationAuthorized: false,
+        affectedActuatorIndices: [7], deviceHealthTrips: 1,
+        postStopHealthChecks: 3, postStopRecoveryCandidates: 1,
+        recoveryEligible: true, recoveryRequiresNewSession: true,
+        emergencyStops: 1, emergencyStopAcknowledgements: 1,
+        calibrationEligible: false,
+      });
+      expect(envelope.data.episodes[0].steps).toBe(0);
+      expect(envelope.data.reasons.join(" ")).toContain("7:faulted");
+      const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
+      expect(manifest.deviceHealth).toMatchObject({
+        trips: 1, affectedActuatorIndices: [7],
+        actuatorStateCounts: { faulted: 1, ready: 11 },
+      });
+      expect(manifest.stopRecovery.windows[0]).toMatchObject({
+        healthySamples: 3, recoveryEligible: true, requiresNewSession: true,
+        stateTransitions: ["armed", "tripped", "stop-acknowledged", "health-checking", "recovery-eligible"],
+      });
+      const transcript = (await readFile(resolve(artifactPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      const driverMessages = transcript.filter((row) => row.direction === "driver-to-host").map((row) => row.message);
+      expect(hostTypes.filter((type) => type === "health-check")).toHaveLength(3);
+      expect(hostTypes).not.toContain("action");
+      expect(hostTypes).not.toContain("shadow-action");
+      expect(driverMessages.filter((message) => message.type === "health-state")).toHaveLength(3);
+      expect(driverMessages.filter((message) => message.type === "health-state").every((message) => message.stopLatched === true)).toBe(true);
+      expect(hostTypes.indexOf("emergency-stop")).toBeLessThan(hostTypes.indexOf("health-check"));
+      const inspected = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
+      expect(inspected.code).toBe(0);
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
@@ -277,6 +335,7 @@ describe("agent CLI contract", () => {
       expect(hostEnvelope.data).toMatchObject({
         status: "ABORTED", hostPreDispatchDeadlineMisses: 1, driverDeadlineRejections: 0,
         deadlineMisses: 1, emergencyStops: 1, emergencyStopAcknowledgements: 1, realTimeQualified: false,
+        postStopHealthChecks: 3, postStopRecoveryCandidates: 0, recoveryEligible: false,
       });
       const transcript = (await readFile(resolve(hostPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
       const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
@@ -298,6 +357,7 @@ describe("agent CLI contract", () => {
         status: "ABORTED", hostPreDispatchDeadlineMisses: 0, driverDeadlineRejections: 1,
         deadlineMisses: 1, emergencyStops: 1, emergencyStopAcknowledgements: 1,
         calibrationEligible: false, realTimeQualified: false,
+        postStopHealthChecks: 3, postStopRecoveryCandidates: 0, recoveryEligible: false,
       });
       expect(driverEnvelope.data.episodes[0].steps).toBe(0);
       const transcript = (await readFile(resolve(driverPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
@@ -393,10 +453,11 @@ describe("agent CLI contract", () => {
     const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "spatial-dry-run", "--json"]); const bundle = JSON.parse(exported.stdout); expect(exported.code).toBe(0);
     const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
     expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
-    expect(result.data.evidence.samples).toBe(250); expect(result.data.evidence.deviceHealthSamples).toBe(250); expect(result.data.evidence.deviceHealthTrips).toBe(1); expect(result.data.reasons).toEqual([]);
+    expect(result.data.evidence.samples).toBe(250); expect(result.data.evidence.deviceHealthSamples).toBe(250); expect(result.data.evidence.deviceHealthTrips).toBe(1);
+    expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-276bc4f3e2b72321",
+      "--bundle", "hardware-ebceda3e231f082f",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -413,6 +474,9 @@ describe("agent CLI contract", () => {
       evidence.maximumObservedStateAgeMs = 21;
       evidence.emergencyStopAcknowledgements = 0;
       evidence.deviceHealthTrips = 0;
+      evidence.actuatorIsolationTrips = 0;
+      evidence.postStopHealthChecks = 0;
+      evidence.postStopRecoveryCandidates = 0;
       const evidencePath = resolve(temporaryRoot, "stale.json");
       await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
       const rejected = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", evidencePath, "--json"]);
@@ -422,6 +486,9 @@ describe("agent CLI contract", () => {
       expect(rejectedEnvelope.data.reasons).toEqual([
         "observed state age exceeds safety limit",
         "evidence does not prove a device health safety trip",
+        "evidence does not prove per-actuator fault isolation",
+        "evidence does not prove the required stop-latched health window",
+        "evidence does not prove a stop-latched recovery candidate",
         "not every emergency stop was acknowledged",
       ]);
       rmSync(rejectedEnvelope.data.path, { recursive: true, force: true });

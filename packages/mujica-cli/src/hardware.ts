@@ -83,6 +83,7 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
     stateAgeIdentity: manifest.stateAgeIdentity,
     ...(manifest.decisionDeadlineIdentity && typeof manifest.decisionDeadlineIdentity === "object" ? { decisionDeadlineIdentity: manifest.decisionDeadlineIdentity } : {}),
     ...(manifest.deviceHealthIdentity && typeof manifest.deviceHealthIdentity === "object" ? { deviceHealthIdentity: manifest.deviceHealthIdentity } : {}),
+    ...(manifest.postStopHealthIdentity && typeof manifest.postStopHealthIdentity === "object" ? { postStopHealthIdentity: manifest.postStopHealthIdentity } : {}),
     emergencyStopAcknowledgements: manifest.emergencyStopAcknowledgements,
     ...(typeof manifest.controllerWarmupPasses === "number" ? { controllerWarmupPasses: manifest.controllerWarmupPasses } : {}),
     ...(typeof manifest.realTimeQualified === "boolean" ? { realTimeQualified: manifest.realTimeQualified } : {}),
@@ -158,9 +159,11 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
       version: 1,
       protocol: "stdio-jsonl-v1",
       handshake: { bundleHash, observationContractHash, actionContractHash },
-      capabilities: ["applied-action", "decision-deadline", "device-health", "shadow-action", "state-age-ms", "stop-ack"],
-      messages: ["hello", "start-episode", "state", "action", "shadow-action", "deadline-rejected", "safe-stop", "emergency-stop", "stopped", "close", "completed"],
+      capabilities: ["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"],
+      messages: ["hello", "start-episode", "state", "action", "shadow-action", "deadline-rejected", "safe-stop", "emergency-stop", "stopped", "health-check", "health-state", "close", "completed"],
       state: { required: ["episode", "step", "qpos", "qvel", "observation", "appliedAction", "stateAgeMs", "deviceHealth"] },
+      deviceHealth: { actuatorStates: ["ready", "derated", "faulted", "offline"] },
+      stopRecovery: { automaticRearm: false, requiresNewSession: true },
     });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
   });
@@ -184,6 +187,9 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   if (target.safety.requireDecisionDeadline && (evidence.decisionDeadlineRejections ?? 0) < 1) reasons.push("evidence does not prove driver-side decision deadline rejection");
   if (target.safety.requireDeviceHealth && (evidence.deviceHealthSamples ?? 0) < 1) reasons.push("evidence does not report device health samples");
   if (target.safety.requireDeviceHealth && (evidence.deviceHealthTrips ?? 0) < 1) reasons.push("evidence does not prove a device health safety trip");
+  if (target.safety.requirePostStopHealthCheck && (evidence.actuatorIsolationTrips ?? 0) < 1) reasons.push("evidence does not prove per-actuator fault isolation");
+  if (target.safety.requirePostStopHealthCheck && (evidence.postStopHealthChecks ?? 0) < target.safety.postStopHealthySamples!) reasons.push("evidence does not prove the required stop-latched health window");
+  if (target.safety.requirePostStopHealthCheck && (evidence.postStopRecoveryCandidates ?? 0) < 1) reasons.push("evidence does not prove a stop-latched recovery candidate");
   if (target.safety.maximumStateAgeMs !== undefined && evidence.emergencyStopAcknowledgements === undefined) reasons.push("evidence does not report emergency-stop acknowledgements");
   else if (evidence.emergencyStopAcknowledgements !== undefined && evidence.emergencyStopAcknowledgements < evidence.emergencyStops) reasons.push("not every emergency stop was acknowledged");
   if (!evidence.passed) reasons.push("driver reported failure");
@@ -191,7 +197,7 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   const verificationHash = hashJson({ bundleHash: bundle.bundleHash, evidence }); const id = `verification-${verificationHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-verifications", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await writeFile(join(directory, "evidence.json"), await readFile(resolve(evidencePath))); await writeJson(join(directory, "bundle-manifest.json"), bundle);
-    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Source: ${bundle.sourceKind ?? "legacy-robot-revision"}\n- Maximum capture mode: ${bundle.maximumCaptureMode ?? "actuate"}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Driver decision-deadline rejections: ${evidence.decisionDeadlineRejections ?? "not reported"}\n- Device health samples/trips: ${evidence.deviceHealthSamples ?? "not reported"} / ${evidence.deviceHealthTrips ?? "not reported"}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
+    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Source: ${bundle.sourceKind ?? "legacy-robot-revision"}\n- Maximum capture mode: ${bundle.maximumCaptureMode ?? "actuate"}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Driver decision-deadline rejections: ${evidence.decisionDeadlineRejections ?? "not reported"}\n- Device health samples/trips: ${evidence.deviceHealthSamples ?? "not reported"} / ${evidence.deviceHealthTrips ?? "not reported"}\n- Actuator isolation trips: ${evidence.actuatorIsolationTrips ?? "not reported"}\n- Stop-latched health checks/recovery candidates: ${evidence.postStopHealthChecks ?? "not reported"} / ${evidence.postStopRecoveryCandidates ?? "not reported"}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
     await writeJson(join(directory, "manifest.json"), { version: 1, id, verificationHash, bundleId, bundleHash: bundle.bundleHash, sourceKind: bundle.sourceKind ?? "legacy-robot-revision", maximumCaptureMode: bundle.maximumCaptureMode ?? "actuate", target: target.id, environment: evidence.environment, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", actuationQualified: status === "HARDWARE-VERIFIED" && bundle.maximumCaptureMode !== "shadow", reasons, completed: true });
   });
   return success("hardware.verify", { id, path: root, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", actuationQualified: status === "HARDWARE-VERIFIED" && bundle.maximumCaptureMode !== "shadow", reasons, evidence }, project, [artifact("hardware-verification", id, root)]);

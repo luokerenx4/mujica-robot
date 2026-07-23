@@ -20,6 +20,7 @@ from .simulation import quaternion_body_tilt
 
 
 PROTOCOL = "stdio-jsonl-v1"
+ACTUATOR_STATES = {"ready", "derated", "faulted", "offline"}
 
 
 def _utc_now() -> str:
@@ -154,11 +155,22 @@ def _device_health(raw: Any, action_size: int, episode_id: str, step: int, requi
         raise RuntimeError(f"{episode_id} step {step} deviceHealth faults must be unique")
     estop_engaged = raw.get("estopEngaged")
     watchdog_healthy = raw.get("watchdogHealthy")
+    actuator_states = raw.get("actuatorStates")
+    if (
+        not isinstance(actuator_states, list)
+        or len(actuator_states) != action_size
+        or not all(type(item) is str and item in ACTUATOR_STATES for item in actuator_states)
+    ):
+        raise RuntimeError(
+            f"{episode_id} step {step} deviceHealth actuatorStates must contain "
+            f"{action_size} ready/derated/faulted/offline values"
+        )
     if type(estop_engaged) is not bool or type(watchdog_healthy) is not bool:
         raise RuntimeError(f"{episode_id} step {step} deviceHealth status flags must be boolean")
     return {
         "motorTemperatureC": temperatures.tolist(),
         "motorCurrentA": currents.tolist(),
+        "actuatorStates": list(actuator_states),
         "busVoltageV": bus_voltage,
         "faults": list(faults),
         "estopEngaged": estop_engaged,
@@ -176,10 +188,13 @@ def _state_age_reason(state_age_ms: float | None, maximum_state_age_ms: float | 
     return None
 
 
-def _device_health_reasons(device_health: dict[str, Any] | None, safety: dict[str, Any]) -> list[str]:
+def _device_health_assessment(device_health: dict[str, Any] | None, safety: dict[str, Any]) -> dict[str, Any]:
     if device_health is None:
-        return ["device health telemetry is missing"] if bool(safety.get("requireDeviceHealth", False)) else []
+        reasons = ["device health telemetry is missing"] if bool(safety.get("requireDeviceHealth", False)) else []
+        return {"reasons": reasons, "affectedActuatorIndices": [], "scope": "device" if reasons else "none"}
     reasons: list[str] = []
+    affected_indices: set[int] = set()
+    device_fault = False
     temperatures = np.asarray(device_health["motorTemperatureC"], dtype=np.float64)
     currents = np.asarray(device_health["motorCurrentA"], dtype=np.float64)
     maximum_temperature = float(np.max(temperatures)) if temperatures.size else 0.0
@@ -187,23 +202,99 @@ def _device_health_reasons(device_health: dict[str, Any] | None, safety: dict[st
     bus_voltage = float(device_health["busVoltageV"])
     if safety.get("maximumMotorTemperatureC") is not None and maximum_temperature > float(safety["maximumMotorTemperatureC"]):
         reasons.append(f"motor temperature {maximum_temperature:.6f} C exceeds maximum {float(safety['maximumMotorTemperatureC']):.6f} C")
+        affected_indices.update(int(index) for index in np.flatnonzero(temperatures > float(safety["maximumMotorTemperatureC"])))
     if safety.get("maximumMotorCurrentA") is not None and maximum_current > float(safety["maximumMotorCurrentA"]):
         reasons.append(f"motor current {maximum_current:.6f} A exceeds maximum {float(safety['maximumMotorCurrentA']):.6f} A")
+        affected_indices.update(int(index) for index in np.flatnonzero(np.abs(currents) > float(safety["maximumMotorCurrentA"])))
+    non_ready = [(index, state) for index, state in enumerate(device_health["actuatorStates"]) if state != "ready"]
+    if non_ready:
+        affected_indices.update(index for index, _ in non_ready)
+        reasons.append("actuator states are unsafe: " + ",".join(f"{index}:{state}" for index, state in non_ready))
     if safety.get("minimumBusVoltageV") is not None and bus_voltage < float(safety["minimumBusVoltageV"]):
         reasons.append(f"bus voltage {bus_voltage:.6f} V is below minimum {float(safety['minimumBusVoltageV']):.6f} V")
+        device_fault = True
     if safety.get("maximumBusVoltageV") is not None and bus_voltage > float(safety["maximumBusVoltageV"]):
         reasons.append(f"bus voltage {bus_voltage:.6f} V exceeds maximum {float(safety['maximumBusVoltageV']):.6f} V")
+        device_fault = True
     if device_health["faults"]:
         reasons.append(f"driver faults are active: {','.join(device_health['faults'])}")
+        device_fault = True
     if bool(device_health["estopEngaged"]):
         reasons.append("physical E-stop is engaged")
+        device_fault = True
     if not bool(device_health["watchdogHealthy"]):
         reasons.append("driver watchdog is unhealthy")
-    return reasons
+        device_fault = True
+    scope = "mixed" if affected_indices and device_fault else "actuator" if affected_indices else "device" if device_fault else "none"
+    return {"reasons": reasons, "affectedActuatorIndices": sorted(affected_indices), "scope": scope}
+
+
+def _device_health_reasons(device_health: dict[str, Any] | None, safety: dict[str, Any]) -> list[str]:
+    return list(_device_health_assessment(device_health, safety)["reasons"])
 
 
 def _stopped_acknowledged(message: dict[str, Any], episode_id: str | None, kind: str) -> bool:
     return message.get("type") == "stopped" and message.get("episode") == episode_id and message.get("kind") == kind
+
+
+def _post_stop_health_window(
+    session: DriverSession,
+    episode_id: str | None,
+    action_size: int,
+    safety: dict[str, Any],
+    timeout_seconds: float,
+    trip: dict[str, Any],
+) -> dict[str, Any]:
+    requested_samples = int(safety["postStopHealthySamples"])
+    minimum_duration_ms = float(safety["postStopMinimumHealthyDurationMs"])
+    interval_seconds = minimum_duration_ms / 1000.0 / float(requested_samples - 1)
+    samples: list[dict[str, Any]] = []
+    received_times_ns: list[int] = []
+    for sequence in range(requested_samples):
+        if sequence > 0:
+            time.sleep(interval_seconds)
+        session.send({"type": "health-check", "episode": episode_id, "sequence": sequence})
+        message, received_ns = session.receive(timeout_seconds)
+        if (
+            message.get("type") != "health-state"
+            or message.get("episode") != episode_id
+            or int(message.get("sequence", -1)) != sequence
+            or message.get("stopLatched") is not True
+        ):
+            raise RuntimeError(f"Driver returned an invalid stop-latched health sample {sequence}")
+        health = _device_health(message.get("deviceHealth"), action_size, str(episode_id), sequence, True)
+        assessment = _device_health_assessment(health, safety)
+        samples.append({"sequence": sequence, "deviceHealth": health, **assessment})
+        received_times_ns.append(received_ns)
+    observed_duration_ms = (
+        (received_times_ns[-1] - received_times_ns[0]) / 1_000_000.0
+        if len(received_times_ns) > 1
+        else 0.0
+    )
+    healthy_samples = sum(not sample["reasons"] for sample in samples)
+    recovery_eligible = (
+        trip.get("kind") == "device-health"
+        and healthy_samples == requested_samples
+        and observed_duration_ms >= minimum_duration_ms
+    )
+    return {
+        "episode": episode_id,
+        "trip": trip,
+        "requestedSamples": requested_samples,
+        "minimumHealthyDurationMs": minimum_duration_ms,
+        "observedDurationMs": observed_duration_ms,
+        "healthySamples": healthy_samples,
+        "samples": samples,
+        "recoveryEligible": recovery_eligible,
+        "requiresNewSession": True,
+        "stateTransitions": [
+            "armed",
+            "tripped",
+            "stop-acknowledged",
+            "health-checking",
+            "recovery-eligible" if recovery_eligible else "recovery-blocked",
+        ],
+    }
 
 
 def _driver_deadline_rejection(message: dict[str, Any], episode_id: str, step: int) -> float | None:
@@ -270,6 +361,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     driver_rejection_latencies_ms: list[float] = []
     state_ages_ms: list[float] = []
     device_health_samples: list[dict[str, Any]] = []
+    device_health_trips: list[dict[str, Any]] = []
+    post_stop_windows: list[dict[str, Any]] = []
     deadline_misses = 0
     host_pre_dispatch_deadline_misses = 0
     driver_deadline_rejections = 0
@@ -345,6 +438,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             required_capabilities.add("decision-deadline")
         if bool(target["safety"].get("requireDeviceHealth", False)):
             required_capabilities.add("device-health")
+        if bool(target["safety"].get("requirePostStopHealthCheck", False)):
+            required_capabilities.add("latched-stop-health")
         missing_capabilities = sorted(required_capabilities.difference(protocol_capabilities))
         if missing_capabilities:
             raise RuntimeError(f"Driver lacks required capabilities: {', '.join(missing_capabilities)}")
@@ -365,6 +460,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             rows: list[dict[str, Any]] = []
             completed_steps = 0
             episode_reason: str | None = None
+            episode_trip: dict[str, Any] | None = None
             session.send({"type": "start-episode", "episode": episode_id, "seed": int(episode["seed"]), "steps": planned_steps, "controlHz": float(target["controlHz"])})
             message, received_ns = session.receive(startup_timeout_seconds)
             qpos, qvel, observation_vector, current_applied, state_age_ms, device_health = _state_vectors(
@@ -379,11 +475,28 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 state_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
                 if state_age_reason is not None:
                     state_reasons.append(state_age_reason)
-                health_reasons = _device_health_reasons(device_health, target["safety"])
+                health_assessment = _device_health_assessment(device_health, target["safety"])
+                health_reasons = list(health_assessment["reasons"])
                 state_reasons.extend(health_reasons)
                 if state_reasons:
                     if health_reasons:
-                        interventions.append({"episode": episode_id, "step": step, "kind": "device-health", "reasons": health_reasons})
+                        episode_trip = {
+                            "episode": episode_id,
+                            "step": step,
+                            "kind": "device-health",
+                            **health_assessment,
+                        }
+                        interventions.append(episode_trip)
+                        device_health_trips.append(episode_trip)
+                    else:
+                        episode_trip = {
+                            "episode": episode_id,
+                            "step": step,
+                            "kind": "state-safety",
+                            "reasons": list(state_reasons),
+                            "affectedActuatorIndices": [],
+                            "scope": "robot",
+                        }
                     episode_reason = "; ".join(state_reasons)
                     break
                 observation = _observation_map(observation_vector, compiled["observationContract"]["channels"])
@@ -417,6 +530,14 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                         "maximumDecisionLatencyMs": maximum_decision_latency_ms,
                     })
                     episode_reason = f"host decision latency {decision_ms:.6f} ms exceeds maximum {maximum_decision_latency_ms:.6f} ms before dispatch"
+                    episode_trip = {
+                        "episode": episode_id,
+                        "step": step,
+                        "kind": "host-decision-deadline",
+                        "reasons": [episode_reason],
+                        "affectedActuatorIndices": [],
+                        "scope": "host",
+                    }
                     break
                 rows.append({
                     "episode": episode_id,
@@ -466,6 +587,14 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                         "maximumDecisionLatencyMs": maximum_decision_latency_ms,
                     })
                     episode_reason = f"driver rejected expired Action at {rejected_ms:.6f} ms (maximum {maximum_decision_latency_ms:.6f} ms)"
+                    episode_trip = {
+                        "episode": episode_id,
+                        "step": step,
+                        "kind": "driver-decision-deadline",
+                        "reasons": [episode_reason],
+                        "affectedActuatorIndices": [],
+                        "scope": "driver",
+                    }
                     break
                 qpos, qvel, observation_vector, next_applied, state_age_ms, device_health = _state_vectors(
                     message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, step + 1, require_telemetry, require_device_health,
@@ -480,6 +609,14 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     rows[-1]["commandedAction"] = actual_applied.tolist()
                 if dispatch_late:
                     episode_reason = f"host dispatch latency {dispatch_ms:.6f} ms exceeded maximum {maximum_decision_latency_ms:.6f} ms but Driver applied the Action"
+                    episode_trip = {
+                        "episode": episode_id,
+                        "step": step,
+                        "kind": "host-dispatch-deadline",
+                        "reasons": [episode_reason],
+                        "affectedActuatorIndices": [],
+                        "scope": "host",
+                    }
                     break
                 current_applied = actual_applied
                 previous_action = action
@@ -489,9 +626,21 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 terminal_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
                 if terminal_age_reason is not None:
                     terminal_reasons.append(terminal_age_reason)
-                terminal_reasons.extend(_device_health_reasons(device_health, target["safety"]))
+                terminal_health = _device_health_assessment(device_health, target["safety"])
+                terminal_reasons.extend(terminal_health["reasons"])
                 if terminal_reasons:
                     episode_reason = "; ".join(terminal_reasons)
+                    episode_trip = {
+                        "episode": episode_id,
+                        "step": planned_steps,
+                        "kind": "device-health" if terminal_health["reasons"] else "state-safety",
+                        "reasons": terminal_reasons,
+                        "affectedActuatorIndices": terminal_health["affectedActuatorIndices"],
+                        "scope": terminal_health["scope"] if terminal_health["reasons"] else "robot",
+                    }
+                    if terminal_health["reasons"]:
+                        interventions.append(episode_trip)
+                        device_health_trips.append(episode_trip)
             if episode_reason is None:
                 rows.append({
                     "episode": episode_id,
@@ -521,9 +670,21 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     if not _stopped_acknowledged(stopped, episode_id, "emergency-stop"):
                         raise RuntimeError(f"Driver returned an invalid emergency-stop acknowledgement for '{episode_id}'")
                     emergency_stop_acknowledgements += 1
+                    if bool(target["safety"].get("requirePostStopHealthCheck", False)):
+                        trip = episode_trip or {
+                            "episode": episode_id,
+                            "step": completed_steps,
+                            "kind": "episode-abort",
+                            "reasons": [episode_reason],
+                            "affectedActuatorIndices": [],
+                            "scope": "unknown",
+                        }
+                        post_stop_windows.append(_post_stop_health_window(
+                            session, episode_id, model.nu, target["safety"], timeout_seconds, trip,
+                        ))
                 except Exception as error:
                     status = "FAILED"
-                    reasons.append(f"{episode_id}: emergency stop was not acknowledged: {error}")
+                    reasons.append(f"{episode_id}: emergency stop or post-stop health check failed: {error}")
                 episode_results.append({"id": episode_id, "seed": int(episode["seed"]), "plannedSteps": planned_steps, "steps": completed_steps, "completed": False, "reason": episode_reason})
                 break
     except Exception as error:
@@ -536,6 +697,22 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 stopped, _ = session.receive(timeout_seconds)
                 if _stopped_acknowledged(stopped, None, "emergency-stop"):
                     emergency_stop_acknowledgements += 1
+                    if bool(target["safety"].get("requirePostStopHealthCheck", False)):
+                        post_stop_windows.append(_post_stop_health_window(
+                            session,
+                            None,
+                            model.nu,
+                            target["safety"],
+                            timeout_seconds,
+                            {
+                                "episode": None,
+                                "step": None,
+                                "kind": "session-failure",
+                                "reasons": [str(error)],
+                                "affectedActuatorIndices": [],
+                                "scope": "unknown",
+                            },
+                        ))
                 else:
                     reasons.append("session emergency stop acknowledgement was invalid")
             except Exception as stop_error:
@@ -564,6 +741,18 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     device_fault_samples = sum(bool(sample["faults"]) for sample in device_health_samples)
     estop_engaged_samples = sum(bool(sample["estopEngaged"]) for sample in device_health_samples)
     watchdog_unhealthy_samples = sum(not bool(sample["watchdogHealthy"]) for sample in device_health_samples)
+    actuator_state_counts = {
+        state: sum(item == state for sample in device_health_samples for item in sample["actuatorStates"])
+        for state in sorted(ACTUATOR_STATES)
+    }
+    affected_actuator_indices = sorted({
+        int(index)
+        for trip in device_health_trips
+        for index in trip["affectedActuatorIndices"]
+    })
+    post_stop_samples = [sample for window in post_stop_windows for sample in window["samples"]]
+    post_stop_healthy_samples = sum(not sample["reasons"] for sample in post_stop_samples)
+    recovery_candidates = sum(bool(window["recoveryEligible"]) for window in post_stop_windows)
     maximum_decision_latency = max(decision_latencies_ms, default=0.0)
     mean_decision_latency = float(np.mean(decision_latencies_ms)) if decision_latencies_ms else 0.0
     actuation_authorized = plan["mode"] == "actuate"
@@ -594,6 +783,23 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "faultSamples": device_fault_samples,
         "estopEngagedSamples": estop_engaged_samples,
         "watchdogUnhealthySamples": watchdog_unhealthy_samples,
+        "actuatorStateCounts": actuator_state_counts,
+        "tripCount": len(device_health_trips),
+        "affectedActuatorIndices": affected_actuator_indices,
+    }
+    post_stop_health_identity = {
+        "windows": len(post_stop_windows),
+        "samples": len(post_stop_samples),
+        "healthySamples": post_stop_healthy_samples,
+        "recoveryCandidates": recovery_candidates,
+        "maximumObservedDurationMicroseconds": round(max(
+            (float(window["observedDurationMs"]) for window in post_stop_windows),
+            default=0.0,
+        ) * 1000.0),
+        "terminalStates": [
+            window["stateTransitions"][-1]
+            for window in post_stop_windows
+        ],
     }
     identity = {
         "version": 1,
@@ -618,6 +824,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "stateAgeIdentity": state_age_identity,
         "decisionDeadlineIdentity": decision_deadline_identity,
         "deviceHealthIdentity": device_health_identity,
+        "postStopHealthIdentity": post_stop_health_identity,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
         "controllerWarmupPasses": controller_warmup_passes,
         "realTimeQualified": real_time_qualified,
@@ -697,6 +904,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 "faultSamples": device_fault_samples,
                 "estopEngagedSamples": estop_engaged_samples,
                 "watchdogUnhealthySamples": watchdog_unhealthy_samples,
+                "actuatorStateCounts": actuator_state_counts,
+                "trips": len(device_health_trips),
+                "affectedActuatorIndices": affected_actuator_indices,
+            },
+            "stopRecovery": {
+                "windows": post_stop_windows,
+                "samples": len(post_stop_samples),
+                "healthySamples": post_stop_healthy_samples,
+                "recoveryCandidates": recovery_candidates,
+                "requiresNewSession": True,
             },
             "protocolCapabilities": protocol_capabilities,
             "stateAge": state_age_evidence,
@@ -727,6 +944,10 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             f"- Motor temperature/current max: {maximum_motor_temperature:.6f} C / {maximum_motor_current:.6f} A\n"
             f"- Bus voltage min/max: {minimum_bus_voltage:.6f}/{maximum_bus_voltage:.6f} V\n"
             f"- Driver fault/E-stop/watchdog-unhealthy samples: {device_fault_samples}/{estop_engaged_samples}/{watchdog_unhealthy_samples}\n"
+            f"- Actuator states ready/derated/faulted/offline: {actuator_state_counts['ready']}/{actuator_state_counts['derated']}/{actuator_state_counts['faulted']}/{actuator_state_counts['offline']}\n"
+            f"- Device-health trips / affected actuator indices: {len(device_health_trips)} / {affected_actuator_indices}\n"
+            f"- Stop-latched health windows/samples/healthy: {len(post_stop_windows)}/{len(post_stop_samples)}/{post_stop_healthy_samples}\n"
+            f"- Recovery candidates (new session required): {recovery_candidates}\n"
             f"- State age max/mean: {maximum_state_age:.6f}/{mean_state_age:.6f} ms\n"
             f"- Deadline misses: {deadline_misses}\n"
             f"- Safety interventions: {len(interventions)}\n"
@@ -765,6 +986,12 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "maximumMotorCurrentA": maximum_motor_current,
         "minimumBusVoltageV": minimum_bus_voltage,
         "maximumBusVoltageV": maximum_bus_voltage,
+        "deviceHealthTrips": len(device_health_trips),
+        "affectedActuatorIndices": affected_actuator_indices,
+        "postStopHealthChecks": len(post_stop_samples),
+        "postStopRecoveryCandidates": recovery_candidates,
+        "recoveryEligible": recovery_candidates > 0,
+        "recoveryRequiresNewSession": True,
         "interventions": len(interventions),
         "emergencyStops": emergency_stops,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,

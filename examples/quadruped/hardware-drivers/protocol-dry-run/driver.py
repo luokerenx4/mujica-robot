@@ -37,6 +37,14 @@ def main() -> None:
         or "deviceHealth" not in protocol.get("state", {}).get("required", [])
     ):
         raise RuntimeError("Bundle protocol lacks required device health telemetry")
+    require_post_stop_health = bool(target["safety"].get("requirePostStopHealthCheck", False))
+    if require_post_stop_health and (
+        "latched-stop-health" not in protocol.get("capabilities", [])
+        or not {"health-check", "health-state"}.issubset(protocol.get("messages", []))
+        or protocol.get("stopRecovery", {}).get("automaticRearm") is not False
+        or protocol.get("stopRecovery", {}).get("requiresNewSession") is not True
+    ):
+        raise RuntimeError("Bundle protocol lacks required stop-latched health boundary")
 
     observation_size = int(observations["size"])
     action_size = int(actions["size"])
@@ -48,18 +56,48 @@ def main() -> None:
         nominal_health = {
             "motorTemperatureC": [40.0] * action_size,
             "motorCurrentA": [0.0] * action_size,
+            "actuatorStates": ["ready"] * action_size,
             "busVoltageV": 24.0,
             "faults": [],
             "estopEngaged": False,
             "watchdogHealthy": True,
         }
         decoded_health = json.loads(json.dumps(nominal_health, separators=(",", ":")))
-        if len(decoded_health["motorTemperatureC"]) != action_size or len(decoded_health["motorCurrentA"]) != action_size:
+        if (
+            len(decoded_health["motorTemperatureC"]) != action_size
+            or len(decoded_health["motorCurrentA"]) != action_size
+            or decoded_health["actuatorStates"] != ["ready"] * action_size
+        ):
             raise RuntimeError("Device health round trip violated the Action contract")
         injected_temperature = float(target["safety"]["maximumMotorTemperatureC"]) + 1.0
         device_health_trips = int(injected_temperature > float(target["safety"]["maximumMotorTemperatureC"]))
         if device_health_trips != 1:
             raise RuntimeError("Device health over-temperature trip was not exercised")
+    actuator_isolation_trips = 0
+    post_stop_health_checks = 0
+    post_stop_recovery_candidates = 0
+    if require_post_stop_health:
+        isolated = {**nominal_health, "actuatorStates": list(nominal_health["actuatorStates"])}
+        isolated["actuatorStates"][0] = "faulted"
+        actuator_isolation_trips = int([
+            index for index, state in enumerate(isolated["actuatorStates"]) if state != "ready"
+        ] == [0])
+        post_stop_health_checks = int(target["safety"]["postStopHealthySamples"])
+        for sequence in range(post_stop_health_checks):
+            message = {
+                "type": "health-state",
+                "sequence": sequence,
+                "stopLatched": True,
+                "deviceHealth": nominal_health,
+            }
+            decoded = json.loads(json.dumps(message, separators=(",", ":")))
+            if decoded["sequence"] != sequence or decoded["stopLatched"] is not True:
+                raise RuntimeError("Stop-latched health round trip failed")
+        post_stop_recovery_candidates = int(
+            actuator_isolation_trips == 1
+            and post_stop_health_checks >= 2
+            and protocol["stopRecovery"]["requiresNewSession"] is True
+        )
 
     started_at = utc_now()
     latencies_ms: list[float] = []
@@ -98,9 +136,12 @@ def main() -> None:
         "decisionDeadlineRejections": 1 if require_decision_deadline else 0,
         "deviceHealthSamples": samples if require_device_health else 0,
         "deviceHealthTrips": device_health_trips,
+        "actuatorIsolationTrips": actuator_isolation_trips,
+        "postStopHealthChecks": post_stop_health_checks,
+        "postStopRecoveryCandidates": post_stop_recovery_candidates,
         "passed": True,
         "operator": "automated protocol conformance",
-        "notes": "Serialization, sequence, Observation/Action/device-health shape, authored over-temperature trip, handshake identity, and emergency-stop shape only; no physical hardware was present.",
+        "notes": "Serialization, sequence, Observation/Action/device-health shape, authored over-temperature and isolated-actuator trips, stop-latched healthy window with new-session-only recovery, handshake identity, and emergency-stop shape only; no physical hardware was present.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(evidence, indent=2) + "\n")

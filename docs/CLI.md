@@ -110,10 +110,18 @@ reported separately.
 
 Targets with `requireDeviceHealth=true` require `device-health` and explicit
 temperature, current, and bus-voltage limits. Each state reports per-Action
-channel motor temperature/current, bus voltage, fault codes, E-stop state, and
-watchdog health. Unsafe or malformed health stops the episode before Controller
-evaluation and before either Action message kind. Capture manifests expose
-health extrema and fault/E-stop/watchdog sample counts.
+channel motor temperature/current and `ready|derated|faulted|offline` state,
+plus bus voltage, fault codes, E-stop state, and watchdog health. Unsafe or
+malformed health stops the episode before Controller evaluation and before
+either Action message kind. Capture manifests expose exact affected channel
+indices, health extrema, and fault/E-stop/watchdog sample counts.
+
+Targets with `requirePostStopHealthCheck=true` also bind
+`postStopHealthySamples` and `postStopMinimumHealthyDurationMs`. After the
+Driver acknowledges emergency stop, Capture sends only `health-check` and
+accepts only matching `health-state { stopLatched: true }` responses. A fully
+healthy window sets `recoveryEligible=true` and `requiresNewSession=true`; it
+does not change `ABORTED`, send a rearm message, or authorize a later Action.
 
 Every Plan explicitly selects `actuate` or `shadow`. Shadow commissioning sends
 Controller output only as a non-authoritative `proposedAction`; the driver
