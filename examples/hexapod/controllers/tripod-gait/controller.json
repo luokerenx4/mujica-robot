@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "tripod-gait",
+  "name": "Readable six-leg tripod gait",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 12 },
+      { "name": "joint-velocity", "size": 12 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 12, "low": -6, "high": 6 }
+    ]
+  },
+  "config": {
+    "kp": 20.0,
+    "kd": 1.3,
+    "frequencyHz": 0.7,
+    "hipAmplitude": 0.18,
+    "kneeAmplitude": 0.65
+  }
+}

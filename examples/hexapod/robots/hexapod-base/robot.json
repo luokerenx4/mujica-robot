@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "hexapod-base",
+  "name": "Twelve-actuator educational hexapod",
+  "mjcf": "model.xml",
+  "mounts": [],
+  "observations": [
+    { "name": "joint-position", "kind": "joint-position", "size": 12, "source": "qpos:joints", "unit": "rad" },
+    { "name": "joint-velocity", "kind": "joint-velocity", "size": 12, "source": "qvel:joints", "unit": "rad-s" },
+    { "name": "base-height", "kind": "body-state", "size": 1, "source": "qpos:root-height", "unit": "m" },
+    { "name": "base-orientation", "kind": "body-state", "size": 4, "source": "qpos:root-quaternion", "unit": "quaternion" },
+    { "name": "base-velocity", "kind": "body-state", "size": 6, "source": "qvel:root", "unit": "mixed" },
+    { "name": "foot-contact-force", "kind": "sensor", "size": 6, "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-ml,foot-force-mr,foot-force-rl,foot-force-rr", "unit": "n" }
+  ],
+  "actions": [
+    { "name": "joint-torque", "kind": "actuator", "size": 12, "source": "actuator:all", "unit": "nm", "low": -6, "high": 6 }
+  ],
+  "massKg": 6.2,
+  "license": "Apache-2.0",
+  "attribution": "Original Mujica hexapod starter model"
+}

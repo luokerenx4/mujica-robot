@@ -1,7 +1,7 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
-import { assemblySchema, componentSchema, robotSchema } from "./schemas";
-import type { ActionContract, AssemblyComparison, AssemblyManifest, CompiledAssembly, CompiledComponent, ComponentManifest, ContractChannel, ObservationContract, ProjectContext, RobotManifest } from "./types";
+import { assemblySchema, componentSchema, robotMorphologySchema, robotSchema } from "./schemas";
+import type { ActionContract, AssemblyComparison, AssemblyManifest, CompiledAssembly, CompiledComponent, ComponentManifest, ContractChannel, ObservationContract, ProjectContext, RobotManifest, RobotMorphology } from "./types";
 import { MujicaValidationError } from "./types";
 import { confined, hashDirectory, hashJson, readJson, readText, sha256, stableJson, writeJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -116,6 +116,8 @@ async function loadBase(projectDir: string, id: string): Promise<{ manifest: Rob
 
 export async function compileAssembly(projectDir: string, assemblyId: string): Promise<CompiledAssembly> {
   const project = await loadProject(projectDir);
+  const morphology = await readJson(confined(project.rootDir, project.manifest.morphology), robotMorphologySchema) as RobotMorphology;
+  if (morphology.project !== project.manifest.id) throw new MujicaValidationError([{ path: project.manifest.morphology, code: "morphology.project", message: `morphology project '${morphology.project}' must match '${project.manifest.id}'` }]);
   const assembly = await loadAssembly(project.rootDir, assemblyId);
   const base = await loadBase(project.rootDir, assembly.base);
   assertUnique(base.manifest.mounts, (mount) => mount.id, `robots/${assembly.base}/robot.json/mounts`);
@@ -190,7 +192,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const sourceFiles = [relative(project.rootDir, join(project.rootDir, "assemblies", `${assembly.id}.robot.json`)), relative(project.rootDir, join(base.rootDir, "robot.json")), relative(project.rootDir, baseModelPath), ...resolved.flatMap((item) => [relative(project.rootDir, join(item.rootDir, "component.json")), ...[item.manifest.fragment, item.manifest.mountFragment].filter((path): path is string => path !== undefined).map((path) => relative(project.rootDir, confined(item.rootDir, path)))])];
   const result: CompiledAssembly = {
     version: 1, id: assembly.id, name: assembly.name, projectId: project.manifest.id, rootDir: project.rootDir, artifactDir, modelPath,
-    assemblyHash, executionHash, modelHash, plantHash, baseHash: base.hash, catalogHash, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
+    assemblyHash, executionHash, modelHash, plantHash, baseHash: base.hash, catalogHash, morphology, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
     componentCost: resolved.reduce((sum, item) => sum + item.manifest.cost, 0), components: resolved.map((item) => item.compiled), observationContract, actionContract, sourceFiles,
   };
   await writeJson(join(artifactDir, "compiled-assembly.json"), { ...result, rootDir: undefined, artifactDir: undefined, modelPath: "model.xml" });

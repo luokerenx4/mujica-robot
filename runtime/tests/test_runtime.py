@@ -25,10 +25,11 @@ from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "examples" / "quadruped"
+HEXAPOD = ROOT / "examples" / "hexapod"
 
 
-def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
-    manifests = sorted((PROJECT / ".mujica" / "cache" / "assemblies").glob("*/compiled-assembly.json"), key=lambda path: path.stat().st_mtime_ns, reverse=True)
+def compiled_assembly(assembly_id: str, project: Path = PROJECT) -> tuple[Path, dict]:
+    manifests = sorted((project / ".mujica" / "cache" / "assemblies").glob("*/compiled-assembly.json"), key=lambda path: path.stat().st_mtime_ns, reverse=True)
     for manifest_path in manifests:
         manifest = json.loads(manifest_path.read_text())
         if manifest["id"] != assembly_id:
@@ -691,6 +692,19 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(environment.foot_contact_forces().shape, (4,))
         result = environment.step(np.zeros(environment.model.nu))
         self.assertTrue(result.info["motionQuality"]["footEvidenceAvailable"])
+
+    def test_hexapod_contact_evidence_uses_all_six_compiled_points(self):
+        model, compiled = compiled_assembly("hexapod", HEXAPOD)
+        task = json.loads((HEXAPOD / "tasks" / "forward-walk.task.json").read_text())
+        scenario = json.loads((HEXAPOD / "scenarios" / "nominal.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 601)
+        observation = environment.reset()
+        self.assertEqual(compiled["morphology"]["limbCount"], 6)
+        self.assertEqual(len(compiled["morphology"]["contactPoints"]), 6)
+        self.assertEqual(observation["foot-contact-force"].shape, (6,))
+        self.assertEqual(environment.foot_positions_world().shape, (6, 3))
+        self.assertEqual(environment.foot_contact_forces().shape, (6,))
+        self.assertTrue(environment.step(np.zeros(environment.model.nu)).info["motionQuality"]["footEvidenceAvailable"])
 
     def test_actuator_telemetry_exposes_commanded_and_delayed_actions(self):
         model, compiled = compiled_assembly("force-sensing-telemetry-3dof")

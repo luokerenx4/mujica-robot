@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
-import { resolveProjectDirectory } from "@mujica/core";
+import { resolveProjectDirectory, WORKSPACE_MANIFEST } from "@mujica/core";
 import { failure } from "./contract";
 import { hardwareCaptureCommand, hardwareCaptureInspectCommand, hardwareCapturePlanInspectCommand, hardwareCapturePlanListCommand, hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
@@ -9,11 +9,15 @@ import {
 } from "./commands";
 import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand, researchTimelineStudioCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
+import { projectCreateCommand, projectInspectCommand, projectListCommand, workspaceStudioCommand } from "./project";
 import { twinAuditCommand, twinInspectCommand, twinStudioCommand } from "./twin";
 
 const HELP = `mujica — AI-native robot development harness
 
 USAGE
+  mujica project list <workspace> [--json]
+  mujica project inspect <workspace-or-project> [--project ID] [--json]
+  mujica project create <workspace> --id ID --name NAME --template hexapod [--json]
   mujica validate|inspect <project> [--json]
   mujica component list <project> [--json]
   mujica component inspect <project> --component ID [--json]
@@ -68,6 +72,9 @@ USAGE
 `;
 
 const CAPABILITIES = [
+  { id: "project.list", usage: "mujica project list <workspace> [--json]", effect: "read-only" },
+  { id: "project.inspect", usage: "mujica project inspect <workspace-or-project> [--project ID] [--json]", effect: "read-only" },
+  { id: "project.create", usage: "mujica project create <workspace> --id ID --name NAME --template hexapod [--json]", effect: "mutates-project" },
   { id: "validate", usage: "mujica validate <project> [--json]", effect: "read-only" },
   { id: "inspect", usage: "mujica inspect <project> [--json]", effect: "read-only" },
   { id: "component.list", usage: "mujica component list <project> [--json]", effect: "read-only" },
@@ -124,7 +131,10 @@ const CAPABILITIES = [
 function required(value: string | undefined, option: string): string { if (!value) throw new Error(`Missing required --${option}`); return value; }
 function one(positionals: string[], usage: string): string { if (positionals.length !== 1 || !positionals[0]) throw new Error(`Usage: ${usage}`); return positionals[0]; }
 function printHuman(command: string, data: any): void {
-  if (command === "validate") process.stdout.write(`Valid Mujica project '${data.project.id}'\nassemblies=${data.assemblies.length} components=${data.components.length}\n`);
+  if (command === "project.list") process.stdout.write(`${data.projects.map((project: any) => `${project.isDefault ? "*" : " "}\t${project.id}\t${project.morphology.class}/${project.morphology.limbCount}\t${project.name}`).join("\n")}\n`);
+  else if (command === "project.inspect") process.stdout.write(`project=${data.project.id}\nproposition=${data.charter.proposition}\nmorphology=${data.charter.morphology.class}/${data.charter.morphology.limbCount}\nstages=${data.charter.capabilityStages.map((stage: any) => `${stage.id}:${stage.status}`).join(",")}\n`);
+  else if (command === "project.create") process.stdout.write(`project=${data.project.id}\ntemplate=${data.template}\npath=${data.path}\nnext=mujica benchmark lock ${JSON.stringify(data.path)} --benchmark ${data.project.defaults.benchmark}\n`);
+  else if (command === "validate") process.stdout.write(`Valid Mujica project '${data.project.id}'\nassemblies=${data.assemblies.length} components=${data.components.length}\n`);
   else if (command === "controller.list") process.stdout.write(`${data.controllers.map((controller: any) => `${controller.id}\t${controller.kind}\tcompatible=${controller.compatibleAssemblies.join(",") || "none"}`).join("\n")}\n`);
   else if (command === "domain.list") process.stdout.write(`${data.profiles.map((profile: any) => `${profile.id}\t${profile.provenance.kind}\t${profile.hash.slice(0, 16)}`).join("\n")}\n`);
   else if (command === "domain.inspect") process.stdout.write(`domain=${data.definition.id}\nprovenance=${data.definition.provenance.kind}\nhash=${data.hash}\nparameters=${Object.keys(data.definition.parameters).join(",")}\n`);
@@ -181,8 +191,25 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   let commandId = command; const wantsJson = args.includes("--json");
   try {
     let envelope: any;
-    if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, "twin-audit": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} <project>`), values.project);
+    if (command === "project") {
+      const action = args.shift(); commandId = `project.${action}`;
+      const { values, positionals } = parseArgs({ args, options: { id: { type: "string" }, name: { type: "string" }, template: { type: "string", default: "hexapod" }, project: { type: "string" }, json: { type: "boolean", default: false } }, allowPositionals: true });
+      const input = one(positionals, `mujica project ${action} <workspace-or-project>`);
+      if (action === "list") envelope = await projectListCommand(input);
+      else if (action === "inspect") envelope = await projectInspectCommand(input, values.project);
+      else if (action === "create") envelope = await projectCreateCommand(input, { id: required(values.id, "id"), name: required(values.name, "name"), template: values.template });
+      else throw new Error("Usage: mujica project list|inspect|create ...");
+    } else if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, "twin-audit": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const input = one(positionals, `mujica ${command} <project>`);
+      const workspaceStudio = command === "studio" && values.project === undefined && await Bun.file(`${input}/${WORKSPACE_MANIFEST}`).exists();
+      if (workspaceStudio) {
+        if ([values.run, values["compare-run"], values["research-lab"], values.session, values.experiment, values.capture, values.episode, values["twin-audit"]].some(Boolean)) {
+          throw new Error("Workspace Studio does not accept project evidence selectors; pass --project ID to open one project");
+        }
+        envelope = await workspaceStudioCommand(input);
+      } else {
+      const project = await resolveProjectDirectory(input, values.project);
       if (command === "studio") {
         const reviewSelectorCount = [values["research-lab"], values.session, values.experiment].filter(Boolean).length;
         const captureSelectorCount = [values.capture, values.episode].filter(Boolean).length;
@@ -196,6 +223,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         else if (values["twin-audit"]) envelope = await twinStudioCommand(project, values["twin-audit"]);
         else envelope = await studioCommand(project, values.run, values["compare-run"]);
       } else envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : await revisionsCommand(project);
+      }
     } else if (command === "twin") {
       const action = args.shift(); commandId = `twin.${action}`;
       const { values, positionals } = parseArgs({ args, options: { capture: { type: "string" }, episode: { type: "string" }, audit: { type: "string" }, transition: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });

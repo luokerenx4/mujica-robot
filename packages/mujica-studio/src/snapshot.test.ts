@@ -4,10 +4,26 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { hashJson, sha256 } from "@mujica/core";
 import { buildStudioSnapshot, writeStudioSnapshot } from "./snapshot";
+import { writeWorkspaceStudioSnapshot } from "./workspace";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
 describe("read-only Studio snapshot", () => {
+  test("packages multiple governed projects behind one Workspace home", async () => {
+    const workspace = resolve(import.meta.dir, "../../../examples");
+    const result = await writeWorkspaceStudioSnapshot(workspace);
+    expect(result.snapshot.projects.map((item) => item.id)).toEqual(["hexapod", "quadruped"]);
+    expect(result.snapshot.projects.find((item) => item.id === "hexapod")).toMatchObject({
+      morphology: { class: "legged", limbCount: 6 },
+      capabilityStages: [{ id: "nominal-foundation", status: "active" }],
+    });
+    const html = await readFile(result.indexPath, "utf8");
+    expect(html).toContain("Mujica Workspace");
+    expect(html).toContain("New Project");
+    expect(html).toContain("['project','create'");
+    expect(html).toContain("Each robot owns its Charter, source, and evidence");
+  });
+
   test("projects real robot evidence into a deterministic offline debugger", async () => {
     const first = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     const second = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });

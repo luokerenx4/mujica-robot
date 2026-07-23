@@ -39,13 +39,13 @@ def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]
 
 
 class RobotEnvironment:
-    FOOT_SITE_NAMES = ("foot-fl-site", "foot-fr-site", "foot-rl-site", "foot-rr-site")
-    FOOT_SENSOR_NAMES = ("foot-force-fl", "foot-force-fr", "foot-force-rl", "foot-force-rr")
-
     def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int, domain_sample: dict[str, Any] | None = None):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
         self.compiled = compiled
+        self.morphology = dict(compiled.get("morphology", {}))
+        self.contact_points = list(self.morphology.get("contactPoints", []))
+        self.base_body_name = str(self.morphology.get("baseBody", "torso"))
         self.task = task
         self.domain_sample = dict(domain_sample or {})
         self.scenario = dict(scenario)
@@ -78,7 +78,7 @@ class RobotEnvironment:
         self.model.dof_damping[:] *= self.joint_damping_scale
         self.model.actuator_gainprm[:, 0] *= self.actuator_strength_scale
         self.model.geom_friction[:, 0] = float(self.scenario["friction"])
-        torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "torso")
+        torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, self.base_body_name)
         if torso >= 0:
             self.model.body_mass[torso] += float(self.scenario["payloadKg"])
 
@@ -166,14 +166,18 @@ class RobotEnvironment:
         return np.concatenate([observation[channel["name"]] for channel in self.compiled["observationContract"]["channels"]]).astype(np.float32)
 
     def foot_positions_world(self) -> np.ndarray | None:
-        site_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name) for name in self.FOOT_SITE_NAMES]
+        if not self.contact_points:
+            return None
+        site_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, str(point["site"])) for point in self.contact_points]
         if any(site_id < 0 for site_id in site_ids):
             return None
         return np.asarray([self.data.site_xpos[site_id].copy() for site_id in site_ids], dtype=np.float64)
 
     def foot_contact_forces(self) -> np.ndarray | None:
+        if not self.contact_points or any("sensor" not in point for point in self.contact_points):
+            return None
         values: list[float] = []
-        for name in self.FOOT_SENSOR_NAMES:
+        for name in [str(point["sensor"]) for point in self.contact_points]:
             sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, name)
             if sensor_id < 0:
                 return None
@@ -208,7 +212,7 @@ class RobotEnvironment:
         if push:
             now = self.step_index * self.control_dt
             pushing = float(push["timeSeconds"]) <= now < float(push["timeSeconds"]) + float(push["durationSeconds"])
-            torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "torso")
+            torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, self.base_body_name)
             if torso >= 0: self.data.xfrc_applied[torso, 1] = float(push["forceNewton"]) if pushing else 0.0
         for _ in range(self.physics_steps): mujoco.mj_step(self.model, self.data)
         self.step_index += 1

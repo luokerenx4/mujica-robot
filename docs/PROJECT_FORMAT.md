@@ -5,6 +5,8 @@ Every project contains `mujica.json` and owns all robot assets it references.
 ```text
 project/
   mujica.json
+  development-charter.json
+  morphology.json
   robots/<id>/robot.json + model.xml
   components/<id>/component.json + model.xml
   assemblies/<id>.robot.json
@@ -42,6 +44,14 @@ project/
 ```
 
 IDs use lowercase letters, digits, and hyphens and must match their directory or filename. Relative paths are confined beneath the project or package that owns them. Unknown JSON keys fail validation so typos cannot silently change a robot.
+
+`development-charter.json` freezes the project's proposition, operational
+domain, exclusions, capability stages, and the exact Benchmark cases that
+witness each stage. `morphology.json` names the base body and contact sites for
+Runtime diagnosis independently of any four-leg naming convention. Morphology
+is carried in compiled output but excluded from executable Assembly identity,
+so an observability-only metadata improvement does not invalidate compatible
+Policies.
 
 A Human Observation is a separate immutable hypothesis, never part of a Run,
 Capture, or Judge result. Its draft selects one Run time (and optional comparison
@@ -198,4 +208,8 @@ device-reported kinematics through Bundle geometry; they are not camera,
 motion-capture, physical-contact, Calibration, or hardware-verification
 evidence.
 
-`mujica-workspace.json` contains only a name, one projects directory, and an optional default project. Workspaces never provide shared components or policies.
+`mujica-workspace.json` contains only a name, one projects directory, and an
+optional default project. Workspaces never provide shared components or
+policies. `mujica project create` publishes a fully validated project atomically
+inside that directory; `mujica studio <workspace>` packages a read-only project
+switcher over the independently owned projects.

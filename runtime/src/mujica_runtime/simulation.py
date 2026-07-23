@@ -256,7 +256,18 @@ def validate_model(request: dict[str, Any]) -> dict[str, Any]:
     compiled = request["compiled"]
     if model.nu != compiled["actionContract"]["size"]:
         raise RuntimeError(f"Compiled action contract has size {compiled['actionContract']['size']}, MuJoCo model has {model.nu} controls")
-    return {"mujocoVersion": mujoco.__version__, "nq": model.nq, "nv": model.nv, "nu": model.nu, "nsensor": model.nsensor, "ngeom": model.ngeom, "modelMassKg": float(np.sum(model.body_mass)), "timestep": model.opt.timestep}
+    morphology = compiled.get("morphology", {})
+    base_body = str(morphology.get("baseBody", ""))
+    if not base_body or mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, base_body) < 0:
+        raise RuntimeError(f"Compiled morphology references unknown base body '{base_body}'")
+    contact_points = list(morphology.get("contactPoints", []))
+    sensed_contact_points = 0
+    for point in contact_points:
+        if mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, str(point["site"])) < 0:
+            raise RuntimeError(f"Compiled morphology contact point '{point['id']}' references unknown site '{point['site']}'")
+        if point.get("sensor") and mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SENSOR, str(point["sensor"])) >= 0:
+            sensed_contact_points += 1
+    return {"mujocoVersion": mujoco.__version__, "nq": model.nq, "nv": model.nv, "nu": model.nu, "nsensor": model.nsensor, "ngeom": model.ngeom, "modelMassKg": float(np.sum(model.body_mass)), "timestep": model.opt.timestep, "morphology": {"class": morphology.get("class"), "limbCount": morphology.get("limbCount"), "contactPointCount": len(contact_points), "sensedContactPointCount": sensed_contact_points}}
 
 
 def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:

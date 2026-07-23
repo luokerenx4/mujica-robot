@@ -21,7 +21,18 @@ export interface MujicaManifest {
   version: 1;
   id: string;
   name: string;
+  charter: string;
+  morphology: string;
   defaults: { assembly: string; controller: string; task: string; scenario: string; objective: string; benchmark: string };
+}
+
+export interface RobotMorphology {
+  version: 1;
+  project: string;
+  class: "legged" | "manipulator" | "wheeled" | "aerial" | "other";
+  baseBody: string;
+  limbCount: number;
+  contactPoints: Array<{ id: string; site: string; sensor?: string }>;
 }
 
 export interface RobotManifest {
@@ -108,6 +119,7 @@ export interface CompiledAssembly {
   plantHash: string;
   baseHash: string;
   catalogHash: string;
+  morphology: RobotMorphology;
   totalMassKg: number;
   componentCost: number;
   components: CompiledComponent[];
@@ -127,6 +139,13 @@ export interface AssemblyComparison {
 }
 
 export interface ProjectContext { rootDir: string; manifest: MujicaManifest }
+export interface MujicaWorkspace {
+  version: 1;
+  name: string;
+  projectsDirectory: string;
+  defaultProject: string | null;
+}
+export interface WorkspaceContext { rootDir: string; projectsDir: string; manifest: MujicaWorkspace }
 
 export interface ValidationIssue { path: string; code: string; message: string }
 

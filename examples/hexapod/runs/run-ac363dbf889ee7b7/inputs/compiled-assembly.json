@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "id": "hexapod",
+  "assemblyHash": "96d58807800e1fc002436b3a936c9b55e97ee489af5e6421b26a0e5900ed5b2b",
+  "executionHash": "af8fc46373c7cc970ff2247aef724c727da389cdf969372122f876e8b290e67e",
+  "modelHash": "4a43b25dc27e2481298f7a1c8e07bd0c1563e49c6bae3d9e2f1d0383c216bfe5",
+  "plantHash": "5ea00e72ae1d2121e4f61844b7d1957554af63b541d90eec0ed376da0aa23a04",
+  "baseHash": "2344a53709ce4e346028e513cdd2acc918380ffb8a78f0985f19fefd17ec2a24",
+  "catalogHash": "a7603c7988e645203f0758fb572e248440cc097d0e36b473e83957e8eb2b3bf2",
+  "morphology": {
+    "class": "legged",
+    "baseBody": "torso",
+    "limbCount": 6,
+    "contactPoints": [
+      {
+        "id": "front-left",
+        "site": "foot-fl-site",
+        "sensor": "foot-force-fl"
+      },
+      {
+        "id": "front-right",
+        "site": "foot-fr-site",
+        "sensor": "foot-force-fr"
+      },
+      {
+        "id": "middle-left",
+        "site": "foot-ml-site",
+        "sensor": "foot-force-ml"
+      },
+      {
+        "id": "middle-right",
+        "site": "foot-mr-site",
+        "sensor": "foot-force-mr"
+      },
+      {
+        "id": "rear-left",
+        "site": "foot-rl-site",
+        "sensor": "foot-force-rl"
+      },
+      {
+        "id": "rear-right",
+        "site": "foot-rr-site",
+        "sensor": "foot-force-rr"
+      }
+    ]
+  },
+  "totalMassKg": 6.2,
+  "componentCost": 0,
+  "components": [],
+  "observationContract": {
+    "version": 1,
+    "assembly": "hexapod",
+    "channels": [
+      {
+        "name": "joint-position",
+        "kind": "joint-position",
+        "size": 12,
+        "source": "qpos:joints",
+        "unit": "rad"
+      },
+      {
+        "name": "joint-velocity",
+        "kind": "joint-velocity",
+        "size": 12,
+        "source": "qvel:joints",
+        "unit": "rad-s"
+      },
+      {
+        "name": "base-height",
+        "kind": "body-state",
+        "size": 1,
+        "source": "qpos:root-height",
+        "unit": "m"
+      },
+      {
+        "name": "base-orientation",
+        "kind": "body-state",
+        "size": 4,
+        "source": "qpos:root-quaternion",
+        "unit": "quaternion"
+      },
+      {
+        "name": "base-velocity",
+        "kind": "body-state",
+        "size": 6,
+        "source": "qvel:root",
+        "unit": "mixed"
+      },
+      {
+        "name": "foot-contact-force",
+        "kind": "sensor",
+        "size": 6,
+        "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-ml,foot-force-mr,foot-force-rl,foot-force-rr",
+        "unit": "n"
+      }
+    ],
+    "size": 41
+  },
+  "actionContract": {
+    "version": 1,
+    "assembly": "hexapod",
+    "channels": [
+      {
+        "name": "joint-torque",
+        "kind": "actuator",
+        "size": 12,
+        "source": "actuator:all",
+        "unit": "nm",
+        "low": -6,
+        "high": 6
+      }
+    ],
+    "size": 12
+  },
+  "observationContractHash": "a77eb520e3f2bc49fa95b0b7942b38b3690d2cfe0366c1acfa757b464d797684",
+  "actionContractHash": "d079c191b5f391ab0e1608b9f391246a3109b0c1f72db7da5066c5a38f648c0b",
+  "actionLow": [
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6,
+    -6
+  ],
+  "actionHigh": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+  ],
+  "sensorChannelCount": 6
+}

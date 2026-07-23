@@ -19,6 +19,17 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.to.components.find((item) => item.componentId === "foot-force-sensor")?.sensors.map((item) => item.name)).toEqual(["foot-force-fl", "foot-force-fr", "foot-force-rl", "foot-force-rr"]);
   });
 
+  test("compiled morphology carries contact evidence without assuming four legs", async () => {
+    const hexapod = resolve(import.meta.dir, "../../../examples/hexapod");
+    const assembly = await compileAssembly(hexapod, "hexapod");
+    expect(assembly.morphology).toMatchObject({ class: "legged", limbCount: 6, baseBody: "torso" });
+    expect(assembly.morphology.contactPoints.map((point) => point.id)).toEqual([
+      "front-left", "front-right", "middle-left", "middle-right", "rear-left", "rear-right",
+    ]);
+    expect(assembly.observationContract.channels.find((channel) => channel.name === "foot-contact-force")?.size).toBe(6);
+    expect(assembly.actionContract.size).toBe(12);
+  });
+
   test("components expose physical and kinematic inventory without changing executable MJCF", async () => {
     const component = await loadComponent(project, "body-imu");
     expect(component.manifest.physical.inertiaDiagonalKgM2).toEqual([0.00001, 0.00001, 0.00001]);
@@ -59,7 +70,7 @@ describe("Robot Assembly compiler", () => {
     const root = await mkdtemp(join(tmpdir(), "mujica-component-config-"));
     try {
       await mkdir(join(root, "assemblies"), { recursive: true }); await mkdir(join(root, "components"), { recursive: true }); await mkdir(join(root, "robots"), { recursive: true });
-      await cp(join(project, "mujica.json"), join(root, "mujica.json")); await cp(join(project, "robots/quadruped-base"), join(root, "robots/quadruped-base"), { recursive: true }); await cp(join(project, "components/filtered-body-imu"), join(root, "components/filtered-body-imu"), { recursive: true });
+      await cp(join(project, "mujica.json"), join(root, "mujica.json")); await cp(join(project, "morphology.json"), join(root, "morphology.json")); await cp(join(project, "robots/quadruped-base"), join(root, "robots/quadruped-base"), { recursive: true }); await cp(join(project, "components/filtered-body-imu"), join(root, "components/filtered-body-imu"), { recursive: true });
       await writeFile(join(root, "assemblies/invalid.robot.json"), JSON.stringify({ version: 1, id: "invalid", name: "Invalid config", base: "quadruped-base", components: [{ id: "body-imu", component: "filtered-body-imu", mount: "torso-sensor", config: { cutoffHz: 1001 } }] }));
       await expect(compileAssembly(root, "invalid")).rejects.toThrow("value must be at most 1000");
       await writeFile(join(root, "assemblies/invalid.robot.json"), JSON.stringify({ version: 1, id: "invalid", name: "Invalid config", base: "quadruped-base", components: [{ id: "body-imu", component: "filtered-body-imu", mount: "torso-sensor" }] }));

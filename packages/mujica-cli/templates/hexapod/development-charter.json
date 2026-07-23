@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "project": "__PROJECT_ID__",
+  "title": "__PROJECT_NAME__ development charter",
+  "proposition": "Develop a six-legged robot that establishes stable commanded locomotion in MuJoCo before robustness, learning, or hardware transfer claims are introduced.",
+  "stakeholders": [
+    "robot controls developer",
+    "ML researcher",
+    "simulation reviewer"
+  ],
+  "operationalDesignDomain": {
+    "environments": [
+      "MuJoCo development simulation",
+      "indoor laboratory"
+    ],
+    "terrain": [
+      "level rigid floor"
+    ],
+    "conditions": [
+      "nominal friction",
+      "no payload",
+      "no external disturbance"
+    ],
+    "exclusions": [
+      "rough terrain",
+      "stairs",
+      "hardware actuation",
+      "unbounded payload or friction variation"
+    ]
+  },
+  "morphology": {
+    "class": "legged",
+    "locomotion": "walking",
+    "limbCount": 6,
+    "notes": "Free-base hexapod with two actuated sagittal joints and one contact sensor per leg."
+  },
+  "capabilityStages": [
+    {
+      "id": "nominal-foundation",
+      "name": "Nominal gait foundation",
+      "question": "Can the initial morphology survive and produce measurable commanded forward motion on a level floor?",
+      "status": "active",
+      "scenarios": [
+        {
+          "task": "forward-walk",
+          "scenario": "nominal",
+          "benchmark": "starter-locomotion",
+          "role": "release"
+        }
+      ],
+      "exitCriteria": [
+        "The locked nominal Benchmark completes without a survival gate violation.",
+        "The authoritative Studio replay and metrics agree on the observed motion.",
+        "Any next robustness or ML stage is added to this Charter with explicit scenarios first."
+      ]
+    }
+  ],
+  "nonGoals": [
+    "Claiming robust hexapod locomotion from the starter gait",
+    "Reusing a quadruped Controller or Policy without a compatible six-leg contract",
+    "Treating simulation evidence as hardware qualification"
+  ]
+}

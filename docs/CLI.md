@@ -2,6 +2,9 @@
 
 ```text
 mujica help [--json]
+mujica project list <workspace> [--json]
+mujica project inspect <workspace-or-project> [--project ID] [--json]
+mujica project create <workspace> --id ID --name NAME --template hexapod [--json]
 mujica validate <project> [--json]
 mujica inspect <project> [--json]
 mujica component list <project> [--json]
@@ -17,6 +20,7 @@ mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
+mujica studio <workspace> [--json]
 mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID) [--json]
 mujica twin audit <project> --capture ID --episode ID [--json]
 mujica twin inspect <project> --audit ID [--transition N] [--json]
@@ -56,6 +60,13 @@ mujica revision inspect <project> --revision ID [--json]
 
 JSON mode emits one schema-versioned value on stdout. Validation/runtime failures use exit code 1; invalid CLI usage uses exit code 2. Artifact-producing commands identify each path and whether it is immutable.
 
+`project list|inspect|create` is the Workspace lifecycle boundary. Creation is
+confined to the Workspace projects directory, refuses overwrite, copies one
+complete executable template, substitutes only project identity, validates the
+Charter and all source definitions, and publishes atomically. The initial
+`hexapod` template is intentionally concrete rather than an invalid blank
+framework.
+
 `controller list` exposes each Program or Policy Controller and the Assemblies it can legally execute against. `controller inspect` includes the complete Program Controller interface or frozen Policy pointer plus structured incompatibility reasons. Program Controller Observation requirements are a named subset; produced Action channels must exactly match the compiled Assembly in order, size, and bounds. Incompatible pairs fail before Python Runtime invocation.
 
 `domain list|inspect` exposes each Domain Profile's physical uncertainty ranges,
@@ -76,7 +87,12 @@ writing the Profile. Simulation Runs can only support `synthetic` provenance;
 
 `diagnose` evaluates the requested robot and the locked Benchmark baseline without publishing artifacts. It reports every enforced gate as a signed margin, ranks failing cases by normalized violation severity, preserves measured findings as `kind: evidence`, and labels possible intervention surfaces as `kind: hypothesis`. Its next action persists the worst case through `simulate` so events and trajectory can be inspected without confusing a heuristic with proof.
 
-`studio` creates or reuses an immutable MuJoCo replay under `<project>/.mujica/replays/`, then copies it into a content-addressed offline projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run; without it, the deterministic last run id is selected. The Runtime loads the Run's frozen `model.xml`, reconstructs every recorded `qpos`, and renders PNG frames. The browser only synchronizes those frames with trajectory, Events, health, attitude, command, measured motion, contact force, and Action telemetry.
+`studio <workspace>` creates an offline project home with Charter summaries,
+project switching, embedded project Studios, and a form that emits the exact
+`project create` command. It remains read-only; running that CLI command is the
+explicit write boundary.
+
+`studio <project>` creates or reuses an immutable MuJoCo replay under `<project>/.mujica/replays/`, then copies it into a content-addressed offline projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run; without it, the deterministic last run id is selected. The Runtime loads the Run's frozen `model.xml`, reconstructs every recorded `qpos`, and renders PNG frames. The browser only synchronizes those frames with trajectory, Events, health, attitude, command, measured motion, contact force, and Action telemetry.
 
 `studio --capture ID --episode ID` instead verifies one completed Hardware
 Capture episode and its exact frozen Hardware Bundle before rendering

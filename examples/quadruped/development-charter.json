@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "project": "quadruped",
+  "title": "Commanded quadruped mobility from simulation to governed hardware",
+  "proposition": "Develop a compact four-legged robot that follows planar velocity and yaw commands, survives bounded disturbances, and carries reproducible evidence from MuJoCo through shadow hardware commissioning.",
+  "stakeholders": [
+    "robot controls researcher",
+    "ML researcher",
+    "hardware commissioning operator"
+  ],
+  "operationalDesignDomain": {
+    "environments": [
+      "indoor laboratory",
+      "MuJoCo digital twin",
+      "supervised dry-run and HIL bench"
+    ],
+    "terrain": [
+      "level rigid floor",
+      "bounded low-friction level floor"
+    ],
+    "conditions": [
+      "bounded payload variation",
+      "bounded lateral disturbances",
+      "bounded sensing and actuator delay"
+    ],
+    "exclusions": [
+      "stairs and discontinuous terrain",
+      "outdoor weather",
+      "unsupervised physical actuation",
+      "payload manipulation"
+    ]
+  },
+  "morphology": {
+    "class": "legged",
+    "locomotion": "walking",
+    "limbCount": 4,
+    "notes": "Free-base quadruped with three actuated joints per leg in the current development Assembly."
+  },
+  "capabilityStages": [
+    {
+      "id": "command-foundation",
+      "name": "Command-conditioned locomotion",
+      "question": "Can the robot execute stop, forward, reverse, lateral, yaw, delay, and disturbance commands without gate violations?",
+      "status": "accepted",
+      "scenarios": [
+        { "task": "stand", "scenario": "nominal", "benchmark": "command-tracking", "role": "regression" },
+        { "task": "forward-walk", "scenario": "nominal", "benchmark": "command-tracking", "role": "release" },
+        { "task": "lateral-walk", "scenario": "delayed-lateral-push", "benchmark": "command-tracking", "role": "release" }
+      ],
+      "exitCriteria": [
+        "All gating cases in the locked command-tracking Benchmark pass.",
+        "Every accepted Controller remains compatible with the declared Assembly interface."
+      ]
+    },
+    {
+      "id": "transition-quality",
+      "name": "Transitions, braking, and visible motion quality",
+      "question": "Can the robot redirect and stop cleanly without trading away yaw settling or foot-contact quality?",
+      "status": "active",
+      "scenarios": [
+        { "task": "accelerate-stop", "scenario": "nominal", "benchmark": "command-transitions", "role": "development" },
+        { "task": "yaw-redirection", "scenario": "nominal", "benchmark": "command-transitions", "role": "release" },
+        { "task": "lateral-redirection", "scenario": "payload-variation", "benchmark": "command-transitions", "role": "release" }
+      ],
+      "exitCriteria": [
+        "All gating transition cases pass without regression against command-tracking.",
+        "A human-reviewed witness shows accepted motion without unresolved severe visual hypotheses."
+      ]
+    },
+    {
+      "id": "robust-transfer",
+      "name": "Robustness and sim-to-real evidence",
+      "question": "Does the selected robot remain feasible across held-out plant variation and governed shadow commissioning?",
+      "status": "planned",
+      "scenarios": [
+        { "task": "forward-walk", "scenario": "strong-lateral-push", "benchmark": "spatial-robustness", "role": "regression" },
+        { "task": "forward-walk", "scenario": "heldout-heavy-weak", "benchmark": "sim-to-real-audit", "role": "release" }
+      ],
+      "exitCriteria": [
+        "All gating held-out plant cases pass with immutable Policy and calibration provenance.",
+        "Shadow hardware capture preserves safety, state ABI, and Judge identities."
+      ]
+    }
+  ],
+  "nonGoals": [
+    "Claiming arbitrary-terrain autonomy",
+    "Treating aggregate reward as a substitute for capability gates",
+    "Granting hardware actuation authority from simulation evidence alone"
+  ]
+}

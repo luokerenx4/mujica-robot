@@ -46,7 +46,7 @@ export function runtimeCompiled(assembly: CompiledAssembly): Record<string, unkn
   const actionHigh = assembly.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.high ?? 1));
   return {
     version: assembly.version, id: assembly.id, assemblyHash: assembly.assemblyHash, executionHash: assembly.executionHash, modelHash: assembly.modelHash, plantHash: assembly.plantHash, baseHash: assembly.baseHash, catalogHash: assembly.catalogHash,
-    totalMassKg: assembly.totalMassKg, componentCost: assembly.componentCost, components: assembly.components,
+    morphology: assembly.morphology, totalMassKg: assembly.totalMassKg, componentCost: assembly.componentCost, components: assembly.components,
     observationContract: assembly.observationContract, actionContract: assembly.actionContract,
     observationContractHash: hashJson(assembly.observationContract), actionContractHash: hashJson(assembly.actionContract),
     actionLow, actionHigh, sensorChannelCount: assembly.observationContract.channels.filter((channel) => channel.kind === "sensor").reduce((sum, channel) => sum + channel.size, 0),

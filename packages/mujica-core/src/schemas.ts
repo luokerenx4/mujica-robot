@@ -17,10 +17,59 @@ const mountSchema = z.object({ id: idSchema, type: idSchema, site: z.string().mi
 
 export const manifestSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
+  charter: relativeFileSchema,
+  morphology: relativeFileSchema,
   defaults: z.object({ assembly: idSchema, controller: idSchema, task: idSchema, scenario: idSchema, objective: idSchema, benchmark: idSchema }).strict(),
 }).strict();
 
 export const workspaceSchema = z.object({ version: z.literal(1), name: z.string().min(1), projectsDirectory: relativeFileSchema, defaultProject: idSchema.nullable() }).strict();
+
+export const developmentCharterSchema = z.object({
+  version: z.literal(1),
+  project: idSchema,
+  title: z.string().min(1),
+  proposition: z.string().min(1),
+  stakeholders: z.array(z.string().min(1)).min(1),
+  operationalDesignDomain: z.object({
+    environments: z.array(z.string().min(1)).min(1),
+    terrain: z.array(z.string().min(1)).min(1),
+    conditions: z.array(z.string().min(1)),
+    exclusions: z.array(z.string().min(1)),
+  }).strict(),
+  morphology: z.object({
+    class: z.enum(["legged", "manipulator", "wheeled", "aerial", "other"]),
+    locomotion: z.enum(["walking", "rolling", "flying", "fixed", "hybrid"]),
+    limbCount: z.number().int().nonnegative(),
+    notes: z.string(),
+  }).strict(),
+  capabilityStages: z.array(z.object({
+    id: idSchema,
+    name: z.string().min(1),
+    question: z.string().min(1),
+    status: z.enum(["planned", "active", "accepted"]),
+    scenarios: z.array(z.object({
+      task: idSchema,
+      scenario: idSchema,
+      benchmark: idSchema,
+      role: z.enum(["development", "regression", "release"]),
+    }).strict()).min(1),
+    exitCriteria: z.array(z.string().min(1)).min(1),
+  }).strict()).min(1).refine((stages) => new Set(stages.map((stage) => stage.id)).size === stages.length, "capability stage ids must be unique"),
+  nonGoals: z.array(z.string().min(1)),
+}).strict();
+
+export const robotMorphologySchema = z.object({
+  version: z.literal(1),
+  project: idSchema,
+  class: z.enum(["legged", "manipulator", "wheeled", "aerial", "other"]),
+  baseBody: z.string().min(1),
+  limbCount: z.number().int().nonnegative(),
+  contactPoints: z.array(z.object({
+    id: idSchema,
+    site: z.string().min(1),
+    sensor: z.string().min(1).optional(),
+  }).strict()).refine((points) => new Set(points.map((point) => point.id)).size === points.length, "contact point ids must be unique"),
+}).strict();
 
 export const robotSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), mjcf: relativeFileSchema,
@@ -641,6 +690,7 @@ export const researchReviewSchema = z.object({
 }).strict();
 
 export type ControllerDefinition = z.output<typeof controllerSchema>;
+export type DevelopmentCharter = z.output<typeof developmentCharterSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
 export type DomainProfileDefinition = z.output<typeof domainProfileSchema>;

@@ -2,7 +2,7 @@ import { access, lstat, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, developmentCharterSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DevelopmentCharter, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
 import { confined, hashJson, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -49,6 +49,10 @@ export const loadDomainProfile = async (projectDir: string, id: string): Promise
 export const loadCalibration = async (projectDir: string, id: string): Promise<CalibrationDefinition> => await readJson(confined(resolve(projectDir), `calibrations/${id}.calibration.json`), calibrationSchema) as CalibrationDefinition;
 export const loadObjective = async (projectDir: string, id: string): Promise<ObjectiveDefinition> => await readJson(confined(resolve(projectDir), `objectives/${id}.objective.json`), objectiveSchema) as ObjectiveDefinition;
 export const loadBenchmark = async (projectDir: string, id: string): Promise<BenchmarkDefinition> => await readJson(confined(resolve(projectDir), `benchmarks/${id}.benchmark.json`), benchmarkSchema) as BenchmarkDefinition;
+export async function loadDevelopmentCharter(projectDir: string): Promise<DevelopmentCharter> {
+  const project = await loadProject(projectDir);
+  return await readJson(confined(project.rootDir, project.manifest.charter), developmentCharterSchema) as DevelopmentCharter;
+}
 export const loadTraining = async (projectDir: string, id: string): Promise<TrainingDefinition> => await readJson(confined(resolve(projectDir), `training/${id}.training.json`), trainingSchema) as TrainingDefinition;
 export const loadCandidate = async (projectDir: string, id: string): Promise<CandidateDefinition> => await readJson(confined(resolve(projectDir), `candidates/${id}/candidate.json`), candidateSchema) as CandidateDefinition;
 export const loadResearch = async (projectDir: string, id: string): Promise<ResearchDefinition> => await readJson(confined(resolve(projectDir), `research/${id}.research.json`), researchSchema) as ResearchDefinition;
@@ -157,6 +161,8 @@ export async function verifyCandidateChanges(projectDir: string, candidate: Cand
 
 export async function validateProjectDefinitions(projectDir: string): Promise<Record<string, number>> {
   const project = await loadProject(projectDir); const root = project.rootDir;
+  const charter = await loadDevelopmentCharter(root);
+  if (charter.project !== project.manifest.id) throw new Error(`Development Charter project '${charter.project}' must match Mujica project '${project.manifest.id}'`);
   const controllerIds = await directoryIds(join(root, "controllers"));
   for (const id of controllerIds) {
     const controller = await loadController(root, id);
@@ -210,6 +216,15 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   const benchmarkIds = await fileIds(join(root, "benchmarks"), ".benchmark.json");
   for (const id of benchmarkIds) {
     const benchmark = await loadBenchmark(root, id); await loadObjective(root, benchmark.objective); const assembly = await compileAssembly(root, benchmark.baseline.assembly); const controller = await loadController(root, benchmark.baseline.controller); assertProgramControllerCompatible(controller.definition, assembly); for (const item of benchmark.cases) { await loadTask(root, item.task); await loadScenario(root, item.scenario); }
+  }
+  for (const stage of charter.capabilityStages) {
+    for (const witness of stage.scenarios) {
+      const benchmark = await loadBenchmark(root, witness.benchmark);
+      await loadTask(root, witness.task); await loadScenario(root, witness.scenario);
+      if (!benchmark.cases.some((item) => item.task === witness.task && item.scenario === witness.scenario)) {
+        throw new Error(`Development Charter stage '${stage.id}' Task '${witness.task}' / Scenario '${witness.scenario}' is not a case in Benchmark '${witness.benchmark}'`);
+      }
+    }
   }
   const candidateIds = await directoryIds(join(root, "candidates"));
   for (const id of candidateIds) {

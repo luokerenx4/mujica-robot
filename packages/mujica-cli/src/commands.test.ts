@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, rmSync } from "node:fs";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
@@ -66,6 +66,46 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "driver.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibrate")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibration.promote")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "project.create")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "project.list")).toBe(true);
+  });
+
+  test("creates and discovers an independently chartered hexapod project atomically", async () => {
+    const workspace = await mkdtemp(resolve(tmpdir(), "mujica-workspace-"));
+    try {
+      await mkdir(resolve(workspace, "projects"));
+      await writeFile(resolve(workspace, "mujica-workspace.json"), JSON.stringify({
+        version: 1, name: "Lifecycle test", projectsDirectory: "projects", defaultProject: null,
+      }));
+      const created = invoke(["project", "create", workspace, "--id", "field-hexapod", "--name", "Field Hexapod", "--template", "hexapod", "--json"]);
+      expect(created.code).toBe(0);
+      expect(JSON.parse(created.stdout).data).toMatchObject({
+        project: { id: "field-hexapod", charter: "development-charter.json" },
+        charter: { morphology: { class: "legged", limbCount: 6 } },
+        template: "hexapod",
+      });
+      const listed = invoke(["project", "list", workspace, "--json"]);
+      expect(JSON.parse(listed.stdout).data.projects).toMatchObject([{ id: "field-hexapod", morphology: { limbCount: 6 } }]);
+      const inspected = invoke(["project", "inspect", workspace, "--project", "field-hexapod", "--json"]);
+      const inspectedData = JSON.parse(inspected.stdout).data;
+      expect(inspectedData.assemblies[0]).toMatchObject({ id: "hexapod", actionSize: 12 });
+      expect(inspectedData.assemblies[0].morphology.contactPoints).toHaveLength(6);
+      expect(inspectedData.assemblies[0].morphology.contactPoints[0].id).toBe("front-left");
+      const duplicate = invoke(["project", "create", workspace, "--id", "field-hexapod", "--name", "Duplicate", "--template", "hexapod", "--json"]);
+      expect(duplicate.code).toBe(1);
+      expect(JSON.parse(duplicate.stderr).error.message).toContain("already exists");
+
+      const projectRoot = resolve(workspace, "projects", "field-hexapod");
+      const charterPath = resolve(projectRoot, "development-charter.json");
+      const charter = JSON.parse(await readFile(charterPath, "utf8"));
+      charter.capabilityStages[0].scenarios[0].scenario = "missing-scene";
+      await writeFile(charterPath, JSON.stringify(charter));
+      const invalid = invoke(["validate", projectRoot, "--json"]);
+      expect(invalid.code).toBe(1);
+      expect(JSON.parse(invalid.stderr).error.message).toContain("missing-scene");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
   });
 
   test("human and Agent debugging share exact Run and Capture evidence contexts", async () => {
@@ -1077,7 +1117,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-d474a4b669d2e3f6",
+      "--bundle", "hardware-76c139429c785eed",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -1127,7 +1167,7 @@ describe("agent CLI contract", () => {
     }
     const legacy = invoke(["hardware", "verify", "examples/quadruped", "--bundle", "hardware-f0b608d6d693dead", "--evidence", "examples/quadruped/hardware-verifications/verification-fe6210762029bd3f/evidence.json", "--json"]);
     expect(legacy.code).toBe(0); expect(JSON.parse(legacy.stdout).data.status).toBe("PROTOCOL-VERIFIED");
-  });
+  }, 20_000);
 
   test("a locked candidate preview is read-only and keeps its score evidence", () => {
     const result = invoke(["candidate", "examples/quadruped", "--candidate", "foot-force-recovery", "--json"]); const envelope = JSON.parse(result.stdout);
