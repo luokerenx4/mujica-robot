@@ -114,6 +114,12 @@ message delayed in transport is independently rejected by the Driver before it
 advances MuJoCo or physical actuation. The checked-in negative proofs preserve
 both outcomes and their acknowledged emergency stops.
 
+The same boundary now treats Driver health as executable input to safety rather
+than an operator-side note. Every required state carries motor temperature and
+current, bus voltage, fault codes, physical E-stop state, and watchdog health.
+An unsafe sample blocks both program Actions and learned-Policy proposals before
+dispatch and remains visible in the immutable Capture.
+
 The first Policy trained from that captured Profile is also frozen as evidence.
 It scores `60.6407` on the locked `spatial-robustness` Benchmark versus `60.4130`
 for the prior residual Policy and `60.2947` for the program Controller. It is

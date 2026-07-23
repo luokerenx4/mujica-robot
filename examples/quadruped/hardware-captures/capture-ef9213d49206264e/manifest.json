@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "planHash": "a266a303627fe19904d391848a6e1baa6ebae3e66869d9489b47f2d846a32b13",
+  "bundleHash": "276bc4f3e2b72321bbe8d7658ec0d873c2bec009dee520728c42f10f1a4b1ed4",
+  "driverHash": "2232d1a056225e0b6ae31031d9f3bdfbef3948afb2a5578931f8301c6ffa347d",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+    "--state-age-ms",
+    "0"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "Mujica health proof",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T13:43:09.575809Z",
+  "endedAt": "2026-07-23T13:43:09.738396Z",
+  "status": "COMPLETED",
+  "transcriptHash": "f854d61c939b03a24b51deddbd33c7b9cb4a4aeb787c49b9c8100d94a9e96343",
+  "episodeHashes": {
+    "learned-policy-shadow": "f5f5ba8cfe30bd1065655ed1f721ec8e80496600d34a96ebb3a3a35f5d8288e3"
+  },
+  "runtimeSourceHash": "3105e7ba45669f80e83d87b9e383adf9be354ff5f565e0855adb59352077d172",
+  "harnessSourceHash": "874a080ab0cb7405910a864ca14084b84967737a153ff4c90b75d4fafa704eec",
+  "mode": "shadow",
+  "actuationAuthorized": false,
+  "protocolCapabilities": [
+    "applied-action",
+    "decision-deadline",
+    "device-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 11,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "decisionDeadlineIdentity": {
+    "maximumMicroseconds": 2196,
+    "meanMicroseconds": 557,
+    "samples": 10,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0
+  },
+  "deviceHealthIdentity": {
+    "samples": 11,
+    "maximumMotorTemperatureMilliC": 40000,
+    "maximumMotorCurrentMilliA": 0,
+    "minimumBusVoltageMilliV": 24000,
+    "maximumBusVoltageMilliV": 24000,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0
+  },
+  "emergencyStopAcknowledgements": 0,
+  "controllerWarmupPasses": 2,
+  "realTimeQualified": true,
+  "id": "capture-ef9213d49206264e",
+  "captureHash": "ef9213d49206264e308f39b4579fb42aaff1928aad13c3d932653a1649923899",
+  "plan": "history-policy-shadow-dry-run",
+  "target": "history-policy-shadow-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-history-3dof",
+  "assemblyHash": "547647c66ff536a486ed3134902d24173597e08b6321be404fbda47300886f84",
+  "executionHash": "e6e345bf462080612f784fdde084a0e732bf41634e6668c76e813ed0c0c693d3",
+  "modelHash": "5433c9eca695980694a51e121a2888f1e52d7c7280c37ec72815cffaf9d9f5c0",
+  "controller": "capture-calibrated-history-residual-gait",
+  "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+  "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+  "episodes": [
+    {
+      "id": "learned-policy-shadow",
+      "seed": 4302,
+      "plannedSteps": 10,
+      "steps": 10,
+      "completed": true,
+      "reason": null,
+      "path": "captures/learned-policy-shadow.ndjson",
+      "hash": "f5f5ba8cfe30bd1065655ed1f721ec8e80496600d34a96ebb3a3a35f5d8288e3"
+    }
+  ],
+  "dispatch": {
+    "samples": 10,
+    "maximumLatencyMs": 2.204042,
+    "meanLatencyMs": 0.5621875999999999,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "decisionDeadline": {
+    "maximumLatencyMs": 10.0,
+    "samples": 10,
+    "maximumObservedLatencyMs": 2.196334,
+    "meanObservedLatencyMs": 0.5570458,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0,
+    "maximumDriverRejectedLatencyMs": 0.0
+  },
+  "deviceHealth": {
+    "samples": 11,
+    "maximumMotorTemperatureC": 40.0,
+    "maximumMotorCurrentA": 0.0,
+    "minimumBusVoltageV": 24.0,
+    "maximumBusVoltageV": 24.0,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0
+  },
+  "stateAge": {
+    "samples": 11,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [],
+  "safeStops": 1,
+  "emergencyStops": 0,
+  "reasons": [],
+  "calibrationEligible": false,
+  "completed": true
+}

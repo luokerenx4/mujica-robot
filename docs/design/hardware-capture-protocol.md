@@ -35,9 +35,9 @@ host close → driver completed
 The hello message fixes protocol version, Bundle and contract hashes,
 environment, and driver hash. The driver returns its vendor/model/serial identity
 and an explicit capability set. Commissioning requires `shadow-action`,
-`applied-action`, `state-age-ms`, and `stop-ack`. Every state contains full
+`applied-action`, `state-age-ms`, `device-health`, and `stop-ack`. Every state contains full
 `qpos`, `qvel`, the ordered Observation vector, the Action the device actually
-applied, and the device-measured state age.
+applied, the device-measured state age, and typed Driver health telemetry.
 
 The host executes only the frozen Controller. It scales and slew-limits the
 Controller Action, then clips it to the frozen Action Contract. It records the
@@ -89,6 +89,25 @@ Any rejection aborts the synchronous episode. The host does not use
 is no safe state transition to assume. Captures distinguish host pre-dispatch
 misses from driver rejections and preserve both clocks' measurements.
 
+### Device health
+
+A Target with `requireDeviceHealth=true` fixes motor-temperature and absolute
+motor-current ceilings plus a valid bus-voltage interval. The negotiated
+`device-health` state object contains one temperature and current value per
+Action channel, bus voltage, unique machine-safe fault codes, physical E-stop
+state, and Driver watchdog health.
+
+The host validates shape, finiteness, fault-code syntax, and boolean status
+before Controller evaluation. Over-temperature, over-current, under/over
+voltage, any active Driver fault, an engaged physical E-stop, or an unhealthy
+watchdog aborts before `action` or `shadow-action` dispatch. The raw health
+sample, intervention reason, extrema, and fault/E-stop/watchdog sample counts
+enter the immutable Capture.
+
+Health telemetry is a host-visible interlock, not the primary protection.
+Firmware must still enforce its own limits and physical E-stop independently if
+the host process, transport, or Policy fails.
+
 ## Safety and authority
 
 Before each Action the host checks:
@@ -98,6 +117,7 @@ Before each Action the host checks:
 - observation/state shape and finiteness;
 - contract-sized applied Action telemetry;
 - finite, nonnegative device state age below the Hardware Target limit;
+- contract-sized motor health, bus voltage, Driver faults, E-stop, and watchdog;
 - maximum joint speed;
 - optional free-base height and yaw-invariant tilt;
 - host decision deadline and driver-local receipt deadline;
@@ -129,7 +149,7 @@ Each immutable Hardware Capture contains:
 - one calibration NDJSON file per completed episode;
 - proposed/commanded/applied Actions, state-age distribution, stop
   acknowledgements, Controller warm-up count, real-time qualification,
-  host decision/dispatch latency, driver rejection metrics, and every intervention;
+  host decision/dispatch latency, Driver rejection and health metrics, and every intervention;
 - a report and manifest declaring `COMPLETED`, `ABORTED`, or `FAILED`.
 
 Only an actuation-authorized `COMPLETED` episode may enter a Calibration

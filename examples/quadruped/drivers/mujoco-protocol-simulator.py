@@ -38,9 +38,20 @@ def main() -> None:
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--state-age-ms", type=float, default=0.0)
     parser.add_argument("--receive-delay-ms", type=float, default=0.0)
+    parser.add_argument("--motor-temperature-c", type=float, default=40.0)
+    parser.add_argument("--motor-current-a", type=float, default=0.0)
+    parser.add_argument("--bus-voltage-v", type=float, default=24.0)
+    parser.add_argument("--fault", action="append", default=[])
+    parser.add_argument("--estop-engaged", action="store_true")
+    parser.add_argument("--watchdog-unhealthy", action="store_true")
     arguments = parser.parse_args()
-    if arguments.receive_delay_ms < 0:
-        raise RuntimeError("--receive-delay-ms must be nonnegative")
+    if any(not np.isfinite(value) or value < 0 for value in (
+        arguments.receive_delay_ms,
+        arguments.motor_temperature_c,
+        arguments.motor_current_a,
+        arguments.bus_voltage_v,
+    )):
+        raise RuntimeError("delay and device health numeric arguments must be finite and nonnegative")
     bundle_root = Path(os.environ["MUJICA_HARDWARE_BUNDLE"])
     bundle = json.loads((bundle_root / "manifest.json").read_text())
     compiled = json.loads((bundle_root / "revision" / "compiled" / "compiled-assembly.json").read_text())
@@ -49,6 +60,15 @@ def main() -> None:
     model_path = bundle_root / "revision" / "compiled" / "model.xml"
     scenario = json.loads(Path(arguments.scenario).read_text())
     target = bundle["target"]
+    action_size = int(compiled["actionContract"]["size"])
+    device_health = {
+        "motorTemperatureC": [arguments.motor_temperature_c] * action_size,
+        "motorCurrentA": [arguments.motor_current_a] * action_size,
+        "busVoltageV": arguments.bus_voltage_v,
+        "faults": list(arguments.fault),
+        "estopEngaged": bool(arguments.estop_engaged),
+        "watchdogHealthy": not bool(arguments.watchdog_unhealthy),
+    }
     environment: RobotEnvironment | None = None
     observation: dict[str, np.ndarray] | None = None
     active_episode: str | None = None
@@ -65,7 +85,7 @@ def main() -> None:
             "model": target["device"]["model"],
             "serial": "simulated",
         },
-        "capabilities": ["applied-action", "decision-deadline", "shadow-action", "state-age-ms", "stop-ack"],
+        "capabilities": ["applied-action", "decision-deadline", "device-health", "shadow-action", "state-age-ms", "stop-ack"],
     })
 
     while True:
@@ -101,6 +121,7 @@ def main() -> None:
                 "observation": environment.vector(observation).astype(float).tolist(),
                 "appliedAction": last_applied.tolist(),
                 "stateAgeMs": arguments.state_age_ms,
+                "deviceHealth": device_health,
             })
         elif kind in {"action", "shadow-action"}:
             if environment is None or observation is None or active_episode != message.get("episode"):
@@ -137,6 +158,7 @@ def main() -> None:
                 "observation": environment.vector(observation).astype(float).tolist(),
                 "appliedAction": last_applied.tolist(),
                 "stateAgeMs": arguments.state_age_ms,
+                "deviceHealth": device_health,
             })
         elif kind in {"safe-stop", "emergency-stop"}:
             if environment is not None:

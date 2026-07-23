@@ -57,4 +57,11 @@ Mechanical Components enter MuJoCo through explicit Base-owned Mount slots. Root
 
 Hardware export is downstream of Revision governance. The Bundle freezes the deployable contracts and safety envelope; verification never trusts a mutable project pointer and re-hashes the embedded Revision, Controller, Target, and contracts. Dry-run protocol conformance is explicitly distinct from HIL or physical-hardware evidence.
 
+The executable device boundary negotiates freshness, applied-Action,
+decision-deadline, stop acknowledgement, and device-health capabilities.
+Per-motor temperature/current, bus voltage, Driver faults, physical E-stop, and
+watchdog state are checked before Controller evaluation. Thus a learned Policy
+cannot observe a faulted state as an ordinary inference input and emit a proposal
+before the safety path reacts.
+
 See [the harness design](design/robot-development-harness.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

@@ -12,7 +12,7 @@ import torch
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.hardware_capture import _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
+from mujica_runtime.hardware_capture import _device_health, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
@@ -619,6 +619,45 @@ class RuntimeContractTest(unittest.TestCase):
             _driver_deadline_rejection(rejected, "fit-a", 1)
         with self.assertRaisesRegex(RuntimeError, "finite nonnegative"):
             _driver_deadline_rejection({**rejected, "observedDecisionLatencyMs": float("nan")}, "fit-a", 0)
+
+    def test_hardware_capture_device_health_is_typed_and_fail_closed(self):
+        healthy = {
+            "motorTemperatureC": [40.0, 41.0],
+            "motorCurrentA": [1.0, -2.0],
+            "busVoltageV": 24.0,
+            "faults": [],
+            "estopEngaged": False,
+            "watchdogHealthy": True,
+        }
+        parsed = _device_health(healthy, 2, "episode", 0, True)
+        safety = {
+            "requireDeviceHealth": True,
+            "maximumMotorTemperatureC": 80,
+            "maximumMotorCurrentA": 20,
+            "minimumBusVoltageV": 20,
+            "maximumBusVoltageV": 30,
+        }
+        self.assertEqual(_device_health_reasons(parsed, safety), [])
+        unsafe = {
+            **healthy,
+            "motorTemperatureC": [81.0, 40.0],
+            "motorCurrentA": [21.0, 0.0],
+            "busVoltageV": 19.0,
+            "faults": ["drive.overtemp"],
+            "estopEngaged": True,
+            "watchdogHealthy": False,
+        }
+        reasons = _device_health_reasons(_device_health(unsafe, 2, "episode", 0, True), safety)
+        self.assertTrue(any("motor temperature" in reason for reason in reasons))
+        self.assertTrue(any("motor current" in reason for reason in reasons))
+        self.assertTrue(any("bus voltage" in reason for reason in reasons))
+        self.assertTrue(any("drive.overtemp" in reason for reason in reasons))
+        self.assertIn("physical E-stop is engaged", reasons)
+        self.assertIn("driver watchdog is unhealthy", reasons)
+        with self.assertRaisesRegex(RuntimeError, "lacks required"):
+            _device_health(None, 2, "episode", 0, True)
+        with self.assertRaisesRegex(RuntimeError, "safe nonempty codes"):
+            _device_health({**healthy, "faults": ["bad fault\n"]}, 2, "episode", 0, True)
 
     def test_training_reward_exposes_benchmark_aligned_lateral_displacement(self):
         model, compiled = compiled_assembly("force-sensing-3dof")

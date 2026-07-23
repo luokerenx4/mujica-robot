@@ -91,12 +91,15 @@ A Hardware Target binds a kept Robot Revision, or explicitly a Judge-kept Policy
 Revision, to one `dry-run`, `hil`, or `real` environment, a driver protocol,
 control rate, explicit device identity,
 latency/deadline and optional state-age gates, and a contract-sized
-emergency-stop Action. Exported bundles and verification records are immutable.
+emergency-stop Action. It may require typed device health and must then declare
+motor-temperature/current ceilings and a valid bus-voltage interval. Exported
+bundles and verification records are immutable.
 External Evidence must carry exact bundle and contract hashes, driver hash,
 device serial, timestamps, sample count, timing measurements, emergency-stop
 count and acknowledgements, and operator identity. A Target with a state-age
 gate also requires maximum observed device state age; a Target requiring
-decision deadlines also requires Evidence of a Driver-local rejection.
+decision deadlines also requires Evidence of a Driver-local rejection. Required
+device health adds health sample and exercised-trip evidence.
 
 `revisionKind` defaults to `robot`. A `policy` Target is exported with
 `sourceKind=policy-revision` and a derived `maximumCaptureMode=shadow`. The

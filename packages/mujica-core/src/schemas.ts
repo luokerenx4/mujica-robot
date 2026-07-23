@@ -239,9 +239,27 @@ export const hardwareTargetSchema = z.object({
     maximumLatencyMs: z.number().positive(),
     maximumStateAgeMs: z.number().positive().optional(),
     requireDecisionDeadline: z.boolean().optional(),
+    requireDeviceHealth: z.boolean().optional(),
+    maximumMotorTemperatureC: z.number().positive().optional(),
+    maximumMotorCurrentA: z.number().positive().optional(),
+    minimumBusVoltageV: z.number().positive().optional(),
+    maximumBusVoltageV: z.number().positive().optional(),
     maximumConsecutiveMisses: z.number().int().nonnegative(),
     emergencyStopAction: z.array(z.number().finite()).min(1),
-  }).strict(),
+  }).strict().superRefine((safety, context) => {
+    const healthFields = ["maximumMotorTemperatureC", "maximumMotorCurrentA", "minimumBusVoltageV", "maximumBusVoltageV"] as const;
+    if (safety.minimumBusVoltageV !== undefined && safety.maximumBusVoltageV !== undefined && safety.minimumBusVoltageV >= safety.maximumBusVoltageV) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["minimumBusVoltageV"], message: "minimumBusVoltageV must be below maximumBusVoltageV" });
+    }
+    if (!safety.requireDeviceHealth && healthFields.some((field) => safety[field] !== undefined)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["requireDeviceHealth"], message: "requireDeviceHealth must be true when device health limits are declared" });
+    }
+    if (safety.requireDeviceHealth) {
+      for (const field of healthFields) {
+        if (safety[field] === undefined) context.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: `${field} is required when requireDeviceHealth is true` });
+      }
+    }
+  }),
   device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serialRequired: z.boolean() }).strict(),
 }).strict();
 
@@ -299,6 +317,8 @@ export const hardwareEvidenceSchema = z.object({
   missedDeadlines: z.number().int().nonnegative(), maximumConsecutiveMissesObserved: z.number().int().nonnegative(), emergencyStops: z.number().int().nonnegative(),
   emergencyStopAcknowledgements: z.number().int().nonnegative().optional(),
   decisionDeadlineRejections: z.number().int().nonnegative().optional(),
+  deviceHealthSamples: z.number().int().nonnegative().optional(),
+  deviceHealthTrips: z.number().int().nonnegative().optional(),
   passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
 }).strict();
 

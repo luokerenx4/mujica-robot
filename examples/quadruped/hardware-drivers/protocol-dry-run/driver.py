@@ -31,12 +31,35 @@ def main() -> None:
         or "deadline-rejected" not in protocol.get("messages", [])
     ):
         raise RuntimeError("Bundle protocol lacks required decision-deadline rejection")
+    require_device_health = bool(target["safety"].get("requireDeviceHealth", False))
+    if require_device_health and (
+        "device-health" not in protocol.get("capabilities", [])
+        or "deviceHealth" not in protocol.get("state", {}).get("required", [])
+    ):
+        raise RuntimeError("Bundle protocol lacks required device health telemetry")
 
     observation_size = int(observations["size"])
     action_size = int(actions["size"])
     stop_action = target["safety"]["emergencyStopAction"]
     if len(stop_action) != action_size:
         raise RuntimeError("Emergency stop Action does not match bundle contract")
+    device_health_trips = 0
+    if require_device_health:
+        nominal_health = {
+            "motorTemperatureC": [40.0] * action_size,
+            "motorCurrentA": [0.0] * action_size,
+            "busVoltageV": 24.0,
+            "faults": [],
+            "estopEngaged": False,
+            "watchdogHealthy": True,
+        }
+        decoded_health = json.loads(json.dumps(nominal_health, separators=(",", ":")))
+        if len(decoded_health["motorTemperatureC"]) != action_size or len(decoded_health["motorCurrentA"]) != action_size:
+            raise RuntimeError("Device health round trip violated the Action contract")
+        injected_temperature = float(target["safety"]["maximumMotorTemperatureC"]) + 1.0
+        device_health_trips = int(injected_temperature > float(target["safety"]["maximumMotorTemperatureC"]))
+        if device_health_trips != 1:
+            raise RuntimeError("Device health over-temperature trip was not exercised")
 
     started_at = utc_now()
     latencies_ms: list[float] = []
@@ -73,9 +96,11 @@ def main() -> None:
         "emergencyStops": 1,
         "emergencyStopAcknowledgements": 1,
         "decisionDeadlineRejections": 1 if require_decision_deadline else 0,
+        "deviceHealthSamples": samples if require_device_health else 0,
+        "deviceHealthTrips": device_health_trips,
         "passed": True,
         "operator": "automated protocol conformance",
-        "notes": "Serialization, sequence, Observation/Action shape, handshake identity, and emergency-stop shape only; no physical hardware was present.",
+        "notes": "Serialization, sequence, Observation/Action/device-health shape, authored over-temperature trip, handshake identity, and emergency-stop shape only; no physical hardware was present.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(evidence, indent=2) + "\n")

@@ -111,7 +111,8 @@ def _state_vectors(
     episode_id: str,
     step: int,
     require_telemetry: bool,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None, float | None]:
+    require_device_health: bool,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None, float | None, dict[str, Any] | None]:
     if message.get("type") != "state" or message.get("episode") != episode_id or int(message.get("step", -1)) != step:
         raise RuntimeError(f"Expected state for episode '{episode_id}' step {step}")
     qpos = _finite_vector(message.get("qpos"), model.nq, f"{episode_id} step {step} qpos")
@@ -125,7 +126,44 @@ def _state_vectors(
         raise RuntimeError(f"{episode_id} step {step} stateAgeMs must be finite and nonnegative")
     if require_telemetry and (applied is None or state_age is None):
         raise RuntimeError(f"{episode_id} step {step} lacks required appliedAction/stateAgeMs telemetry")
-    return qpos, qvel, observation, applied, state_age
+    device_health = _device_health(message.get("deviceHealth"), action_size, episode_id, step, require_device_health)
+    return qpos, qvel, observation, applied, state_age, device_health
+
+
+def _device_health(raw: Any, action_size: int, episode_id: str, step: int, required: bool) -> dict[str, Any] | None:
+    if raw is None:
+        if required:
+            raise RuntimeError(f"{episode_id} step {step} lacks required deviceHealth telemetry")
+        return None
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"{episode_id} step {step} deviceHealth must be an object")
+    temperatures = _finite_vector(raw.get("motorTemperatureC"), action_size, f"{episode_id} step {step} motorTemperatureC")
+    currents = _finite_vector(raw.get("motorCurrentA"), action_size, f"{episode_id} step {step} motorCurrentA")
+    bus_voltage = float(raw.get("busVoltageV", float("nan")))
+    if not np.isfinite(bus_voltage) or bus_voltage < 0:
+        raise RuntimeError(f"{episode_id} step {step} busVoltageV must be finite and nonnegative")
+    faults = raw.get("faults")
+    if not isinstance(faults, list) or not all(
+        isinstance(item, str)
+        and 0 < len(item) <= 64
+        and all(character.isalnum() or character in "._:-" for character in item)
+        for item in faults
+    ):
+        raise RuntimeError(f"{episode_id} step {step} deviceHealth faults must be safe nonempty codes")
+    if len(set(faults)) != len(faults):
+        raise RuntimeError(f"{episode_id} step {step} deviceHealth faults must be unique")
+    estop_engaged = raw.get("estopEngaged")
+    watchdog_healthy = raw.get("watchdogHealthy")
+    if type(estop_engaged) is not bool or type(watchdog_healthy) is not bool:
+        raise RuntimeError(f"{episode_id} step {step} deviceHealth status flags must be boolean")
+    return {
+        "motorTemperatureC": temperatures.tolist(),
+        "motorCurrentA": currents.tolist(),
+        "busVoltageV": bus_voltage,
+        "faults": list(faults),
+        "estopEngaged": estop_engaged,
+        "watchdogHealthy": watchdog_healthy,
+    }
 
 
 def _state_age_reason(state_age_ms: float | None, maximum_state_age_ms: float | None) -> str | None:
@@ -136,6 +174,32 @@ def _state_age_reason(state_age_ms: float | None, maximum_state_age_ms: float | 
     if state_age_ms > maximum_state_age_ms:
         return f"state age {state_age_ms:.6f} ms exceeds maximum {maximum_state_age_ms:.6f} ms"
     return None
+
+
+def _device_health_reasons(device_health: dict[str, Any] | None, safety: dict[str, Any]) -> list[str]:
+    if device_health is None:
+        return ["device health telemetry is missing"] if bool(safety.get("requireDeviceHealth", False)) else []
+    reasons: list[str] = []
+    temperatures = np.asarray(device_health["motorTemperatureC"], dtype=np.float64)
+    currents = np.asarray(device_health["motorCurrentA"], dtype=np.float64)
+    maximum_temperature = float(np.max(temperatures)) if temperatures.size else 0.0
+    maximum_current = float(np.max(np.abs(currents))) if currents.size else 0.0
+    bus_voltage = float(device_health["busVoltageV"])
+    if safety.get("maximumMotorTemperatureC") is not None and maximum_temperature > float(safety["maximumMotorTemperatureC"]):
+        reasons.append(f"motor temperature {maximum_temperature:.6f} C exceeds maximum {float(safety['maximumMotorTemperatureC']):.6f} C")
+    if safety.get("maximumMotorCurrentA") is not None and maximum_current > float(safety["maximumMotorCurrentA"]):
+        reasons.append(f"motor current {maximum_current:.6f} A exceeds maximum {float(safety['maximumMotorCurrentA']):.6f} A")
+    if safety.get("minimumBusVoltageV") is not None and bus_voltage < float(safety["minimumBusVoltageV"]):
+        reasons.append(f"bus voltage {bus_voltage:.6f} V is below minimum {float(safety['minimumBusVoltageV']):.6f} V")
+    if safety.get("maximumBusVoltageV") is not None and bus_voltage > float(safety["maximumBusVoltageV"]):
+        reasons.append(f"bus voltage {bus_voltage:.6f} V exceeds maximum {float(safety['maximumBusVoltageV']):.6f} V")
+    if device_health["faults"]:
+        reasons.append(f"driver faults are active: {','.join(device_health['faults'])}")
+    if bool(device_health["estopEngaged"]):
+        reasons.append("physical E-stop is engaged")
+    if not bool(device_health["watchdogHealthy"]):
+        reasons.append("driver watchdog is unhealthy")
+    return reasons
 
 
 def _stopped_acknowledged(message: dict[str, Any], episode_id: str | None, kind: str) -> bool:
@@ -205,6 +269,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     dispatch_latencies_ms: list[float] = []
     driver_rejection_latencies_ms: list[float] = []
     state_ages_ms: list[float] = []
+    device_health_samples: list[dict[str, Any]] = []
     deadline_misses = 0
     host_pre_dispatch_deadline_misses = 0
     driver_deadline_rejections = 0
@@ -278,6 +343,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             required_capabilities.update({"applied-action", "shadow-action", "state-age-ms"})
         if bool(target["safety"].get("requireDecisionDeadline", False)) or plan["safety"].get("maximumDecisionLatencyMs") is not None:
             required_capabilities.add("decision-deadline")
+        if bool(target["safety"].get("requireDeviceHealth", False)):
+            required_capabilities.add("device-health")
         missing_capabilities = sorted(required_capabilities.difference(protocol_capabilities))
         if missing_capabilities:
             raise RuntimeError(f"Driver lacks required capabilities: {', '.join(missing_capabilities)}")
@@ -289,6 +356,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         maximum_state_age_ms = target["safety"].get("maximumStateAgeMs")
         driver_deadline_enabled = "decision-deadline" in protocol_capabilities
         require_telemetry = maximum_state_age_ms is not None or plan["mode"] == "shadow"
+        require_device_health = bool(target["safety"].get("requireDeviceHealth", False))
         for episode in plan["episodes"]:
             episode_id = str(episode["id"])
             planned_steps = int(episode["steps"])
@@ -299,17 +367,23 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             episode_reason: str | None = None
             session.send({"type": "start-episode", "episode": episode_id, "seed": int(episode["seed"]), "steps": planned_steps, "controlHz": float(target["controlHz"])})
             message, received_ns = session.receive(startup_timeout_seconds)
-            qpos, qvel, observation_vector, current_applied, state_age_ms = _state_vectors(
-                message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, 0, require_telemetry,
+            qpos, qvel, observation_vector, current_applied, state_age_ms, device_health = _state_vectors(
+                message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, 0, require_telemetry, require_device_health,
             )
             if state_age_ms is not None:
                 state_ages_ms.append(state_age_ms)
+            if device_health is not None:
+                device_health_samples.append(device_health)
             for step in range(planned_steps):
                 state_reasons = _state_safety_reasons(model, qpos, qvel, plan["safety"])
                 state_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
                 if state_age_reason is not None:
                     state_reasons.append(state_age_reason)
+                health_reasons = _device_health_reasons(device_health, target["safety"])
+                state_reasons.extend(health_reasons)
                 if state_reasons:
+                    if health_reasons:
+                        interventions.append({"episode": episode_id, "step": step, "kind": "device-health", "reasons": health_reasons})
                     episode_reason = "; ".join(state_reasons)
                     break
                 observation = _observation_map(observation_vector, compiled["observationContract"]["channels"])
@@ -350,6 +424,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     "time": step / float(target["controlHz"]),
                     "qpos": qpos.tolist(),
                     "qvel": qvel.tolist(),
+                    **({"deviceHealth": device_health} if device_health is not None else {}),
                     "proposedAction": action.tolist(),
                     "commandedAction": (action if plan["mode"] == "actuate" else (current_applied if current_applied is not None else emergency_action)).tolist(),
                 })
@@ -392,11 +467,13 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     })
                     episode_reason = f"driver rejected expired Action at {rejected_ms:.6f} ms (maximum {maximum_decision_latency_ms:.6f} ms)"
                     break
-                qpos, qvel, observation_vector, next_applied, state_age_ms = _state_vectors(
-                    message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, step + 1, require_telemetry,
+                qpos, qvel, observation_vector, next_applied, state_age_ms, device_health = _state_vectors(
+                    message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, step + 1, require_telemetry, require_device_health,
                 )
                 if state_age_ms is not None:
                     state_ages_ms.append(state_age_ms)
+                if device_health is not None:
+                    device_health_samples.append(device_health)
                 actual_applied = action if next_applied is None else next_applied
                 rows[-1]["appliedAction"] = actual_applied.tolist()
                 if plan["mode"] == "shadow":
@@ -412,6 +489,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 terminal_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
                 if terminal_age_reason is not None:
                     terminal_reasons.append(terminal_age_reason)
+                terminal_reasons.extend(_device_health_reasons(device_health, target["safety"]))
                 if terminal_reasons:
                     episode_reason = "; ".join(terminal_reasons)
             if episode_reason is None:
@@ -421,6 +499,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     "time": planned_steps / float(target["controlHz"]),
                     "qpos": qpos.tolist(),
                     "qvel": qvel.tolist(),
+                    **({"deviceHealth": device_health} if device_health is not None else {}),
                     "proposedAction": emergency_action.tolist(),
                     "commandedAction": emergency_action.tolist(),
                     "appliedAction": (current_applied if current_applied is not None else emergency_action).tolist(),
@@ -475,6 +554,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     }
     maximum_state_age = max(state_ages_ms, default=0.0)
     mean_state_age = float(np.mean(state_ages_ms)) if state_ages_ms else 0.0
+    motor_temperatures = [float(value) for sample in device_health_samples for value in sample["motorTemperatureC"]]
+    motor_currents = [abs(float(value)) for sample in device_health_samples for value in sample["motorCurrentA"]]
+    bus_voltages = [float(sample["busVoltageV"]) for sample in device_health_samples]
+    maximum_motor_temperature = max(motor_temperatures, default=0.0)
+    maximum_motor_current = max(motor_currents, default=0.0)
+    minimum_bus_voltage = min(bus_voltages, default=0.0)
+    maximum_bus_voltage = max(bus_voltages, default=0.0)
+    device_fault_samples = sum(bool(sample["faults"]) for sample in device_health_samples)
+    estop_engaged_samples = sum(bool(sample["estopEngaged"]) for sample in device_health_samples)
+    watchdog_unhealthy_samples = sum(not bool(sample["watchdogHealthy"]) for sample in device_health_samples)
     maximum_decision_latency = max(decision_latencies_ms, default=0.0)
     mean_decision_latency = float(np.mean(decision_latencies_ms)) if decision_latencies_ms else 0.0
     actuation_authorized = plan["mode"] == "actuate"
@@ -495,6 +584,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "samples": len(decision_latencies_ms),
         "hostPreDispatchMisses": host_pre_dispatch_deadline_misses,
         "driverRejections": driver_deadline_rejections,
+    }
+    device_health_identity = {
+        "samples": len(device_health_samples),
+        "maximumMotorTemperatureMilliC": round(maximum_motor_temperature * 1000.0),
+        "maximumMotorCurrentMilliA": round(maximum_motor_current * 1000.0),
+        "minimumBusVoltageMilliV": round(minimum_bus_voltage * 1000.0),
+        "maximumBusVoltageMilliV": round(maximum_bus_voltage * 1000.0),
+        "faultSamples": device_fault_samples,
+        "estopEngagedSamples": estop_engaged_samples,
+        "watchdogUnhealthySamples": watchdog_unhealthy_samples,
     }
     identity = {
         "version": 1,
@@ -518,6 +617,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "protocolCapabilities": protocol_capabilities,
         "stateAgeIdentity": state_age_identity,
         "decisionDeadlineIdentity": decision_deadline_identity,
+        "deviceHealthIdentity": device_health_identity,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
         "controllerWarmupPasses": controller_warmup_passes,
         "realTimeQualified": real_time_qualified,
@@ -588,6 +688,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 "driverRejections": driver_deadline_rejections,
                 "maximumDriverRejectedLatencyMs": max(driver_rejection_latencies_ms, default=0.0),
             },
+            "deviceHealth": {
+                "samples": len(device_health_samples),
+                "maximumMotorTemperatureC": maximum_motor_temperature,
+                "maximumMotorCurrentA": maximum_motor_current,
+                "minimumBusVoltageV": minimum_bus_voltage,
+                "maximumBusVoltageV": maximum_bus_voltage,
+                "faultSamples": device_fault_samples,
+                "estopEngagedSamples": estop_engaged_samples,
+                "watchdogUnhealthySamples": watchdog_unhealthy_samples,
+            },
             "protocolCapabilities": protocol_capabilities,
             "stateAge": state_age_evidence,
             "interventions": interventions,
@@ -613,6 +723,10 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             f"- Decision latency max/mean/limit: {maximum_decision_latency:.6f}/{mean_decision_latency:.6f}/{maximum_decision_latency_ms:.6f} ms\n"
             f"- Host pre-dispatch deadline misses: {host_pre_dispatch_deadline_misses}\n"
             f"- Driver deadline rejections: {driver_deadline_rejections}\n"
+            f"- Device health samples: {len(device_health_samples)}\n"
+            f"- Motor temperature/current max: {maximum_motor_temperature:.6f} C / {maximum_motor_current:.6f} A\n"
+            f"- Bus voltage min/max: {minimum_bus_voltage:.6f}/{maximum_bus_voltage:.6f} V\n"
+            f"- Driver fault/E-stop/watchdog-unhealthy samples: {device_fault_samples}/{estop_engaged_samples}/{watchdog_unhealthy_samples}\n"
             f"- State age max/mean: {maximum_state_age:.6f}/{mean_state_age:.6f} ms\n"
             f"- Deadline misses: {deadline_misses}\n"
             f"- Safety interventions: {len(interventions)}\n"
@@ -646,6 +760,11 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "deadlineMisses": deadline_misses,
         "hostPreDispatchDeadlineMisses": host_pre_dispatch_deadline_misses,
         "driverDeadlineRejections": driver_deadline_rejections,
+        "deviceHealthSamples": len(device_health_samples),
+        "maximumMotorTemperatureC": maximum_motor_temperature,
+        "maximumMotorCurrentA": maximum_motor_current,
+        "minimumBusVoltageV": minimum_bus_voltage,
+        "maximumBusVoltageV": maximum_bus_voltage,
         "interventions": len(interventions),
         "emergencyStops": emergency_stops,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,

@@ -105,14 +105,24 @@ describe("agent CLI contract", () => {
       expect(envelope.data.episodes.every((episode: any) => episode.completed)).toBe(true);
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.device.serial).toBe("simulated");
-      expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "shadow-action", "state-age-ms", "stop-ack"]);
+      expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "device-health", "shadow-action", "state-age-ms", "stop-ack"]);
       expect(manifest.stateAge.samples).toBeGreaterThan(0);
+      expect(manifest.deviceHealth).toMatchObject({
+        maximumMotorTemperatureC: 40,
+        maximumMotorCurrentA: 0,
+        minimumBusVoltageV: 24,
+        maximumBusVoltageV: 24,
+        faultSamples: 0,
+        estopEngagedSamples: 0,
+        watchdogUnhealthySamples: 0,
+      });
       expect(manifest.driverInputs[0].hash).toHaveLength(64);
       expect(manifest.episodes.map((episode: any) => episode.hash).every((hash: string) => hash.length === 64)).toBe(true);
       const firstRow = JSON.parse((await readFile(resolve(artifactPath, manifest.episodes[0].path), "utf8")).split("\n")[0]!);
       expect(firstRow.proposedAction).toHaveLength(12);
       expect(firstRow.commandedAction).toHaveLength(12);
       expect(firstRow.appliedAction).toHaveLength(12);
+      expect(firstRow.deviceHealth.motorTemperatureC).toHaveLength(12);
       const inputPath = resolve(artifactPath, "driver-inputs/00-hardware-capture-hidden-plant.scenario.json");
       expect(await readFile(inputPath, "utf8")).toContain("\"bodyMassScale\": 1.1");
       const inspectedCapture = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
@@ -207,6 +217,7 @@ describe("agent CLI contract", () => {
       expect(typeof envelope.data.realTimeQualified).toBe("boolean");
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.controllerWarmupPasses).toBe(2);
+      expect(manifest.deviceHealth.samples).toBe(11);
       const transcript = (await readFile(resolve(artifactPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
       const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
       expect(hostTypes).toContain("shadow-action");
@@ -216,6 +227,37 @@ describe("agent CLI contract", () => {
       expect(rows.every((row) => row.appliedAction.every((value: number) => value === 0))).toBe(true);
       const inspected = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
       expect(inspected.code).toBe(0);
+    } finally {
+      rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  test("device health faults stop a learned Policy before proposal dispatch", async () => {
+    const captured = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "history-policy-shadow-dry-run",
+      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-arg=--motor-temperature-c", "--driver-arg=90",
+      "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test", "--json",
+    ]);
+    expect(captured.code).toBe(0);
+    const envelope = JSON.parse(captured.stdout); const artifactPath = envelope.data.artifactPath;
+    try {
+      expect(envelope.data).toMatchObject({
+        status: "ABORTED", mode: "shadow", actuationAuthorized: false,
+        deviceHealthSamples: 1, maximumMotorTemperatureC: 90,
+        emergencyStops: 1, emergencyStopAcknowledgements: 1, calibrationEligible: false,
+      });
+      expect(envelope.data.episodes[0].steps).toBe(0);
+      expect(envelope.data.reasons.join(" ")).toContain("motor temperature 90.000000 C exceeds maximum 80.000000 C");
+      const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
+      expect(manifest.deviceHealth).toMatchObject({ samples: 1, maximumMotorTemperatureC: 90 });
+      const transcript = (await readFile(resolve(artifactPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      expect(hostTypes).toContain("emergency-stop");
+      expect(hostTypes).not.toContain("action");
+      expect(hostTypes).not.toContain("shadow-action");
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
@@ -351,10 +393,10 @@ describe("agent CLI contract", () => {
     const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "spatial-dry-run", "--json"]); const bundle = JSON.parse(exported.stdout); expect(exported.code).toBe(0);
     const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
     expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
-    expect(result.data.evidence.samples).toBe(250); expect(result.data.reasons).toEqual([]);
+    expect(result.data.evidence.samples).toBe(250); expect(result.data.evidence.deviceHealthSamples).toBe(250); expect(result.data.evidence.deviceHealthTrips).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-ff0d8c77d41216b6",
+      "--bundle", "hardware-276bc4f3e2b72321",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -370,6 +412,7 @@ describe("agent CLI contract", () => {
       const evidence = JSON.parse(await readFile(resolve(root, "examples/quadruped/hardware-evidence/spatial-dry-run.json"), "utf8"));
       evidence.maximumObservedStateAgeMs = 21;
       evidence.emergencyStopAcknowledgements = 0;
+      evidence.deviceHealthTrips = 0;
       const evidencePath = resolve(temporaryRoot, "stale.json");
       await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
       const rejected = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", evidencePath, "--json"]);
@@ -378,6 +421,7 @@ describe("agent CLI contract", () => {
       expect(rejectedEnvelope.data.status).toBe("FAILED");
       expect(rejectedEnvelope.data.reasons).toEqual([
         "observed state age exceeds safety limit",
+        "evidence does not prove a device health safety trip",
         "not every emergency stop was acknowledged",
       ]);
       rmSync(rejectedEnvelope.data.path, { recursive: true, force: true });

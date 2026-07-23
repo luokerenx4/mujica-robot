@@ -108,6 +108,13 @@ carries the same limit so the Driver can independently return
 `deadline-rejected` before applying an expired Action. Either path aborts and is
 reported separately.
 
+Targets with `requireDeviceHealth=true` require `device-health` and explicit
+temperature, current, and bus-voltage limits. Each state reports per-Action
+channel motor temperature/current, bus voltage, fault codes, E-stop state, and
+watchdog health. Unsafe or malformed health stops the episode before Controller
+evaluation and before either Action message kind. Capture manifests expose
+health extrema and fault/E-stop/watchdog sample counts.
+
 Every Plan explicitly selects `actuate` or `shadow`. Shadow commissioning sends
 Controller output only as a non-authoritative `proposedAction`; the driver
 reports its independently applied Action. Shadow artifacts set

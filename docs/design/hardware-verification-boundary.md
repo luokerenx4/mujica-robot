@@ -23,6 +23,9 @@ hash, exact bundle/contract hashes, timestamps, samples, latency, deadline
 misses, driver-local deadline rejections, emergency stops, operator, and notes.
 When a Target requires the decision-deadline capability, Evidence without at
 least one exercised Driver rejection fails verification.
+When it requires device health, Evidence must also contain health samples and at
+least one exercised health trip; a nominal-only trace does not prove the
+interlock.
 
 `mujica capture run` closes the executable half of this boundary without
 weakening verification semantics. A Capture Plan fixes finite episodes and a
@@ -39,6 +42,12 @@ an expired message before applying it. These checks use separate monotonic
 clocks, so transport delay is covered without clock synchronization. An expired
 message always aborts the episode; tolerated consecutive misses remain a
 verification-evidence ceiling, not permission to apply stale control.
+
+Targets may also require `device-health`. Every state then carries per-motor
+temperature/current, bus voltage, fault codes, physical E-stop state, and Driver
+watchdog state. Missing or unsafe health aborts before Controller evaluation.
+Capture records the exact telemetry and separate health intervention evidence;
+this remains additive to, never a replacement for, firmware and physical safety.
 
 Physical authority is external. HIL/real Capture Plans require an unexpired
 authorization naming the exact Plan, Bundle, Target, environment, operator,

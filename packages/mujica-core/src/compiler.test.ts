@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, domainProfileSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -186,7 +186,18 @@ describe("Robot Assembly compiler", () => {
       revisionKind: "policy",
       assembly: "force-sensing-history-3dof",
       controller: "capture-calibrated-history-residual-gait",
+      safety: {
+        requireDecisionDeadline: true,
+        requireDeviceHealth: true,
+        maximumMotorTemperatureC: 80,
+        maximumMotorCurrentA: 20,
+        minimumBusVoltageV: 20,
+        maximumBusVoltageV: 30,
+      },
     });
+    expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, maximumMotorTemperatureC: undefined } }).success).toBe(false);
+    expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, minimumBusVoltageV: 31 } }).success).toBe(false);
+    expect(hardwareTargetSchema.safeParse({ ...policyTarget, safety: { ...policyTarget.safety, requireDeviceHealth: false } }).success).toBe(false);
   });
 
   test("research definitions expose a bounded editable surface", async () => {
