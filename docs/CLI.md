@@ -101,6 +101,13 @@ started. Capture reports preserve the warm-up count and strict
 `realTimeQualified` evidence; any missed Controller-to-driver deadline makes the
 capture ineligible for Calibration.
 
+Targets with `requireDecisionDeadline=true` require the Driver capability
+`decision-deadline`. A Plan may set a tighter `maximumDecisionLatencyMs`. The
+host rejects late inference before dispatch; every dispatched control message
+carries the same limit so the Driver can independently return
+`deadline-rejected` before applying an expired Action. Either path aborts and is
+reported separately.
+
 Every Plan explicitly selects `actuate` or `shadow`. Shadow commissioning sends
 Controller output only as a non-authoritative `proposedAction`; the driver
 reports its independently applied Action. Shadow artifacts set

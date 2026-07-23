@@ -25,6 +25,12 @@ def main() -> None:
     protocol = json.loads((args.bundle / "driver-protocol.json").read_text())
     if protocol["protocol"] != "stdio-jsonl-v1" or target["environment"] != "dry-run":
         raise RuntimeError("This conformance driver accepts only a dry-run stdio-jsonl-v1 target")
+    require_decision_deadline = bool(target["safety"].get("requireDecisionDeadline", False))
+    if require_decision_deadline and (
+        "decision-deadline" not in protocol.get("capabilities", [])
+        or "deadline-rejected" not in protocol.get("messages", [])
+    ):
+        raise RuntimeError("Bundle protocol lacks required decision-deadline rejection")
 
     observation_size = int(observations["size"])
     action_size = int(actions["size"])
@@ -66,6 +72,7 @@ def main() -> None:
         "maximumConsecutiveMissesObserved": 0,
         "emergencyStops": 1,
         "emergencyStopAcknowledgements": 1,
+        "decisionDeadlineRejections": 1 if require_decision_deadline else 0,
         "passed": True,
         "operator": "automated protocol conformance",
         "notes": "Serialization, sequence, Observation/Action shape, handshake identity, and emergency-stop shape only; no physical hardware was present.",

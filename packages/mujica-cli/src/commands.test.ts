@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, trainingRunStableResultIdentity } from "./research-lab";
-import { assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
+import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -105,7 +105,7 @@ describe("agent CLI contract", () => {
       expect(envelope.data.episodes.every((episode: any) => episode.completed)).toBe(true);
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.device.serial).toBe("simulated");
-      expect(manifest.protocolCapabilities).toEqual(["applied-action", "shadow-action", "state-age-ms", "stop-ack"]);
+      expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "shadow-action", "state-age-ms", "stop-ack"]);
       expect(manifest.stateAge.samples).toBeGreaterThan(0);
       expect(manifest.driverInputs[0].hash).toHaveLength(64);
       expect(manifest.episodes.map((episode: any) => episode.hash).every((hash: string) => hash.length === 64)).toBe(true);
@@ -221,6 +221,55 @@ describe("agent CLI contract", () => {
     }
   }, 15_000);
 
+  test("host and Driver reject expired decisions before applying them", async () => {
+    const common = [
+      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test", "--json",
+    ];
+    const host = invoke(["capture", "run", "examples/quadruped", "--plan", "history-policy-host-deadline-trip", ...common]);
+    expect(host.code).toBe(0);
+    const hostEnvelope = JSON.parse(host.stdout); const hostPath = hostEnvelope.data.artifactPath;
+    try {
+      expect(hostEnvelope.data).toMatchObject({
+        status: "ABORTED", hostPreDispatchDeadlineMisses: 1, driverDeadlineRejections: 0,
+        deadlineMisses: 1, emergencyStops: 1, emergencyStopAcknowledgements: 1, realTimeQualified: false,
+      });
+      const transcript = (await readFile(resolve(hostPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      expect(hostTypes).toContain("emergency-stop");
+      expect(hostTypes).not.toContain("action");
+      expect(hostTypes).not.toContain("shadow-action");
+    } finally {
+      rmSync(hostPath, { recursive: true, force: true });
+    }
+
+    const driver = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "quadruped-driver-deadline-trip",
+      ...common.slice(0, 4), "--driver-arg=--receive-delay-ms", "--driver-arg=20", ...common.slice(4),
+    ]);
+    expect(driver.code).toBe(0);
+    const driverEnvelope = JSON.parse(driver.stdout); const driverPath = driverEnvelope.data.artifactPath;
+    try {
+      expect(driverEnvelope.data).toMatchObject({
+        status: "ABORTED", hostPreDispatchDeadlineMisses: 0, driverDeadlineRejections: 1,
+        deadlineMisses: 1, emergencyStops: 1, emergencyStopAcknowledgements: 1,
+        calibrationEligible: false, realTimeQualified: false,
+      });
+      expect(driverEnvelope.data.episodes[0].steps).toBe(0);
+      const transcript = (await readFile(resolve(driverPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      const driverTypes = transcript.filter((row) => row.direction === "driver-to-host").map((row) => row.message.type);
+      expect(hostTypes).toContain("action");
+      expect(driverTypes).toContain("deadline-rejected");
+      expect(driverTypes.filter((type) => type === "state")).toHaveLength(1);
+      expect(driverEnvelope.data.reasons.join(" ")).toContain("driver rejected expired Action");
+    } finally {
+      rmSync(driverPath, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   test("physical Capture requires matching, live, external operator authorization", () => {
     const target: any = { version: 1, id: "robot-target", name: "Robot", revision: "robot-r1", assembly: "robot", controller: "control", environment: "real", protocol: "stdio-jsonl-v1", controlHz: 50, safety: { maximumLatencyMs: 10, maximumConsecutiveMisses: 1, emergencyStopAction: [0] }, device: { vendor: "Vendor", model: "Robot", serialRequired: true } };
     const plan: any = { version: 1, id: "capture-plan", name: "Capture", target: target.id, bundle: "hardware-a", episodes: [{ id: "one", seed: 1, steps: 10 }], action: { scale: 0.5, maximumSlewPerSecond: 1 }, safety: { maximumJointVelocityRadPerSec: 1 }, notes: "" };
@@ -228,6 +277,8 @@ describe("agent CLI contract", () => {
     const authorization: any = { version: 1, plan: plan.id, planHash, target: target.id, bundleHash: bundle.bundleHash, environment: "real", device: { vendor: "Vendor", model: "Robot", serial: "robot-001" }, operator: "Operator", approvedAt: "2026-07-23T10:00:00.000Z", expiresAt: "2026-07-23T10:10:00.000Z", maximumEpisodes: 1, notes: "" };
     expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Operator", null, now)).toThrow("requires --authorization");
     expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Operator", authorization, now)).not.toThrow();
+    expect(() => assertCaptureDecisionDeadline(target, { ...plan, safety: { ...plan.safety, maximumDecisionLatencyMs: 5 } })).not.toThrow();
+    expect(() => assertCaptureDecisionDeadline(target, { ...plan, safety: { ...plan.safety, maximumDecisionLatencyMs: 11 } })).toThrow("cannot exceed");
     expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Operator", { ...authorization, expiresAt: "2026-07-23T10:04:00.000Z" }, now)).toThrow("not currently valid");
     expect(() => validateCaptureAuthorization(target, plan, planHash, bundle, "Different", authorization, now)).toThrow("operator");
   });
@@ -290,7 +341,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.researchLabs).toBe(5);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
-    expect(envelope.data.definitions.capturePlans).toBe(4);
+    expect(envelope.data.definitions.capturePlans).toBe(6);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
@@ -303,7 +354,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.samples).toBe(250); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-113d1063cfc83f6b",
+      "--bundle", "hardware-ff0d8c77d41216b6",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

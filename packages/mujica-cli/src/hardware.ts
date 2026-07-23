@@ -48,6 +48,12 @@ export function assertCaptureModeAllowed(bundle: any, plan: HardwareCapturePlanD
   }
 }
 
+export function assertCaptureDecisionDeadline(target: HardwareTargetDefinition, plan: HardwareCapturePlanDefinition): void {
+  if (plan.safety.maximumDecisionLatencyMs !== undefined && plan.safety.maximumDecisionLatencyMs > target.safety.maximumLatencyMs) {
+    throw new Error(`Capture Plan '${plan.id}' decision deadline cannot exceed Hardware Target maximumLatencyMs`);
+  }
+}
+
 export async function verifyHardwareCaptureIntegrity(root: string): Promise<any> {
   const manifestPath = join(root, "manifest.json"); const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   if (manifest.completed !== true || typeof manifest.id !== "string" || typeof manifest.captureHash !== "string") throw new Error("Hardware Capture is incomplete");
@@ -75,6 +81,7 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
     actuationAuthorized: manifest.actuationAuthorized,
     protocolCapabilities: manifest.protocolCapabilities,
     stateAgeIdentity: manifest.stateAgeIdentity,
+    ...(manifest.decisionDeadlineIdentity && typeof manifest.decisionDeadlineIdentity === "object" ? { decisionDeadlineIdentity: manifest.decisionDeadlineIdentity } : {}),
     emergencyStopAcknowledgements: manifest.emergencyStopAcknowledgements,
     ...(typeof manifest.controllerWarmupPasses === "number" ? { controllerWarmupPasses: manifest.controllerWarmupPasses } : {}),
     ...(typeof manifest.realTimeQualified === "boolean" ? { realTimeQualified: manifest.realTimeQualified } : {}),
@@ -150,8 +157,8 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
       version: 1,
       protocol: "stdio-jsonl-v1",
       handshake: { bundleHash, observationContractHash, actionContractHash },
-      capabilities: ["applied-action", "shadow-action", "state-age-ms", "stop-ack"],
-      messages: ["hello", "start-episode", "state", "action", "shadow-action", "safe-stop", "emergency-stop", "stopped", "close", "completed"],
+      capabilities: ["applied-action", "decision-deadline", "shadow-action", "state-age-ms", "stop-ack"],
+      messages: ["hello", "start-episode", "state", "action", "shadow-action", "deadline-rejected", "safe-stop", "emergency-stop", "stopped", "close", "completed"],
       state: { required: ["episode", "step", "qpos", "qvel", "observation", "appliedAction", "stateAgeMs"] },
     });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
@@ -173,6 +180,7 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   if (target.safety.maximumStateAgeMs !== undefined && evidence.maximumObservedStateAgeMs === undefined) reasons.push("evidence does not report state age");
   if (target.safety.maximumStateAgeMs !== undefined && evidence.maximumObservedStateAgeMs !== undefined && evidence.maximumObservedStateAgeMs > target.safety.maximumStateAgeMs) reasons.push("observed state age exceeds safety limit");
   if (evidence.maximumConsecutiveMissesObserved > target.safety.maximumConsecutiveMisses) reasons.push("consecutive deadline misses exceed safety limit");
+  if (target.safety.requireDecisionDeadline && (evidence.decisionDeadlineRejections ?? 0) < 1) reasons.push("evidence does not prove driver-side decision deadline rejection");
   if (target.safety.maximumStateAgeMs !== undefined && evidence.emergencyStopAcknowledgements === undefined) reasons.push("evidence does not report emergency-stop acknowledgements");
   else if (evidence.emergencyStopAcknowledgements !== undefined && evidence.emergencyStopAcknowledgements < evidence.emergencyStops) reasons.push("not every emergency stop was acknowledged");
   if (!evidence.passed) reasons.push("driver reported failure");
@@ -180,7 +188,7 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   const verificationHash = hashJson({ bundleHash: bundle.bundleHash, evidence }); const id = `verification-${verificationHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-verifications", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await writeFile(join(directory, "evidence.json"), await readFile(resolve(evidencePath))); await writeJson(join(directory, "bundle-manifest.json"), bundle);
-    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Source: ${bundle.sourceKind ?? "legacy-robot-revision"}\n- Maximum capture mode: ${bundle.maximumCaptureMode ?? "actuate"}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
+    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Source: ${bundle.sourceKind ?? "legacy-robot-revision"}\n- Maximum capture mode: ${bundle.maximumCaptureMode ?? "actuate"}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Driver decision-deadline rejections: ${evidence.decisionDeadlineRejections ?? "not reported"}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
     await writeJson(join(directory, "manifest.json"), { version: 1, id, verificationHash, bundleId, bundleHash: bundle.bundleHash, sourceKind: bundle.sourceKind ?? "legacy-robot-revision", maximumCaptureMode: bundle.maximumCaptureMode ?? "actuate", target: target.id, environment: evidence.environment, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", actuationQualified: status === "HARDWARE-VERIFIED" && bundle.maximumCaptureMode !== "shadow", reasons, completed: true });
   });
   return success("hardware.verify", { id, path: root, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", actuationQualified: status === "HARDWARE-VERIFIED" && bundle.maximumCaptureMode !== "shadow", reasons, evidence }, project, [artifact("hardware-verification", id, root)]);
@@ -207,6 +215,7 @@ export async function hardwareCapturePlanInspectCommand(projectDir: string, id: 
   const project = await loadProject(projectDir); const definition = await loadHardwareCapturePlan(project.rootDir, id);
   const bundleRoot = confined(project.rootDir, `hardware-bundles/${definition.bundle}`);
   const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8")); await verifyBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, definition);
+  assertCaptureDecisionDeadline(hardwareTargetSchema.parse(bundle.target), definition);
   return success("capture.inspect", { definition, hash: hashJson(definition), bundle: { id: bundle.id, hash: bundle.bundleHash, sourceKind: bundle.sourceKind ?? "legacy-robot-revision", maximumCaptureMode: bundle.maximumCaptureMode ?? "actuate", environment: bundle.target.environment }, path: confined(project.rootDir, `capture-plans/${id}.capture.json`) }, project);
 }
 
@@ -231,6 +240,7 @@ export async function hardwareCaptureCommand(projectDir: string, planId: string,
     frozenDriverInputs.push({ path, name: basename(path), hash: sha256(await readFile(path)) });
   }
   const target = hardwareTargetSchema.parse(bundle.target);
+  assertCaptureDecisionDeadline(target, plan);
   let authorization: any = null; let authorizationHash: string | null = null;
   if (target.environment !== "dry-run") {
     if (!authorizationPath) throw new Error(`${target.environment.toUpperCase()} Capture requires --authorization`);

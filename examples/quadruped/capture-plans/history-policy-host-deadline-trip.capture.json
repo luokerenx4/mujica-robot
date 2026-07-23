@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "history-policy-host-deadline-trip",
+  "name": "Frozen Policy host deadline fail-closed proof",
+  "target": "history-policy-shadow-dry-run",
+  "bundle": "hardware-ff0d8c77d41216b6",
+  "mode": "shadow",
+  "episodes": [
+    {
+      "id": "host-deadline-trip",
+      "seed": 4303,
+      "steps": 10
+    }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 8,
+    "maximumDecisionLatencyMs": 0.001,
+    "minimumBaseHeightM": 0.18,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Deliberately impossible deadline proves a late learned-Policy decision is rejected by the host before any Action or shadow Action reaches the Driver."
+}

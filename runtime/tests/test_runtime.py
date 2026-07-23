@@ -12,7 +12,7 @@ import torch
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.hardware_capture import _state_age_reason, _state_safety_reasons, _stopped_acknowledged
+from mujica_runtime.hardware_capture import _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
@@ -612,6 +612,13 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertTrue(_stopped_acknowledged(stopped, "fit-a", "emergency-stop"))
         self.assertFalse(_stopped_acknowledged({**stopped, "kind": "safe-stop"}, "fit-a", "emergency-stop"))
         self.assertFalse(_stopped_acknowledged({**stopped, "episode": "fit-b"}, "fit-a", "emergency-stop"))
+        rejected = {"type": "deadline-rejected", "episode": "fit-a", "step": 0, "observedDecisionLatencyMs": 20.1}
+        self.assertEqual(_driver_deadline_rejection(rejected, "fit-a", 0), 20.1)
+        self.assertIsNone(_driver_deadline_rejection({"type": "state"}, "fit-a", 0))
+        with self.assertRaisesRegex(RuntimeError, "does not match"):
+            _driver_deadline_rejection(rejected, "fit-a", 1)
+        with self.assertRaisesRegex(RuntimeError, "finite nonnegative"):
+            _driver_deadline_rejection({**rejected, "observedDecisionLatencyMs": float("nan")}, "fit-a", 0)
 
     def test_training_reward_exposes_benchmark_aligned_lateral_displacement(self):
         model, compiled = compiled_assembly("force-sensing-3dof")

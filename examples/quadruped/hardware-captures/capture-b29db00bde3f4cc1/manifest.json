@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "planHash": "27bf9552d4f1f5dba2033eeb67ac709d34f94d7938c300a07a23e09ae11ce2c6",
+  "bundleHash": "ff0d8c77d41216b6449851148081b945160844d62f905ad966072eeff4529877",
+  "driverHash": "b56968f4ae6a629e5710ffe00091fcc647452a17000e984c58c9d47eac073f74",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "Mujica deadline proof",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T13:16:20.804675Z",
+  "endedAt": "2026-07-23T13:16:20.928462Z",
+  "status": "ABORTED",
+  "transcriptHash": "6f4f6d5887424569c18b7463bdd01349ed38ebc5b1f796121014854fd985285b",
+  "episodeHashes": {},
+  "runtimeSourceHash": "b9ee539cfc75a350a451d11f50f383e9a834597cca1cf3c70adf90a87c10b3bd",
+  "harnessSourceHash": "a088e3e3e812700f5f4d4165ece0afb3ad45678a4869aa529971f3947c7c44fe",
+  "mode": "shadow",
+  "actuationAuthorized": false,
+  "protocolCapabilities": [
+    "applied-action",
+    "decision-deadline",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 1,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "decisionDeadlineIdentity": {
+    "maximumMicroseconds": 879,
+    "meanMicroseconds": 879,
+    "samples": 1,
+    "hostPreDispatchMisses": 1,
+    "driverRejections": 0
+  },
+  "emergencyStopAcknowledgements": 1,
+  "controllerWarmupPasses": 2,
+  "realTimeQualified": false,
+  "id": "capture-b29db00bde3f4cc1",
+  "captureHash": "b29db00bde3f4cc1001b0abd45db4bbf3caf6b6e646cc7605cf20cf0c1e8dbc3",
+  "plan": "history-policy-host-deadline-trip",
+  "target": "history-policy-shadow-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-history-3dof",
+  "assemblyHash": "547647c66ff536a486ed3134902d24173597e08b6321be404fbda47300886f84",
+  "executionHash": "e6e345bf462080612f784fdde084a0e732bf41634e6668c76e813ed0c0c693d3",
+  "modelHash": "5433c9eca695980694a51e121a2888f1e52d7c7280c37ec72815cffaf9d9f5c0",
+  "controller": "capture-calibrated-history-residual-gait",
+  "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+  "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+  "episodes": [
+    {
+      "id": "host-deadline-trip",
+      "seed": 4303,
+      "plannedSteps": 10,
+      "steps": 0,
+      "completed": false,
+      "reason": "host decision latency 0.878834 ms exceeds maximum 0.001000 ms before dispatch"
+    }
+  ],
+  "dispatch": {
+    "samples": 0,
+    "maximumLatencyMs": 0.0,
+    "meanLatencyMs": 0.0,
+    "deadlineMisses": 1,
+    "maximumConsecutiveMisses": 1
+  },
+  "decisionDeadline": {
+    "maximumLatencyMs": 0.001,
+    "samples": 1,
+    "maximumObservedLatencyMs": 0.878834,
+    "meanObservedLatencyMs": 0.878834,
+    "hostPreDispatchMisses": 1,
+    "driverRejections": 0,
+    "maximumDriverRejectedLatencyMs": 0.0
+  },
+  "stateAge": {
+    "samples": 1,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [
+    {
+      "episode": "host-deadline-trip",
+      "step": 0,
+      "kind": "host-decision-deadline",
+      "observedDecisionLatencyMs": 0.878834,
+      "maximumDecisionLatencyMs": 0.001
+    }
+  ],
+  "safeStops": 0,
+  "emergencyStops": 1,
+  "reasons": [
+    "host-deadline-trip: host decision latency 0.878834 ms exceeds maximum 0.001000 ms before dispatch"
+  ],
+  "calibrationEligible": false,
+  "completed": true
+}

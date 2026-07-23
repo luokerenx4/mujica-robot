@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "quadruped-driver-deadline-trip",
+  "name": "Driver-local expired Action fail-closed proof",
+  "target": "spatial-dry-run",
+  "bundle": "hardware-2b9109aa14a3dd27",
+  "mode": "actuate",
+  "episodes": [
+    {
+      "id": "driver-deadline-trip",
+      "seed": 4304,
+      "steps": 10
+    }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 30,
+    "maximumDecisionLatencyMs": 10,
+    "minimumBaseHeightM": 0.12,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Run with the protocol simulator receive-delay fault. The host sends an ordinary Action on time, but the Driver must reject it with its own monotonic clock before stepping the plant."
+}

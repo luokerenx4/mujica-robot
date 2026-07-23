@@ -142,6 +142,17 @@ def _stopped_acknowledged(message: dict[str, Any], episode_id: str | None, kind:
     return message.get("type") == "stopped" and message.get("episode") == episode_id and message.get("kind") == kind
 
 
+def _driver_deadline_rejection(message: dict[str, Any], episode_id: str, step: int) -> float | None:
+    if message.get("type") != "deadline-rejected":
+        return None
+    if message.get("episode") != episode_id or int(message.get("step", -1)) != step:
+        raise RuntimeError(f"Driver deadline rejection does not match episode '{episode_id}' step {step}")
+    observed_ms = float(message.get("observedDecisionLatencyMs", float("nan")))
+    if not np.isfinite(observed_ms) or observed_ms < 0:
+        raise RuntimeError("Driver deadline rejection lacks a finite nonnegative observedDecisionLatencyMs")
+    return observed_ms
+
+
 def _state_safety_reasons(model: mujoco.MjModel, qpos: np.ndarray, qvel: np.ndarray, safety: dict[str, Any]) -> list[str]:
     reasons: list[str] = []
     has_free_root = model.njnt > 0 and int(model.jnt_type[0]) == int(mujoco.mjtJoint.mjJNT_FREE) and int(model.jnt_qposadr[0]) == 0
@@ -190,9 +201,13 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     episode_rows: dict[str, list[dict[str, Any]]] = {}
     episode_results: list[dict[str, Any]] = []
     interventions: list[dict[str, Any]] = []
+    decision_latencies_ms: list[float] = []
     dispatch_latencies_ms: list[float] = []
+    driver_rejection_latencies_ms: list[float] = []
     state_ages_ms: list[float] = []
     deadline_misses = 0
+    host_pre_dispatch_deadline_misses = 0
+    driver_deadline_rejections = 0
     maximum_consecutive_misses = 0
     consecutive_misses = 0
     emergency_stops = 0
@@ -205,6 +220,9 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     started_at = _utc_now()
     timeout_seconds = max(1.0, 5.0 / float(target["controlHz"]))
     startup_timeout_seconds = max(5.0, timeout_seconds)
+    maximum_decision_latency_ms = float(plan["safety"].get("maximumDecisionLatencyMs", target["safety"]["maximumLatencyMs"]))
+    if maximum_decision_latency_ms > float(target["safety"]["maximumLatencyMs"]):
+        raise RuntimeError("Capture Plan decision deadline exceeds Hardware Target maximumLatencyMs")
 
     temporary_root = Path(tempfile.mkdtemp(prefix="mujica-hardware-capture-"))
     stderr_path = temporary_root / "driver-stderr.log"
@@ -258,6 +276,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             required_capabilities.update({"applied-action", "state-age-ms"})
         if plan["mode"] == "shadow":
             required_capabilities.update({"applied-action", "shadow-action", "state-age-ms"})
+        if bool(target["safety"].get("requireDecisionDeadline", False)) or plan["safety"].get("maximumDecisionLatencyMs") is not None:
+            required_capabilities.add("decision-deadline")
         missing_capabilities = sorted(required_capabilities.difference(protocol_capabilities))
         if missing_capabilities:
             raise RuntimeError(f"Driver lacks required capabilities: {', '.join(missing_capabilities)}")
@@ -267,6 +287,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         emergency_action = _finite_vector(target["safety"]["emergencyStopAction"], model.nu, "emergency-stop Action")
         maximum_delta = float(plan["action"]["maximumSlewPerSecond"]) / float(target["controlHz"])
         maximum_state_age_ms = target["safety"].get("maximumStateAgeMs")
+        driver_deadline_enabled = "decision-deadline" in protocol_capabilities
         require_telemetry = maximum_state_age_ms is not None or plan["mode"] == "shadow"
         for episode in plan["episodes"]:
             episode_id = str(episode["id"])
@@ -274,6 +295,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             controller.reset(int(episode["seed"]))
             previous_action = emergency_action.copy()
             rows: list[dict[str, Any]] = []
+            completed_steps = 0
             episode_reason: str | None = None
             session.send({"type": "start-episode", "episode": episode_id, "seed": int(episode["seed"]), "steps": planned_steps, "controlHz": float(target["controlHz"])})
             message, received_ns = session.receive(startup_timeout_seconds)
@@ -306,6 +328,22 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                         "slewLimitedValues": int(np.count_nonzero(slew_limited != desired_action)),
                         "contractClippedValues": int(np.count_nonzero(action != slew_limited)),
                     })
+                decision_ms = (time.perf_counter_ns() - received_ns) / 1_000_000.0
+                decision_latencies_ms.append(decision_ms)
+                if decision_ms > maximum_decision_latency_ms:
+                    deadline_misses += 1
+                    host_pre_dispatch_deadline_misses += 1
+                    consecutive_misses += 1
+                    maximum_consecutive_misses = max(maximum_consecutive_misses, consecutive_misses)
+                    interventions.append({
+                        "episode": episode_id,
+                        "step": step,
+                        "kind": "host-decision-deadline",
+                        "observedDecisionLatencyMs": decision_ms,
+                        "maximumDecisionLatencyMs": maximum_decision_latency_ms,
+                    })
+                    episode_reason = f"host decision latency {decision_ms:.6f} ms exceeds maximum {maximum_decision_latency_ms:.6f} ms before dispatch"
+                    break
                 rows.append({
                     "episode": episode_id,
                     "step": step,
@@ -315,24 +353,45 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     "proposedAction": action.tolist(),
                     "commandedAction": (action if plan["mode"] == "actuate" else (current_applied if current_applied is not None else emergency_action)).tolist(),
                 })
-                sent_ns = session.send({
+                action_message = {
                     "type": "action" if plan["mode"] == "actuate" else "shadow-action",
                     "episode": episode_id,
                     "step": step,
                     **({"action": action.tolist()} if plan["mode"] == "actuate" else {"proposedAction": action.tolist()}),
-                })
+                }
+                if driver_deadline_enabled:
+                    action_message["maximumDecisionLatencyMs"] = maximum_decision_latency_ms
+                sent_ns = session.send(action_message)
                 dispatch_ms = (sent_ns - received_ns) / 1_000_000.0
                 dispatch_latencies_ms.append(dispatch_ms)
-                if dispatch_ms > float(target["safety"]["maximumLatencyMs"]):
+                dispatch_late = dispatch_ms > maximum_decision_latency_ms
+                if dispatch_late:
                     deadline_misses += 1
                     consecutive_misses += 1
                     maximum_consecutive_misses = max(maximum_consecutive_misses, consecutive_misses)
                 else:
                     consecutive_misses = 0
-                if consecutive_misses > int(target["safety"]["maximumConsecutiveMisses"]):
-                    episode_reason = f"consecutive dispatch deadline misses {consecutive_misses} exceed target limit"
-                    break
                 message, received_ns = session.receive(timeout_seconds)
+                rejected_ms = _driver_deadline_rejection(message, episode_id, step)
+                if rejected_ms is not None:
+                    driver_deadline_rejections += 1
+                    driver_rejection_latencies_ms.append(rejected_ms)
+                    if not dispatch_late:
+                        deadline_misses += 1
+                        consecutive_misses += 1
+                        maximum_consecutive_misses = max(maximum_consecutive_misses, consecutive_misses)
+                    rows[-1]["appliedAction"] = (current_applied if current_applied is not None else emergency_action).tolist()
+                    rows[-1]["deadlineRejected"] = True
+                    rows[-1]["observedDecisionLatencyMs"] = rejected_ms
+                    interventions.append({
+                        "episode": episode_id,
+                        "step": step,
+                        "kind": "driver-decision-deadline",
+                        "observedDecisionLatencyMs": rejected_ms,
+                        "maximumDecisionLatencyMs": maximum_decision_latency_ms,
+                    })
+                    episode_reason = f"driver rejected expired Action at {rejected_ms:.6f} ms (maximum {maximum_decision_latency_ms:.6f} ms)"
+                    break
                 qpos, qvel, observation_vector, next_applied, state_age_ms = _state_vectors(
                     message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, step + 1, require_telemetry,
                 )
@@ -342,8 +401,12 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 rows[-1]["appliedAction"] = actual_applied.tolist()
                 if plan["mode"] == "shadow":
                     rows[-1]["commandedAction"] = actual_applied.tolist()
+                if dispatch_late:
+                    episode_reason = f"host dispatch latency {dispatch_ms:.6f} ms exceeded maximum {maximum_decision_latency_ms:.6f} ms but Driver applied the Action"
+                    break
                 current_applied = actual_applied
                 previous_action = action
+                completed_steps += 1
             if episode_reason is None:
                 terminal_reasons = _state_safety_reasons(model, qpos, qvel, plan["safety"])
                 terminal_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
@@ -382,7 +445,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 except Exception as error:
                     status = "FAILED"
                     reasons.append(f"{episode_id}: emergency stop was not acknowledged: {error}")
-                episode_results.append({"id": episode_id, "seed": int(episode["seed"]), "plannedSteps": planned_steps, "steps": len(rows), "completed": False, "reason": episode_reason})
+                episode_results.append({"id": episode_id, "seed": int(episode["seed"]), "plannedSteps": planned_steps, "steps": completed_steps, "completed": False, "reason": episode_reason})
                 break
     except Exception as error:
         status = "FAILED"
@@ -412,6 +475,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     }
     maximum_state_age = max(state_ages_ms, default=0.0)
     mean_state_age = float(np.mean(state_ages_ms)) if state_ages_ms else 0.0
+    maximum_decision_latency = max(decision_latencies_ms, default=0.0)
+    mean_decision_latency = float(np.mean(decision_latencies_ms)) if decision_latencies_ms else 0.0
     actuation_authorized = plan["mode"] == "actuate"
     real_time_qualified = deadline_misses == 0
     state_age_evidence = {
@@ -423,6 +488,13 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "samples": len(state_ages_ms),
         "maximumMicroseconds": round(maximum_state_age * 1000.0),
         "meanMicroseconds": round(mean_state_age * 1000.0),
+    }
+    decision_deadline_identity = {
+        "maximumMicroseconds": round(maximum_decision_latency * 1000.0),
+        "meanMicroseconds": round(mean_decision_latency * 1000.0),
+        "samples": len(decision_latencies_ms),
+        "hostPreDispatchMisses": host_pre_dispatch_deadline_misses,
+        "driverRejections": driver_deadline_rejections,
     }
     identity = {
         "version": 1,
@@ -445,6 +517,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "actuationAuthorized": actuation_authorized,
         "protocolCapabilities": protocol_capabilities,
         "stateAgeIdentity": state_age_identity,
+        "decisionDeadlineIdentity": decision_deadline_identity,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
         "controllerWarmupPasses": controller_warmup_passes,
         "realTimeQualified": real_time_qualified,
@@ -506,6 +579,15 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 "deadlineMisses": deadline_misses,
                 "maximumConsecutiveMisses": maximum_consecutive_misses,
             },
+            "decisionDeadline": {
+                "maximumLatencyMs": maximum_decision_latency_ms,
+                "samples": len(decision_latencies_ms),
+                "maximumObservedLatencyMs": maximum_decision_latency,
+                "meanObservedLatencyMs": mean_decision_latency,
+                "hostPreDispatchMisses": host_pre_dispatch_deadline_misses,
+                "driverRejections": driver_deadline_rejections,
+                "maximumDriverRejectedLatencyMs": max(driver_rejection_latencies_ms, default=0.0),
+            },
             "protocolCapabilities": protocol_capabilities,
             "stateAge": state_age_evidence,
             "interventions": interventions,
@@ -528,6 +610,9 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             f"- Device: {device['vendor']} {device['model']} ({device['serial']})\n"
             f"- Episodes: {sum(item['completed'] for item in completed_episodes)}/{len(plan['episodes'])}\n"
             f"- Dispatch latency max/mean: {maximum_latency:.6f}/{mean_latency:.6f} ms\n"
+            f"- Decision latency max/mean/limit: {maximum_decision_latency:.6f}/{mean_decision_latency:.6f}/{maximum_decision_latency_ms:.6f} ms\n"
+            f"- Host pre-dispatch deadline misses: {host_pre_dispatch_deadline_misses}\n"
+            f"- Driver deadline rejections: {driver_deadline_rejections}\n"
             f"- State age max/mean: {maximum_state_age:.6f}/{mean_state_age:.6f} ms\n"
             f"- Deadline misses: {deadline_misses}\n"
             f"- Safety interventions: {len(interventions)}\n"
@@ -556,8 +641,11 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "device": device,
         "episodes": episode_results,
         "maximumDispatchLatencyMs": maximum_latency,
+        "maximumDecisionLatencyMs": maximum_decision_latency,
         "maximumStateAgeMs": maximum_state_age,
         "deadlineMisses": deadline_misses,
+        "hostPreDispatchDeadlineMisses": host_pre_dispatch_deadline_misses,
+        "driverDeadlineRejections": driver_deadline_rejections,
         "interventions": len(interventions),
         "emergencyStops": emergency_stops,
         "emergencyStopAcknowledgements": emergency_stop_acknowledgements,

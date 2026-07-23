@@ -1,0 +1,108 @@
+{
+  "capturePlan": {
+    "version": 1,
+    "id": "quadruped-dry-run-identification",
+    "name": "Three-episode synthetic device identification capture",
+    "target": "spatial-dry-run",
+    "bundle": "hardware-2b9109aa14a3dd27",
+    "mode": "actuate",
+    "episodes": [
+      {
+        "id": "fit-a",
+        "seed": 4201,
+        "steps": 50
+      },
+      {
+        "id": "fit-b",
+        "seed": 4202,
+        "steps": 50
+      },
+      {
+        "id": "validation",
+        "seed": 4203,
+        "steps": 50
+      }
+    ],
+    "action": {
+      "scale": 1,
+      "maximumSlewPerSecond": 400
+    },
+    "safety": {
+      "maximumJointVelocityRadPerSec": 30,
+      "minimumBaseHeightM": 0.12,
+      "maximumBaseHeightM": 0.8,
+      "maximumBodyTiltRad": 1.5
+    },
+    "notes": "Runs only against the checked-in MuJoCo protocol simulator. It validates the session/capture boundary and remains synthetic evidence."
+  },
+  "planHash": "e18489ee33f12c6ad45aceee3161019d5329b46c1e3e4138041dc68588bf2f50",
+  "bundle": {
+    "version": 1,
+    "harnessSourceHash": "a088e3e3e812700f5f4d4165ece0afb3ad45678a4869aa529971f3947c7c44fe",
+    "harnessDependencyLockHash": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+    "sourceKind": "robot-revision",
+    "maximumCaptureMode": "actuate",
+    "target": {
+      "version": 1,
+      "id": "spatial-dry-run",
+      "name": "3-DOF quadruped driver protocol dry-run",
+      "revision": "quadruped-r-b1a3d1f7161a",
+      "assembly": "force-sensing-3dof",
+      "controller": "spatial-forward-gait",
+      "environment": "dry-run",
+      "protocol": "stdio-jsonl-v1",
+      "controlHz": 50,
+      "safety": {
+        "maximumLatencyMs": 10,
+        "maximumStateAgeMs": 20,
+        "requireDecisionDeadline": true,
+        "maximumConsecutiveMisses": 2,
+        "emergencyStopAction": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "device": {
+        "vendor": "Mujica",
+        "model": "Protocol simulator",
+        "serialRequired": false
+      }
+    },
+    "revisionId": "quadruped-r-b1a3d1f7161a",
+    "revisionHash": "7d17d19c5cb9010f11d61be290a8ee73952d3427a9dc0cce3af1f05c646dce98",
+    "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+    "modelXmlHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+    "controllerHash": "ae8378692ed5574aa14dfdda529032535e15cbf5803156b24286bea9026f095c",
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+    "protocol": "stdio-jsonl-v1",
+    "id": "hardware-2b9109aa14a3dd27",
+    "bundleHash": "2b9109aa14a3dd27cad26c6a060afb403fee259f6de0d4d616fec1d6e27f9852",
+    "completed": true
+  },
+  "driver": {
+    "hash": "b56968f4ae6a629e5710ffe00091fcc647452a17000e984c58c9d47eac073f74",
+    "arguments": [
+      "--scenario",
+      "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+    ],
+    "inputs": [
+      {
+        "name": "hardware-capture-hidden-plant.scenario.json",
+        "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+      }
+    ]
+  },
+  "operator": "Mujica final dry-run",
+  "authorization": null
+}

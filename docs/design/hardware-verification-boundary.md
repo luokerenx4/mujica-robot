@@ -20,7 +20,9 @@ Controller-to-Policy pointer, and Policy bytes.
 `mujica hardware verify` re-hashes every Bundle surface before accepting
 separately collected Evidence. Evidence records device serial, driver source
 hash, exact bundle/contract hashes, timestamps, samples, latency, deadline
-misses, emergency stops, operator, and notes.
+misses, driver-local deadline rejections, emergency stops, operator, and notes.
+When a Target requires the decision-deadline capability, Evidence without at
+least one exercised Driver rejection fails verification.
 
 `mujica capture run` closes the executable half of this boundary without
 weakening verification semantics. A Capture Plan fixes finite episodes and a
@@ -30,6 +32,13 @@ bidirectional transcript, and sends an acknowledged emergency stop on every
 protocol, Controller, deadline, or state violation. It never upgrades status to
 `HARDWARE-VERIFIED`; Capture evidence and conformance verification remain
 different claims.
+
+Targets may require a `decision-deadline` Driver capability. The host rejects a
+late Controller result before writing it, while the Driver independently rejects
+an expired message before applying it. These checks use separate monotonic
+clocks, so transport delay is covered without clock synchronization. An expired
+message always aborts the episode; tolerated consecutive misses remain a
+verification-evidence ceiling, not permission to apply stale control.
 
 Physical authority is external. HIL/real Capture Plans require an unexpired
 authorization naming the exact Plan, Bundle, Target, environment, operator,
@@ -52,5 +61,7 @@ The example dry-run includes both a separately verified conformance trace and a
 MuJoCo-backed executable protocol driver. The completed three-episode Capture is
 synthetic and calibration-eligible; a second Capture intentionally trips the
 body-tilt gate, emits an emergency stop, and is ineligible. Both retain
-`hardwareVerified=false`. No MuJoCo run and no simulated device can satisfy a
-physical verification claim.
+`hardwareVerified=false`. Two additional negative proofs show that a learned
+Policy late on the host produces no control message, and that a delayed ordinary
+Action is rejected by the Driver without advancing MuJoCo. No MuJoCo run and no
+simulated device can satisfy a physical verification claim.

@@ -108,6 +108,12 @@ separate session deliberately crosses the body-tilt gate and proves the host
 emits an emergency stop and makes the artifact calibration-ineligible. See
 [hardware capture protocol](docs/design/hardware-capture-protocol.md).
 
+The control deadline now fails closed on both sides of the process boundary.
+Late Policy inference is stopped before the host emits any control message; a
+message delayed in transport is independently rejected by the Driver before it
+advances MuJoCo or physical actuation. The checked-in negative proofs preserve
+both outcomes and their acknowledged emergency stops.
+
 The first Policy trained from that captured Profile is also frozen as evidence.
 It scores `60.6407` on the locked `spatial-robustness` Benchmark versus `60.4130`
 for the prior residual Policy and `60.2947` for the program Controller. It is

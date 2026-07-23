@@ -238,6 +238,7 @@ export const hardwareTargetSchema = z.object({
   safety: z.object({
     maximumLatencyMs: z.number().positive(),
     maximumStateAgeMs: z.number().positive().optional(),
+    requireDecisionDeadline: z.boolean().optional(),
     maximumConsecutiveMisses: z.number().int().nonnegative(),
     emergencyStopAction: z.array(z.number().finite()).min(1),
   }).strict(),
@@ -262,6 +263,7 @@ export const hardwareCapturePlanSchema = z.object({
   }).strict(),
   safety: z.object({
     maximumJointVelocityRadPerSec: z.number().positive(),
+    maximumDecisionLatencyMs: z.number().positive().optional(),
     minimumBaseHeightM: z.number().nonnegative().optional(),
     maximumBaseHeightM: z.number().positive().optional(),
     maximumBodyTiltRad: z.number().positive().max(Math.PI).optional(),
@@ -296,6 +298,7 @@ export const hardwareEvidenceSchema = z.object({
   maximumObservedStateAgeMs: z.number().nonnegative().optional(),
   missedDeadlines: z.number().int().nonnegative(), maximumConsecutiveMissesObserved: z.number().int().nonnegative(), emergencyStops: z.number().int().nonnegative(),
   emergencyStopAcknowledgements: z.number().int().nonnegative().optional(),
+  decisionDeadlineRejections: z.number().int().nonnegative().optional(),
   passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
 }).strict();
 

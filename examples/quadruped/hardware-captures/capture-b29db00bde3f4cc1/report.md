@@ -1,0 +1,21 @@
+# Hardware capture
+
+- Status: ABORTED
+- Environment: dry-run
+- Mode: shadow
+- Actuation authorized: false
+- Device: Mujica Protocol simulator (simulated)
+- Episodes: 0/1
+- Dispatch latency max/mean: 0.000000/0.000000 ms
+- Decision latency max/mean/limit: 0.878834/0.878834/0.001000 ms
+- Host pre-dispatch deadline misses: 1
+- Driver deadline rejections: 0
+- State age max/mean: 0.000000/0.000000 ms
+- Deadline misses: 1
+- Safety interventions: 1
+- Emergency stops: 1
+- Emergency-stop acknowledgements: 1
+- Controller warm-up passes before driver connection: 2
+- Real-time qualified: false
+- Calibration eligible: false
+- Reason: host-deadline-trip: host decision latency 0.878834 ms exceeds maximum 0.001000 ms before dispatch

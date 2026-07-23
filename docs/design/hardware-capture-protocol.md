@@ -26,6 +26,7 @@ The host and driver exchange:
 host hello → driver hello
 host start-episode → driver state(step=0)
 host action(step=n) → driver state(step=n+1)
+host action(step=n) → driver deadline-rejected(step=n)
 host safe-stop → driver stopped
 ...
 host close → driver completed
@@ -64,6 +65,30 @@ normalization, recurrent history inputs, or the serialized program prior.
 Captures record the warm-up count and `realTimeQualified`; any deadline miss
 makes the latter false and prevents calibration eligibility.
 
+### Decision deadline
+
+A Target may require the negotiated `decision-deadline` capability; authoring a
+Plan-level deadline also requires that capability. The effective limit is the
+Target's `maximumLatencyMs`, optionally tightened by the Plan's
+`maximumDecisionLatencyMs`; a Plan may never make it larger.
+
+The deadline is enforced twice, without synchronizing clocks:
+
+1. The host measures from receipt of a state to the instant before dispatch. If
+   Controller inference, safety processing, or message preparation is already
+   late, it emits no `action` or `shadow-action` and requests an acknowledged
+   emergency stop.
+2. Every accepted control message carries the effective limit. The driver
+   measures locally from sending its state to receiving the control message. If
+   transport or scheduling makes it late, the driver applies its local emergency
+   action, does not advance the plant or hardware command, and returns
+   `deadline-rejected`.
+
+Any rejection aborts the synchronous episode. The host does not use
+`maximumConsecutiveMisses` to continue after an expired command because there
+is no safe state transition to assume. Captures distinguish host pre-dispatch
+misses from driver rejections and preserve both clocks' measurements.
+
 ## Safety and authority
 
 Before each Action the host checks:
@@ -75,7 +100,7 @@ Before each Action the host checks:
 - finite, nonnegative device state age below the Hardware Target limit;
 - maximum joint speed;
 - optional free-base height and yaw-invariant tilt;
-- Controller-to-driver dispatch deadline and consecutive misses.
+- host decision deadline and driver-local receipt deadline;
 
 Any violation ends the episode, sends the Bundle's emergency-stop Action, and
 publishes an `ABORTED` artifact that is not calibration-eligible. A stop is not
@@ -104,7 +129,7 @@ Each immutable Hardware Capture contains:
 - one calibration NDJSON file per completed episode;
 - proposed/commanded/applied Actions, state-age distribution, stop
   acknowledgements, Controller warm-up count, real-time qualification,
-  dispatch latency/deadline metrics, and every intervention;
+  host decision/dispatch latency, driver rejection metrics, and every intervention;
 - a report and manifest declaring `COMPLETED`, `ABORTED`, or `FAILED`.
 
 Only an actuation-authorized `COMPLETED` episode may enter a Calibration

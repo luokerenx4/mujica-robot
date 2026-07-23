@@ -239,6 +239,7 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     const bundle = JSON.parse(await Bun.file(bundlePath).text());
     if (bundle.id !== plan.bundle || bundle.target?.id !== target.id || bundle.target?.assembly !== target.assembly) throw new Error(`Capture Plan '${id}' Hardware Bundle does not match its Target and Assembly`);
     if (bundle.maximumCaptureMode === "shadow" && plan.mode !== "shadow") throw new Error(`Capture Plan '${id}' cannot actuate a shadow-only Policy Revision Bundle`);
+    if (plan.safety.maximumDecisionLatencyMs !== undefined && plan.safety.maximumDecisionLatencyMs > target.safety.maximumLatencyMs) throw new Error(`Capture Plan '${id}' decision deadline cannot exceed Hardware Target maximumLatencyMs`);
     if (plan.action.maximumSlewPerSecond * plan.action.scale <= 0) throw new Error(`Capture Plan '${id}' Action authority must be positive`);
   }
   const researchIds = await fileIds(join(root, "research"), ".research.json");

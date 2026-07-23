@@ -170,6 +170,8 @@ describe("Robot Assembly compiler", () => {
     expect(plan.episodes.map((episode) => episode.id)).toEqual(["fit-a", "fit-b", "validation"]);
     expect(plan.action).toEqual({ scale: 1, maximumSlewPerSecond: 400 });
     expect(hardwareCapturePlanSchema.safeParse({ ...plan, id: "shadow-plan", mode: "shadow" }).success).toBe(true);
+    expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, maximumDecisionLatencyMs: 5 } }).success).toBe(true);
+    expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, maximumDecisionLatencyMs: 0 } }).success).toBe(false);
     expect(hardwareCapturePlanSchema.safeParse({ ...plan, safety: { ...plan.safety, minimumBaseHeightM: 0.9, maximumBaseHeightM: 0.8 } }).success).toBe(false);
     const authorization = {
       version: 1, plan: plan.id, planHash: "a".repeat(64), target: "physical-target", bundleHash: "b".repeat(64), environment: "real",

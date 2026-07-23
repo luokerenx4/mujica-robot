@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,16 +27,20 @@ def receive() -> dict[str, Any]:
     return value
 
 
-def send(value: dict[str, Any]) -> None:
+def send(value: dict[str, Any]) -> int:
     sys.stdout.write(json.dumps(value, separators=(",", ":"), ensure_ascii=False) + "\n")
     sys.stdout.flush()
+    return time.perf_counter_ns()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--state-age-ms", type=float, default=0.0)
+    parser.add_argument("--receive-delay-ms", type=float, default=0.0)
     arguments = parser.parse_args()
+    if arguments.receive_delay_ms < 0:
+        raise RuntimeError("--receive-delay-ms must be nonnegative")
     bundle_root = Path(os.environ["MUJICA_HARDWARE_BUNDLE"])
     bundle = json.loads((bundle_root / "manifest.json").read_text())
     compiled = json.loads((bundle_root / "revision" / "compiled" / "compiled-assembly.json").read_text())
@@ -47,6 +52,7 @@ def main() -> None:
     environment: RobotEnvironment | None = None
     observation: dict[str, np.ndarray] | None = None
     active_episode: str | None = None
+    state_sent_ns: int | None = None
     last_applied = np.asarray(target["safety"]["emergencyStopAction"], dtype=np.float64)
 
     hello = receive()
@@ -59,7 +65,7 @@ def main() -> None:
             "model": target["device"]["model"],
             "serial": "simulated",
         },
-        "capabilities": ["applied-action", "shadow-action", "state-age-ms", "stop-ack"],
+        "capabilities": ["applied-action", "decision-deadline", "shadow-action", "state-age-ms", "stop-ack"],
     })
 
     while True:
@@ -86,7 +92,7 @@ def main() -> None:
             environment = RobotEnvironment(model_path, compiled, task, scenario, int(message["seed"]))
             observation = environment.reset()
             last_applied = np.asarray(target["safety"]["emergencyStopAction"], dtype=np.float64)
-            send({
+            state_sent_ns = send({
                 "type": "state",
                 "episode": active_episode,
                 "step": 0,
@@ -101,11 +107,28 @@ def main() -> None:
                 raise RuntimeError("action received outside active episode")
             if int(message["step"]) != environment.step_index:
                 raise RuntimeError("action step is out of sequence")
+            maximum_decision_latency_ms = message.get("maximumDecisionLatencyMs")
+            if maximum_decision_latency_ms is not None:
+                maximum_decision_latency_ms = float(maximum_decision_latency_ms)
+                observed_decision_latency_ms = (time.perf_counter_ns() - state_sent_ns) / 1_000_000.0 if state_sent_ns is not None else float("inf")
+                if not np.isfinite(maximum_decision_latency_ms) or maximum_decision_latency_ms <= 0:
+                    raise RuntimeError("maximumDecisionLatencyMs must be finite and positive")
+                if observed_decision_latency_ms > maximum_decision_latency_ms:
+                    environment.data.ctrl[:] = np.asarray(target["safety"]["emergencyStopAction"], dtype=np.float64)
+                    send({
+                        "type": "deadline-rejected",
+                        "episode": active_episode,
+                        "step": environment.step_index,
+                        "actionKind": kind,
+                        "observedDecisionLatencyMs": observed_decision_latency_ms,
+                        "maximumDecisionLatencyMs": maximum_decision_latency_ms,
+                    })
+                    continue
             requested = np.asarray(message["action"] if kind == "action" else target["safety"]["emergencyStopAction"], dtype=np.float64)
             result = environment.step(requested)
             observation = result.observation
             last_applied = np.asarray(result.info["appliedAction"], dtype=np.float64)
-            send({
+            state_sent_ns = send({
                 "type": "state",
                 "episode": active_episode,
                 "step": environment.step_index,
@@ -127,6 +150,9 @@ def main() -> None:
             return
         else:
             raise RuntimeError(f"unknown protocol message '{kind}'")
+
+        if state_sent_ns is not None and arguments.receive_delay_ms > 0:
+            time.sleep(arguments.receive_delay_ms / 1000.0)
 
 
 if __name__ == "__main__":

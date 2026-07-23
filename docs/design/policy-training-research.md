@@ -53,6 +53,11 @@ networks are preheated before driver connection so lazy framework startup is
 measured and removed outside the device control deadline. This path gathers
 device evidence; it does not change the Robot Revision head.
 
+Warm-up does not waive the runtime deadline. Host-side inference is gated before
+dispatch, and the Driver independently rejects a stale Policy proposal before
+applying it. Thus ML experimentation can change model structure and latency, but
+cannot silently convert a slow candidate into a late robot command.
+
 ## First result
 
 The checked-in run contains 11 real frozen-policy experiments: one KEEP and ten REVERT. Reducing PPO from 4096 to 2048 steps improved the budget-aware score from `84.18884075657773` to `84.23980305153188` (`+0.050962294954146614`), then the bounded neighborhood exhausted. The learned policy remains slightly below the best program controller (`84.25444528948661`) after charging the Objective's training-step cost, so it is not promoted as the whole-robot head.

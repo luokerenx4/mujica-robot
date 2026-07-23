@@ -1,0 +1,21 @@
+# Hardware capture
+
+- Status: ABORTED
+- Environment: dry-run
+- Mode: actuate
+- Actuation authorized: true
+- Device: Mujica Protocol simulator (simulated)
+- Episodes: 0/1
+- Dispatch latency max/mean: 0.362667/0.362667 ms
+- Decision latency max/mean/limit: 0.348500/0.348500/10.000000 ms
+- Host pre-dispatch deadline misses: 0
+- Driver deadline rejections: 1
+- State age max/mean: 0.000000/0.000000 ms
+- Deadline misses: 1
+- Safety interventions: 1
+- Emergency stops: 1
+- Emergency-stop acknowledgements: 1
+- Controller warm-up passes before driver connection: 0
+- Real-time qualified: false
+- Calibration eligible: false
+- Reason: driver-deadline-trip: driver rejected expired Action at 30.080625 ms (maximum 10.000000 ms)

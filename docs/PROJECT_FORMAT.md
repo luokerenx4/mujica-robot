@@ -95,7 +95,8 @@ emergency-stop Action. Exported bundles and verification records are immutable.
 External Evidence must carry exact bundle and contract hashes, driver hash,
 device serial, timestamps, sample count, timing measurements, emergency-stop
 count and acknowledgements, and operator identity. A Target with a state-age
-gate also requires maximum observed device state age.
+gate also requires maximum observed device state age; a Target requiring
+decision deadlines also requires Evidence of a Driver-local rejection.
 
 `revisionKind` defaults to `robot`. A `policy` Target is exported with
 `sourceKind=policy-revision` and a derived `maximumCaptureMode=shadow`. The
@@ -105,8 +106,12 @@ model, and locked Judge evidence. Authored files cannot raise that ceiling.
 A Capture Plan binds one such Bundle to 1–32 finite episodes, explicitly in
 `shadow` or `actuate` mode. Each episode has an ID, seed, and bounded step count;
 Plan safety may only tighten authority with
-Action scale/slew, maximum joint velocity, and optional free-base height/tilt
-gates. The driver executable and any driver inputs are content-hashed and frozen.
+Action scale/slew, an optional `maximumDecisionLatencyMs`, maximum joint
+velocity, and optional free-base height/tilt gates. The Plan deadline cannot
+exceed the Target's `maximumLatencyMs`. A Target may require the
+`decision-deadline` capability, which makes both host pre-dispatch and
+Driver-local pre-application rejection mandatory. The driver executable and any
+driver inputs are content-hashed and frozen.
 HIL/real execution additionally requires a separate expiring authorization with
 the exact Plan/Bundle/operator/device identity and episode ceiling. Shadow mode
 transmits only non-authoritative Controller proposals and is never
