@@ -16,14 +16,13 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 ## Active plans
 
-| Plan | Outcome | Updated |
-| --- | --- | --- |
-| [ML motion-quality autoresearch](plans/ml-motion-quality-autoresearch.md) | Train and govern a quality-aware residual Policy through an AI-authored experiment, frozen-policy Judge evaluation, regression protection, and visual comparison. | 2026-07-23 |
+None.
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [ML motion-quality autoresearch](plans/ml-motion-quality-autoresearch.md) | Trained and governed a quality-aware residual Policy through an AI-authored experiment, frozen-policy Judge evaluation, regression protection, and visual comparison. | 2026-07-23 |
 | [Motion-quality judgement and comparison](plans/motion-quality-comparison.md) | Made visible gait defects measurable and let humans compare two authoritative MuJoCo Runs on one synchronized Studio clock. | 2026-07-23 |
 | [Visual simulation debugger](plans/visual-simulation-debugger.md) | Rendered authoritative MuJoCo motion in Studio with synchronized frame, Event, telemetry, and copyable Agent context for human-Agent debugging. | 2026-07-23 |
 | [Research Lab V2](plans/research-lab-v2.md) | Unified controller, ML, and complete-robot autoresearch behind one isolated source-editing protocol, immutable experiments, frozen-policy evaluation, and locked robot judgement. | 2026-07-23 |

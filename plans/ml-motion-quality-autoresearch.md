@@ -1,6 +1,6 @@
 # ML motion-quality autoresearch
 
-- Status: `active`
+- Status: `complete`
 - Updated: `2026-07-23`
 - Related design: [ML motion-quality research](../docs/design/ml-motion-quality-research.md), [Motion-quality Judge](../docs/design/motion-quality-judge.md), [Research Lab V2](../docs/design/research-lab-v2.md)
 
@@ -41,7 +41,7 @@ The first motion-quality Benchmark makes the delayed gait's jerk, saturation, pl
 - [x] The resulting experiment is reproducible from its Training Run, Policy, source patch, evaluation, and verdict.
 - [x] A real baseline/candidate comparison is available in Studio at `http://127.0.0.1:8765/`.
 - [x] Validation, TypeScript tests, Python tests, Benchmark locks, and protocol-only hardware evidence pass.
-- [ ] The completed result is documented, committed, and pushed.
+- [x] The completed result is documented, committed, and pushed.
 
 ## Work
 
@@ -50,7 +50,7 @@ The first motion-quality Benchmark makes the delayed gait's jerk, saturation, pl
 - [x] Implement typed quality-aware training reward and evidence.
 - [x] Add the motion-quality residual Policy Lab and bounded Coding-Agent proposal surface.
 - [x] Run ML experiments and accept the Judge outcome without hand-editing frozen weights.
-- [ ] Generate human comparison, verify, document, commit, and push.
+- [x] Generate human comparison, verify, document, commit, and push.
 
 ## Findings and decisions
 
