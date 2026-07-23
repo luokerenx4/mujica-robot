@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import time
 from datetime import datetime, timezone
@@ -114,7 +113,10 @@ def main() -> None:
             raise RuntimeError("Action round trip violated the contract")
         latencies_ms.append((time.perf_counter_ns() - before) / 1_000_000.0)
 
-    driver_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    driver_hash = manifest.get("driverExecutableHash")
+    driver_package_hash = manifest.get("driverPackageHash")
+    if not isinstance(driver_hash, str) or not isinstance(driver_package_hash, str):
+        raise RuntimeError("Conformance Evidence requires a Bundle-frozen Driver Package")
     evidence = {
         "version": 1,
         "target": target["id"],
@@ -124,6 +126,7 @@ def main() -> None:
         "observationContractHash": manifest["observationContractHash"],
         "actionContractHash": manifest["actionContractHash"],
         "driverHash": driver_hash,
+        "driverPackageHash": driver_package_hash,
         "startedAt": started_at,
         "endedAt": utc_now(),
         "samples": samples,

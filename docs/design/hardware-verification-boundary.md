@@ -7,19 +7,21 @@ to a `dry-run`, `hil`, or `real` environment. It may instead name a Judge-kept
 Policy Revision for observe-only learned-policy testing. It fixes
 `stdio-jsonl-v1`, control frequency, device identity requirements, maximum
 latency, tolerated consecutive deadline misses, and the exact emergency-stop
-Action.
+Action. It also names one project Driver Package with a confined executable,
+device identity, supported environments, and explicit capabilities.
 
 `mujica hardware export` publishes a content-addressed Hardware Bundle containing
 the immutable source Revision snapshot, Controller, optional Policy, contracts,
-Target, and handshake. A Robot Revision Bundle records
+Target, complete Driver Package, and handshake. Both the package hash and entry
+executable hash participate in Bundle identity. A Robot Revision Bundle records
 `maximumCaptureMode=actuate`. A Policy Revision Bundle derives
 `maximumCaptureMode=shadow`; neither the Target nor a Capture Plan may widen it.
 Export rechecks the locked `KEEP` decision, frozen model and contract hashes,
 Controller-to-Policy pointer, and Policy bytes.
 
 `mujica hardware verify` re-hashes every Bundle surface before accepting
-separately collected Evidence. Evidence records device serial, driver source
-hash, exact bundle/contract hashes, timestamps, samples, latency, deadline
+separately collected Evidence. Evidence records device serial, Driver package
+and executable hashes, exact bundle/contract hashes, timestamps, samples, latency, deadline
 misses, driver-local deadline rejections, emergency stops, operator, and notes.
 When a Target requires the decision-deadline capability, Evidence without at
 least one exercised Driver rejection fails verification.
@@ -33,7 +35,10 @@ new-session-only recovery candidate.
 `mujica capture run` closes the executable half of this boundary without
 weakening verification semantics. A Capture Plan fixes finite episodes and a
 stricter host safety envelope. Mujica launches one exact hashed executable,
-checks an explicit handshake, runs the frozen Bundle Controller, records the raw
+from the Bundle-frozen package and rejects a caller-selected replacement. Before
+launch it also proves that the current Harness source and dependency lock equal
+the versions authorized by the Bundle. It checks an explicit handshake, runs
+the frozen Bundle Controller, records the raw
 bidirectional transcript, and sends an acknowledged emergency stop on every
 protocol, Controller, deadline, or state violation. It never upgrades status to
 `HARDWARE-VERIFIED`; Capture evidence and conformance verification remain

@@ -1,7 +1,7 @@
 import { access, cp, lstat, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { atomicDirectory, confined, hardwareCaptureAuthorizationSchema, hardwareEvidenceSchema, hardwareTargetSchema, hashDirectory, hashJson, listHardwareCapturePlanIds, loadHardwareCapturePlan, loadHardwareTarget, loadProject, readJson, sha256, stableJson, writeJson, type HardwareCaptureAuthorization, type HardwareCapturePlanDefinition, type HardwareTargetDefinition } from "@mujica/core";
+import { atomicDirectory, confined, hardwareCaptureAuthorizationSchema, hardwareEvidenceSchema, hardwareTargetSchema, hashDirectory, hashJson, listHardwareCapturePlanIds, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadProject, readJson, sha256, stableJson, writeJson, type HardwareCaptureAuthorization, type HardwareCapturePlanDefinition, type HardwareTargetDefinition } from "@mujica/core";
 import { success, type Artifact } from "./contract";
 import { harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeSourceHash, runtimeVersion } from "./runtime";
 
@@ -16,6 +16,9 @@ async function verifyBundleIntegrity(root: string, bundle: any): Promise<void> {
     target: bundle.target, revisionId: bundle.revisionId, revisionHash: bundle.revisionHash, assemblyHash: bundle.assemblyHash,
     ...(typeof bundle.modelXmlHash === "string" ? { modelXmlHash: bundle.modelXmlHash } : {}),
     controllerHash: bundle.controllerHash, ...(typeof bundle.policyHash === "string" ? { policyHash: bundle.policyHash } : {}),
+    ...(bundle.driverPackage && typeof bundle.driverPackage === "object" ? { driverPackage: bundle.driverPackage } : {}),
+    ...(typeof bundle.driverPackageHash === "string" ? { driverPackageHash: bundle.driverPackageHash } : {}),
+    ...(typeof bundle.driverExecutableHash === "string" ? { driverExecutableHash: bundle.driverExecutableHash } : {}),
     observationContractHash: bundle.observationContractHash, actionContractHash: bundle.actionContractHash, protocol: bundle.protocol,
   };
   if (hashJson(payload) !== bundle.bundleHash) throw new Error("Hardware Bundle manifest identity is invalid");
@@ -24,6 +27,14 @@ async function verifyBundleIntegrity(root: string, bundle: any): Promise<void> {
   if (typeof bundle.policyHash === "string") {
     const controller = JSON.parse(await readFile(join(root, "controller", "controller.json"), "utf8"));
     if (controller.kind !== "policy" || await hashDirectory(join(root, "policies", controller.policy)) !== bundle.policyHash) throw new Error("Hardware Bundle Policy snapshot was modified");
+  }
+  if (typeof bundle.driverPackageHash === "string") {
+    if (!bundle.driverPackage || typeof bundle.driverExecutableHash !== "string") throw new Error("Hardware Bundle Driver Package identity is incomplete");
+    const driverRoot = join(root, "driver");
+    if (await hashDirectory(driverRoot) !== bundle.driverPackageHash) throw new Error("Hardware Bundle Driver Package snapshot was modified");
+    const definition = JSON.parse(await readFile(join(driverRoot, "driver.json"), "utf8"));
+    if (stableJson(definition) !== stableJson(bundle.driverPackage)) throw new Error("Hardware Bundle Driver Package manifest differs");
+    if (sha256(await readFile(confined(driverRoot, definition.executable))) !== bundle.driverExecutableHash) throw new Error("Hardware Bundle Driver executable was modified");
   }
   const observation = JSON.parse(await readFile(join(root, "observation-contract.json"), "utf8")); const action = JSON.parse(await readFile(join(root, "action-contract.json"), "utf8"));
   if (hashJson(observation) !== bundle.observationContractHash || hashJson(action) !== bundle.actionContractHash) throw new Error("Hardware Bundle contract snapshot was modified");
@@ -93,6 +104,7 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
     planHash: manifest.planHash,
     bundleHash: manifest.bundleHash,
     driverHash: manifest.driverHash,
+    ...(typeof manifest.driverPackageHash === "string" ? { driverPackageHash: manifest.driverPackageHash } : {}),
     driverArgs: manifest.driverArgs,
     driverInputs: manifest.driverInputs,
     device: manifest.device,
@@ -120,8 +132,25 @@ function frozenRuntimeCompiled(compiled: any, modelHash: string) {
 
 export async function hardwareExportCommand(projectDir: string, targetId: string) {
   const project = await loadProject(projectDir); const target = await loadHardwareTarget(project.rootDir, targetId);
+  if (!target.driver) throw new Error("Hardware Target must bind a Driver Package before export");
   const sourceKind = (target.revisionKind ?? "robot") === "policy" ? "policy-revision" : "robot-revision";
   const maximumCaptureMode = sourceKind === "policy-revision" ? "shadow" : "actuate";
+  let driverRoot: string | null = null; let driverPackage: any = null; let driverPackageHash: string | null = null; let driverExecutableHash: string | null = null;
+  if (target.driver) {
+    const loaded = await loadDriverPackage(project.rootDir, target.driver); driverRoot = loaded.rootDir; driverPackage = loaded.definition;
+    if (driverPackage.protocol !== target.protocol || !driverPackage.environments.includes(target.environment)) throw new Error("Hardware Target Driver Package does not support its protocol/environment");
+    if (driverPackage.device.vendor !== target.device.vendor || driverPackage.device.model !== target.device.model) throw new Error("Hardware Target Driver Package device identity differs");
+    const requiredCapabilities = new Set(["stop-ack"]);
+    if (target.safety.maximumStateAgeMs !== undefined) { requiredCapabilities.add("applied-action"); requiredCapabilities.add("state-age-ms"); }
+    if (target.safety.requireDecisionDeadline) requiredCapabilities.add("decision-deadline");
+    if (target.safety.requireDeviceHealth) requiredCapabilities.add("device-health");
+    if (target.safety.requirePostStopHealthCheck) requiredCapabilities.add("latched-stop-health");
+    if (maximumCaptureMode === "shadow") { requiredCapabilities.add("applied-action"); requiredCapabilities.add("shadow-action"); requiredCapabilities.add("state-age-ms"); }
+    const missing = [...requiredCapabilities].filter((capability) => !driverPackage.capabilities.includes(capability)).sort();
+    if (missing.length) throw new Error(`Hardware Target Driver Package lacks capabilities: ${missing.join(", ")}`);
+    driverPackageHash = await hashDirectory(driverRoot);
+    driverExecutableHash = sha256(await readFile(confined(driverRoot, driverPackage.executable)));
+  }
   const revisionRoot = confined(project.rootDir, `${sourceKind === "policy-revision" ? "policy-revisions" : "revisions"}/${target.revision}`); const revision = JSON.parse(await readFile(join(revisionRoot, "manifest.json"), "utf8"));
   if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target does not match its ${sourceKind === "policy-revision" ? "Policy" : "Robot"} Revision`);
   if (sourceKind === "policy-revision") {
@@ -149,17 +178,18 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
   }
   const controllerHash = await hashDirectory(controllerRoot); const [harnessHash, dependencyHash] = await Promise.all([harnessSourceHash(), harnessDependencyLockHash()]);
   const modelXmlHash = sha256(await readFile(join(compiledRoot, "model.xml")));
-  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, sourceKind, maximumCaptureMode, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, ...(policyHash ? { policyHash } : {}), observationContractHash, actionContractHash, protocol: target.protocol };
+  const payload = { version: 1, harnessSourceHash: harnessHash, harnessDependencyLockHash: dependencyHash, sourceKind, maximumCaptureMode, target, revisionId: revision.id, revisionHash: await hashDirectory(revisionRoot), assemblyHash: revision.assemblyHash, modelXmlHash, controllerHash, ...(policyHash ? { policyHash } : {}), ...(driverPackage ? { driverPackage, driverPackageHash, driverExecutableHash } : {}), observationContractHash, actionContractHash, protocol: target.protocol };
   const bundleHash = hashJson(payload); const id = `hardware-${bundleHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-bundles", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await cp(revisionRoot, join(directory, "revision"), { recursive: true }); await cp(controllerRoot, join(directory, "controller"), { recursive: true });
     if (policyRoot) await cp(policyRoot, join(directory, "policies", controllerDefinition.policy), { recursive: true });
+    if (driverRoot) await cp(driverRoot, join(directory, "driver"), { recursive: true });
     await writeJson(join(directory, "target.json"), target); await writeJson(join(directory, "observation-contract.json"), observationContract); await writeJson(join(directory, "action-contract.json"), actionContract);
     await writeJson(join(directory, "driver-protocol.json"), {
       version: 1,
       protocol: "stdio-jsonl-v1",
       handshake: { bundleHash, observationContractHash, actionContractHash },
-      capabilities: ["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"],
+      capabilities: driverPackage?.capabilities ?? ["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"],
       messages: ["hello", "start-episode", "state", "action", "shadow-action", "deadline-rejected", "safe-stop", "emergency-stop", "stopped", "health-check", "health-state", "close", "completed"],
       state: { required: ["episode", "step", "qpos", "qvel", "observation", "appliedAction", "stateAgeMs", "deviceHealth"] },
       deviceHealth: { actuatorStates: ["ready", "derated", "faulted", "offline"] },
@@ -167,7 +197,7 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
     });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
   });
-  return success("hardware.export", { id, bundleHash, path: root, sourceKind, maximumCaptureMode, target, observationContractHash, actionContractHash, verificationStatus: "UNVERIFIED" }, project, [artifact("hardware-bundle", id, root)]);
+  return success("hardware.export", { id, bundleHash, path: root, sourceKind, maximumCaptureMode, target, ...(driverPackage ? { driverPackage, driverPackageHash, driverExecutableHash } : {}), observationContractHash, actionContractHash, verificationStatus: "UNVERIFIED" }, project, [artifact("hardware-bundle", id, root)]);
 }
 
 export async function hardwareVerifyCommand(projectDir: string, bundleId: string, evidencePath: string) {
@@ -177,6 +207,8 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   if (evidence.target !== target.id) reasons.push("evidence target does not match bundle"); if (evidence.bundleHash !== bundle.bundleHash) reasons.push("evidence bundle hash does not match");
   if (evidence.environment !== target.environment) reasons.push("evidence environment does not match target");
   if (evidence.observationContractHash !== bundle.observationContractHash || evidence.actionContractHash !== bundle.actionContractHash) reasons.push("evidence contract hashes do not match bundle");
+  if (typeof bundle.driverPackageHash === "string" && evidence.driverPackageHash !== bundle.driverPackageHash) reasons.push("evidence Driver Package hash does not match bundle");
+  if (typeof bundle.driverExecutableHash === "string" && evidence.driverHash !== bundle.driverExecutableHash) reasons.push("evidence Driver executable hash does not match bundle");
   if (evidence.device.vendor !== target.device.vendor || evidence.device.model !== target.device.model) reasons.push("device identity does not match target");
   if (target.device.serialRequired && /^(unknown|simulated|none)$/i.test(evidence.device.serial)) reasons.push("target requires a physical device serial");
   if (Date.parse(evidence.endedAt) <= Date.parse(evidence.startedAt)) reasons.push("evidence time interval is invalid");
@@ -233,15 +265,27 @@ export async function hardwareCaptureInspectCommand(projectDir: string, id: stri
   return success("capture.inspect", { manifest, path: root }, project);
 }
 
-export async function hardwareCaptureCommand(projectDir: string, planId: string, driver: string, driverArgs: string[], driverInputs: string[], operator: string, authorizationPath?: string) {
+export async function hardwareCaptureCommand(projectDir: string, planId: string, driver: string | undefined, driverArgs: string[], driverInputs: string[], operator: string, authorizationPath?: string) {
   const project = await loadProject(projectDir); const plan = await loadHardwareCapturePlan(project.rootDir, planId); const planHash = hashJson(plan);
   const bundleRoot = confined(project.rootDir, `hardware-bundles/${plan.bundle}`); const bundle = JSON.parse(await readFile(join(bundleRoot, "manifest.json"), "utf8"));
   await verifyBundleIntegrity(bundleRoot, bundle); assertCaptureModeAllowed(bundle, plan);
+  const [currentHarnessHash, currentDependencyHash] = await Promise.all([harnessSourceHash(), harnessDependencyLockHash()]);
+  if (currentHarnessHash !== bundle.harnessSourceHash) throw new Error("Current Mujica Harness source differs from the authorized Hardware Bundle; export a new Bundle");
+  if (currentDependencyHash !== bundle.harnessDependencyLockHash) throw new Error("Current Mujica Harness dependency lock differs from the authorized Hardware Bundle; export a new Bundle");
   if (bundle.target.id !== plan.target) throw new Error(`Capture Plan '${plan.id}' target differs from Hardware Bundle '${bundle.id}'`);
-  const executable = resolve(driver); const driverStat = await lstat(executable);
+  let executable: string;
+  if (typeof bundle.driverPackageHash === "string") {
+    if (driver !== undefined) throw new Error("Capture uses the Bundle-frozen Driver Package; --driver overrides are forbidden");
+    executable = confined(bundleRoot, `driver/${bundle.driverPackage.executable}`);
+  } else {
+    if (!driver) throw new Error("Legacy Hardware Bundle Capture requires --driver");
+    executable = resolve(driver);
+  }
+  const driverStat = await lstat(executable);
   if (!driverStat.isFile() || driverStat.isSymbolicLink()) throw new Error("Capture driver must be a regular non-symlink executable file");
   await access(executable, constants.X_OK);
   const driverHash = sha256(await readFile(executable));
+  if (typeof bundle.driverExecutableHash === "string" && driverHash !== bundle.driverExecutableHash) throw new Error("Bundle-frozen Driver executable identity is invalid");
   const frozenDriverInputs = [];
   for (const input of driverInputs) {
     const path = resolve(input); const inputStat = await lstat(path);
@@ -264,7 +308,7 @@ export async function hardwareCaptureCommand(projectDir: string, planId: string,
   const result = await invokeRuntime("hardware-capture", {
     runtimeVersion,
     runtimeSourceHash: await runtimeSourceHash(),
-    harnessSourceHash: await harnessSourceHash(),
+    harnessSourceHash: currentHarnessHash,
     projectDir: project.rootDir,
     bundleRoot,
     bundle,
@@ -275,6 +319,7 @@ export async function hardwareCaptureCommand(projectDir: string, planId: string,
     driverPath: executable,
     driverArgs,
     driverHash,
+    driverPackageHash: bundle.driverPackageHash ?? null,
     driverInputs: frozenDriverInputs,
     operator,
     authorization,

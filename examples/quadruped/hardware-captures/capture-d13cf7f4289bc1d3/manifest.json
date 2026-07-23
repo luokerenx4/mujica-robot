@@ -1,0 +1,820 @@
+{
+  "version": 1,
+  "planHash": "10fd1cda55def3f4f7c0a3f84f55b09278c03cda96f90cad85666562d60f5733",
+  "bundleHash": "00490ec553adbba47934061cc1af41b696c45ed4f0816002fd7ebe16a7f49f17",
+  "driverHash": "007fdc5f8b331ca8959b50b394a7e042b39774b36f804c1ed80d08f71cb390d4",
+  "driverPackageHash": "54bab8860525715063cb63c02f57b0da1ef392d24245091073479d2297529c7a",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "local-developer",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T14:39:27.184502Z",
+  "endedAt": "2026-07-23T14:39:27.723357Z",
+  "status": "COMPLETED",
+  "transcriptHash": "83336dba92eb44685c7edec8e27c2f77ee5efc9ed1ab0669baa9f49179bceb2b",
+  "episodeHashes": {
+    "fit-a": "b52a8b060d88d51c7d53862a881b0d5825073e666986632a04b138431344c14d",
+    "fit-b": "7dfc475df1312f0016d696cf4caffd37cb7ee5e92974c44d5e06b6596ff4b384",
+    "validation": "4facb3f91402ee57af3bc335e2bbdf62f6dcc9bd5a6cb503700cc06af2cb663f"
+  },
+  "runtimeSourceHash": "30df2d2147e3777537d64a7ba098b7ba63d7d6afd267b7a10b67df2a962c086b",
+  "harnessSourceHash": "854ff5561b03333df407a964d872edc17198b7ca5b6759c3a4604c7b9faa893b",
+  "mode": "actuate",
+  "actuationAuthorized": true,
+  "protocolCapabilities": [
+    "applied-action",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 153,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "decisionDeadlineIdentity": {
+    "maximumMicroseconds": 1346,
+    "meanMicroseconds": 135,
+    "samples": 150,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0
+  },
+  "deviceHealthIdentity": {
+    "samples": 153,
+    "maximumMotorTemperatureMilliC": 40000,
+    "maximumMotorCurrentMilliA": 0,
+    "minimumBusVoltageMilliV": 24000,
+    "maximumBusVoltageMilliV": 24000,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 0,
+      "offline": 0,
+      "ready": 1836
+    },
+    "tripCount": 0,
+    "affectedActuatorIndices": []
+  },
+  "postStopHealthIdentity": {
+    "windows": 0,
+    "samples": 0,
+    "healthySamples": 0,
+    "recoveryCandidates": 0,
+    "maximumObservedDurationMicroseconds": 0,
+    "terminalStates": []
+  },
+  "emergencyStopAcknowledgements": 0,
+  "controllerWarmupPasses": 0,
+  "realTimeQualified": true,
+  "id": "capture-d13cf7f4289bc1d3",
+  "captureHash": "d13cf7f4289bc1d34044accd3dc7aafd70e2219e7f2c162768b37776c1a084f1",
+  "plan": "quadruped-dry-run-identification",
+  "target": "spatial-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-3dof",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "executionHash": "69a0d1f7e2ba14a56917e15a305c65f3f544f90e35dbbde8ce62000449cfe8b9",
+  "modelHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+  "controller": "spatial-forward-gait",
+  "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+  "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+  "episodes": [
+    {
+      "id": "fit-a",
+      "seed": 4201,
+      "plannedSteps": 50,
+      "steps": 50,
+      "completed": true,
+      "reason": null,
+      "path": "captures/fit-a.ndjson",
+      "hash": "b52a8b060d88d51c7d53862a881b0d5825073e666986632a04b138431344c14d"
+    },
+    {
+      "id": "fit-b",
+      "seed": 4202,
+      "plannedSteps": 50,
+      "steps": 50,
+      "completed": true,
+      "reason": null,
+      "path": "captures/fit-b.ndjson",
+      "hash": "7dfc475df1312f0016d696cf4caffd37cb7ee5e92974c44d5e06b6596ff4b384"
+    },
+    {
+      "id": "validation",
+      "seed": 4203,
+      "plannedSteps": 50,
+      "steps": 50,
+      "completed": true,
+      "reason": null,
+      "path": "captures/validation.ndjson",
+      "hash": "4facb3f91402ee57af3bc335e2bbdf62f6dcc9bd5a6cb503700cc06af2cb663f"
+    }
+  ],
+  "dispatch": {
+    "samples": 150,
+    "maximumLatencyMs": 1.349209,
+    "meanLatencyMs": 0.13805,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "decisionDeadline": {
+    "maximumLatencyMs": 10.0,
+    "samples": 150,
+    "maximumObservedLatencyMs": 1.34625,
+    "meanObservedLatencyMs": 0.13461278,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0,
+    "maximumDriverRejectedLatencyMs": 0.0
+  },
+  "deviceHealth": {
+    "samples": 153,
+    "maximumMotorTemperatureC": 40.0,
+    "maximumMotorCurrentA": 0.0,
+    "minimumBusVoltageV": 24.0,
+    "maximumBusVoltageV": 24.0,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 0,
+      "offline": 0,
+      "ready": 1836
+    },
+    "trips": 0,
+    "affectedActuatorIndices": []
+  },
+  "stopRecovery": {
+    "windows": [],
+    "samples": 0,
+    "healthySamples": 0,
+    "recoveryCandidates": 0,
+    "requiresNewSession": true
+  },
+  "stateAge": {
+    "samples": 153,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [
+    {
+      "episode": "fit-a",
+      "step": 3,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 6,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 7,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 9,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 12,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 13,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 16,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 17,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 18,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 21,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 22,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 23,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 24,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 25,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 26,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 27,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 28,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 29,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 30,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 31,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 32,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 33,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 34,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 35,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 36,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 37,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 38,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 41,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 42,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 43,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 44,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 46,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 47,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 48,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-a",
+      "step": 49,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 3,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 7,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 9,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 10,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 11,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 12,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 13,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 14,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 16,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 17,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 18,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 20,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 21,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 22,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 23,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 24,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 26,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 27,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 28,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 29,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 31,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 32,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 33,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 34,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 36,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 37,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 38,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 40,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 41,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 42,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 43,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 44,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 45,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 46,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 47,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "fit-b",
+      "step": 48,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 3,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 7,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 8,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 9,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 11,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 12,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 13,
+      "slewLimitedValues": 7,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 16,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 18,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 20,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 21,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 22,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 23,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 25,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 26,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 27,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 28,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 29,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 30,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 31,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 32,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 33,
+      "slewLimitedValues": 8,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 34,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 35,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 36,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 37,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 38,
+      "slewLimitedValues": 5,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 41,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 42,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 43,
+      "slewLimitedValues": 6,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 44,
+      "slewLimitedValues": 1,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 45,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 46,
+      "slewLimitedValues": 2,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 47,
+      "slewLimitedValues": 4,
+      "contractClippedValues": 0
+    },
+    {
+      "episode": "validation",
+      "step": 48,
+      "slewLimitedValues": 3,
+      "contractClippedValues": 0
+    }
+  ],
+  "safeStops": 3,
+  "emergencyStops": 0,
+  "reasons": [],
+  "calibrationEligible": true,
+  "completed": true
+}

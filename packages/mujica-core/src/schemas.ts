@@ -230,10 +230,21 @@ export const calibrationSchema = z.object({
   }
 });
 
+export const driverPackageSchema = z.object({
+  version: z.literal(1),
+  id: idSchema,
+  name: z.string().min(1),
+  protocol: z.literal("stdio-jsonl-v1"),
+  executable: relativeFileSchema,
+  environments: z.array(z.enum(["dry-run", "hil", "real"])).min(1).refine((items) => new Set(items).size === items.length, "Driver environments must be unique"),
+  device: z.object({ vendor: z.string().min(1), model: z.string().min(1) }).strict(),
+  capabilities: z.array(idSchema).min(1).refine((items) => new Set(items).size === items.length, "Driver capabilities must be unique"),
+}).strict();
+
 export const hardwareTargetSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), revision: idSchema,
   revisionKind: z.enum(["robot", "policy"]).optional(),
-  assembly: idSchema, controller: idSchema,
+  assembly: idSchema, controller: idSchema, driver: idSchema.optional(),
   environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
   safety: z.object({
     maximumLatencyMs: z.number().positive(),
@@ -325,6 +336,7 @@ export const hardwareEvidenceSchema = z.object({
   version: z.literal(1), target: idSchema, bundleHash: z.string().regex(/^[0-9a-f]{64}$/), environment: z.enum(["dry-run", "hil", "real"]),
   device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serial: z.string().min(1) }).strict(),
   observationContractHash: z.string().regex(/^[0-9a-f]{64}$/), actionContractHash: z.string().regex(/^[0-9a-f]{64}$/), driverHash: z.string().regex(/^[0-9a-f]{64}$/),
+  driverPackageHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   startedAt: z.string().datetime(), endedAt: z.string().datetime(), samples: z.number().int().positive(), maximumObservedLatencyMs: z.number().nonnegative(),
   maximumObservedStateAgeMs: z.number().nonnegative().optional(),
   missedDeadlines: z.number().int().nonnegative(), maximumConsecutiveMissesObserved: z.number().int().nonnegative(), emergencyStops: z.number().int().nonnegative(),
@@ -438,6 +450,7 @@ export type BenchmarkDefinition = z.output<typeof benchmarkSchema>;
 export type TrainerDefinition = z.output<typeof trainerSchema>;
 export type TrainingDefinition = z.output<typeof trainingSchema>;
 export type CalibrationDefinition = z.output<typeof calibrationSchema>;
+export type DriverPackageDefinition = z.output<typeof driverPackageSchema>;
 export type HardwareTargetDefinition = z.output<typeof hardwareTargetSchema>;
 export type HardwareCapturePlanDefinition = z.output<typeof hardwareCapturePlanSchema>;
 export type HardwareCaptureAuthorization = z.output<typeof hardwareCaptureAuthorizationSchema>;

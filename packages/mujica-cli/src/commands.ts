@@ -2,7 +2,7 @@ import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } fro
 import { dirname, join, resolve } from "node:path";
 import {
   assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
-  listDomainProfileIds, listHardwareCapturePlanIds, loadController, loadDomainProfile, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
+  listDomainProfileIds, listDriverPackageIds, listHardwareCapturePlanIds, loadController, loadDomainProfile, loadDriverPackage, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
   type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
@@ -64,10 +64,34 @@ export async function validateCommand(projectDir: string) {
 }
 
 export async function inspectCommand(projectDir: string) {
-  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir); const capturePlans = await listHardwareCapturePlanIds(project.rootDir);
+  const project = await loadProject(projectDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const drivers = await listDriverPackageIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir); const capturePlans = await listHardwareCapturePlanIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const calibrationRuns = await listManifestDirectories(join(project.rootDir, "calibration-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
   const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications")); const hardwareCaptures = await listManifestDirectories(join(project.rootDir, "hardware-captures"));
-  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, calibrations: calibrations.length, capturePlans: capturePlans.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length, hardwareCaptures: hardwareCaptures.length }, components, assemblies, controllers, domainProfiles, calibrations, capturePlans, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications, hardwareCaptures }, project);
+  return success("inspect", { project: project.manifest, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, drivers: drivers.length, calibrations: calibrations.length, capturePlans: capturePlans.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length, hardwareCaptures: hardwareCaptures.length }, components, assemblies, controllers, domainProfiles, drivers, calibrations, capturePlans, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications, hardwareCaptures }, project);
+}
+
+export async function driverListCommand(projectDir: string) {
+  const project = await loadProject(projectDir); const drivers = [];
+  for (const id of await listDriverPackageIds(project.rootDir)) {
+    const driver = await loadDriverPackage(project.rootDir, id);
+    drivers.push({
+      definition: driver.definition,
+      packageHash: await hashDirectory(driver.rootDir),
+      executableHash: sha256(await readFile(confined(driver.rootDir, driver.definition.executable))),
+      rootDir: driver.rootDir,
+    });
+  }
+  return success("driver.list", { drivers }, project);
+}
+
+export async function driverInspectCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir); const driver = await loadDriverPackage(project.rootDir, id);
+  return success("driver.inspect", {
+    definition: driver.definition,
+    packageHash: await hashDirectory(driver.rootDir),
+    executableHash: sha256(await readFile(confined(driver.rootDir, driver.definition.executable))),
+    rootDir: driver.rootDir,
+  }, project);
 }
 
 export async function studioCommand(projectDir: string, run?: string, compareRun?: string) {

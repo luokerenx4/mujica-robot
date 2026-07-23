@@ -1,7 +1,8 @@
-import { readdir } from "node:fs/promises";
+import { access, lstat, readdir } from "node:fs/promises";
+import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, domainProfileSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DomainProfileDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
 import { confined, hashJson, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -53,6 +54,14 @@ export const loadCandidate = async (projectDir: string, id: string): Promise<Can
 export const loadResearch = async (projectDir: string, id: string): Promise<ResearchDefinition> => await readJson(confined(resolve(projectDir), `research/${id}.research.json`), researchSchema) as ResearchDefinition;
 export const loadTrainingResearch = async (projectDir: string, id: string): Promise<TrainingResearchDefinition> => await readJson(confined(resolve(projectDir), `training-research/${id}.training-research.json`), trainingResearchSchema) as TrainingResearchDefinition;
 export const loadResearchLab = async (projectDir: string, id: string): Promise<ResearchLabDefinition> => await readJson(confined(resolve(projectDir), `research/${id}/research.json`), researchLabSchema) as ResearchLabDefinition;
+export async function loadDriverPackage(projectDir: string, id: string): Promise<{ definition: DriverPackageDefinition; rootDir: string }> {
+  const rootDir = confined(resolve(projectDir), `hardware-drivers/${id}`); const definition = await readJson(join(rootDir, "driver.json"), driverPackageSchema) as DriverPackageDefinition;
+  if (definition.id !== id) throw new Error(`Driver Package id '${definition.id}' must match directory '${id}'`);
+  const executable = confined(rootDir, definition.executable); const executableStat = await lstat(executable);
+  if (!executableStat.isFile() || executableStat.isSymbolicLink()) throw new Error(`Driver Package '${id}' executable must be a regular non-symlink file`);
+  await access(executable, constants.X_OK);
+  return { definition, rootDir };
+}
 export const loadHardwareTarget = async (projectDir: string, id: string): Promise<HardwareTargetDefinition> => await readJson(confined(resolve(projectDir), `hardware-targets/${id}.hardware.json`), hardwareTargetSchema) as HardwareTargetDefinition;
 export const loadHardwareCapturePlan = async (projectDir: string, id: string): Promise<HardwareCapturePlanDefinition> => await readJson(confined(resolve(projectDir), `capture-plans/${id}.capture.json`), hardwareCapturePlanSchema) as HardwareCapturePlanDefinition;
 export async function loadTrainer(projectDir: string, id: string): Promise<{ definition: TrainerDefinition; rootDir: string }> {
@@ -73,6 +82,14 @@ export async function listControllerIds(projectDir: string): Promise<string[]> {
 export async function listResearchLabIds(projectDir: string): Promise<string[]> {
   const root = confined(resolve(projectDir), "research"); const ids: string[] = [];
   for (const id of await directoryIds(root)) if (await Bun.file(join(root, id, "research.json")).exists()) ids.push(id);
+  return ids;
+}
+
+export async function listDriverPackageIds(projectDir: string): Promise<string[]> {
+  const root = confined(resolve(projectDir), "hardware-drivers"); const ids: string[] = [];
+  try {
+    for (const id of await directoryIds(root)) if (await Bun.file(join(root, id, "driver.json")).exists()) ids.push(id);
+  } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
   return ids;
 }
 
@@ -199,10 +216,25 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     const candidate = await loadCandidate(root, id); await loadBenchmark(root, candidate.benchmark); await verifyCandidateChanges(root, candidate);
     for (const path of [...candidate.allowedChanges, ...candidate.fixedInputs]) await requireFile(confined(root, path), `Candidate '${id}' input`);
   }
+  const driverPackageIds = await listDriverPackageIds(root);
+  for (const id of driverPackageIds) await loadDriverPackage(root, id);
   const hardwareTargetIds = await fileIds(join(root, "hardware-targets"), ".hardware.json");
   for (const id of hardwareTargetIds) {
     const target = await loadHardwareTarget(root, id); if (target.id !== id) throw new Error(`Hardware Target id '${target.id}' must match filename '${id}'`);
     const revisionKind = target.revisionKind ?? "robot";
+    if (target.driver) {
+      const driver = (await loadDriverPackage(root, target.driver)).definition;
+      if (driver.protocol !== target.protocol || !driver.environments.includes(target.environment)) throw new Error(`Hardware Target '${id}' Driver Package does not support its protocol/environment`);
+      if (driver.device.vendor !== target.device.vendor || driver.device.model !== target.device.model) throw new Error(`Hardware Target '${id}' Driver Package device identity differs`);
+      const requiredCapabilities = new Set(["stop-ack"]);
+      if (target.safety.maximumStateAgeMs !== undefined) { requiredCapabilities.add("applied-action"); requiredCapabilities.add("state-age-ms"); }
+      if (target.safety.requireDecisionDeadline) requiredCapabilities.add("decision-deadline");
+      if (target.safety.requireDeviceHealth) requiredCapabilities.add("device-health");
+      if (target.safety.requirePostStopHealthCheck) requiredCapabilities.add("latched-stop-health");
+      if (revisionKind === "policy") { requiredCapabilities.add("shadow-action"); requiredCapabilities.add("applied-action"); requiredCapabilities.add("state-age-ms"); }
+      const missing = [...requiredCapabilities].filter((capability) => !driver.capabilities.includes(capability)).sort();
+      if (missing.length) throw new Error(`Hardware Target '${id}' Driver Package lacks capabilities: ${missing.join(", ")}`);
+    }
     const revisionPath = confined(root, `${revisionKind === "policy" ? "policy-revisions" : "revisions"}/${target.revision}`); await requireFile(join(revisionPath, "manifest.json"), `Hardware Target '${id}' Revision`);
     const revision = JSON.parse(await Bun.file(join(revisionPath, "manifest.json")).text());
     if (revision.assembly !== target.assembly || revision.controller !== target.controller) throw new Error(`Hardware Target '${id}' must match its ${revisionKind === "policy" ? "Policy" : "Robot"} Revision Assembly and Controller`);
@@ -307,5 +339,5 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     }
   }
   const defaultAssembly = await compileAssembly(root, project.manifest.defaults.assembly); const defaultController = await loadController(root, project.manifest.defaults.controller); assertProgramControllerCompatible(defaultController.definition, defaultAssembly); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
-  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, domainProfiles: domainProfileIds.length, calibrations: calibrationIds.length, capturePlans: capturePlanIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
+  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, domainProfiles: domainProfileIds.length, calibrations: calibrationIds.length, capturePlans: capturePlanIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, driverPackages: driverPackageIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
 }

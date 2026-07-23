@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "planHash": "a66e26e6f67a10316198905b75a2dcc9e8c4ecb1e1f7d850e2d1a77c6a07ec44",
+  "bundleHash": "e998df153171b306cfc0410002aa1fb247eed76dad19eb28f547a5930fc7ca3e",
+  "driverHash": "007fdc5f8b331ca8959b50b394a7e042b39774b36f804c1ed80d08f71cb390d4",
+  "driverPackageHash": "54bab8860525715063cb63c02f57b0da1ef392d24245091073479d2297529c7a",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "local-developer",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T14:39:22.427903Z",
+  "endedAt": "2026-07-23T14:39:23.353345Z",
+  "status": "COMPLETED",
+  "transcriptHash": "82b5c5f9bed91bbe47c17f41a4d934fae88884612eeccdfb537a9a5b5e3a6533",
+  "episodeHashes": {
+    "learned-policy-shadow": "edd3eb738e84e288e5ce9c267c11d66eea6a9955558e3b44f24621dfdd45dd49"
+  },
+  "runtimeSourceHash": "30df2d2147e3777537d64a7ba098b7ba63d7d6afd267b7a10b67df2a962c086b",
+  "harnessSourceHash": "854ff5561b03333df407a964d872edc17198b7ca5b6759c3a4604c7b9faa893b",
+  "mode": "shadow",
+  "actuationAuthorized": false,
+  "protocolCapabilities": [
+    "applied-action",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 11,
+    "maximumMicroseconds": 0,
+    "meanMicroseconds": 0
+  },
+  "decisionDeadlineIdentity": {
+    "maximumMicroseconds": 1073,
+    "meanMicroseconds": 437,
+    "samples": 10,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0
+  },
+  "deviceHealthIdentity": {
+    "samples": 11,
+    "maximumMotorTemperatureMilliC": 40000,
+    "maximumMotorCurrentMilliA": 0,
+    "minimumBusVoltageMilliV": 24000,
+    "maximumBusVoltageMilliV": 24000,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 0,
+      "offline": 0,
+      "ready": 132
+    },
+    "tripCount": 0,
+    "affectedActuatorIndices": []
+  },
+  "postStopHealthIdentity": {
+    "windows": 0,
+    "samples": 0,
+    "healthySamples": 0,
+    "recoveryCandidates": 0,
+    "maximumObservedDurationMicroseconds": 0,
+    "terminalStates": []
+  },
+  "emergencyStopAcknowledgements": 0,
+  "controllerWarmupPasses": 2,
+  "realTimeQualified": true,
+  "id": "capture-50eb71a84335b6be",
+  "captureHash": "50eb71a84335b6be7312aed61b1f41a1bc2f5952f0e39ddaef47da7ab2d2276f",
+  "plan": "history-policy-shadow-dry-run",
+  "target": "history-policy-shadow-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-history-3dof",
+  "assemblyHash": "547647c66ff536a486ed3134902d24173597e08b6321be404fbda47300886f84",
+  "executionHash": "e6e345bf462080612f784fdde084a0e732bf41634e6668c76e813ed0c0c693d3",
+  "modelHash": "5433c9eca695980694a51e121a2888f1e52d7c7280c37ec72815cffaf9d9f5c0",
+  "controller": "capture-calibrated-history-residual-gait",
+  "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+  "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+  "episodes": [
+    {
+      "id": "learned-policy-shadow",
+      "seed": 4302,
+      "plannedSteps": 10,
+      "steps": 10,
+      "completed": true,
+      "reason": null,
+      "path": "captures/learned-policy-shadow.ndjson",
+      "hash": "edd3eb738e84e288e5ce9c267c11d66eea6a9955558e3b44f24621dfdd45dd49"
+    }
+  ],
+  "dispatch": {
+    "samples": 10,
+    "maximumLatencyMs": 1.0795,
+    "meanLatencyMs": 0.44201670000000004,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "decisionDeadline": {
+    "maximumLatencyMs": 10.0,
+    "samples": 10,
+    "maximumObservedLatencyMs": 1.073459,
+    "meanObservedLatencyMs": 0.4371958,
+    "hostPreDispatchMisses": 0,
+    "driverRejections": 0,
+    "maximumDriverRejectedLatencyMs": 0.0
+  },
+  "deviceHealth": {
+    "samples": 11,
+    "maximumMotorTemperatureC": 40.0,
+    "maximumMotorCurrentA": 0.0,
+    "minimumBusVoltageV": 24.0,
+    "maximumBusVoltageV": 24.0,
+    "faultSamples": 0,
+    "estopEngagedSamples": 0,
+    "watchdogUnhealthySamples": 0,
+    "actuatorStateCounts": {
+      "derated": 0,
+      "faulted": 0,
+      "offline": 0,
+      "ready": 132
+    },
+    "trips": 0,
+    "affectedActuatorIndices": []
+  },
+  "stopRecovery": {
+    "windows": [],
+    "samples": 0,
+    "healthySamples": 0,
+    "recoveryCandidates": 0,
+    "requiresNewSession": true
+  },
+  "stateAge": {
+    "samples": 11,
+    "maximumMs": 0.0,
+    "meanMs": 0.0
+  },
+  "interventions": [],
+  "safeStops": 1,
+  "emergencyStops": 0,
+  "reasons": [],
+  "calibrationEligible": false,
+  "completed": true
+}

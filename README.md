@@ -49,7 +49,6 @@ bun run mujica capture inspect examples/quadruped \
   --plan quadruped-dry-run-identification
 bun run mujica capture run examples/quadruped \
   --plan quadruped-dry-run-identification \
-  --driver examples/quadruped/drivers/mujoco-protocol-simulator.py \
   --driver-input examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json \
   --operator local-developer
 bun run mujica research list examples/quadruped
@@ -96,9 +95,12 @@ captures](docs/design/system-identification-captures.md).
 
 Hardware Capture removes the hand-written-evidence gap at the device boundary.
 A finite Capture Plan names one frozen Bundle and a stricter safety envelope;
-Mujica hashes and launches one exact driver executable, runs only the frozen
-Controller, and preserves every command, state, intervention, deadline, and
-stop message. HIL and real sessions additionally require an external,
+the Hardware Target names a project Driver Package, and Mujica freezes that
+whole package plus its executable into the Bundle. Capture rejects Driver
+overrides, rechecks the current Harness source and dependency lock against the
+authorized Bundle, runs only the frozen Controller, and preserves every command,
+state, intervention, deadline, and stop message. HIL and real sessions
+additionally require an external,
 short-lived operator authorization naming the exact Plan, Bundle, device serial,
 and episode ceiling. The checked-in MuJoCo protocol driver is explicitly a
 `dry-run`, not fake hardware: one three-episode session completed with no

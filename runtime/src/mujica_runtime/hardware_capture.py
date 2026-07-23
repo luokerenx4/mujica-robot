@@ -429,6 +429,11 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(raw_capabilities, list) or not all(isinstance(item, str) for item in raw_capabilities):
             raise RuntimeError("Driver capabilities must be a string array")
         protocol_capabilities = sorted(set(raw_capabilities))
+        frozen_driver = bundle.get("driverPackage")
+        if isinstance(frozen_driver, dict):
+            declared_capabilities = sorted(frozen_driver.get("capabilities", []))
+            if protocol_capabilities != declared_capabilities:
+                raise RuntimeError("Driver hello capabilities differ from its frozen Driver Package")
         required_capabilities = {"stop-ack"}
         if target["safety"].get("maximumStateAgeMs") is not None:
             required_capabilities.update({"applied-action", "state-age-ms"})
@@ -806,6 +811,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "planHash": request["planHash"],
         "bundleHash": bundle["bundleHash"],
         "driverHash": request["driverHash"],
+        **({"driverPackageHash": request["driverPackageHash"]} if request.get("driverPackageHash") is not None else {}),
         "driverArgs": request.get("driverArgs", []),
         "driverInputs": [{"name": item["name"], "hash": item["hash"]} for item in request.get("driverInputs", [])],
         "device": device,
@@ -852,7 +858,12 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "capturePlan": plan,
             "planHash": request["planHash"],
             "bundle": bundle,
-            "driver": {"hash": request["driverHash"], "arguments": request.get("driverArgs", []), "inputs": [{"name": item["name"], "hash": item["hash"]} for item in request.get("driverInputs", [])]},
+            "driver": {
+                "hash": request["driverHash"],
+                "packageHash": request.get("driverPackageHash"),
+                "arguments": request.get("driverArgs", []),
+                "inputs": [{"name": item["name"], "hash": item["hash"]} for item in request.get("driverInputs", [])],
+            },
             "operator": request["operator"],
             "authorization": request.get("authorization"),
         })
@@ -935,6 +946,7 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             f"- Mode: {plan['mode']}\n"
             f"- Actuation authorized: {str(actuation_authorized).lower()}\n"
             f"- Device: {device['vendor']} {device['model']} ({device['serial']})\n"
+            f"- Driver Package / executable hash: {request.get('driverPackageHash') or 'legacy-unbound'} / {request['driverHash']}\n"
             f"- Episodes: {sum(item['completed'] for item in completed_episodes)}/{len(plan['episodes'])}\n"
             f"- Dispatch latency max/mean: {maximum_latency:.6f}/{mean_latency:.6f} ms\n"
             f"- Decision latency max/mean/limit: {maximum_decision_latency:.6f}/{mean_decision_latency:.6f}/{maximum_decision_latency_ms:.6f} ms\n"
@@ -974,6 +986,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "mode": plan["mode"],
         "actuationAuthorized": actuation_authorized,
         "device": device,
+        "driverHash": request["driverHash"],
+        "driverPackageHash": request.get("driverPackageHash"),
         "episodes": episode_results,
         "maximumDispatchLatencyMs": maximum_latency,
         "maximumDecisionLatencyMs": maximum_decision_latency,

@@ -28,6 +28,7 @@ project/
   policy-revisions/<immutable-id>/manifest.json
   revisions/<immutable-id>/manifest.json
   hardware-targets/<id>.hardware.json
+  hardware-drivers/<id>/driver.json + executable + package files
   hardware-bundles/<immutable-id>/...
   capture-plans/<id>.capture.json
   hardware-captures/<immutable-id>/...
@@ -89,15 +90,26 @@ Candidate preview computes a content-derived proposed Robot Revision hash before
 
 A Hardware Target binds a kept Robot Revision, or explicitly a Judge-kept Policy
 Revision, to one `dry-run`, `hil`, or `real` environment, a driver protocol,
-control rate, explicit device identity,
+one project Driver Package, control rate, explicit device identity,
 latency/deadline and optional state-age gates, and a contract-sized
 emergency-stop Action. It may require typed device health and must then declare
 motor-temperature/current ceilings and a valid bus-voltage interval. Device
 health includes one `ready|derated|faulted|offline` state per Action channel.
 Optional required post-stop checking binds a healthy sample count and minimum
 duration; the resulting recovery candidate always requires a new session.
-Exported bundles and verification records are immutable.
-External Evidence must carry exact bundle and contract hashes, driver hash,
+The Driver Package manifest fixes one confined regular executable, protocol,
+supported environments, device vendor/model, and explicit capability set.
+Project validation requires the Target and package to agree and checks that the
+package supplies every capability implied by Target safety and Policy shadow
+operation. Export hashes and copies the complete package and separately hashes
+its entry; new exports cannot omit this binding.
+
+Exported bundles and verification records are immutable. The Bundle identity
+includes the Driver package, its whole-package hash, its executable hash, and
+the Harness source/dependency hashes. Capture always launches the frozen copy,
+rejects overrides, and fails if the currently executing Harness differs from
+the authorized Bundle. External Evidence must carry exact bundle and contract
+hashes, Driver package and executable hashes,
 device serial, timestamps, sample count, timing measurements, emergency-stop
 count and acknowledgements, and operator identity. A Target with a state-age
 gate also requires maximum observed device state age; a Target requiring
@@ -119,8 +131,9 @@ Action scale/slew, an optional `maximumDecisionLatencyMs`, maximum joint
 velocity, and optional free-base height/tilt gates. The Plan deadline cannot
 exceed the Target's `maximumLatencyMs`. A Target may require the
 `decision-deadline` capability, which makes both host pre-dispatch and
-Driver-local pre-application rejection mandatory. The driver executable and any
-driver inputs are content-hashed and frozen.
+Driver-local pre-application rejection mandatory. Additional per-session driver
+inputs are content-hashed and frozen but cannot replace or modify the Bundle
+Driver Package.
 HIL/real execution additionally requires a separate expiring authorization with
 the exact Plan/Bundle/operator/device identity and episode ceiling. Shadow mode
 transmits only non-authoritative Controller proposals and is never

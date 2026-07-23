@@ -55,7 +55,7 @@ Traction evidence preserves sign instead of clipping every target-direction disp
 
 Mechanical Components enter MuJoCo through explicit Base-owned Mount slots. Root fragments remain suitable for global sensor/actuator sections; mount fragments are inserted only into their selected body context. The compiler enforces slot cardinality and occupancy and removes unused markers from executable MJCF.
 
-Hardware export is downstream of Revision governance. The Bundle freezes the deployable contracts and safety envelope; verification never trusts a mutable project pointer and re-hashes the embedded Revision, Controller, Target, and contracts. Dry-run protocol conformance is explicitly distinct from HIL or physical-hardware evidence.
+Hardware export is downstream of Revision governance. The Bundle freezes the deployable contracts, safety envelope, and complete project Driver Package; verification never trusts a mutable project pointer and re-hashes the embedded Revision, Controller, Target, contracts, Driver package, and executable entry. Capture launches only the Bundle copy and requires the executing Harness source and dependency lock to match the authorized identity. Dry-run protocol conformance is explicitly distinct from HIL or physical-hardware evidence.
 
 The executable device boundary negotiates freshness, applied-Action,
 decision-deadline, stop acknowledgement, and device-health capabilities.

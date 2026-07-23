@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "protocol": "stdio-jsonl-v1",
+  "handshake": {
+    "bundleHash": "00490ec553adbba47934061cc1af41b696c45ed4f0816002fd7ebe16a7f49f17",
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7"
+  },
+  "capabilities": [
+    "applied-action",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "messages": [
+    "hello",
+    "start-episode",
+    "state",
+    "action",
+    "shadow-action",
+    "deadline-rejected",
+    "safe-stop",
+    "emergency-stop",
+    "stopped",
+    "health-check",
+    "health-state",
+    "close",
+    "completed"
+  ],
+  "state": {
+    "required": [
+      "episode",
+      "step",
+      "qpos",
+      "qvel",
+      "observation",
+      "appliedAction",
+      "stateAgeMs",
+      "deviceHealth"
+    ]
+  },
+  "deviceHealth": {
+    "actuatorStates": [
+      "ready",
+      "derated",
+      "faulted",
+      "offline"
+    ]
+  },
+  "stopRecovery": {
+    "automaticRearm": false,
+    "requiresNewSession": true
+  }
+}

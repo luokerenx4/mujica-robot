@@ -58,8 +58,30 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "domain.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "driver.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibrate")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "calibration.promote")).toBe(true);
+  });
+
+  test("Driver Package discovery exposes frozen deployment identity", () => {
+    const result = invoke(["driver", "inspect", "examples/quadruped", "--driver", "mujoco-protocol-simulator", "--json"]); const envelope = JSON.parse(result.stdout);
+    expect(result.code).toBe(0);
+    expect(envelope.data.definition).toMatchObject({
+      id: "mujoco-protocol-simulator",
+      executable: "driver.py",
+      environments: ["dry-run"],
+      device: { vendor: "Mujica", model: "Protocol simulator" },
+    });
+    expect(envelope.data.definition.capabilities).toContain("device-health");
+    expect(envelope.data.packageHash).toHaveLength(64);
+    expect(envelope.data.executableHash).toHaveLength(64);
+    const override = invoke([
+      "capture", "run", "examples/quadruped", "--plan", "quadruped-dry-run-identification",
+      "--driver", "examples/quadruped/hardware-drivers/mujoco-protocol-simulator/driver.py",
+      "--operator", "Mujica test", "--json",
+    ]);
+    expect(override.code).toBe(1);
+    expect(JSON.parse(override.stderr).error.message).toContain("Bundle-frozen Driver Package");
   });
 
   test("Domain Profile discovery exposes provenance and bounded dynamics", () => {
@@ -90,7 +112,6 @@ describe("agent CLI contract", () => {
     expect(inspected.code).toBe(0); expect(plan.data.definition.episodes).toHaveLength(3); expect(plan.data.bundle.environment).toBe("dry-run");
     const captured = invoke([
       "capture", "run", "examples/quadruped", "--plan", "quadruped-dry-run-identification",
-      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
       "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--operator", "Mujica test", "--json",
@@ -105,6 +126,11 @@ describe("agent CLI contract", () => {
       expect(envelope.data.episodes.every((episode: any) => episode.completed)).toBe(true);
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.device.serial).toBe("simulated");
+      expect(manifest.driverPackageHash).toHaveLength(64);
+      expect(manifest.driverHash).toHaveLength(64);
+      const bundleManifest = JSON.parse(await readFile(resolve(root, `examples/quadruped/hardware-bundles/${plan.data.definition.bundle}/manifest.json`), "utf8"));
+      expect(manifest.driverPackageHash).toBe(bundleManifest.driverPackageHash);
+      expect(manifest.driverHash).toBe(bundleManifest.driverExecutableHash);
       expect(manifest.protocolCapabilities).toEqual(["applied-action", "decision-deadline", "device-health", "latched-stop-health", "shadow-action", "state-age-ms", "stop-ack"]);
       expect(manifest.stateAge.samples).toBeGreaterThan(0);
       expect(manifest.deviceHealth).toMatchObject({
@@ -139,7 +165,6 @@ describe("agent CLI contract", () => {
   test("shadow commissioning never actuates and stale state fails closed with an acknowledged stop", async () => {
     const common = [
       "capture", "run", "examples/quadruped", "--plan", "quadruped-dry-run-shadow-commissioning",
-      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
       "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--driver-arg=--state-age-ms", "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--operator", "Mujica test",
@@ -195,6 +220,7 @@ describe("agent CLI contract", () => {
       sourceKind: "policy-revision",
       maximumCaptureMode: "shadow",
       target: { revision: "quadruped-p-ed7ad2ff20dd", revisionKind: "policy" },
+      driverPackage: { id: "mujoco-protocol-simulator", executable: "driver.py" },
     });
     expect(() => assertCaptureModeAllowed(
       { id: bundle.data.id, sourceKind: "policy-revision", maximumCaptureMode: "shadow" },
@@ -203,7 +229,6 @@ describe("agent CLI contract", () => {
 
     const captured = invoke([
       "capture", "run", "examples/quadruped", "--plan", "history-policy-shadow-dry-run",
-      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
       "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--driver-arg=--state-age-ms", "--driver-arg=0",
       "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
@@ -237,7 +262,6 @@ describe("agent CLI contract", () => {
   test("device health faults stop a learned Policy before proposal dispatch", async () => {
     const captured = invoke([
       "capture", "run", "examples/quadruped", "--plan", "history-policy-shadow-dry-run",
-      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
       "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--driver-arg=--motor-temperature-c", "--driver-arg=90",
       "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
@@ -276,7 +300,6 @@ describe("agent CLI contract", () => {
   test("an isolated actuator trip can become only a new-session recovery candidate", async () => {
     const captured = invoke([
       "capture", "run", "examples/quadruped", "--plan", "history-policy-shadow-dry-run",
-      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
       "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--driver-arg=--actuator-state", "--driver-arg=7:faulted",
       "--driver-arg=--post-stop-clear-health",
@@ -323,7 +346,6 @@ describe("agent CLI contract", () => {
 
   test("host and Driver reject expired decisions before applying them", async () => {
     const common = [
-      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
       "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
       "--operator", "Mujica test", "--json",
@@ -348,7 +370,7 @@ describe("agent CLI contract", () => {
 
     const driver = invoke([
       "capture", "run", "examples/quadruped", "--plan", "quadruped-driver-deadline-trip",
-      ...common.slice(0, 4), "--driver-arg=--receive-delay-ms", "--driver-arg=20", ...common.slice(4),
+      ...common.slice(0, 2), "--driver-arg=--receive-delay-ms", "--driver-arg=20", ...common.slice(2),
     ]);
     expect(driver.code).toBe(0);
     const driverEnvelope = JSON.parse(driver.stdout); const driverPath = driverEnvelope.data.artifactPath;
@@ -444,6 +466,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(6);
+    expect(envelope.data.definitions.driverPackages).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
@@ -457,7 +480,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-ebceda3e231f082f",
+      "--bundle", "hardware-e998df153171b306",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -473,6 +496,8 @@ describe("agent CLI contract", () => {
       const evidence = JSON.parse(await readFile(resolve(root, "examples/quadruped/hardware-evidence/spatial-dry-run.json"), "utf8"));
       evidence.maximumObservedStateAgeMs = 21;
       evidence.emergencyStopAcknowledgements = 0;
+      evidence.driverPackageHash = "a".repeat(64);
+      evidence.driverHash = "b".repeat(64);
       evidence.deviceHealthTrips = 0;
       evidence.actuatorIsolationTrips = 0;
       evidence.postStopHealthChecks = 0;
@@ -484,6 +509,8 @@ describe("agent CLI contract", () => {
       const rejectedEnvelope = JSON.parse(rejected.stdout);
       expect(rejectedEnvelope.data.status).toBe("FAILED");
       expect(rejectedEnvelope.data.reasons).toEqual([
+        "evidence Driver Package hash does not match bundle",
+        "evidence Driver executable hash does not match bundle",
         "observed state age exceeds safety limit",
         "evidence does not prove a device health safety trip",
         "evidence does not prove per-actuator fault isolation",

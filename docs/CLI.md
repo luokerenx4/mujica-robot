@@ -20,9 +20,11 @@ mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID 
 mujica studio <project> [--run ID] [--compare-run ID] [--json]
 mujica hardware export <project> --target ID [--json]
 mujica hardware verify <project> --bundle ID --evidence PATH [--json]
+mujica driver list <project> [--json]
+mujica driver inspect <project> --driver ID [--json]
 mujica capture list <project> [--json]
 mujica capture inspect <project> (--plan ID | --capture ID) [--json]
-mujica capture run <project> --plan ID --driver PATH --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]
+mujica capture run <project> --plan ID --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]
 mujica train <project> --training ID [--seed N]
 mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica policies <project> [--json]
@@ -70,11 +72,17 @@ writing the Profile. Simulation Runs can only support `synthetic` provenance;
 The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. “Copy frame context for Agent” places structured Run identity and exact frame evidence on the clipboard. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode.
 
 `hardware export` freezes one Hardware Target, source Revision, Controller,
-optional Policy, Observation/Action contracts, safety envelope, and
+optional Policy, selected Driver Package, Observation/Action contracts, safety envelope, and
 `stdio-jsonl-v1` handshake into an immutable bundle. Robot Revision Bundles may
 actuate. A Target may explicitly name a Judge-kept Policy Revision, but its
 Bundle is derived as `maximumCaptureMode=shadow`; a Plan cannot widen that
-authority.
+authority. New exports require a Driver Package whose protocol, environment,
+device identity, and declared capabilities satisfy the Target.
+
+`driver list|inspect` exposes each project-owned `hardware-drivers/<id>/`
+package, its closed manifest, whole-package hash, executable entry point, and
+entry hash. The package may contain helper modules and static configuration;
+hashing only the entry file is deliberately insufficient.
 
 `hardware verify` validates separately collected driver Evidence and publishes
 an immutable verification. A normal `dry-run` can only become
@@ -88,10 +96,14 @@ emergency stop. Missing, stale, or unacknowledged evidence fails verification.
 
 `capture list|inspect|run` is the executable device-session boundary. A Capture
 Plan binds a finite episode set to one Bundle and may only reduce its authority
-with Action scaling, slew limiting, and tighter state gates. `run` hashes an
-exact non-symlink executable, freezes any repeated `--driver-input` files, checks
-the Bundle/contract/environment/device handshake, and executes only the
-Bundle-frozen Controller. A completed artifact contains raw protocol bytes,
+with Action scaling, slew limiting, and tighter state gates. `run` launches the
+Bundle-frozen Driver entry and rejects `--driver` overrides for new Bundles. It
+re-hashes both the package and entry, verifies that the current Harness source
+and dependency lock equal the Bundle identity, freezes any repeated
+`--driver-input` files, checks the Bundle/contract/environment/device handshake,
+and executes only the Bundle-frozen Controller. `--driver PATH` remains accepted
+only when replaying a legacy Bundle without a frozen Driver Package. A completed
+artifact contains raw protocol bytes,
 driver stderr, proposed/commanded/applied Actions, state-age telemetry, typed
 stop acknowledgements, per-episode calibration NDJSON, timing, safety
 interventions, and all source hashes.

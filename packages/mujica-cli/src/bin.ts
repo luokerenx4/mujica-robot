@@ -4,7 +4,7 @@ import { resolveProjectDirectory } from "@mujica/core";
 import { failure } from "./contract";
 import { hardwareCaptureCommand, hardwareCaptureInspectCommand, hardwareCapturePlanInspectCommand, hardwareCapturePlanListCommand, hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
-  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, evaluateCommand, inspectCommand,
+  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 import { researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand } from "./research-lab";
@@ -17,6 +17,8 @@ USAGE
   mujica component inspect <project> --component ID [--json]
   mujica domain list <project> [--json]
   mujica domain inspect <project> --domain ID [--json]
+  mujica driver list <project> [--json]
+  mujica driver inspect <project> --driver ID [--json]
   mujica calibration list <project> [--json]
   mujica calibration inspect <project> --calibration ID [--json]
   mujica calibration promote <project> --run ID [--json]
@@ -31,7 +33,7 @@ USAGE
   mujica hardware verify <project> --bundle ID --evidence PATH [--json]
   mujica capture list <project> [--json]
   mujica capture inspect <project> (--plan ID | --capture ID) [--json]
-  mujica capture run <project> --plan ID --driver PATH --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]
+  mujica capture run <project> --plan ID --operator NAME [--driver PATH] [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]
   mujica train <project> --training ID [--seed N]
   mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
   mujica policies <project> [--json]
@@ -58,6 +60,8 @@ const CAPABILITIES = [
   { id: "component.inspect", usage: "mujica component inspect <project> --component ID [--json]", effect: "read-only" },
   { id: "domain.list", usage: "mujica domain list <project> [--json]", effect: "read-only" },
   { id: "domain.inspect", usage: "mujica domain inspect <project> --domain ID [--json]", effect: "read-only" },
+  { id: "driver.list", usage: "mujica driver list <project> [--json]", effect: "read-only" },
+  { id: "driver.inspect", usage: "mujica driver inspect <project> --driver ID [--json]", effect: "read-only" },
   { id: "calibration.list", usage: "mujica calibration list <project> [--json]", effect: "read-only" },
   { id: "calibration.inspect", usage: "mujica calibration inspect <project> --calibration ID [--json]", effect: "read-only" },
   { id: "calibration.promote", usage: "mujica calibration promote <project> --run ID [--json]", effect: "mutates-project" },
@@ -73,7 +77,7 @@ const CAPABILITIES = [
   { id: "hardware.verify", usage: "mujica hardware verify <project> --bundle ID --evidence PATH [--json]", effect: "creates-artifact" },
   { id: "capture.list", usage: "mujica capture list <project> [--json]", effect: "read-only" },
   { id: "capture.inspect", usage: "mujica capture inspect <project> (--plan ID | --capture ID) [--json]", effect: "read-only" },
-  { id: "capture.run", usage: "mujica capture run <project> --plan ID --driver PATH --operator NAME [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]", effect: "creates-artifact" },
+  { id: "capture.run", usage: "mujica capture run <project> --plan ID --operator NAME [--driver PATH] [--driver-arg ARG] [--driver-input PATH] [--authorization PATH] [--json]", effect: "creates-artifact" },
   { id: "train", usage: "mujica train <project> --training ID [--seed N] [--json]", effect: "creates-artifact" },
   { id: "train-research", usage: "mujica train-research <project> --research ID [--iterations N] [--agent-command CMD] [--json]", effect: "mutates-project" },
   { id: "policies", usage: "mujica policies <project> [--json]", effect: "read-only" },
@@ -155,6 +159,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "domain") {
       const action = args.shift(); commandId = `domain.${action}`; const { values, positionals } = parseArgs({ args, options: { domain: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica domain ${action} <project>`), values.project);
       if (action === "list") envelope = await domainListCommand(project); else if (action === "inspect") envelope = await domainInspectCommand(project, required(values.domain, "domain")); else throw new Error("Usage: mujica domain list|inspect ...");
+    } else if (command === "driver") {
+      const action = args.shift(); commandId = `driver.${action}`; const { values, positionals } = parseArgs({ args, options: { driver: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica driver ${action} <project>`), values.project);
+      if (action === "list") envelope = await driverListCommand(project); else if (action === "inspect") envelope = await driverInspectCommand(project, required(values.driver, "driver")); else throw new Error("Usage: mujica driver list|inspect ...");
     } else if (command === "calibration") {
       const action = args.shift(); commandId = `calibration.${action}`; const { values, positionals } = parseArgs({ args, options: { calibration: { type: "string" }, run: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica calibration ${action} <project>`), values.project);
       if (action === "list") envelope = await calibrationListCommand(project); else if (action === "inspect") envelope = await calibrationInspectCommand(project, required(values.calibration, "calibration")); else if (action === "promote") envelope = await calibrationPromoteCommand(project, required(values.run, "run")); else throw new Error("Usage: mujica calibration list|inspect|promote ...");
@@ -182,7 +189,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         if (Boolean(values.plan) === Boolean(values.capture)) throw new Error("Usage: mujica capture inspect <project> (--plan ID | --capture ID)");
         envelope = values.plan ? await hardwareCapturePlanInspectCommand(project, values.plan) : await hardwareCaptureInspectCommand(project, values.capture!);
       }
-      else if (action === "run") envelope = await hardwareCaptureCommand(project, required(values.plan, "plan"), required(values.driver, "driver"), values["driver-arg"], values["driver-input"], required(values.operator, "operator"), values.authorization);
+      else if (action === "run") envelope = await hardwareCaptureCommand(project, required(values.plan, "plan"), values.driver, values["driver-arg"], values["driver-input"], required(values.operator, "operator"), values.authorization);
       else throw new Error("Usage: mujica capture list|inspect|run ...");
     } else if (command === "train") {
       const { values, positionals } = parseArgs({ args, options: { training: { type: "string" }, seed: { type: "string", default: "42" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica train <project>"), values.project); envelope = await trainCommand(project, required(values.training, "training"), Number(values.seed));

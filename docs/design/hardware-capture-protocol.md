@@ -4,7 +4,8 @@
 
 A Capture Plan binds one exported Hardware Bundle to a finite set of seeded
 episodes. The Bundle freezes either a Robot Revision or Policy Revision, compiled
-model and contracts, Controller source, and optional neural Policy. The Plan may
+model and contracts, Controller source, optional neural Policy, and one complete
+Driver Package. The Plan may
 only reduce authority through `shadow` mode, Action scaling, slew limiting,
 shorter duration, and tighter state gates.
 
@@ -13,8 +14,14 @@ unconditionally `shadow`-only. This lets a locally improved learned lane collect
 HIL evidence without being misrepresented as the promoted robot and without any
 source edit granting it ordinary Action authority.
 
-The driver is an executable file, not an arbitrary shell command. Mujica hashes
-its exact bytes before launch and records every argument separately. JSONL over
+The Driver Package is a project definition, not an arbitrary shell command. Its
+manifest declares one confined regular executable, protocol, environments,
+device identity, and capabilities. Export hashes and copies the whole package,
+then separately hashes the entry executable. Capture launches only that frozen
+copy, rejects executable overrides, and rechecks the current Harness source and
+dependency lock against the Bundle before starting a device session. This binds
+helper modules imported by the Driver through the Harness as well as its entry
+bytes. JSONL over
 stdin/stdout is the first transport because message order, bytes, and failures
 can be preserved without adding a network control plane.
 
@@ -173,7 +180,8 @@ firmware current/temperature limits, or supervised operating procedures.
 
 Each immutable Hardware Capture contains:
 
-- frozen request, Plan, Bundle identity, executable hash, arguments, and device;
+- frozen request, Plan, Bundle identity, Driver package and executable hashes,
+  arguments, and device;
 - raw bidirectional protocol transcript and driver stderr;
 - one calibration NDJSON file per completed episode;
 - proposed/commanded/applied Actions, state-age distribution, stop
