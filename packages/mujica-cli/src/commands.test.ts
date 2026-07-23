@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
@@ -97,12 +98,21 @@ describe("agent CLI contract", () => {
     expect(captured.code).toBe(0);
     const envelope = JSON.parse(captured.stdout); const artifactPath = envelope.data.artifactPath;
     try {
-      expect(envelope.data).toMatchObject({ status: "COMPLETED", environment: "dry-run", calibrationEligible: true, deadlineMisses: 0, emergencyStops: 0 });
+      expect(envelope.data).toMatchObject({
+        status: "COMPLETED", environment: "dry-run", mode: "actuate", actuationAuthorized: true,
+        calibrationEligible: true, deadlineMisses: 0, emergencyStops: 0, emergencyStopAcknowledgements: 0,
+      });
       expect(envelope.data.episodes.every((episode: any) => episode.completed)).toBe(true);
       const manifest = JSON.parse(await readFile(resolve(artifactPath, "manifest.json"), "utf8"));
       expect(manifest.device.serial).toBe("simulated");
+      expect(manifest.protocolCapabilities).toEqual(["applied-action", "shadow-action", "state-age-ms", "stop-ack"]);
+      expect(manifest.stateAge.samples).toBeGreaterThan(0);
       expect(manifest.driverInputs[0].hash).toHaveLength(64);
       expect(manifest.episodes.map((episode: any) => episode.hash).every((hash: string) => hash.length === 64)).toBe(true);
+      const firstRow = JSON.parse((await readFile(resolve(artifactPath, manifest.episodes[0].path), "utf8")).split("\n")[0]!);
+      expect(firstRow.proposedAction).toHaveLength(12);
+      expect(firstRow.commandedAction).toHaveLength(12);
+      expect(firstRow.appliedAction).toHaveLength(12);
       const inputPath = resolve(artifactPath, "driver-inputs/00-hardware-capture-hidden-plant.scenario.json");
       expect(await readFile(inputPath, "utf8")).toContain("\"bodyMassScale\": 1.1");
       const inspectedCapture = invoke(["capture", "inspect", "examples/quadruped", "--capture", envelope.data.captureId, "--json"]);
@@ -112,6 +122,56 @@ describe("agent CLI contract", () => {
       expect(tampered.code).toBe(1); expect(JSON.parse(tampered.stderr).error.message).toContain("driver input");
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }, 10_000);
+
+  test("shadow commissioning never actuates and stale state fails closed with an acknowledged stop", async () => {
+    const common = [
+      "capture", "run", "examples/quadruped", "--plan", "quadruped-dry-run-shadow-commissioning",
+      "--driver", "examples/quadruped/drivers/mujoco-protocol-simulator.py",
+      "--driver-arg=--scenario", "--driver-arg=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--driver-arg=--state-age-ms", "--driver-input=examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--operator", "Mujica test",
+    ];
+    const fresh = invoke([...common, "--driver-arg=0", "--json"]);
+    expect(fresh.code).toBe(0);
+    const freshEnvelope = JSON.parse(fresh.stdout); const freshPath = freshEnvelope.data.artifactPath;
+    try {
+      expect(freshEnvelope.data).toMatchObject({
+        status: "COMPLETED", mode: "shadow", actuationAuthorized: false,
+        calibrationEligible: false, emergencyStops: 0,
+      });
+      const transcript = (await readFile(resolve(freshPath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      expect(hostTypes).toContain("shadow-action");
+      expect(hostTypes).not.toContain("action");
+      const manifest = JSON.parse(await readFile(resolve(freshPath, "manifest.json"), "utf8"));
+      const rows = (await readFile(resolve(freshPath, manifest.episodes[0].path), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      expect(rows.some((row) => row.proposedAction.some((value: number) => Math.abs(value) > 0.001))).toBe(true);
+      expect(rows.every((row) => row.commandedAction.every((value: number) => value === 0))).toBe(true);
+      expect(rows.every((row) => row.appliedAction.every((value: number) => value === 0))).toBe(true);
+      const inspected = invoke(["capture", "inspect", "examples/quadruped", "--capture", freshEnvelope.data.captureId, "--json"]);
+      expect(inspected.code).toBe(0);
+    } finally {
+      rmSync(freshPath, { recursive: true, force: true });
+    }
+
+    const stale = invoke([...common, "--driver-arg=50", "--json"]);
+    expect(stale.code).toBe(0);
+    const staleEnvelope = JSON.parse(stale.stdout); const stalePath = staleEnvelope.data.artifactPath;
+    try {
+      expect(staleEnvelope.data).toMatchObject({
+        status: "ABORTED", mode: "shadow", actuationAuthorized: false,
+        calibrationEligible: false, emergencyStops: 1, emergencyStopAcknowledgements: 1,
+      });
+      expect(staleEnvelope.data.reasons.join(" ")).toContain("state age 50.000000 ms exceeds maximum 20.000000 ms");
+      const transcript = (await readFile(resolve(stalePath, "transcript.ndjson"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      const hostTypes = transcript.filter((row) => row.direction === "host-to-driver").map((row) => row.message.type);
+      expect(hostTypes).toContain("emergency-stop");
+      expect(hostTypes).not.toContain("action");
+      expect(hostTypes).not.toContain("shadow-action");
+    } finally {
+      rmSync(stalePath, { recursive: true, force: true });
     }
   }, 10_000);
 
@@ -184,17 +244,36 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.researchLabs).toBe(5);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
-    expect(envelope.data.definitions.capturePlans).toBe(2);
+    expect(envelope.data.definitions.capturePlans).toBe(3);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
   }, 20_000);
 
-  test("hardware dry-run evidence cannot masquerade as physical verification", () => {
+  test("hardware dry-run evidence cannot masquerade as physical verification", async () => {
     const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "spatial-dry-run", "--json"]); const bundle = JSON.parse(exported.stdout); expect(exported.code).toBe(0);
     const verified = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", "examples/quadruped/hardware-evidence/spatial-dry-run.json", "--json"]); const result = JSON.parse(verified.stdout);
     expect(verified.code).toBe(0); expect(result.data.status).toBe("PROTOCOL-VERIFIED"); expect(result.data.protocolVerified).toBe(true); expect(result.data.hardwareVerified).toBe(false);
     expect(result.data.evidence.samples).toBe(250); expect(result.data.reasons).toEqual([]);
+    const temporaryRoot = await mkdtemp(resolve(tmpdir(), "mujica-stale-evidence-"));
+    try {
+      const evidence = JSON.parse(await readFile(resolve(root, "examples/quadruped/hardware-evidence/spatial-dry-run.json"), "utf8"));
+      evidence.maximumObservedStateAgeMs = 21;
+      evidence.emergencyStopAcknowledgements = 0;
+      const evidencePath = resolve(temporaryRoot, "stale.json");
+      await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
+      const rejected = invoke(["hardware", "verify", "examples/quadruped", "--bundle", bundle.data.id, "--evidence", evidencePath, "--json"]);
+      expect(rejected.code).toBe(0);
+      const rejectedEnvelope = JSON.parse(rejected.stdout);
+      expect(rejectedEnvelope.data.status).toBe("FAILED");
+      expect(rejectedEnvelope.data.reasons).toEqual([
+        "observed state age exceeds safety limit",
+        "not every emergency stop was acknowledged",
+      ]);
+      rmSync(rejectedEnvelope.data.path, { recursive: true, force: true });
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
     const legacy = invoke(["hardware", "verify", "examples/quadruped", "--bundle", "hardware-f0b608d6d693dead", "--evidence", "examples/quadruped/hardware-verifications/verification-fe6210762029bd3f/evidence.json", "--json"]);
     expect(legacy.code).toBe(0); expect(JSON.parse(legacy.stdout).data.status).toBe("PROTOCOL-VERIFIED");
   });

@@ -154,7 +154,11 @@ contract-bound driver Bundle, can execute that Bundle through a governed Capture
 Plan, and can still validate separately collected conformance Evidence. The
 checked-in protocol evidence is deliberately labeled `PROTOCOL-VERIFIED` and
 `hardwareVerified=false`; Mujica will not represent a simulated serial number
-as HIL or real-robot proof.
+as HIL or real-robot proof. New drivers can first run observe-only shadow
+commissioning: Mujica sends Controller intent as a proposal, never an ordinary
+Action, while auditing device-applied Action, state freshness, and exact stop
+acknowledgements. Stale state fails before Action dispatch, and shadow evidence
+cannot be used for Calibration.
 
 Components now carry explicit physical, geometry/collision, joint, actuator, and sensor inventories. This metadata migration changed every Assembly provenance hash but not one MJCF byte. Six frozen Policies were requalified into new immutable artifacts using old/new model and contract hash proofs. A later Runtime audit found that low-friction scenarios had changed only the floor geom; corrected contact friction invalidates the old all-seven-gates interpretation while preserving those immutable artifacts as historical evidence.
 

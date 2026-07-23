@@ -71,22 +71,34 @@ The generated Studio directory can be opened directly or served by any static fi
 
 `hardware export` freezes one Hardware Target, kept Robot Revision, Controller, Observation/Action contracts, safety envelope, and `stdio-jsonl-v1` handshake into an immutable bundle. `hardware verify` validates separately collected driver Evidence and publishes an immutable verification. A `dry-run` can only become `PROTOCOL-VERIFIED`; only passing `hil` or `real` Evidence with a required device serial can become `HARDWARE-VERIFIED`.
 
+Targets that declare `maximumStateAgeMs` require verification Evidence to report
+the maximum observed device state age and enough acknowledgements to cover every
+emergency stop. Missing, stale, or unacknowledged evidence fails verification.
+
 `capture list|inspect|run` is the executable device-session boundary. A Capture
 Plan binds a finite episode set to one Bundle and may only reduce its authority
 with Action scaling, slew limiting, and tighter state gates. `run` hashes an
 exact non-symlink executable, freezes any repeated `--driver-input` files, checks
 the Bundle/contract/environment/device handshake, and executes only the
 Bundle-frozen Controller. A completed artifact contains raw protocol bytes,
-driver stderr, per-episode calibration NDJSON, timing, safety interventions, and
-all source hashes.
+driver stderr, proposed/commanded/applied Actions, state-age telemetry, typed
+stop acknowledgements, per-episode calibration NDJSON, timing, safety
+interventions, and all source hashes.
+
+Every Plan explicitly selects `actuate` or `shadow`. Shadow commissioning sends
+Controller output only as a non-authoritative `proposedAction`; the driver
+reports its independently applied Action. Shadow artifacts set
+`actuationAuthorized=false`, never send an ordinary `action` message, and cannot
+be Calibration sources.
 
 `dry-run` Capture Plans do not accept physical authorization and produce only
 synthetic evidence. `hil` and `real` Plans require `--authorization`; that
 external JSON must be unexpired and name the exact Plan hash, Bundle hash,
 Target, environment, operator, device identity, and maximum episode count.
-Protocol, deadline, Controller, or state-safety failures trigger best-effort
+Protocol, freshness, deadline, Controller, or state-safety failures trigger
 emergency stop and publish an ineligible `ABORTED`/`FAILED` artifact rather than
-discarding the evidence.
+discarding the evidence. The driver must acknowledge the exact episode and stop
+kind; writing a stop request alone is not success.
 
 `policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
 

@@ -233,7 +233,12 @@ export const calibrationSchema = z.object({
 export const hardwareTargetSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), revision: idSchema, assembly: idSchema, controller: idSchema,
   environment: z.enum(["dry-run", "hil", "real"]), protocol: z.literal("stdio-jsonl-v1"), controlHz: z.number().positive(),
-  safety: z.object({ maximumLatencyMs: z.number().positive(), maximumConsecutiveMisses: z.number().int().nonnegative(), emergencyStopAction: z.array(z.number().finite()).min(1) }).strict(),
+  safety: z.object({
+    maximumLatencyMs: z.number().positive(),
+    maximumStateAgeMs: z.number().positive().optional(),
+    maximumConsecutiveMisses: z.number().int().nonnegative(),
+    emergencyStopAction: z.array(z.number().finite()).min(1),
+  }).strict(),
   device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serialRequired: z.boolean() }).strict(),
 }).strict();
 
@@ -243,6 +248,7 @@ export const hardwareCapturePlanSchema = z.object({
   name: z.string().min(1),
   target: idSchema,
   bundle: idSchema,
+  mode: z.enum(["shadow", "actuate"]).default("actuate"),
   episodes: z.array(z.object({
     id: idSchema,
     seed: z.number().int(),
@@ -285,7 +291,10 @@ export const hardwareEvidenceSchema = z.object({
   device: z.object({ vendor: z.string().min(1), model: z.string().min(1), serial: z.string().min(1) }).strict(),
   observationContractHash: z.string().regex(/^[0-9a-f]{64}$/), actionContractHash: z.string().regex(/^[0-9a-f]{64}$/), driverHash: z.string().regex(/^[0-9a-f]{64}$/),
   startedAt: z.string().datetime(), endedAt: z.string().datetime(), samples: z.number().int().positive(), maximumObservedLatencyMs: z.number().nonnegative(),
-  missedDeadlines: z.number().int().nonnegative(), maximumConsecutiveMissesObserved: z.number().int().nonnegative(), emergencyStops: z.number().int().nonnegative(), passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
+  maximumObservedStateAgeMs: z.number().nonnegative().optional(),
+  missedDeadlines: z.number().int().nonnegative(), maximumConsecutiveMissesObserved: z.number().int().nonnegative(), emergencyStops: z.number().int().nonnegative(),
+  emergencyStopAcknowledgements: z.number().int().nonnegative().optional(),
+  passed: z.boolean(), operator: z.string().min(1), notes: z.string(),
 }).strict();
 
 export const candidateSchema = z.object({

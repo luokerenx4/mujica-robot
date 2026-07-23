@@ -34,6 +34,7 @@ def send(value: dict[str, Any]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True)
+    parser.add_argument("--state-age-ms", type=float, default=0.0)
     arguments = parser.parse_args()
     bundle_root = Path(os.environ["MUJICA_HARDWARE_BUNDLE"])
     bundle = json.loads((bundle_root / "manifest.json").read_text())
@@ -46,6 +47,7 @@ def main() -> None:
     environment: RobotEnvironment | None = None
     observation: dict[str, np.ndarray] | None = None
     active_episode: str | None = None
+    last_applied = np.asarray(target["safety"]["emergencyStopAction"], dtype=np.float64)
 
     hello = receive()
     if hello.get("type") != "hello" or hello.get("protocol") != PROTOCOL:
@@ -57,6 +59,7 @@ def main() -> None:
             "model": target["device"]["model"],
             "serial": "simulated",
         },
+        "capabilities": ["applied-action", "shadow-action", "state-age-ms", "stop-ack"],
     })
 
     while True:
@@ -82,6 +85,7 @@ def main() -> None:
             }
             environment = RobotEnvironment(model_path, compiled, task, scenario, int(message["seed"]))
             observation = environment.reset()
+            last_applied = np.asarray(target["safety"]["emergencyStopAction"], dtype=np.float64)
             send({
                 "type": "state",
                 "episode": active_episode,
@@ -89,14 +93,18 @@ def main() -> None:
                 "qpos": environment.data.qpos.tolist(),
                 "qvel": environment.data.qvel.tolist(),
                 "observation": environment.vector(observation).astype(float).tolist(),
+                "appliedAction": last_applied.tolist(),
+                "stateAgeMs": arguments.state_age_ms,
             })
-        elif kind == "action":
+        elif kind in {"action", "shadow-action"}:
             if environment is None or observation is None or active_episode != message.get("episode"):
                 raise RuntimeError("action received outside active episode")
             if int(message["step"]) != environment.step_index:
                 raise RuntimeError("action step is out of sequence")
-            result = environment.step(np.asarray(message["action"], dtype=np.float64))
+            requested = np.asarray(message["action"] if kind == "action" else target["safety"]["emergencyStopAction"], dtype=np.float64)
+            result = environment.step(requested)
             observation = result.observation
+            last_applied = np.asarray(result.info["appliedAction"], dtype=np.float64)
             send({
                 "type": "state",
                 "episode": active_episode,
@@ -104,6 +112,8 @@ def main() -> None:
                 "qpos": environment.data.qpos.tolist(),
                 "qvel": environment.data.qvel.tolist(),
                 "observation": environment.vector(observation).astype(float).tolist(),
+                "appliedAction": last_applied.tolist(),
+                "stateAgeMs": arguments.state_age_ms,
             })
         elif kind in {"safe-stop", "emergency-stop"}:
             if environment is not None:

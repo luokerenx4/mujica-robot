@@ -1,0 +1,97 @@
+{
+  "capturePlan": {
+    "version": 1,
+    "id": "quadruped-dry-run-shadow-commissioning",
+    "name": "Observe-only quadruped commissioning",
+    "target": "spatial-dry-run",
+    "bundle": "hardware-e82b7e4208600749",
+    "mode": "shadow",
+    "episodes": [
+      {
+        "id": "commissioning",
+        "seed": 4301,
+        "steps": 10
+      }
+    ],
+    "action": {
+      "scale": 1,
+      "maximumSlewPerSecond": 400
+    },
+    "safety": {
+      "maximumJointVelocityRadPerSec": 8,
+      "minimumBaseHeightM": 0.18,
+      "maximumBaseHeightM": 0.8,
+      "maximumBodyTiltRad": 1.5
+    },
+    "notes": "Observe-only commissioning: the driver receives proposedAction telemetry but must never apply it. Shadow captures are not calibration evidence."
+  },
+  "planHash": "cc69bf6b09d3c0ae4d877fe465d98093b870c824a7b46dc262db84cf2dbd8ca4",
+  "bundle": {
+    "version": 1,
+    "harnessSourceHash": "b32c5fcc4d147ccf443bcca6bda088c05e41c6588ccbdc6a7a284fdddbea5075",
+    "harnessDependencyLockHash": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+    "target": {
+      "version": 1,
+      "id": "spatial-dry-run",
+      "name": "3-DOF quadruped driver protocol dry-run",
+      "revision": "quadruped-r-b1a3d1f7161a",
+      "assembly": "force-sensing-3dof",
+      "controller": "spatial-forward-gait",
+      "environment": "dry-run",
+      "protocol": "stdio-jsonl-v1",
+      "controlHz": 50,
+      "safety": {
+        "maximumLatencyMs": 10,
+        "maximumStateAgeMs": 20,
+        "maximumConsecutiveMisses": 2,
+        "emergencyStopAction": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "device": {
+        "vendor": "Mujica",
+        "model": "Protocol simulator",
+        "serialRequired": false
+      }
+    },
+    "revisionId": "quadruped-r-b1a3d1f7161a",
+    "revisionHash": "7d17d19c5cb9010f11d61be290a8ee73952d3427a9dc0cce3af1f05c646dce98",
+    "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+    "modelXmlHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+    "controllerHash": "ae8378692ed5574aa14dfdda529032535e15cbf5803156b24286bea9026f095c",
+    "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+    "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+    "protocol": "stdio-jsonl-v1",
+    "id": "hardware-e82b7e4208600749",
+    "bundleHash": "e82b7e42086007492ee923bda8b365841edeb1c0f41cd4bdc385028f5ede2e64",
+    "completed": true
+  },
+  "driver": {
+    "hash": "82b63a781fffe0c63259b85d2166b929bdc47911a7a930e8e8bd449566fe94ce",
+    "arguments": [
+      "--scenario",
+      "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+      "--state-age-ms",
+      "0"
+    ],
+    "inputs": [
+      {
+        "name": "hardware-capture-hidden-plant.scenario.json",
+        "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+      }
+    ]
+  },
+  "operator": "Mujica commissioning audit",
+  "authorization": null
+}

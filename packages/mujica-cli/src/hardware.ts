@@ -56,6 +56,13 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
   if (manifest.authorizationHash !== null) {
     if (sha256(await readFile(join(root, "authorization.json"))) !== manifest.authorizationHash) throw new Error("Hardware Capture authorization bytes changed");
   }
+  const commissioningIdentity = typeof manifest.mode === "string" ? {
+    mode: manifest.mode,
+    actuationAuthorized: manifest.actuationAuthorized,
+    protocolCapabilities: manifest.protocolCapabilities,
+    stateAgeIdentity: manifest.stateAgeIdentity,
+    emergencyStopAcknowledgements: manifest.emergencyStopAcknowledgements,
+  } : {};
   const identity = {
     version: manifest.version,
     planHash: manifest.planHash,
@@ -73,6 +80,7 @@ export async function verifyHardwareCaptureIntegrity(root: string): Promise<any>
     episodeHashes: manifest.episodeHashes,
     runtimeSourceHash: manifest.runtimeSourceHash,
     harnessSourceHash: manifest.harnessSourceHash,
+    ...commissioningIdentity,
   };
   if (hashJson(identity) !== manifest.captureHash || manifest.id !== `capture-${manifest.captureHash.slice(0, 16)}`) throw new Error("Hardware Capture manifest identity is invalid");
   return manifest;
@@ -114,8 +122,9 @@ export async function hardwareExportCommand(projectDir: string, targetId: string
       version: 1,
       protocol: "stdio-jsonl-v1",
       handshake: { bundleHash, observationContractHash, actionContractHash },
-      messages: ["hello", "start-episode", "state", "action", "safe-stop", "emergency-stop", "stopped", "close", "completed"],
-      state: { required: ["episode", "step", "qpos", "qvel", "observation"] },
+      capabilities: ["applied-action", "shadow-action", "state-age-ms", "stop-ack"],
+      messages: ["hello", "start-episode", "state", "action", "shadow-action", "safe-stop", "emergency-stop", "stopped", "close", "completed"],
+      state: { required: ["episode", "step", "qpos", "qvel", "observation", "appliedAction", "stateAgeMs"] },
     });
     await writeJson(join(directory, "manifest.json"), { ...payload, id, bundleHash, completed: true });
   });
@@ -133,13 +142,17 @@ export async function hardwareVerifyCommand(projectDir: string, bundleId: string
   if (target.device.serialRequired && /^(unknown|simulated|none)$/i.test(evidence.device.serial)) reasons.push("target requires a physical device serial");
   if (Date.parse(evidence.endedAt) <= Date.parse(evidence.startedAt)) reasons.push("evidence time interval is invalid");
   if (evidence.maximumObservedLatencyMs > target.safety.maximumLatencyMs) reasons.push("observed latency exceeds safety limit");
+  if (target.safety.maximumStateAgeMs !== undefined && evidence.maximumObservedStateAgeMs === undefined) reasons.push("evidence does not report state age");
+  if (target.safety.maximumStateAgeMs !== undefined && evidence.maximumObservedStateAgeMs !== undefined && evidence.maximumObservedStateAgeMs > target.safety.maximumStateAgeMs) reasons.push("observed state age exceeds safety limit");
   if (evidence.maximumConsecutiveMissesObserved > target.safety.maximumConsecutiveMisses) reasons.push("consecutive deadline misses exceed safety limit");
+  if (target.safety.maximumStateAgeMs !== undefined && evidence.emergencyStopAcknowledgements === undefined) reasons.push("evidence does not report emergency-stop acknowledgements");
+  else if (evidence.emergencyStopAcknowledgements !== undefined && evidence.emergencyStopAcknowledgements < evidence.emergencyStops) reasons.push("not every emergency stop was acknowledged");
   if (!evidence.passed) reasons.push("driver reported failure");
   const status = reasons.length ? "FAILED" : evidence.environment === "dry-run" ? "PROTOCOL-VERIFIED" : "HARDWARE-VERIFIED";
   const verificationHash = hashJson({ bundleHash: bundle.bundleHash, evidence }); const id = `verification-${verificationHash.slice(0, 16)}`; const root = join(project.rootDir, "hardware-verifications", id);
   if (!(await exists(join(root, "manifest.json")))) await atomicDirectory(root, async (directory) => {
     await writeFile(join(directory, "evidence.json"), await readFile(resolve(evidencePath))); await writeJson(join(directory, "bundle-manifest.json"), bundle);
-    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
+    await writeFile(join(directory, "report.md"), `# Hardware verification\n\n- Status: ${status}\n- Environment: ${evidence.environment}\n- Device: ${evidence.device.vendor} ${evidence.device.model} (${evidence.device.serial})\n- Samples: ${evidence.samples}\n- Maximum latency: ${evidence.maximumObservedLatencyMs} ms\n- Maximum state age: ${evidence.maximumObservedStateAgeMs ?? "not reported"} ms\n- Missed deadlines: ${evidence.missedDeadlines}\n- Emergency-stop acknowledgements: ${evidence.emergencyStopAcknowledgements ?? "not reported"} / ${evidence.emergencyStops}\n${reasons.map((reason) => `- Gate: ${reason}\n`).join("")}`);
     await writeJson(join(directory, "manifest.json"), { version: 1, id, verificationHash, bundleId, bundleHash: bundle.bundleHash, target: target.id, environment: evidence.environment, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", reasons, completed: true });
   });
   return success("hardware.verify", { id, path: root, status, hardwareVerified: status === "HARDWARE-VERIFIED", protocolVerified: status !== "FAILED", reasons, evidence }, project, [artifact("hardware-verification", id, root)]);

@@ -12,7 +12,7 @@ import torch
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
-from mujica_runtime.hardware_capture import _state_safety_reasons
+from mujica_runtime.hardware_capture import _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
@@ -593,6 +593,16 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertTrue(any("joint velocity" in reason for reason in reasons))
         self.assertTrue(any("base height" in reason for reason in reasons))
         self.assertTrue(any("body tilt" in reason for reason in reasons))
+
+    def test_hardware_capture_freshness_and_stop_acknowledgement_are_fail_closed(self):
+        self.assertIsNone(_state_age_reason(None, None))
+        self.assertEqual(_state_age_reason(None, 20.0), "state age telemetry is missing")
+        self.assertIsNone(_state_age_reason(20.0, 20.0))
+        self.assertIn("20.100000 ms exceeds maximum 20.000000 ms", _state_age_reason(20.1, 20.0))
+        stopped = {"type": "stopped", "episode": "fit-a", "kind": "emergency-stop"}
+        self.assertTrue(_stopped_acknowledged(stopped, "fit-a", "emergency-stop"))
+        self.assertFalse(_stopped_acknowledged({**stopped, "kind": "safe-stop"}, "fit-a", "emergency-stop"))
+        self.assertFalse(_stopped_acknowledged({**stopped, "episode": "fit-b"}, "fit-a", "emergency-stop"))
 
     def test_training_reward_exposes_benchmark_aligned_lateral_displacement(self):
         model, compiled = compiled_assembly("force-sensing-3dof")

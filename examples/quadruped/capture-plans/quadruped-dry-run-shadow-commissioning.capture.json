@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "quadruped-dry-run-shadow-commissioning",
+  "name": "Observe-only quadruped commissioning",
+  "target": "spatial-dry-run",
+  "bundle": "hardware-e82b7e4208600749",
+  "mode": "shadow",
+  "episodes": [
+    {
+      "id": "commissioning",
+      "seed": 4301,
+      "steps": 10
+    }
+  ],
+  "action": {
+    "scale": 1,
+    "maximumSlewPerSecond": 400
+  },
+  "safety": {
+    "maximumJointVelocityRadPerSec": 8,
+    "minimumBaseHeightM": 0.18,
+    "maximumBaseHeightM": 0.8,
+    "maximumBodyTiltRad": 1.5
+  },
+  "notes": "Observe-only commissioning: the driver receives proposedAction telemetry but must never apply it. Shadow captures are not calibration evidence."
+}

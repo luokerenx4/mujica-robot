@@ -87,16 +87,27 @@ A Candidate contains a strict `changes` declaration for components, Observation 
 
 Candidate preview computes a content-derived proposed Robot Revision hash before apply. Selection is feasibility-first: a zero-violation Candidate may KEEP by eliminating locked baseline violations even when its aggregate score is lower, provided every per-case regression gate still passes; when both sides are feasible, aggregate score must improve. A KEEP Revision records component-package hashes, Observation/Action contract hashes, Controller identity, optional Policy identity, the verified semantic change set, exact changed files, fixed Benchmark identity, full evaluation evidence, and the selection reason. Policy-backed Revisions copy the referenced immutable Policy Artifact into their own snapshot so replay does not depend on a mutable pointer.
 
-A Hardware Target binds a kept Robot Revision to one `dry-run`, `hil`, or `real` environment, a driver protocol, control rate, explicit device identity, latency/deadline gates, and a contract-sized emergency-stop Action. Exported bundles and verification records are immutable. External Evidence must carry exact bundle and contract hashes, driver hash, device serial, timestamps, sample count, timing measurements, emergency-stop count, and operator identity.
+A Hardware Target binds a kept Robot Revision to one `dry-run`, `hil`, or `real`
+environment, a driver protocol, control rate, explicit device identity,
+latency/deadline and optional state-age gates, and a contract-sized
+emergency-stop Action. Exported bundles and verification records are immutable.
+External Evidence must carry exact bundle and contract hashes, driver hash,
+device serial, timestamps, sample count, timing measurements, emergency-stop
+count and acknowledgements, and operator identity. A Target with a state-age
+gate also requires maximum observed device state age.
 
-A Capture Plan binds one such Bundle to 1–32 finite episodes. Each episode has
-an ID, seed, and bounded step count; Plan safety may only tighten authority with
+A Capture Plan binds one such Bundle to 1–32 finite episodes, explicitly in
+`shadow` or `actuate` mode. Each episode has an ID, seed, and bounded step count;
+Plan safety may only tighten authority with
 Action scale/slew, maximum joint velocity, and optional free-base height/tilt
 gates. The driver executable and any driver inputs are content-hashed and frozen.
 HIL/real execution additionally requires a separate expiring authorization with
-the exact Plan/Bundle/operator/device identity and episode ceiling. Hardware
-Capture artifacts preserve the byte-exact transcript, per-episode capture data,
-timing, interventions, stops, executable identity, and authorization. See
+the exact Plan/Bundle/operator/device identity and episode ceiling. Shadow mode
+transmits only non-authoritative Controller proposals and is never
+calibration-eligible. Capture artifacts preserve the byte-exact transcript,
+proposed/commanded/applied Actions, state age, typed stop acknowledgements,
+per-episode capture data, timing, interventions, stops, executable identity, and
+authorization. See
 [Hardware capture protocol](design/hardware-capture-protocol.md).
 
 Simulation Run v3 freezes the exact compiled `model.xml` and initial `qpos`/`qvel`

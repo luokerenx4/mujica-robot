@@ -103,13 +103,43 @@ def _observation_map(vector: np.ndarray, channels: list[dict[str, Any]]) -> dict
     return result
 
 
-def _state_vectors(message: dict[str, Any], model: mujoco.MjModel, observation_size: int, episode_id: str, step: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _state_vectors(
+    message: dict[str, Any],
+    model: mujoco.MjModel,
+    observation_size: int,
+    action_size: int,
+    episode_id: str,
+    step: int,
+    require_telemetry: bool,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None, float | None]:
     if message.get("type") != "state" or message.get("episode") != episode_id or int(message.get("step", -1)) != step:
         raise RuntimeError(f"Expected state for episode '{episode_id}' step {step}")
     qpos = _finite_vector(message.get("qpos"), model.nq, f"{episode_id} step {step} qpos")
     qvel = _finite_vector(message.get("qvel"), model.nv, f"{episode_id} step {step} qvel")
     observation = _finite_vector(message.get("observation"), observation_size, f"{episode_id} step {step} observation")
-    return qpos, qvel, observation
+    raw_applied = message.get("appliedAction")
+    applied = None if raw_applied is None else _finite_vector(raw_applied, action_size, f"{episode_id} step {step} appliedAction")
+    raw_age = message.get("stateAgeMs")
+    state_age = None if raw_age is None else float(raw_age)
+    if state_age is not None and (not np.isfinite(state_age) or state_age < 0):
+        raise RuntimeError(f"{episode_id} step {step} stateAgeMs must be finite and nonnegative")
+    if require_telemetry and (applied is None or state_age is None):
+        raise RuntimeError(f"{episode_id} step {step} lacks required appliedAction/stateAgeMs telemetry")
+    return qpos, qvel, observation, applied, state_age
+
+
+def _state_age_reason(state_age_ms: float | None, maximum_state_age_ms: float | None) -> str | None:
+    if maximum_state_age_ms is None:
+        return None
+    if state_age_ms is None:
+        return "state age telemetry is missing"
+    if state_age_ms > maximum_state_age_ms:
+        return f"state age {state_age_ms:.6f} ms exceeds maximum {maximum_state_age_ms:.6f} ms"
+    return None
+
+
+def _stopped_acknowledged(message: dict[str, Any], episode_id: str | None, kind: str) -> bool:
+    return message.get("type") == "stopped" and message.get("episode") == episode_id and message.get("kind") == kind
 
 
 def _state_safety_reasons(model: mujoco.MjModel, qpos: np.ndarray, qvel: np.ndarray, safety: dict[str, Any]) -> list[str]:
@@ -160,14 +190,17 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     episode_results: list[dict[str, Any]] = []
     interventions: list[dict[str, Any]] = []
     dispatch_latencies_ms: list[float] = []
+    state_ages_ms: list[float] = []
     deadline_misses = 0
     maximum_consecutive_misses = 0
     consecutive_misses = 0
     emergency_stops = 0
+    emergency_stop_acknowledgements = 0
     safe_stops = 0
     status = "COMPLETED"
     reasons: list[str] = []
     device: dict[str, str] | None = None
+    protocol_capabilities: list[str] = []
     started_at = _utc_now()
     timeout_seconds = max(1.0, 5.0 / float(target["controlHz"]))
     startup_timeout_seconds = max(5.0, timeout_seconds)
@@ -215,11 +248,25 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         authorization = request.get("authorization")
         if authorization is not None and device != authorization["device"]:
             raise RuntimeError("Driver device identity does not match operator authorization")
+        raw_capabilities = hello.get("capabilities", [])
+        if not isinstance(raw_capabilities, list) or not all(isinstance(item, str) for item in raw_capabilities):
+            raise RuntimeError("Driver capabilities must be a string array")
+        protocol_capabilities = sorted(set(raw_capabilities))
+        required_capabilities = {"stop-ack"}
+        if target["safety"].get("maximumStateAgeMs") is not None:
+            required_capabilities.update({"applied-action", "state-age-ms"})
+        if plan["mode"] == "shadow":
+            required_capabilities.update({"applied-action", "shadow-action", "state-age-ms"})
+        missing_capabilities = sorted(required_capabilities.difference(protocol_capabilities))
+        if missing_capabilities:
+            raise RuntimeError(f"Driver lacks required capabilities: {', '.join(missing_capabilities)}")
 
         action_low = np.asarray(compiled["actionLow"], dtype=np.float64)
         action_high = np.asarray(compiled["actionHigh"], dtype=np.float64)
         emergency_action = _finite_vector(target["safety"]["emergencyStopAction"], model.nu, "emergency-stop Action")
         maximum_delta = float(plan["action"]["maximumSlewPerSecond"]) / float(target["controlHz"])
+        maximum_state_age_ms = target["safety"].get("maximumStateAgeMs")
+        require_telemetry = maximum_state_age_ms is not None or plan["mode"] == "shadow"
         for episode in plan["episodes"]:
             episode_id = str(episode["id"])
             planned_steps = int(episode["steps"])
@@ -229,9 +276,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             episode_reason: str | None = None
             session.send({"type": "start-episode", "episode": episode_id, "seed": int(episode["seed"]), "steps": planned_steps, "controlHz": float(target["controlHz"])})
             message, received_ns = session.receive(startup_timeout_seconds)
-            qpos, qvel, observation_vector = _state_vectors(message, model, int(compiled["observationContract"]["size"]), episode_id, 0)
+            qpos, qvel, observation_vector, current_applied, state_age_ms = _state_vectors(
+                message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, 0, require_telemetry,
+            )
+            if state_age_ms is not None:
+                state_ages_ms.append(state_age_ms)
             for step in range(planned_steps):
                 state_reasons = _state_safety_reasons(model, qpos, qvel, plan["safety"])
+                state_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
+                if state_age_reason is not None:
+                    state_reasons.append(state_age_reason)
                 if state_reasons:
                     episode_reason = "; ".join(state_reasons)
                     break
@@ -257,9 +311,15 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     "time": step / float(target["controlHz"]),
                     "qpos": qpos.tolist(),
                     "qvel": qvel.tolist(),
-                    "commandedAction": action.tolist(),
+                    "proposedAction": action.tolist(),
+                    "commandedAction": (action if plan["mode"] == "actuate" else (current_applied if current_applied is not None else emergency_action)).tolist(),
                 })
-                sent_ns = session.send({"type": "action", "episode": episode_id, "step": step, "action": action.tolist()})
+                sent_ns = session.send({
+                    "type": "action" if plan["mode"] == "actuate" else "shadow-action",
+                    "episode": episode_id,
+                    "step": step,
+                    **({"action": action.tolist()} if plan["mode"] == "actuate" else {"proposedAction": action.tolist()}),
+                })
                 dispatch_ms = (sent_ns - received_ns) / 1_000_000.0
                 dispatch_latencies_ms.append(dispatch_ms)
                 if dispatch_ms > float(target["safety"]["maximumLatencyMs"]):
@@ -272,10 +332,22 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     episode_reason = f"consecutive dispatch deadline misses {consecutive_misses} exceed target limit"
                     break
                 message, received_ns = session.receive(timeout_seconds)
-                qpos, qvel, observation_vector = _state_vectors(message, model, int(compiled["observationContract"]["size"]), episode_id, step + 1)
+                qpos, qvel, observation_vector, next_applied, state_age_ms = _state_vectors(
+                    message, model, int(compiled["observationContract"]["size"]), model.nu, episode_id, step + 1, require_telemetry,
+                )
+                if state_age_ms is not None:
+                    state_ages_ms.append(state_age_ms)
+                actual_applied = action if next_applied is None else next_applied
+                rows[-1]["appliedAction"] = actual_applied.tolist()
+                if plan["mode"] == "shadow":
+                    rows[-1]["commandedAction"] = actual_applied.tolist()
+                current_applied = actual_applied
                 previous_action = action
             if episode_reason is None:
                 terminal_reasons = _state_safety_reasons(model, qpos, qvel, plan["safety"])
+                terminal_age_reason = _state_age_reason(state_age_ms, None if maximum_state_age_ms is None else float(maximum_state_age_ms))
+                if terminal_age_reason is not None:
+                    terminal_reasons.append(terminal_age_reason)
                 if terminal_reasons:
                     episode_reason = "; ".join(terminal_reasons)
             if episode_reason is None:
@@ -285,11 +357,13 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                     "time": planned_steps / float(target["controlHz"]),
                     "qpos": qpos.tolist(),
                     "qvel": qvel.tolist(),
+                    "proposedAction": emergency_action.tolist(),
                     "commandedAction": emergency_action.tolist(),
+                    "appliedAction": (current_applied if current_applied is not None else emergency_action).tolist(),
                 })
                 session.send({"type": "safe-stop", "episode": episode_id, "action": emergency_action.tolist()})
                 stopped, _ = session.receive(timeout_seconds)
-                if stopped.get("type") != "stopped" or stopped.get("episode") != episode_id:
+                if not _stopped_acknowledged(stopped, episode_id, "safe-stop"):
                     raise RuntimeError(f"Driver did not acknowledge safe stop for '{episode_id}'")
                 safe_stops += 1
                 episode_rows[episode_id] = rows
@@ -300,9 +374,13 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 session.send({"type": "emergency-stop", "episode": episode_id, "action": emergency_action.tolist(), "reason": episode_reason})
                 emergency_stops += 1
                 try:
-                    session.receive(timeout_seconds)
-                except Exception:
-                    pass
+                    stopped, _ = session.receive(timeout_seconds)
+                    if not _stopped_acknowledged(stopped, episode_id, "emergency-stop"):
+                        raise RuntimeError(f"Driver returned an invalid emergency-stop acknowledgement for '{episode_id}'")
+                    emergency_stop_acknowledgements += 1
+                except Exception as error:
+                    status = "FAILED"
+                    reasons.append(f"{episode_id}: emergency stop was not acknowledged: {error}")
                 episode_results.append({"id": episode_id, "seed": int(episode["seed"]), "plannedSteps": planned_steps, "steps": len(rows), "completed": False, "reason": episode_reason})
                 break
     except Exception as error:
@@ -312,8 +390,13 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             try:
                 session.send({"type": "emergency-stop", "action": target["safety"]["emergencyStopAction"], "reason": str(error)})
                 emergency_stops += 1
-            except Exception:
-                pass
+                stopped, _ = session.receive(timeout_seconds)
+                if _stopped_acknowledged(stopped, None, "emergency-stop"):
+                    emergency_stop_acknowledgements += 1
+                else:
+                    reasons.append("session emergency stop acknowledgement was invalid")
+            except Exception as stop_error:
+                reasons.append(f"session emergency stop was not acknowledged: {stop_error}")
     finally:
         if session is not None:
             session.close()
@@ -325,6 +408,19 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
     episode_bytes = {
         episode_id: "".join(json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n" for row in rows).encode()
         for episode_id, rows in episode_rows.items()
+    }
+    maximum_state_age = max(state_ages_ms, default=0.0)
+    mean_state_age = float(np.mean(state_ages_ms)) if state_ages_ms else 0.0
+    actuation_authorized = plan["mode"] == "actuate"
+    state_age_evidence = {
+        "samples": len(state_ages_ms),
+        "maximumMs": maximum_state_age,
+        "meanMs": mean_state_age,
+    }
+    state_age_identity = {
+        "samples": len(state_ages_ms),
+        "maximumMicroseconds": round(maximum_state_age * 1000.0),
+        "meanMicroseconds": round(mean_state_age * 1000.0),
     }
     identity = {
         "version": 1,
@@ -343,6 +439,11 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "episodeHashes": {episode_id: sha256_bytes(value) for episode_id, value in episode_bytes.items()},
         "runtimeSourceHash": request["runtimeSourceHash"],
         "harnessSourceHash": request["harnessSourceHash"],
+        "mode": plan["mode"],
+        "actuationAuthorized": actuation_authorized,
+        "protocolCapabilities": protocol_capabilities,
+        "stateAgeIdentity": state_age_identity,
+        "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
     }
     capture_hash = hash_json(identity)
     capture_id = f"capture-{capture_hash[:16]}"
@@ -384,6 +485,8 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "plan": plan["id"],
             "target": target["id"],
             "environment": target["environment"],
+            "mode": plan["mode"],
+            "actuationAuthorized": actuation_authorized,
             "assembly": target["assembly"],
             "assemblyHash": bundle["assemblyHash"],
             "executionHash": compiled["executionHash"],
@@ -399,11 +502,14 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
                 "deadlineMisses": deadline_misses,
                 "maximumConsecutiveMisses": maximum_consecutive_misses,
             },
+            "protocolCapabilities": protocol_capabilities,
+            "stateAge": state_age_evidence,
             "interventions": interventions,
             "safeStops": safe_stops,
             "emergencyStops": emergency_stops,
+            "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
             "reasons": reasons,
-            "calibrationEligible": status == "COMPLETED" and all(item["completed"] for item in completed_episodes),
+            "calibrationEligible": actuation_authorized and status == "COMPLETED" and all(item["completed"] for item in completed_episodes),
             "completed": True,
         }
         write_json(directory / "manifest.json", manifest)
@@ -411,12 +517,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
             "# Hardware capture\n\n"
             f"- Status: {status}\n"
             f"- Environment: {target['environment']}\n"
+            f"- Mode: {plan['mode']}\n"
+            f"- Actuation authorized: {str(actuation_authorized).lower()}\n"
             f"- Device: {device['vendor']} {device['model']} ({device['serial']})\n"
             f"- Episodes: {sum(item['completed'] for item in completed_episodes)}/{len(plan['episodes'])}\n"
             f"- Dispatch latency max/mean: {maximum_latency:.6f}/{mean_latency:.6f} ms\n"
+            f"- State age max/mean: {maximum_state_age:.6f}/{mean_state_age:.6f} ms\n"
             f"- Deadline misses: {deadline_misses}\n"
             f"- Safety interventions: {len(interventions)}\n"
             f"- Emergency stops: {emergency_stops}\n"
+            f"- Emergency-stop acknowledgements: {emergency_stop_acknowledgements}\n"
             f"- Calibration eligible: {str(manifest['calibrationEligible']).lower()}\n"
             + "".join(f"- Reason: {reason}\n" for reason in reasons)
         )
@@ -433,12 +543,16 @@ def capture_hardware(request: dict[str, Any]) -> dict[str, Any]:
         "artifactPath": str(root),
         "status": status,
         "environment": target["environment"],
+        "mode": plan["mode"],
+        "actuationAuthorized": actuation_authorized,
         "device": device,
         "episodes": episode_results,
         "maximumDispatchLatencyMs": maximum_latency,
+        "maximumStateAgeMs": maximum_state_age,
         "deadlineMisses": deadline_misses,
         "interventions": len(interventions),
         "emergencyStops": emergency_stops,
-        "calibrationEligible": status == "COMPLETED" and len(episode_rows) == len(plan["episodes"]),
+        "emergencyStopAcknowledgements": emergency_stop_acknowledgements,
+        "calibrationEligible": actuation_authorized and status == "COMPLETED" and len(episode_rows) == len(plan["episodes"]),
         "reasons": reasons,
     }

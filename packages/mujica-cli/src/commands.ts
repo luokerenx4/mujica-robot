@@ -201,6 +201,7 @@ async function calibrationRuntimeSources(project: ProjectContext, definition: Ca
     if (source.kind === "hardware-capture") {
       const root = confined(project.rootDir, `hardware-captures/${source.capture}`); const manifestPath = join(root, "manifest.json"); const manifest = await verifyHardwareCaptureIntegrity(root);
       if (manifest.id !== source.capture || manifest.completed !== true || manifest.status !== "COMPLETED" || manifest.calibrationEligible !== true) throw new Error(`Hardware Capture '${source.capture}' is not calibration-eligible`);
+      if ((manifest.mode ?? "actuate") !== "actuate" || manifest.actuationAuthorized === false) throw new Error(`Hardware Capture '${source.capture}' did not execute authorized Actions`);
       if (manifest.executionHash !== assembly.executionHash || manifest.modelHash !== assembly.modelHash) throw new Error(`Hardware Capture '${source.capture}' executable Assembly differs from '${assembly.id}'`);
       const expectedEnvironment = definition.provenance.kind === "synthetic" ? "dry-run" : definition.provenance.kind;
       if (manifest.environment !== expectedEnvironment) throw new Error(`Hardware Capture '${source.capture}' environment '${manifest.environment}' cannot support '${definition.provenance.kind}' Calibration`);

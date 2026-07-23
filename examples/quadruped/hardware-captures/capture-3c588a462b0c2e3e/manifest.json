@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "planHash": "cc69bf6b09d3c0ae4d877fe465d98093b870c824a7b46dc262db84cf2dbd8ca4",
+  "bundleHash": "e82b7e42086007492ee923bda8b365841edeb1c0f41cd4bdc385028f5ede2e64",
+  "driverHash": "82b63a781fffe0c63259b85d2166b929bdc47911a7a930e8e8bd449566fe94ce",
+  "driverArgs": [
+    "--scenario",
+    "examples/quadruped/scenarios/hardware-capture-hidden-plant.scenario.json",
+    "--state-age-ms",
+    "50"
+  ],
+  "driverInputs": [
+    {
+      "name": "hardware-capture-hidden-plant.scenario.json",
+      "hash": "43d1eb967c849a7410315547feda71f641989fbe83e06eb357b9a61e8b7112bb"
+    }
+  ],
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serial": "simulated"
+  },
+  "operator": "Mujica commissioning audit",
+  "authorizationHash": null,
+  "startedAt": "2026-07-23T12:25:57.223870Z",
+  "endedAt": "2026-07-23T12:25:57.638250Z",
+  "status": "ABORTED",
+  "transcriptHash": "6acf43731d7dc5ccfd15cf6b55cbeffbb90a9480f0904d6f0a1caaaa47b7d71b",
+  "episodeHashes": {},
+  "runtimeSourceHash": "1eb342dd12247e3784f5767b712970f0d09de14a3e8747d9853414cf562e0c3c",
+  "harnessSourceHash": "b32c5fcc4d147ccf443bcca6bda088c05e41c6588ccbdc6a7a284fdddbea5075",
+  "mode": "shadow",
+  "actuationAuthorized": false,
+  "protocolCapabilities": [
+    "applied-action",
+    "shadow-action",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "stateAgeIdentity": {
+    "samples": 1,
+    "maximumMicroseconds": 50000,
+    "meanMicroseconds": 50000
+  },
+  "emergencyStopAcknowledgements": 1,
+  "id": "capture-3c588a462b0c2e3e",
+  "captureHash": "3c588a462b0c2e3e50dbc03ef9d2197a7dbae808baafa477793d0cd98475f166",
+  "plan": "quadruped-dry-run-shadow-commissioning",
+  "target": "spatial-dry-run",
+  "environment": "dry-run",
+  "assembly": "force-sensing-3dof",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "executionHash": "69a0d1f7e2ba14a56917e15a305c65f3f544f90e35dbbde8ce62000449cfe8b9",
+  "modelHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+  "controller": "spatial-forward-gait",
+  "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+  "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+  "episodes": [
+    {
+      "id": "commissioning",
+      "seed": 4301,
+      "plannedSteps": 10,
+      "steps": 0,
+      "completed": false,
+      "reason": "state age 50.000000 ms exceeds maximum 20.000000 ms"
+    }
+  ],
+  "dispatch": {
+    "samples": 0,
+    "maximumLatencyMs": 0.0,
+    "meanLatencyMs": 0.0,
+    "deadlineMisses": 0,
+    "maximumConsecutiveMisses": 0
+  },
+  "stateAge": {
+    "samples": 1,
+    "maximumMs": 50.0,
+    "meanMs": 50.0
+  },
+  "interventions": [],
+  "safeStops": 0,
+  "emergencyStops": 1,
+  "reasons": [
+    "commissioning: state age 50.000000 ms exceeds maximum 20.000000 ms"
+  ],
+  "calibrationEligible": false,
+  "completed": true
+}
