@@ -13,7 +13,7 @@ import mujoco
 import numpy as np
 import torch
 
-from .controllers import PolicyNetwork, create_policy_network, load_python_module, transform_policy_action
+from .controllers import Controller, PolicyNetwork, create_policy_network, load_program_controller, load_python_module, transform_policy_action
 from .environment import RobotEnvironment
 from .io import atomic_directory, hardware_info, hash_file, hash_json, write_json
 
@@ -67,6 +67,11 @@ class PPOTrainer:
             return RobotEnvironment(Path(request["modelPath"]), request["compiled"], request["task"], scenario, seed + scenario_index)
 
         environment = make_environment()
+        program_prior: Controller | None = None
+        if action_transform and action_transform.get("kind") == "program-controller-residual":
+            if not request.get("priorController") or not request.get("priorControllerRoot"): raise RuntimeError("Program residual Trainer requires a priorController")
+            program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"])
+            program_prior.reset(seed + scenario_index)
         observation_map = environment.reset(); observation = environment.vector(observation_map)
         observation_size = observation.size; action_size = environment.model.nu
         architecture: dict[str, Any] = {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal"}
@@ -100,14 +105,22 @@ class PPOTrainer:
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
                 with torch.no_grad():
                     mean, value, log_std = network(obs_tensor); distribution = torch.distributions.Normal(mean, log_std.exp()); action_tensor = distribution.sample(); log_prob = distribution.log_prob(action_tensor).sum(-1)
-                raw_action = action_tensor[0].numpy(); action = np.clip(transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time)), lows, highs)
+                raw_action = action_tensor[0].numpy()
+                if action_transform and action_transform.get("kind") == "program-controller-residual":
+                    if program_prior is None: raise RuntimeError("Program residual prior is unavailable")
+                    transformed = program_prior.act(observation_map, float(environment.data.time)) + float(action_transform.get("residualScale", 1.0)) * raw_action
+                else:
+                    transformed = transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time))
+                action = np.clip(transformed, lows, highs)
                 result = environment.step(action)
                 episode_reward += result.reward
                 done = result.terminated or result.truncated
                 batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(result.reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
                 observation_map = result.observation; observation = environment.vector(observation_map); completed_steps += 1
                 if done:
-                    completed_rewards.append(episode_reward); episode_reward = 0.0; environment = make_environment(); observation_map = environment.reset(); observation = environment.vector(observation_map)
+                    completed_rewards.append(episode_reward); episode_reward = 0.0; environment = make_environment()
+                    if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + scenario_index)
+                    observation_map = environment.reset(); observation = environment.vector(observation_map)
             with torch.no_grad():
                 normalized = normalizer.normalize(observation); _, next_value, _ = network(torch.from_numpy(normalized).unsqueeze(0)); bootstrap = float(next_value.item())
             advantages = np.zeros(len(batch_rewards), dtype=np.float32); last_advantage = 0.0
@@ -136,6 +149,10 @@ class PPOTrainer:
             metrics.append({"steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
 
         torch.save(network.state_dict(), output_dir / "model.pt")
+        if action_transform and action_transform.get("kind") == "program-controller-residual":
+            prior_dir = output_dir / "prior"; prior_definition = request["priorController"]
+            shutil.copytree(Path(request["priorControllerRoot"]), prior_dir, ignore=shutil.ignore_patterns(".DS_Store", "__pycache__"))
+            action_transform = {**action_transform, "controllerId": prior_definition["id"], "controllerHash": request["priorControllerHash"]}
         write_json(output_dir / "architecture.json", {**architecture, "actionTransform": action_transform})
         write_json(output_dir / "normalizer.json", {"count": normalizer.count, "mean": normalizer.mean.tolist(), "variance": normalizer.variance.tolist()})
         write_json(output_dir / "training-metrics.json", {"updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward})
@@ -146,7 +163,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
     project_dir = Path(request["projectDir"]); trainer_root = Path(request["trainerRoot"]); definition = request["trainer"]
     module = load_python_module((trainer_root / definition["entry"]).resolve(), f"mujica_trainer_{definition['id'].replace('-', '_')}")
     trainer = module.create_trainer()
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "trainerHash": request["trainerHash"], "training": request["training"], "task": request["task"], "scenarios": request["scenarios"], "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "training": request["training"], "task": request["task"], "scenarios": request["scenarios"], "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
     training_run_id = f"training-{run_key[:16]}"; training_run = project_dir / "training-runs" / training_run_id
     if (training_run / "manifest.json").exists(): return {**json.loads((training_run / "result.json").read_text()), "artifactPath": str(training_run), "cached": True}
     policy_result: dict[str, Any] = {}
@@ -157,7 +174,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
         started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time() - started
         model_hash = hash_file(work / "model.pt")
         observation_hash = hash_json(request["compiled"]["observationContract"]); action_hash = hash_json(request["compiled"]["actionContract"])
-        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]), "scenarioHashes": [hash_json(item) for item in request["scenarios"]], "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
+        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]), "scenarioHashes": [hash_json(item) for item in request["scenarios"]], "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
         policy_id = f"{request['training']['id']}-{hash_json(policy_identity)[:16]}"; policy_dir = project_dir / "policies" / policy_id
         reuse_policy = False
         if policy_dir.exists():
@@ -167,6 +184,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
 
         def policy_writer(target: Path) -> None:
             for name in ["model.pt", "architecture.json", "normalizer.json", "training-metrics.json"]: shutil.copy2(work / name, target / name)
+            if (work / "prior").exists(): shutil.copytree(work / "prior", target / "prior")
             write_json(target / "observation-contract.json", request["compiled"]["observationContract"]); write_json(target / "action-contract.json", request["compiled"]["actionContract"])
             write_json(target / "training-config.json", request["training"]); write_json(target / "source-hashes.json", request["sourceHashes"])
             write_json(target / "manifest.json", {"version": 1, "id": policy_id, **policy_identity, "hardware": hardware_info(), "trainingDeterminism": "best-effort", "evaluationDeterminism": "same-environment-bitwise-intended", "createdByTrainingRun": training_run_id})

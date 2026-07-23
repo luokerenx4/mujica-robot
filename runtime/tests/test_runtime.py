@@ -10,6 +10,7 @@ import torch
 
 from mujica_runtime.controllers import create_policy_network, load_program_controller, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
+from mujica_runtime.io import hash_directory
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
 from mujica_runtime.training import PPOTrainer, effective_action_transform
 
@@ -39,6 +40,16 @@ def compiled_assembly(assembly_id: str) -> tuple[Path, dict]:
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_program_prior_policy_freezes_the_exact_controller_source(self):
+        policy_root = PROJECT / "policies" / "upright-residual-locomotion-1d4c901d04ccfabb"
+        architecture = json.loads((policy_root / "architecture.json").read_text())
+        transform = architecture["actionTransform"]
+        self.assertEqual(transform["kind"], "program-controller-residual")
+        self.assertEqual(transform["controllerId"], "upright-traction-gait")
+        self.assertEqual(hash_directory(policy_root / "prior"), transform["controllerHash"])
+        prior = json.loads((policy_root / "prior" / "controller.json").read_text())
+        self.assertEqual(prior["id"], transform["controllerId"])
+
     def test_latency_controller_integrates_lateral_velocity_from_reset(self):
         root = PROJECT / "controllers" / "latency-aware-spatial-gait"
         definition = json.loads((root / "controller.json").read_text())

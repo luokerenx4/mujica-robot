@@ -2,11 +2,13 @@
 
 Status: V1 implemented.
 
-Related: [robot research loop](robot-research-loop.md), [architecture](../ARCHITECTURE.md), and [CLI](../CLI.md).
+Related: [Research Lab V2](research-lab-v2.md), [robot research loop](robot-research-loop.md), [architecture](../ARCHITECTURE.md), and [CLI](../CLI.md).
 
 ## Purpose
 
 Mujica Training Research applies the same bounded autoresearch discipline to native Python/PyTorch training: one human program, one declared Training JSON surface, fixed Trainer and evaluator code, immutable attempts, compact memory, and KEEP/REVERT/CRASH decisions owned by Core.
+
+This V1 protocol remains executable for historical ledgers. New source-level ML research uses Research Lab V2, which applies the same frozen-policy judgement to a declared Trainer/model/Training source closure in an isolated workspace.
 
 Training reward is diagnostic. A candidate is judged only after the resulting Policy is frozen and evaluated deterministically across every case in a locked Benchmark. Every candidate Policy and Training Run remains immutable, including REVERT.
 

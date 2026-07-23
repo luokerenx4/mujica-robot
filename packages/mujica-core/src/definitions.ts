@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { benchmarkSchema, candidateSchema, controllerSchema, hardwareTargetSchema, objectiveSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { benchmarkSchema, candidateSchema, controllerSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CandidateDefinition, type ControllerDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
 import { confined, readJson, stableJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -50,6 +50,7 @@ export const loadTraining = async (projectDir: string, id: string): Promise<Trai
 export const loadCandidate = async (projectDir: string, id: string): Promise<CandidateDefinition> => await readJson(confined(resolve(projectDir), `candidates/${id}/candidate.json`), candidateSchema) as CandidateDefinition;
 export const loadResearch = async (projectDir: string, id: string): Promise<ResearchDefinition> => await readJson(confined(resolve(projectDir), `research/${id}.research.json`), researchSchema) as ResearchDefinition;
 export const loadTrainingResearch = async (projectDir: string, id: string): Promise<TrainingResearchDefinition> => await readJson(confined(resolve(projectDir), `training-research/${id}.training-research.json`), trainingResearchSchema) as TrainingResearchDefinition;
+export const loadResearchLab = async (projectDir: string, id: string): Promise<ResearchLabDefinition> => await readJson(confined(resolve(projectDir), `research/${id}/research.json`), researchLabSchema) as ResearchLabDefinition;
 export const loadHardwareTarget = async (projectDir: string, id: string): Promise<HardwareTargetDefinition> => await readJson(confined(resolve(projectDir), `hardware-targets/${id}.hardware.json`), hardwareTargetSchema) as HardwareTargetDefinition;
 export async function loadTrainer(projectDir: string, id: string): Promise<{ definition: TrainerDefinition; rootDir: string }> {
   const rootDir = confined(resolve(projectDir), `trainers/${id}`); const definition = await readJson(join(rootDir, "trainer.json"), trainerSchema) as TrainerDefinition;
@@ -64,6 +65,12 @@ async function directoryIds(root: string): Promise<string[]> {
 
 export async function listControllerIds(projectDir: string): Promise<string[]> {
   return await directoryIds(confined(resolve(projectDir), "controllers"));
+}
+
+export async function listResearchLabIds(projectDir: string): Promise<string[]> {
+  const root = confined(resolve(projectDir), "research"); const ids: string[] = [];
+  for (const id of await directoryIds(root)) if (await Bun.file(join(root, id, "research.json")).exists()) ids.push(id);
+  return ids;
 }
 
 async function fileIds(root: string, suffix: string): Promise<string[]> {
@@ -127,7 +134,10 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   const objectiveIds = await fileIds(join(root, "objectives"), ".objective.json"); for (const id of objectiveIds) await loadObjective(root, id);
   const trainingIds = await fileIds(join(root, "training"), ".training.json");
   for (const id of trainingIds) {
-    const training = await loadTraining(root, id); await compileAssembly(root, training.assembly); await loadTrainer(root, training.trainer); await loadTask(root, training.task); for (const scenario of training.scenarios) await loadScenario(root, scenario);
+    const training = await loadTraining(root, id); const assembly = await compileAssembly(root, training.assembly); await loadTrainer(root, training.trainer); await loadTask(root, training.task); for (const scenario of training.scenarios) await loadScenario(root, scenario);
+    if (training.priorController) {
+      const prior = await loadController(root, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training '${id}' priorController must be a program Controller`); assertProgramControllerCompatible(prior.definition, assembly);
+    }
   }
   const benchmarkIds = await fileIds(join(root, "benchmarks"), ".benchmark.json");
   for (const id of benchmarkIds) {
@@ -178,6 +188,40 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
       if (parameter.integer && (!Number.isInteger(value) || !Number.isInteger(parameter.minimum) || !Number.isInteger(parameter.maximum) || !Number.isInteger(parameter.step))) throw new Error(`Training Research '${id}' parameter '${parameter.path}' requires integer bounds and values`);
     }
   }
+  const researchLabIds = await listResearchLabIds(root);
+  const forbiddenLabRoots = new Set(["benchmarks", "objectives", "tasks", "scenarios", "runs", "training-runs", "research-runs", "training-research-runs", "policies", "revisions", "policy-revisions", "hardware-bundles", "hardware-verifications", ".mujica"]);
+  for (const id of researchLabIds) {
+    const lab = await loadResearchLab(root, id); if (lab.id !== id) throw new Error(`Research Lab id '${lab.id}' must match directory '${id}'`);
+    const expectedProgram = `research/${id}/program.md`; if (lab.program !== expectedProgram) throw new Error(`Research Lab '${id}' program must be '${expectedProgram}'`);
+    await requireFile(confined(root, lab.program), `Research Lab '${id}' program`);
+    const benchmark = await loadBenchmark(root, lab.benchmark);
+    for (const regression of lab.regressions) {
+      if (regression === lab.benchmark) throw new Error(`Research Lab '${id}' repeats its primary Benchmark as a regression`);
+      await loadBenchmark(root, regression);
+    }
+    for (const path of lab.editable.paths) {
+      const base = path.endsWith("/**") ? path.slice(0, -3) : path; const first = base.split("/")[0]!;
+      if (forbiddenLabRoots.has(first)) throw new Error(`Research Lab '${id}' editable path '${path}' overlaps Judge or immutable artifact state`);
+      if (base === `research/${id}/research.json` || base === lab.program || base.startsWith(`research/${id}/`)) throw new Error(`Research Lab '${id}' cannot edit its own definition or human program`);
+    }
+    if (lab.execution.kind === "controller") {
+      const assembly = await compileAssembly(root, lab.execution.assembly); const controller = await loadController(root, lab.execution.controller);
+      if (controller.definition.kind !== "program") throw new Error(`Research Lab '${id}' controller lane requires a program Controller`);
+      assertProgramControllerCompatible(controller.definition, assembly);
+      if (lab.promotion === "policy-revision") throw new Error(`Research Lab '${id}' controller lane cannot publish a Policy Revision`);
+    } else if (lab.execution.kind === "policy") {
+      const training = await loadTraining(root, lab.execution.training); const controller = await loadController(root, lab.execution.controller);
+      if (controller.definition.kind !== "policy") throw new Error(`Research Lab '${id}' policy lane requires a policy Controller`);
+      if (training.totalSteps > lab.budget.maximumTrainingSteps!) throw new Error(`Research Lab '${id}' Training exceeds its maximumTrainingSteps budget`);
+      await compileAssembly(root, training.assembly);
+      if (benchmark.cases.length === 0) throw new Error(`Research Lab '${id}' Benchmark has no evaluation cases`);
+    } else {
+      const candidate = await loadCandidate(root, lab.execution.candidate);
+      if (candidate.benchmark !== lab.benchmark) throw new Error(`Research Lab '${id}' Development Candidate must use its primary Benchmark`);
+      await verifyCandidateChanges(root, candidate);
+      if (lab.promotion === "policy-revision") throw new Error(`Research Lab '${id}' development lane cannot publish a Policy Revision`);
+    }
+  }
   const defaultAssembly = await compileAssembly(root, project.manifest.defaults.assembly); const defaultController = await loadController(root, project.manifest.defaults.controller); assertProgramControllerCompatible(defaultController.definition, defaultAssembly); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
-  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length };
+  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
 }

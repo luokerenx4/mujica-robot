@@ -16,12 +16,13 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 ## Active plans
 
-- None.
+None.
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Research Lab V2](plans/research-lab-v2.md) | Unified controller, ML, and complete-robot autoresearch behind one isolated source-editing protocol, immutable experiments, frozen-policy evaluation, and locked robot judgement. | 2026-07-23 |
 | [Upright locomotion quality](plans/upright-locomotion-quality.md) | Added yaw-invariant torso tilt evidence and published a zero-violation upright Controller across twelve hard cases while retaining four completed capability suites. | 2026-07-23 |
 | [Extreme traction and pitch stability](plans/extreme-traction-pitch-stability.md) | Added signed pitch evidence and multi-seed severity-aware recovery, making `friction = 0.1` a hard capability without regressing four completed suites. | 2026-07-23 |
 | [Low-friction traction recovery](plans/low-friction-traction-recovery.md) | Added signed slip/contact evidence and published deployable recovery through hard `friction = 0.2` while retaining completed command and spatial gates. | 2026-07-23 |

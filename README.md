@@ -35,9 +35,16 @@ bun run mujica train examples/quadruped --training forward-residual-locomotion -
 bun run mujica policies examples/quadruped
 bun run mujica studio examples/quadruped --run run-e8bd80892b0f0123
 bun run mujica hardware export examples/quadruped --target spatial-dry-run
+bun run mujica research list examples/quadruped
+bun run mujica research inspect examples/quadruped --lab upright-residual-policy
+bun run mujica research run examples/quadruped --lab upright-residual-policy \
+  --iterations 1 --agent-command ./my-coding-agent
+bun run mujica research status examples/quadruped --lab upright-residual-policy
 bun run mujica research examples/quadruped --research forward-gait --iterations 6
 bun run mujica train-research examples/quadruped --research forward-residual-policy --iterations 6
 ```
+
+Research Lab V2 is the canonical source-level autoresearch protocol. A human `program.md`, an explicit Agent-editable source closure, and a locked Judge divide authority cleanly. Each candidate runs in a disposable project copy; only declared files may change, every Training Run and Policy remains immutable, and frozen robot Benchmark evidence—not training reward—decides KEEP, REVERT, or CRASH. The checked-in upright residual Lab contains a real experiment whose score improved `76.0910 → 76.1612` but was correctly REVERT because it introduced three regression-gate failures.
 
 The bundled development slice adds a four-foot force sensor component to a quadruped, extends the Observation contract, and evaluates the complete assembly/controller change against nominal, low-friction, and lateral-push cases. Its bounded autoresearch loop keeps fixed inputs locked, records every KEEP/REVERT/CRASH attempt, updates only the declared controller parameters, and publishes each accepted result as a child Robot Revision.
 
@@ -59,7 +66,7 @@ A separate held-out audit tests mirrored pushes, unseen delay durations, and com
 
 The follow-up adds a replayable four-step history contract, a bounded GRU history encoder, calibrated-latency priors, and governed residual regularization. Pure 20–60 ms latency was solved analytically. Evidence-guided compound research then reduced held-out violations from two to zero: all seven cases survive and progress, delay-plus-push drifts `0.1013 m`, and delay-plus-reset drifts `0.0676 m`, producing Robot Revision `quadruped-r-cb6b31bc8f4a`.
 
-`mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The checked-in spatial-policy Run travels `0.668 m`; Studio replays its top-down trajectory and exposes metrics, semantic events, Assembly contracts, Benchmarks, Candidates, training artifacts, and Revision lineage without becoming an editor or evaluator.
+`mujica studio` projects the file-native evidence into a content-addressed, offline, read-only debugger. The checked-in spatial-policy Run travels `0.668 m`; Studio replays its top-down trajectory and exposes metrics, semantic events, Assembly contracts, Benchmarks, Candidates, training artifacts, Research Lab sessions and verdicts, and Revision lineage without becoming an editor or evaluator.
 
 The hardware boundary exports a kept Robot Revision as an immutable, contract-bound driver Bundle and validates separately captured Evidence. The checked-in 250-sample conformance run is deliberately labeled `PROTOCOL-VERIFIED` and `hardwareVerified=false`; Mujica will not represent a simulated serial number as HIL or real-robot proof.
 
@@ -79,4 +86,4 @@ The traction lane now reaches `friction = 0.1` without exposing Scenario identit
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.
 
-Read [the architecture](docs/ARCHITECTURE.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).
+Read [the architecture](docs/ARCHITECTURE.md), [Research Lab V2](docs/design/research-lab-v2.md), [component hardware inventory](docs/design/component-hardware-inventory.md), [typed Component configuration](docs/design/component-configuration.md), [structural Mount slots](docs/design/structural-mount-slots.md), [Program Controller interface](docs/design/program-controller-interface.md), [motion command contract](docs/design/motion-command-contract.md), [traction recovery](docs/design/traction-recovery.md), [read-only Studio design](docs/design/read-only-studio.md), [hardware verification boundary](docs/design/hardware-verification-boundary.md), [forward locomotion benchmark](docs/design/forward-locomotion-benchmark.md), [project format](docs/PROJECT_FORMAT.md), [controller research design](docs/design/robot-research-loop.md), [policy training research](docs/design/policy-training-research.md), and [CLI reference](docs/CLI.md).

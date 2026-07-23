@@ -124,15 +124,23 @@ export async function simulateCommand(projectDir: string, options: { assembly: s
   return success("simulate", result, project, [projectArtifact("simulation-run", result.runId, result.artifactPath, true)]);
 }
 
-async function executeTraining(project: ProjectContext, training: TrainingDefinition, seed: number) {
+export async function executeTraining(project: ProjectContext, training: TrainingDefinition, seed: number, deadlineMs?: number) {
   const assembly = await compileAssembly(project.rootDir, training.assembly); const trainer = await loadTrainer(project.rootDir, training.trainer);
   const trainerHash = await hashDirectory(trainer.rootDir); const sourceHash = await runtimeSourceHash(); const harnessHash = await harnessSourceHash(); const harnessDependencyHash = await harnessDependencyLockHash(); const scenarios = [];
   for (const id of training.scenarios) scenarios.push(await loadScenario(project.rootDir, id));
+  let priorController: { definition: ControllerDefinition; rootDir: string; hash: string } | null = null;
+  if (training.priorController) {
+    const prior = await loadController(project.rootDir, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training prior '${training.priorController}' must be a program Controller`);
+    assertProgramControllerCompatible(prior.definition, assembly); priorController = { definition: prior.definition, rootDir: prior.rootDir, hash: await hashDirectory(prior.rootDir) };
+  }
+  const timeoutMs = deadlineMs === undefined ? undefined : deadlineMs - Date.now();
+  if (timeoutMs !== undefined && timeoutMs <= 0) throw new Error("Research Lab wall-clock budget exhausted before training");
   return await invokeRuntime("train", {
     runtimeVersion, runtimeSourceHash: sourceHash, harnessSourceHash: harnessHash, harnessDependencyLockHash: harnessDependencyHash, projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), training, trainer: trainer.definition, trainerRoot: trainer.rootDir, trainerHash,
+    priorController: priorController?.definition ?? null, priorControllerRoot: priorController?.rootDir ?? null, priorControllerHash: priorController?.hash ?? null,
     task: await loadTask(project.rootDir, training.task), scenarios, seed, dependencyLockHash: await dependencyLockHash(),
-    sourceHashes: { runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash, assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training) },
-  });
+    sourceHashes: { runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash, priorController: priorController?.hash ?? null, assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training) },
+  }, timeoutMs);
 }
 
 export async function trainCommand(projectDir: string, trainingId: string, seed: number) {
@@ -194,17 +202,19 @@ export async function benchmarkLockCommand(projectDir: string, id: string) {
   return success("benchmark.lock", lock, project, [projectArtifact("benchmark-lock", id, path, false)]);
 }
 
-async function requireBenchmarkLock(project: ProjectContext, benchmark: BenchmarkDefinition) {
+export async function requireBenchmarkLock(project: ProjectContext, benchmark: BenchmarkDefinition) {
   const path = join(project.rootDir, "benchmarks", `${benchmark.id}.lock.json`); if (!(await exists(path))) throw new Error(`Benchmark '${benchmark.id}' is not locked; run 'mujica benchmark lock ...'`);
   const stored = JSON.parse(await readFile(path, "utf8")); const current = await currentLockPayload(project, benchmark); const currentHash = hashJson(current);
   if (stored.lockHash !== currentHash) throw new Error(`Benchmark '${benchmark.id}' fixed inputs drifted; review changes and lock again`);
   return stored;
 }
 
-async function evaluatePair(project: ProjectContext, benchmark: BenchmarkDefinition, assemblyId: string, controllerId: string, override?: ControllerDefinition) {
+export async function evaluatePair(project: ProjectContext, benchmark: BenchmarkDefinition, assemblyId: string, controllerId: string, override?: ControllerDefinition, deadlineMs?: number) {
   const assembly = await compileAssembly(project.rootDir, assemblyId); const results = []; let weighted = 0; let totalWeight = 0;
   for (const item of benchmark.cases) {
-    const { request } = await baseRequest(project, assembly, controllerId, item.task, item.scenario, benchmark.objective, item.seed, override); const result = await invokeRuntime("evaluate-case", request);
+    const timeoutMs = deadlineMs === undefined ? undefined : deadlineMs - Date.now();
+    if (timeoutMs !== undefined && timeoutMs <= 0) throw new Error("Research Lab wall-clock budget exhausted during evaluation");
+    const { request } = await baseRequest(project, assembly, controllerId, item.task, item.scenario, benchmark.objective, item.seed, override); const result = await invokeRuntime("evaluate-case", request, timeoutMs);
     results.push({ case: item, metrics: result.metrics, score: result.score, resultHash: result.resultHash }); weighted += result.score.total * item.weight; totalWeight += item.weight;
   }
   return { assembly: assemblyId, controller: controllerId, assemblyHash: assembly.assemblyHash, aggregateScore: weighted / totalWeight, cases: results };
@@ -215,10 +225,10 @@ export async function evaluateCommand(projectDir: string, options: { assembly: s
   return success("evaluate", { benchmark: benchmark.id, lockHash: lock.lockHash, evaluation }, project);
 }
 
-export async function candidateCommand(projectDir: string, id: string, apply: boolean) {
+export async function candidateCommand(projectDir: string, id: string, apply: boolean, deadlineMs?: number) {
   const project = await loadProject(projectDir); const candidate = await loadCandidate(project.rootDir, id); const benchmark = await loadBenchmark(project.rootDir, candidate.benchmark); const lock = await requireBenchmarkLock(project, benchmark);
   if (stableJson(candidate.baseline) !== stableJson(benchmark.baseline)) throw new Error("Candidate baseline must match its locked Benchmark baseline");
-  const [{ comparison, actual: verifiedChanges }, baseline, proposed] = await Promise.all([verifyCandidateChanges(project.rootDir, candidate), evaluatePair(project, benchmark, candidate.baseline.assembly, candidate.baseline.controller), evaluatePair(project, benchmark, candidate.proposed.assembly, candidate.proposed.controller)]);
+  const [{ comparison, actual: verifiedChanges }, baseline, proposed] = await Promise.all([verifyCandidateChanges(project.rootDir, candidate), evaluatePair(project, benchmark, candidate.baseline.assembly, candidate.baseline.controller, undefined, deadlineMs), evaluatePair(project, benchmark, candidate.proposed.assembly, candidate.proposed.controller, undefined, deadlineMs)]);
   const objective = await loadObjective(project.rootDir, benchmark.objective); const delta = proposed.aggregateScore - baseline.aggregateScore;
   const gateReasons: string[] = [];
   for (let index = 0; index < proposed.cases.length; index++) {

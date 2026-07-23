@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "upright-residual-locomotion",
+  "name": "Upright locomotion residual policy",
+  "assembly": "command-conditioned-history-3dof",
+  "trainer": "upright-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal",
+    "reset-perturbation",
+    "payload-variation",
+    "strong-lateral-push",
+    "actuator-delay-three-step",
+    "extreme-low-friction",
+    "extreme-low-friction-reset"
+  ],
+  "priorController": "upright-traction-gait",
+  "totalSteps": 2048,
+  "rolloutSteps": 256,
+  "epochs": 2,
+  "minibatchSize": 64,
+  "learningRate": 0.0001,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0.001,
+  "residualScale": 0.15,
+  "residualPenalty": 0.1
+}

@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "id": "upright-residual-policy",
+  "name": "Upright residual locomotion source research",
+  "program": "research/upright-residual-policy/program.md",
+  "benchmark": "upright-locomotion",
+  "regressions": [
+    "extreme-traction",
+    "spatial-generalization",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "upright-residual-locomotion",
+    "controller": "upright-residual-gait",
+    "seed": 42
+  },
+  "editable": {
+    "paths": [
+      "trainers/upright-residual-ppo/**",
+      "training/upright-residual-locomotion.training.json",
+      "controllers/upright-residual-gait/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 12,
+    "maxWallClockSeconds": 300,
+    "maximumTrainingSteps": 8192
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

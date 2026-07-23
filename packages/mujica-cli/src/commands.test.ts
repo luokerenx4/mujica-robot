@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { loadController, loadResearch, loadTraining, loadTrainingResearch } from "@mujica/core";
+import { loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
+import { assertResearchLabEditableChanges, researchPathIsEditable } from "./research-lab";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -21,6 +22,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "candidate")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "research")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.run")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "research.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "train-research")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy-revision.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "studio")).toBe(true);
@@ -64,6 +67,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(1);
+    expect(envelope.data.definitions.researchLabs).toBe(1);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);
@@ -193,6 +197,26 @@ describe("agent CLI contract", () => {
     expect(() => validateTrainingProposal(research, training, { strategy: "escape", hypothesis: "change task", expectedEffect: "unsafe", values: { "/gamma": 0.8 } })).toThrow("not editable");
     expect(() => validateTrainingProposal(research, training, { strategy: "fractional-steps", hypothesis: "fractional budget", expectedEffect: "invalid", values: { "/totalSteps": 3072.5 } })).toThrow("integer");
   });
+
+  test("Research Lab V2 exposes one source-governed policy lane", async () => {
+    const project = resolve(root, "examples/quadruped"); const lab = await loadResearchLab(project, "upright-residual-policy");
+    expect(lab.execution).toEqual({ kind: "policy", training: "upright-residual-locomotion", controller: "upright-residual-gait", seed: 42 });
+    expect(lab.regressions).toEqual(["extreme-traction", "spatial-generalization", "command-tracking", "command-transitions"]);
+    expect(researchPathIsEditable("trainers/upright-residual-ppo/model.py", lab.editable.paths)).toBe(true);
+    expect(researchPathIsEditable("benchmarks/upright-locomotion.benchmark.json", lab.editable.paths)).toBe(false);
+    expect(() => assertResearchLabEditableChanges(lab, ["training/upright-residual-locomotion.training.json"])).not.toThrow();
+    expect(() => assertResearchLabEditableChanges(lab, ["training/upright-residual-locomotion.training.json", "objectives/upright-locomotion.objective.json"])).toThrow("outside the declared source closure");
+    expect(() => assertResearchLabEditableChanges(lab, [])).toThrow("no source changes");
+    const inspect = invoke(["research", "inspect", "examples/quadruped", "--lab", lab.id, "--json"]); const envelope = JSON.parse(inspect.stdout);
+    expect(inspect.code).toBe(0); expect(envelope.data.lab.version).toBe(2); expect(envelope.data.benchmarkLockHash).toHaveLength(64);
+  });
+
+  test("a frozen program-prior residual Policy runs without mutable Controller source", () => {
+    const result = invoke(["simulate", "examples/quadruped", "--assembly", "command-conditioned-history-3dof", "--controller", "upright-residual-gait", "--task", "forward-walk", "--scenario", "nominal", "--objective", "upright-locomotion", "--seed", "1802", "--json"]);
+    const envelope = JSON.parse(result.stdout); expect(result.code).toBe(0);
+    expect(envelope.data.metrics.survivalRate).toBe(1); expect(envelope.data.metrics.maximumAbsolutePitchRad).toBeLessThan(0.2);
+    expect(envelope.data.metrics.forwardProgress).toBeGreaterThan(0.3);
+  }, 10_000);
 
   test("promoted policies and Policy Revisions expose runtime provenance", async () => {
     const revisionsResult = invoke(["policy-revisions", "examples/quadruped", "--json"]); const revisionsEnvelope = JSON.parse(revisionsResult.stdout); expect(revisionsResult.code).toBe(0); expect(revisionsEnvelope.data.revisions.length).toBeGreaterThan(0);

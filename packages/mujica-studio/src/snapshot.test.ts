@@ -17,9 +17,14 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.candidates).toHaveLength(9);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
+    expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
+    const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
+    expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
     const html = await readFile(first.indexPath, "utf8");
     expect(html).toContain("read-only evidence debugger");
     expect(html).toContain("Trajectory replay");
+    expect(html).toContain("Research Lab ledger");
+    expect(html).toContain("gate-regression");
     expect(html).toContain("Content-Security-Policy");
   });
 

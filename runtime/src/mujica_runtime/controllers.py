@@ -9,6 +9,8 @@ from typing import Any, Protocol
 import numpy as np
 import torch
 
+from .io import hash_directory
+
 
 class Controller(Protocol):
     def reset(self, seed: int) -> None: ...
@@ -153,9 +155,11 @@ class FrozenPolicyController:
     action_high: np.ndarray
     deterministic: bool
     action_transform: dict[str, Any] | None
+    program_prior: Controller | None = None
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
+        if self.program_prior is not None: self.program_prior.reset(seed)
 
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
         vector = np.concatenate([observation[channel["name"]] for channel in self.observation_channels]).astype(np.float32)
@@ -166,7 +170,11 @@ class FrozenPolicyController:
                 raw_action = mean[0]
             else:
                 raw_action = torch.distributions.Normal(mean, log_std.exp()).sample()[0]
-        action = transform_policy_action(raw_action.numpy(), observation, self.action_transform, time_seconds)
+        if self.action_transform and self.action_transform.get("kind") == "program-controller-residual":
+            if self.program_prior is None: raise RuntimeError("Frozen Policy is missing its serialized program prior")
+            action = self.program_prior.act(observation, time_seconds) + float(self.action_transform.get("residualScale", 1.0)) * raw_action.numpy()
+        else:
+            action = transform_policy_action(raw_action.numpy(), observation, self.action_transform, time_seconds)
         return np.clip(action, self.action_low, self.action_high)
 
 
@@ -194,4 +202,15 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
     network.eval()
     lows = np.array(compiled["actionLow"], dtype=np.float32)
     highs = np.array(compiled["actionHigh"], dtype=np.float32)
-    return FrozenPolicyController(network, compiled["observationContract"]["channels"], np.array(normalizer["mean"], dtype=np.float32), np.array(normalizer["variance"], dtype=np.float32), lows, highs, bool(definition.get("deterministic", True)), architecture.get("actionTransform"))
+    action_transform = architecture.get("actionTransform")
+    program_prior = None
+    if action_transform and action_transform.get("kind") == "program-controller-residual":
+        prior_root = (policy_dir / "prior").resolve()
+        if policy_dir.resolve() not in prior_root.parents or not (prior_root / "controller.json").exists():
+            raise RuntimeError("Serialized program prior is missing from Policy Artifact")
+        prior_definition = json.loads((prior_root / "controller.json").read_text())
+        controller_hash = action_transform.get("controllerHash")
+        if controller_hash and hash_directory(prior_root) != controller_hash:
+            raise RuntimeError("Serialized program prior hash does not match Policy architecture")
+        program_prior = load_program_controller(prior_root, prior_definition)
+    return FrozenPolicyController(network, compiled["observationContract"]["channels"], np.array(normalizer["mean"], dtype=np.float32), np.array(normalizer["variance"], dtype=np.float32), lows, highs, bool(definition.get("deterministic", True)), action_transform, program_prior)

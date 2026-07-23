@@ -17,9 +17,11 @@ project/
   objectives/<id>.objective.json
   benchmarks/<id>.benchmark.json + <id>.lock.json
   candidates/<id>/candidate.json
-  research/<id>.research.json
+  research/<legacy-id>.research.json
+  research/<lab-id>/research.json + program.md
   AUTORESEARCH.md
-  research-runs/<research-id>/results.tsv + <immutable-experiment>/...
+  research-runs/<legacy-research-id>/results.tsv + <immutable-experiment>/...
+  research-runs/<lab-id>/sessions/<immutable-session>/...
   policies/<immutable-id>/...
   policy-revisions/<immutable-id>/manifest.json
   revisions/<immutable-id>/manifest.json
@@ -48,6 +50,10 @@ Scenarios may define seeded initial joint-position and joint-velocity noise in a
 A Research definition names one locked Benchmark, one Assembly, one program Controller, one Markdown instruction program, and one exact controller JSON file. V1 editable parameters are finite numeric `/config/<key>` values with explicit bounds, step size, and search order. Benchmark, task, scenario, objective, assembly, controller source, and runtime files are never delegated to the proposer.
 
 A Training Research definition similarly names one Training JSON file and promoted policy Controller. Candidate Training Runs and Policies are immutable even on REVERT. KEEP advances both mutable pointers and publishes an immutable Policy Revision. Policy identity includes Runtime and Harness source, dependency locks, Trainer, contracts, seed, budget, and model content.
+
+A V2 Research Lab lives at `research/<id>/research.json` beside its human-owned `program.md`. It selects one `controller`, `policy`, or `development` execution lane; one locked primary Benchmark; zero or more locked regression Benchmarks; exact editable files or trailing-`/**` directory closures; experiment, wall-clock, and optional training-transition budgets; minimum improvement; and an evidence, Policy Revision, or Robot Revision promotion rule. The Agent owns only the declared source closure. Runtime, Harness, Benchmarks, locks, objectives, tasks, scenarios, generated artifacts, and every undeclared project path remain fixed.
+
+Each V2 invocation creates an immutable Session under `research-runs/<lab-id>/sessions/`. Its `results.tsv` is compact Agent memory; every Experiment directory contains proposal metadata, an authoritative source patch, before/after hashes, execution references, frozen evaluation evidence, verdict, and manifest. Candidate work occurs in a disposable project copy. REVERT and CRASH cannot modify source. KEEP uses stale-source checks and a rollback-capable source transaction before publishing the declared Revision. Large content-addressed Runs, Training Runs, Policies, and Revisions stay in their normal top-level stores and are referenced by identity.
 
 Compiled Assemblies have two identities. `assemblyHash` covers the complete Base/Component package provenance; `executionHash` covers the composed MJCF bytes and ordered Observation/Action contracts. A metadata edit therefore changes provenance even when execution is identical. `policy requalify` may derive a new immutable Policy only when the old content-addressed MJCF and both contracts exactly match the new Assembly; otherwise retraining is mandatory.
 

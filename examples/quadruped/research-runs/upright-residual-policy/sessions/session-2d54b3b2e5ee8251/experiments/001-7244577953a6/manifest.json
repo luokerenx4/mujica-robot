@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "id": "001-7244577953a6",
+  "sequence": 1,
+  "sessionId": "session-2d54b3b2e5ee8251",
+  "researchId": "upright-residual-policy",
+  "labHash": "576be543167f6b9801a3c0af1a69606323eda6acfb70708df6d9eee8947b8e3f",
+  "programHash": "26434438fc53c1f65881f3cd7bf3d013a95123bcbc57530007ad8c9cdf870249",
+  "benchmarkLockHash": "23a4fefcb0dc4f303d7cabde1a3e301585931ef077fca59317ffda73af85d52b",
+  "sourceHash": "5e573914127b396f1cbe7b408760a1aa1f0756c7611d1b2f21964fd5578c7540",
+  "changedPaths": [
+    "controllers/upright-residual-gait/controller.json",
+    "training/upright-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "raise-residual-penalty",
+    "hypothesis": "A slightly stronger residual penalty should reduce unnecessary learned torque while preserving the serialized upright prior.",
+    "expectedEffect": "Lower energy and smoothness cost without adding upright or progress violations."
+  },
+  "policyId": "upright-residual-locomotion-b097ebe5d74ddec3",
+  "score": 76.16116318268493,
+  "delta": 0.07019489815505153,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "delayed-forward: yaw-rate-tracking regressed from passing to failing",
+      "command-tracking: delayed-forward: yaw-rate-tracking regressed from passing to failing",
+      "command-transitions: delayed-braking: planar-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 6,
+    "candidateViolationCount": 7,
+    "previousViolationSeverity": 6.7199309281639374,
+    "candidateViolationSeverity": 7.18532075711013,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "durationMs": 100689,
+  "completed": true
+}

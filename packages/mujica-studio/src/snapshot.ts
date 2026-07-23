@@ -11,7 +11,7 @@ async function exists(path: string): Promise<boolean> {
 
 async function artifactManifests(root: string): Promise<unknown[]> {
   if (!(await exists(root))) return [];
-  const entries = await readdir(root, { withFileTypes: true }); const values: unknown[] = [];
+  const entries = await readdir(root, { withFileTypes: true }); const values: Array<Record<string, any>> = [];
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const path = join(root, entry.name, "manifest.json");
     if (entry.isDirectory() && !entry.isSymbolicLink() && await exists(path)) values.push(JSON.parse(await readFile(path, "utf8")));
@@ -32,6 +32,42 @@ async function candidateDefinitions(root: string): Promise<unknown[]> {
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const path = join(root, entry.name, "candidate.json");
     if (entry.isDirectory() && !entry.isSymbolicLink() && await exists(path)) values.push(JSON.parse(await readFile(path, "utf8")));
+  }
+  return values;
+}
+
+async function researchLabDefinitions(root: string): Promise<Array<Record<string, any>>> {
+  if (!(await exists(root))) return [];
+  const entries = await readdir(root, { withFileTypes: true }); const values: Array<Record<string, any>> = [];
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    const path = join(root, entry.name, "research.json");
+    if (entry.isDirectory() && !entry.isSymbolicLink() && await exists(path)) values.push(JSON.parse(await readFile(path, "utf8")));
+  }
+  return values;
+}
+
+async function researchSessions(root: string): Promise<Array<Record<string, any>>> {
+  if (!(await exists(root))) return [];
+  const labs = await readdir(root, { withFileTypes: true }); const values: Array<Record<string, any>> = [];
+  for (const lab of labs.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (!lab.isDirectory() || lab.isSymbolicLink()) continue;
+    const sessionsRoot = join(root, lab.name, "sessions");
+    if (!(await exists(sessionsRoot))) continue;
+    const sessions = await readdir(sessionsRoot, { withFileTypes: true });
+    for (const session of sessions.sort((a, b) => a.name.localeCompare(b.name))) {
+      const sessionRoot = join(sessionsRoot, session.name); const manifestPath = join(sessionRoot, "manifest.json");
+      if (!session.isDirectory() || session.isSymbolicLink() || !(await exists(manifestPath))) continue;
+      const manifest = JSON.parse(await readFile(manifestPath, "utf8")); const experiments = [];
+      const experimentsRoot = join(sessionRoot, "experiments");
+      if (await exists(experimentsRoot)) {
+        const entries = await readdir(experimentsRoot, { withFileTypes: true });
+        for (const experiment of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+          const path = join(experimentsRoot, experiment.name, "manifest.json");
+          if (experiment.isDirectory() && !experiment.isSymbolicLink() && await exists(path)) experiments.push(JSON.parse(await readFile(path, "utf8")));
+        }
+      }
+      values.push({ ...manifest, experiments });
+    }
   }
   return values;
 }
@@ -80,7 +116,7 @@ export async function buildStudioSnapshot(projectDirectory: string, options: { r
   for (const id of await listComponentIds(project.rootDir)) { const component = await loadComponent(project.rootDir, id); components.push({ ...component.manifest, hash: component.hash }); }
   const runs = await selectedRun(project.rootDir, options.run);
   return {
-    version: 1, kind: "mujica-studio-snapshot", project: project.manifest,
+    version: 2, kind: "mujica-studio-snapshot", project: project.manifest,
     selectedAssembly: project.manifest.defaults.assembly, assemblies, components,
     runs: runs.summaries, selectedRun: runs.selected,
     policies: await artifactManifests(join(project.rootDir, "policies")),
@@ -91,6 +127,8 @@ export async function buildStudioSnapshot(projectDirectory: string, options: { r
     candidates: await candidateDefinitions(join(project.rootDir, "candidates")),
     revisions: await artifactManifests(join(project.rootDir, "revisions")),
     policyRevisions: await artifactManifests(join(project.rootDir, "policy-revisions")),
+    researchLabs: await researchLabDefinitions(join(project.rootDir, "research")),
+    researchSessions: await researchSessions(join(project.rootDir, "research-runs")),
   };
 }
 
@@ -108,13 +146,15 @@ function studioHtml(snapshot: Awaited<ReturnType<typeof buildStudioSnapshot>>): 
 <section class="panel"><h2>Run evidence</h2><div id="run"></div><h3>Metrics</h3><table id="metrics"></table></section>
 <section class="panel"><h2>Assembly and contracts</h2><select id="assembly"></select><div id="assembly-detail"></div></section>
 <section class="panel"><h2>Event timeline</h2><div class="list" id="events"></div></section>
+<section class="panel wide"><h2>Research Lab ledger</h2><div class="split"><div><h3>Source-governed Labs</h3><div class="list" id="research-labs"></div></div><div><h3>Immutable experiment Sessions</h3><div class="list" id="research-sessions"></div></div></div></section>
 <section class="panel wide"><div class="split"><div><h2>Robot Revision lineage</h2><div class="list" id="revisions"></div></div><div><h2>Training and Policy artifacts</h2><div class="list" id="training"></div></div></div></section>
 <section class="panel wide"><div class="split"><div><h2>Locked Benchmark definitions</h2><div class="list" id="benchmarks"></div></div><div><h2>Development Candidates</h2><div class="list" id="candidates"></div></div></div></section></main>
 <script>const S=${data};const q=s=>document.querySelector(s), esc=v=>String(v??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const selected=S.selectedRun, trajectory=selected?.trajectory.rows??[];q('#stats').innerHTML=[['Assemblies',S.assemblies.length],['Components',S.components.length],['Runs',S.runs.length],['Policies',S.policies.length],['Robot revisions',S.revisions.length],['Hardware evidence',S.hardwareVerifications.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');
+const selected=S.selectedRun, trajectory=selected?.trajectory.rows??[];q('#stats').innerHTML=[['Assemblies',S.assemblies.length],['Components',S.components.length],['Runs',S.runs.length],['Policies',S.policies.length],['Research Labs',S.researchLabs.length],['Experiments',S.researchSessions.reduce((n,s)=>n+s.experiments.length,0)],['Robot revisions',S.revisions.length],['Hardware evidence',S.hardwareVerifications.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');
 q('#run').innerHTML=selected?'<div class="row"><code>'+esc(selected.id)+'</code></div><div class="row">seed '+esc(selected.manifest?.seed)+' · result '+esc(selected.manifest?.resultHash?.slice?.(0,12))+'</div>':'<div class="muted">No completed simulation run.</div>';const metric=selected?.metrics??{};q('#metrics').innerHTML=Object.entries(metric).filter(([,v])=>typeof v==='number'||typeof v==='string'||typeof v==='boolean').map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+esc(typeof v==='number'?Number(v).toFixed(4):v)+'</td></tr>').join('');
 const sel=q('#assembly');sel.innerHTML=S.assemblies.map(a=>'<option '+(a.id===S.selectedAssembly?'selected':'')+' value="'+esc(a.id)+'">'+esc(a.id)+'</option>').join('');function showAssembly(){const a=S.assemblies.find(x=>x.id===sel.value);q('#assembly-detail').innerHTML='<div class="row">hash <code>'+esc(a.hash.slice(0,16))+'</code><br>mass '+a.totalMassKg.toFixed(3)+' kg · component cost '+a.componentCost+'</div><h3>Components</h3><div>'+a.components.map(c=>'<div class="row"><span class="tag">'+esc(c.componentId)+'</span> <code>'+esc(JSON.stringify(c.config||{}))+'</code></div>').join('')+'</div><h3>Observation '+a.observationContract.size+'</h3><div>'+a.observationContract.channels.map(c=>'<span class="tag">'+esc(c.name)+' ['+c.size+']</span>').join('')+'</div><h3>Action '+a.actionContract.size+'</h3><div>'+a.actionContract.channels.map(c=>'<span class="tag">'+esc(c.name)+' ['+c.size+']</span>').join('')+'</div>'}sel.onchange=showAssembly;showAssembly();
 q('#events').innerHTML=(selected?.events.rows??[]).map(e=>'<div class="row"><code>'+Number(e.time??0).toFixed(3)+'s</code> '+esc(e.type)+'<div class="muted">'+esc(JSON.stringify(e))+'</div></div>').join('')||'<div class="muted">No events.</div>';q('#revisions').innerHTML=S.revisions.map(r=>'<div class="row"><code>'+esc(r.id)+'</code><br><span class="muted">'+esc(r.parent??'root')+' → score '+esc(Number(r.aggregateScore).toFixed(4))+'</span></div>').join('');q('#training').innerHTML=S.policyRevisions.map(r=>'<div class="row">Policy revision <code>'+esc(r.id)+'</code><br><span class="muted">'+esc(r.policyId)+'</span></div>').join('')+S.trainingRuns.slice(-8).map(r=>'<div class="row">Training <code>'+esc(r.id)+'</code><br><span class="muted">'+esc(r.policyId)+'</span></div>').join('');
+q('#research-labs').innerHTML=S.researchLabs.map(l=>'<div class="row"><code>'+esc(l.id)+'</code> <span class="tag">'+esc(l.execution.kind)+'</span><br><span class="muted">'+esc(l.benchmark)+' · editable '+l.editable.paths.map(esc).join(', ')+'</span></div>').join('')||'<div class="muted">No Research Labs.</div>';q('#research-sessions').innerHTML=S.researchSessions.slice().reverse().map(s=>'<div class="row"><code>'+esc(s.id)+'</code> <span class="tag">'+esc(s.completed?'COMPLETE':'INCOMPLETE')+'</span><br><span class="muted">'+esc(s.researchId)+' · '+s.iterationsCompleted+'/'+s.iterationsRequested+' experiments · score '+Number(s.initialScore).toFixed(4)+' → '+Number(s.finalScore).toFixed(4)+'</span>'+s.experiments.map(e=>'<div class="row"><span class="tag" style="color:'+(e.verdict==='KEEP'?'var(--a)':e.verdict==='REVERT'?'var(--b)':'var(--bad)')+'">'+esc(e.verdict)+'</span> <code>'+esc(e.id)+'</code> Δ '+Number(e.delta??0).toFixed(4)+'<br><span class="muted">'+esc(e.proposal?.hypothesis??'No proposal')+(e.decision?.gateReasons?.length?' · '+e.decision.gateReasons.map(esc).join(' · '):'')+'</span></div>').join('')+'</div>').join('')||'<div class="muted">No completed research Sessions.</div>';
 q('#benchmarks').innerHTML=S.benchmarks.map(b=>'<div class="row"><code>'+esc(b.id)+'</code><br><span class="muted">'+esc(b.objective)+' · '+b.cases.length+' fixed cases · baseline '+esc(b.baseline.assembly)+'/'+esc(b.baseline.controller)+'</span></div>').join('');q('#candidates').innerHTML=S.candidates.map(c=>'<div class="row"><code>'+esc(c.id)+'</code> <span class="tag">'+esc(c.kind)+'</span><br><span class="muted">'+esc(c.baseline.assembly)+'/'+esc(c.baseline.controller)+' → '+esc(c.proposed.assembly)+'/'+esc(c.proposed.controller)+'</span></div>').join('');
 const canvas=q('#trajectory'),ctx=canvas.getContext('2d'),scrub=q('#scrub'),frame=q('#frame');scrub.max=Math.max(0,trajectory.length-1);let timer=null;function draw(i){ctx.clearRect(0,0,canvas.width,canvas.height);if(!trajectory.length){ctx.fillStyle='#8ea0af';ctx.fillText('No trajectory selected',30,40);return}const pts=trajectory.map(r=>[r.qpos?.[0]??0,r.qpos?.[1]??0]);let xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),span=Math.max(maxX-minX,maxY-minY,.25),map=p=>[60+(p[0]-minX)/span*(canvas.width-120),canvas.height-60-(p[1]-minY)/span*(canvas.height-120)];ctx.strokeStyle='#263442';ctx.lineWidth=1;for(let n=0;n<9;n++){let p=60+n*(canvas.width-120)/8;ctx.beginPath();ctx.moveTo(p,40);ctx.lineTo(p,canvas.height-40);ctx.stroke()}ctx.strokeStyle='#65d6ad';ctx.lineWidth=3;ctx.beginPath();pts.slice(0,i+1).forEach((p,n)=>{let m=map(p);n?ctx.lineTo(...m):ctx.moveTo(...m)});ctx.stroke();let m=map(pts[i]);ctx.fillStyle=trajectory[i].healthy===false?'#ff7b72':'#efc66b';ctx.beginPath();ctx.arc(...m,8,0,Math.PI*2);ctx.fill();frame.textContent='step '+trajectory[i].step+' · '+Number(trajectory[i].time).toFixed(2)+'s';scrub.value=i}scrub.oninput=()=>draw(Number(scrub.value));q('#play').onclick=()=>{if(timer){clearInterval(timer);timer=null;q('#play').textContent='Play';return}q('#play').textContent='Pause';timer=setInterval(()=>{let n=Number(scrub.value)+1;if(n>=trajectory.length){clearInterval(timer);timer=null;q('#play').textContent='Play';return}draw(n)},40)};q('#sampling').textContent=selected?'trajectory '+selected.trajectory.total+' rows · displayed '+trajectory.length+' · stride '+selected.trajectory.stride:'';draw(0);
 </script></body></html>`;

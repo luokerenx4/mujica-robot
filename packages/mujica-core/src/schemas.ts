@@ -124,6 +124,7 @@ export const trainerSchema = z.object({ version: z.literal(1), id: idSchema, nam
 
 export const trainingSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), assembly: idSchema, trainer: idSchema, task: idSchema, scenarios: z.array(idSchema).min(1),
+  priorController: idSchema.optional(),
   totalSteps: z.number().int().positive(), rolloutSteps: z.number().int().positive(), epochs: z.number().int().positive(), minibatchSize: z.number().int().positive(),
   learningRate: z.number().positive(), gamma: z.number().min(0).max(1), gaeLambda: z.number().min(0).max(1), clipRatio: z.number().positive(), entropyCoefficient: z.number().nonnegative(),
   residualScale: z.number().min(0).max(1).optional(),
@@ -191,6 +192,51 @@ export const trainingResearchSchema = z.object({
   minimumImprovement: z.number().nonnegative(), maxIterations: z.number().int().positive(),
 }).strict();
 
+const researchSourcePathSchema = relativeFileSchema.refine(
+  (value) => !value.includes("*") || value.endsWith("/**") && !value.slice(0, -3).includes("*"),
+  "editable source paths may only use a trailing /** directory closure",
+);
+
+export const researchLabSchema = z.object({
+  version: z.literal(2),
+  id: idSchema,
+  name: z.string().min(1),
+  program: relativeFileSchema,
+  benchmark: idSchema,
+  regressions: z.array(idSchema).default([]),
+  execution: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("controller"), assembly: idSchema, controller: idSchema }).strict(),
+    z.object({ kind: z.literal("policy"), training: idSchema, controller: idSchema, seed: z.number().int() }).strict(),
+    z.object({ kind: z.literal("development"), candidate: idSchema }).strict(),
+  ]),
+  editable: z.object({
+    paths: z.array(researchSourcePathSchema).min(1).refine((paths) => new Set(paths).size === paths.length, "editable source paths must be unique"),
+  }).strict(),
+  budget: z.object({
+    maxExperiments: z.number().int().positive(),
+    maxWallClockSeconds: z.number().int().positive(),
+    maximumTrainingSteps: z.number().int().positive().optional(),
+  }).strict(),
+  minimumImprovement: z.number().nonnegative(),
+  promotion: z.enum(["evidence-only", "policy-revision", "robot-revision"]),
+}).strict().superRefine((lab, context) => {
+  if (lab.execution.kind === "policy" && lab.budget.maximumTrainingSteps === undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["budget", "maximumTrainingSteps"], message: "policy Labs require a maximumTrainingSteps budget" });
+  }
+  if (lab.execution.kind !== "policy" && lab.promotion === "policy-revision") {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["promotion"], message: "only policy Labs may publish Policy Revisions" });
+  }
+  if (lab.execution.kind === "policy" && lab.promotion === "robot-revision") {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["promotion"], message: "policy Labs publish Policy Revisions; a Development Candidate must promote a Robot Revision" });
+  }
+});
+
+export const researchLabProposalSchema = z.object({
+  strategy: idSchema,
+  hypothesis: z.string().min(1),
+  expectedEffect: z.string().min(1),
+}).strict();
+
 export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
@@ -204,3 +250,5 @@ export type CandidateDefinition = z.output<typeof candidateSchema>;
 export type ResearchDefinition = z.output<typeof researchSchema>;
 export type ResearchProposal = z.output<typeof researchProposalSchema>;
 export type TrainingResearchDefinition = z.output<typeof trainingResearchSchema>;
+export type ResearchLabDefinition = z.output<typeof researchLabSchema>;
+export type ResearchLabProposal = z.output<typeof researchLabProposalSchema>;

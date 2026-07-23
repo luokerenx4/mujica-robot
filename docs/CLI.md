@@ -25,6 +25,10 @@ mujica benchmark lock <project> --benchmark ID [--json]
 mujica evaluate <project> --assembly ID --controller ID --benchmark ID [--json]
 mujica diagnose <project> --assembly ID --controller ID --benchmark ID [--json]
 mujica candidate <project> --candidate ID [--apply] [--json]
+mujica research list <project> [--json]
+mujica research inspect <project> --lab ID [--json]
+mujica research run <project> --lab ID --agent-command CMD [--iterations N] [--json]
+mujica research status <project> --lab ID [--json]
 mujica research <project> --research ID [--iterations N] [--agent-command CMD] [--json]
 mujica revisions <project> [--json]
 mujica revision inspect <project> --revision ID [--json]
@@ -36,12 +40,16 @@ JSON mode emits one schema-versioned value on stdout. Validation/runtime failure
 
 `diagnose` evaluates the requested robot and the locked Benchmark baseline without publishing artifacts. It reports every enforced gate as a signed margin, ranks failing cases by normalized violation severity, preserves measured findings as `kind: evidence`, and labels possible intervention surfaces as `kind: hypothesis`. Its next action persists the worst case through `simulate` so events and trajectory can be inspected without confusing a heuristic with proof.
 
-`studio` creates a content-addressed projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run for event and trajectory replay; without it, the deterministic last run id is selected. The output `index.html` is self-contained and can be opened offline.
+`studio` creates a content-addressed projection under `<project>/.mujica/studio/`. It never edits robot source or immutable artifacts and never evaluates a Candidate. `--run` selects one completed Simulation Run for event and trajectory replay; without it, the deterministic last run id is selected. It also projects Research Labs, Sessions, Experiments, proposal hypotheses, deltas, and KEEP/REVERT/CRASH reasons. The output `index.html` is self-contained and can be opened offline.
 
 `hardware export` freezes one Hardware Target, kept Robot Revision, Controller, Observation/Action contracts, safety envelope, and `stdio-jsonl-v1` handshake into an immutable bundle. `hardware verify` validates separately collected driver Evidence and publishes an immutable verification. A `dry-run` can only become `PROTOCOL-VERIFIED`; only passing `hil` or `real` Evidence with a required device serial can become `HARDWARE-VERIFIED`.
 
 `policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
 
-`research` is intentionally mutating. Without `--agent-command`, it uses the deterministic bounded proposer. An external command receives one JSON object on stdin and must return one proposal on stdout. Core validates the proposal, runs the complete locked Benchmark, records an immutable experiment, and advances the controller plus Revision lineage only for KEEP.
+`research list|inspect|run|status` is the V2 source-research interface. A Lab names one human `program.md`, a controller/policy/development execution lane, exact files or recursive `/**` directories the Agent owns, locked primary and regression Benchmarks, fixed budgets, and a promotion target. `run` executes the Agent command in a disposable project copy. The command receives JSON on stdin, edits files in its working directory, and returns only `strategy`, `hypothesis`, and `expectedEffect` metadata. Mujica derives the authoritative diff, rejects every undeclared write, then runs the fixed Judge.
+
+Every V2 attempt creates an immutable Experiment containing the proposal, patch, before/after hashes, execution references, evaluations, and verdict. Policy attempts retain their immutable Training Run and frozen Policy even on REVERT. KEEP rechecks source hashes before atomically copying the candidate source and publishing the appropriate Revision. `status` reads completed Session ledgers without starting work.
+
+The legacy `research <project> --research ID` command remains intentionally mutating and available during migration. Without `--agent-command`, it uses the deterministic bounded numeric proposer. An external command returns one bounded-value proposal; Core runs the complete locked Benchmark and advances the controller plus Revision lineage only for KEEP.
 
 `train-research` applies the same protocol to one Training JSON definition. Every candidate creates or reuses an immutable Training Run and Policy; only a frozen-policy KEEP advances the Training file, promoted policy Controller, and Policy Revision lineage. `policy-revisions` and `policy-revision inspect` expose that lineage without conflating it with whole-robot Revisions.
