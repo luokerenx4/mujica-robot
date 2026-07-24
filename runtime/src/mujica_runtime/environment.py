@@ -42,6 +42,8 @@ def active_mission_phase(task: dict[str, Any], time_seconds: float) -> dict[str,
     phases = task.get("missionPhases")
     if not phases:
         return None
+    if int(task.get("version", 0)) == 8:
+        raise RuntimeError("Task v8 Mission phase is state-derived; use RobotEnvironment.mission_phase()")
     active = phases[0]
     for phase in phases[1:]:
         if float(phase["atSeconds"]) > time_seconds + 1e-9:
@@ -60,6 +62,7 @@ class RobotEnvironment:
         seed: int,
         domain_sample: dict[str, Any] | None = None,
         episode_end_seconds: float | None = None,
+        episode_end_phase: str | None = None,
     ):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
@@ -128,9 +131,21 @@ class RobotEnvironment:
             raise RuntimeError("Training episode end must align to the Task control grid")
         self.episode_end_seconds = effective_duration
         self.max_steps = round(raw_max_steps)
+        self.episode_end_phase = episode_end_phase
         self.step_index = 0
-        self.motion_command_schedule = compile_motion_command_schedule(task)
+        self.motion_command_schedule = [] if int(task["version"]) == 8 else compile_motion_command_schedule(task)
         self.motion_command_by_step = {int(segment["atStep"]): segment["command"] for segment in self.motion_command_schedule}
+        self.mission_phase_index = 0
+        self.mission_phase_entered_step = 0
+        self.mission_completed = False
+        self.mission_prefix_completed = False
+        self.mission_recovery_stable_steps = 0
+        self.mission_phase_timeout_count = 0
+        self.push_started = False
+        if int(task["version"]) == 8 and episode_end_phase is not None:
+            phase_ids = [str(phase["id"]) for phase in task["missionPhases"]]
+            if episode_end_phase not in phase_ids:
+                raise RuntimeError(f"Mission prefix names unknown phase '{episode_end_phase}'")
         self.previous_action = np.zeros(self.model.nu, dtype=np.float64)
         self.last_commanded_action = np.zeros(self.model.nu, dtype=np.float64)
         self.last_applied_action = np.zeros(self.model.nu, dtype=np.float64)
@@ -172,9 +187,16 @@ class RobotEnvironment:
         self.initial_xy = self.data.qpos[:2].copy()
         self.previous_xy = self.initial_xy.copy()
         self.phase_initial_xy = self.initial_xy.copy()
-        initial_phase = active_mission_phase(self.task, 0.0)
-        self.active_phase_id = str(initial_phase["id"]) if initial_phase is not None else None
         self.step_index = 0
+        self.mission_phase_index = 0
+        self.mission_phase_entered_step = 0
+        self.mission_completed = False
+        self.mission_prefix_completed = False
+        self.mission_recovery_stable_steps = 0
+        self.mission_phase_timeout_count = 0
+        self.push_started = False
+        initial_phase = self.mission_phase()
+        self.active_phase_id = str(initial_phase["id"]) if initial_phase is not None else None
         self.previous_action.fill(0)
         self.last_commanded_action.fill(0)
         self.last_applied_action.fill(0)
@@ -195,15 +217,149 @@ class RobotEnvironment:
             },
             "disturbance": self.external_push,
         }]
+        if initial_phase is not None and int(self.task["version"]) == 8:
+            self.events.append({
+                "type": "mission.stage-changed",
+                "time": 0.0,
+                "step": 0,
+                "from": None,
+                "to": initial_phase["id"],
+                "intent": initial_phase["intent"],
+                "requiredCapabilities": initial_phase["requiredCapabilities"],
+                "cause": "episode-start",
+                "timedOut": False,
+            })
         return self.observation()
 
+    def mission_phase(self) -> dict[str, Any] | None:
+        phases = self.task.get("missionPhases")
+        if not phases:
+            return None
+        if int(self.task["version"]) == 8:
+            if self.mission_completed:
+                return None
+            return phases[self.mission_phase_index]
+        return active_mission_phase(self.task, self.step_index * self.control_dt)
+
     def motion_command(self, step_index: int | None = None) -> np.ndarray:
+        if int(self.task["version"]) == 8:
+            phase = self.mission_phase()
+            if phase is None:
+                phase = self.task["missionPhases"][-1]
+            return motion_command_vector(phase["command"])
         step = self.step_index if step_index is None else int(step_index)
         active = self.motion_command_schedule[0]["command"]
         for segment in self.motion_command_schedule[1:]:
             if int(segment["atStep"]) > step: break
             active = segment["command"]
         return np.asarray(active, dtype=np.float64).copy()
+
+    def recovery_target_satisfied(self) -> bool:
+        target = self.task.get("recoveryTarget")
+        if target is None:
+            return False
+        quaternion = np.asarray(self.data.qpos[3:7], dtype=np.float64)
+        _, x, y, _ = quaternion
+        body_tilt = float(np.arccos(np.clip(1.0 - 2.0 * (x * x + y * y), -1.0, 1.0)))
+        return bool(
+            float(self.data.qpos[2]) >= float(target["minimumBaseHeightM"])
+            and body_tilt <= float(target["maximumBodyTiltRad"])
+            and float(np.linalg.norm(self.data.qvel[:3])) <= float(target["maximumLinearSpeedMps"])
+            and float(np.linalg.norm(self.data.qvel[3:6])) <= float(target["maximumAngularSpeedRadPerSec"])
+        )
+
+    def _advance_causal_mission(self, pushing: bool) -> dict[str, Any] | None:
+        if int(self.task["version"]) != 8 or self.mission_completed:
+            return None
+        phase = self.task["missionPhases"][self.mission_phase_index]
+        exit_contract = phase["exit"]
+        elapsed_steps = self.step_index - self.mission_phase_entered_step
+        elapsed_seconds = elapsed_steps * self.control_dt
+        recovery_satisfied = self.recovery_target_satisfied()
+        if pushing:
+            self.push_started = True
+        condition_met = False
+        if exit_contract["kind"] == "elapsed":
+            condition_met = elapsed_seconds + 1e-9 >= float(exit_contract["afterSeconds"])
+            timeout_seconds = None
+        else:
+            timeout_seconds = float(exit_contract["timeoutSeconds"])
+            if exit_contract["kind"] == "external-push-start":
+                condition_met = pushing
+            elif exit_contract["kind"] == "external-push-end":
+                condition_met = self.push_started and not pushing
+            elif exit_contract["kind"] == "recovery-stable":
+                if recovery_satisfied:
+                    self.mission_recovery_stable_steps += 1
+                else:
+                    self.mission_recovery_stable_steps = 0
+                required_steps = max(
+                    1,
+                    round(float(self.task["recoveryTarget"]["holdSeconds"]) / self.control_dt),
+                )
+                condition_met = self.mission_recovery_stable_steps >= required_steps
+            else:
+                raise RuntimeError(f"Unsupported Mission exit '{exit_contract['kind']}'")
+        timed_out = bool(
+            not condition_met
+            and timeout_seconds is not None
+            and elapsed_seconds + 1e-9 >= timeout_seconds
+        )
+        if not condition_met and not timed_out:
+            return None
+        if timed_out:
+            self.mission_phase_timeout_count += 1
+        transition = {
+            "from": phase["id"],
+            "condition": exit_contract["kind"],
+            "cause": exit_contract["kind"] if condition_met else "timeout",
+            "conditionMet": condition_met,
+            "timedOut": timed_out,
+            "phaseEnteredAtSeconds": self.mission_phase_entered_step * self.control_dt,
+            "phaseElapsedSeconds": elapsed_seconds,
+            "recoveryTargetSatisfied": recovery_satisfied,
+            "missionPhaseTimeoutCount": self.mission_phase_timeout_count,
+        }
+        if self.episode_end_phase == phase["id"]:
+            self.mission_prefix_completed = True
+        previous_command = motion_command_vector(phase["command"])
+        next_index = self.mission_phase_index + 1
+        if next_index >= len(self.task["missionPhases"]):
+            self.mission_completed = True
+            transition["to"] = None
+            self.events.append({
+                "type": "mission.completed",
+                "time": float(self.data.time),
+                "step": self.step_index,
+                **transition,
+            })
+            return transition
+        next_phase = self.task["missionPhases"][next_index]
+        self.mission_phase_index = next_index
+        self.mission_phase_entered_step = self.step_index
+        self.mission_recovery_stable_steps = 0
+        self.phase_initial_xy = self.data.qpos[:2].copy()
+        self.active_phase_id = str(next_phase["id"])
+        transition["to"] = next_phase["id"]
+        self.events.append({
+            "type": "mission.stage-changed",
+            "time": float(self.data.time),
+            "step": self.step_index,
+            "intent": next_phase["intent"],
+            "requiredCapabilities": next_phase["requiredCapabilities"],
+            **transition,
+        })
+        next_command = motion_command_vector(next_phase["command"])
+        if not np.array_equal(previous_command, next_command):
+            self.events.append({
+                "type": "motion-command.changed",
+                "time": float(self.data.time),
+                "step": self.step_index,
+                "fromMissionPhase": phase["id"],
+                "toMissionPhase": next_phase["id"],
+                "motionCommand": next_command.tolist(),
+            })
+        return transition
 
     def observation(self) -> dict[str, np.ndarray]:
         result: dict[str, np.ndarray] = {}
@@ -271,8 +427,9 @@ class RobotEnvironment:
     def step(self, action: np.ndarray) -> StepResult:
         command_step = self.step_index
         target = self.motion_command(command_step)
-        mission_phase = active_mission_phase(self.task, command_step * self.control_dt)
+        mission_phase = self.mission_phase()
         mission_phase_id = str(mission_phase["id"]) if mission_phase is not None else None
+        mission_phase_entered_step = self.mission_phase_entered_step
         if mission_phase_id != self.active_phase_id:
             self.phase_initial_xy = self.data.qpos[:2].copy()
             self.active_phase_id = mission_phase_id
@@ -320,14 +477,14 @@ class RobotEnvironment:
             direction = target[:2] / target_speed
             forward_velocity = float(np.dot(self.data.qvel[:2], direction))
             normalized_progress_rate = float(np.clip(forward_velocity / target_speed, -1.0, 1.5))
-            reference_xy = self.phase_initial_xy if int(self.task["version"]) == 7 else self.initial_xy
+            reference_xy = self.phase_initial_xy if int(self.task["version"]) in (7, 8) else self.initial_xy
             planar_displacement = self.data.qpos[:2] - reference_xy
             lateral_displacement = float(np.linalg.norm(planar_displacement - np.dot(planar_displacement, direction) * direction))
             commanded_progress_delta = float(np.dot(step_displacement_xy, direction))
         else:
             forward_velocity = 0.0
             normalized_progress_rate = 0.0
-            reference_xy = self.phase_initial_xy if int(self.task["version"]) == 7 else self.initial_xy
+            reference_xy = self.phase_initial_xy if int(self.task["version"]) in (7, 8) else self.initial_xy
             lateral_displacement = float(np.linalg.norm(self.data.qpos[:2] - reference_xy))
             commanded_progress_delta = 0.0
         upright = float(1.0 - min(1.0, np.linalg.norm(self.data.qpos[4:6])))
@@ -369,8 +526,13 @@ class RobotEnvironment:
             reward = 4.0 * world_up_alignment + 2.0 * height_progress - 0.002 * energy - 0.001 * smoothness
         else:
             reward = (1.0 if healthy else -1.0) + 1.5 * velocity_reward + 0.75 * normalized_progress_rate + upright - 2.0 * lateral_displacement - 0.002 * energy - 0.001 * smoothness
+        mission_transition = self._advance_causal_mission(pushing)
         terminated = bool(self.task["terminateOnFall"] and not healthy)
-        truncated = self.step_index >= self.max_steps
+        truncated = bool(
+            self.step_index >= self.max_steps
+            or self.mission_completed
+            or self.mission_prefix_completed
+        )
         self.previous_action = applied.copy()
         self.previous_xy = self.data.qpos[:2].copy()
         return StepResult(self.observation(), float(reward), terminated, truncated, {
@@ -379,6 +541,12 @@ class RobotEnvironment:
             "baseAngularSpeedRadPerSec": float(np.linalg.norm(self.data.qvel[3:6])),
             "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(),
             "missionPhase": mission_phase_id, "missionIntent": mission_phase.get("intent") if mission_phase is not None else None,
+            "missionPhaseEnteredAtSeconds": mission_phase_entered_step * self.control_dt if mission_phase is not None else None,
+            "missionPhaseElapsedSeconds": (command_step - mission_phase_entered_step) * self.control_dt if mission_phase is not None else None,
+            "missionTransition": mission_transition,
+            "missionCompleted": self.mission_completed,
+            "missionPhaseTimeoutCount": self.mission_phase_timeout_count,
+            "recoveryTargetSatisfied": self.recovery_target_satisfied(),
             "stepDisplacementXY": step_displacement_xy.copy(), "commandedProgressDeltaM": commanded_progress_delta,
             "normalizedProgressRate": normalized_progress_rate, "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement,
             "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing,

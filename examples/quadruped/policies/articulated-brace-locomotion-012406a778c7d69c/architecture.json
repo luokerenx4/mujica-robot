@@ -1,0 +1,45 @@
+{
+  "kind": "mlp-actor-critic",
+  "observationSize": 53,
+  "actionSize": 14,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScaleByAction": [
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.1,
+      0.1
+    ],
+    "residualGate": {
+      "kind": "prior-telemetry-mode",
+      "allowedModes": [
+        "locomotion"
+      ],
+      "minimumTelemetry": {
+        "modeDwellSeconds": 0.2
+      },
+      "maximumTelemetry": {
+        "bodyTiltRad": 0.8
+      },
+      "rampSeconds": 0.2
+    },
+    "controllerId": "articulated-behavior-supervisor",
+    "controllerHash": "bed17e2edf1f9fcd1a6a7cbefc7a1309cc71f38f502d3c29c8a5fe363b5b075e"
+  }
+}

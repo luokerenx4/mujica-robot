@@ -52,6 +52,7 @@ class BoundedTractionGaitController:
         self.traction_probe_started_at = None
         self.traction_transition_started_at = None
         self.traction_control_blend = 0.0
+        self.command_restart_count = 0
         self.last_telemetry = {
             "locomotionStrategy": "uninitialized",
             "measuredDelaySteps": 0,
@@ -62,6 +63,7 @@ class BoundedTractionGaitController:
             "commandMode": None,
             "commandProgressM": 0.0,
             "measuredProgressM": 0.0,
+            "commandRestartCount": 0,
         }
 
     def update_command(self, raw_command: np.ndarray, time_seconds: float, delay: int) -> np.ndarray:
@@ -70,12 +72,35 @@ class BoundedTractionGaitController:
             self.previous_raw_command = raw.copy(); self.filtered_command = raw.copy(); self.filter_last_time = time_seconds
             if np.linalg.norm(raw) > self.config["commandDeadband"]: self.motion_mode = "longitudinal" if abs(raw[1]) <= self.config["commandDeadband"] and abs(raw[2]) <= self.config["commandDeadband"] else "spatial"
             return raw.copy()
-        changed = not np.allclose(raw, self.previous_raw_command, rtol=0.0, atol=1e-12)
+        previous = self.previous_raw_command.copy()
+        changed = not np.allclose(raw, previous, rtol=0.0, atol=1e-12)
         if changed:
-            self.saw_transition = True
+            deadband = self.config["commandDeadband"]
+            restarting_longitudinal = (
+                np.linalg.norm(previous) <= deadband
+                and raw[0] > deadband
+                and abs(raw[1]) <= deadband
+                and abs(raw[2]) <= deadband
+            )
+            # A bounded stop followed by a pure forward command is a fresh
+            # locomotion bout, not a permanent command-transition mode. This
+            # edge is observable from the Controller ABI and therefore works
+            # identically in simulation and on hardware.
+            self.saw_transition = not restarting_longitudinal
             self.previous_raw_command = raw.copy()
-            if self.traction_control_blend > 0.0 and self.traction_transition_started_at is None:
+            if (
+                not restarting_longitudinal
+                and self.traction_control_blend > 0.0
+                and self.traction_transition_started_at is None
+            ):
                 self.traction_transition_started_at = time_seconds
+            elif restarting_longitudinal:
+                self.command_restart_count += 1
+                self.lateral_position = 0.0
+                self.world_position = np.zeros(2, dtype=np.float64)
+                self.traction_transition_started_at = None
+                self.traction_probe_started_at = None
+                self.traction_control_blend = 0.0
             self.traction_elapsed = 0.0
             self.traction_command_progress = 0.0
             self.traction_measured_progress = 0.0
@@ -160,6 +185,7 @@ class BoundedTractionGaitController:
             "commandMode": self.motion_mode,
             "commandProgressM": self.traction_command_progress,
             "measuredProgressM": self.traction_measured_progress,
+            "commandRestartCount": self.command_restart_count,
         }
         return np.clip(action.reshape(-1), -8.0, 8.0)
 
@@ -323,6 +349,7 @@ class BoundedTractionGaitController:
             "commandMode": self.motion_mode,
             "commandProgressM": self.traction_command_progress,
             "measuredProgressM": self.traction_measured_progress,
+            "commandRestartCount": self.command_restart_count,
         }
         return np.clip(action.reshape(-1), -8.0, 8.0)
 

@@ -59,7 +59,7 @@ describe("Robot Assembly compiler", () => {
       from: { id: "quadruped-3dof" },
       to: { id: "quadruped-waist-3dof" },
     });
-    expect(comparison.massDeltaKg).toBeCloseTo(0.2);
+    expect(comparison.massDeltaKg).toBeCloseTo(0.24);
     expect(comparison.observations.changed.map((item) => [item.from.name, item.from.size, item.to.size])).toEqual([
       ["joint-position", 12, 14],
       ["joint-velocity", 12, 14],
@@ -563,8 +563,8 @@ describe("Robot Assembly compiler", () => {
 
   test("integrated Mission Suites name every no-reset phase and required capability", async () => {
     const task = await loadTask(project, "integrated-resilience-mission");
-    expect(task).toMatchObject({ version: 7, durationSeconds: 18 });
-    if (task.version !== 7) throw new Error("Expected integrated Mission Task");
+    expect(task).toMatchObject({ version: 8, durationSeconds: 20 });
+    if (task.version !== 8) throw new Error("Expected causal integrated Mission Task");
     expect(task.missionPhases.slice(0, 4).map((phase) => ({ id: phase.id, intent: phase.intent }))).toEqual([
       { id: "approach", intent: "operate" },
       { id: "impact", intent: "disturbance" },
@@ -574,15 +574,19 @@ describe("Robot Assembly compiler", () => {
     expect(task.missionPhases.at(-1)).toMatchObject({ id: "stop", intent: "stop" });
     expect(taskSchema.safeParse({
       ...task,
-      motionCommandSchedule: [
-        ...task.motionCommandSchedule.slice(0, 1),
-        { ...task.motionCommandSchedule[1], atSeconds: 8.02 },
-        ...task.motionCommandSchedule.slice(2),
-      ],
+      missionPhases: task.missionPhases.map((phase, index) => index === 0
+        ? { ...phase, exit: { kind: "external-push-start", timeoutSeconds: 3.51 } }
+        : phase),
     }).success).toBe(false);
     expect(taskSchema.safeParse({
       ...task,
       missionPhases: task.missionPhases.filter((phase) => phase.intent !== "recover"),
+    }).success).toBe(false);
+    expect(taskSchema.safeParse({
+      ...task,
+      missionPhases: task.missionPhases.map((phase, index) => index === 2
+        ? { ...phase, exit: { kind: "elapsed", afterSeconds: 5.5 } }
+        : phase),
     }).success).toBe(false);
 
     const benchmark = await loadBenchmark(project, "integrated-resilience-mission");

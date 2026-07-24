@@ -18,6 +18,8 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Causal continuous Mission graph](plans/causal-continuous-mission-graph.md) | Make every training and Judge episode advance from observed robot/environment events instead of a memorized wall-clock script. | 2026-07-25 |
+| [Lateral-reach recovery co-design](plans/lateral-reach-recovery-co-design.md) | Decide whether four-foot reach geometry and contact-seeking sequencing can escape the no-reset Mission's inverted plateau before spending RL effort. | 2026-07-25 |
 | [Self-righting capability and morphology study](plans/self-righting-capability.md) | Prove recovery from front, back, and side resting poses, comparing the current rigid body with an articulated torso before adding a waist to the robot design. | 2026-07-24 |
 
 ## Candidate plans

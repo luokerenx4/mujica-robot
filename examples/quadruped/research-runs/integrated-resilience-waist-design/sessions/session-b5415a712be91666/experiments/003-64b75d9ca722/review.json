@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-waist-design",
+    "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+    "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+    "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-b5415a712be91666",
+    "experimentId": "003-64b75d9ca722",
+    "experimentHash": "64b75d9ca7222cb5d1645abdacc1584d896bde517e79390746baad55c40f33d4"
+  },
+  "proposal": {
+    "strategy": "lateral-reach-low-clearance-inverted-brace",
+    "hypothesis": "If the first brace still leaves the feet above the floor, a straighter knee and 70 mm additional abduction should lower the existing foot contacts without adding passive supports. A smaller 30 mm shoulder offset limits the ordinary-gait moment-arm penalty.",
+    "expectedEffect": "Lower at least two foot sites to the floor during the inverted plateau while retaining positive joint-limit margin and the complete Mission command phases."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: forward-progress regressed from passing to failing",
+        "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-right-degraded: forward-progress regressed from passing to failing",
+        "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-base-height regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+        "command-tracking: delayed-forward: planar-velocity-tracking regressed from passing to failing",
+        "command-tracking: disturbed-lateral: forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 32,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 100.06696603012948,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "f7e2d7df830b209924cf30f79adb3cac341f7e41d47050c9b83ac73da585e25e"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: forward-progress regressed from passing to failing",
+    "candidateScoreDelta": 117.63757110435512,
+    "weightedScoreDelta": 117.63757110435512
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-179aea9f3bc5fb32",
+    "runKey": "179aea9f3bc5fb3299861638a8996682c552aaad3cd8f19107e74ea7b486d515",
+    "resultHash": "47e43a8aa0b6982244d65ccbd553737d7e319372efb3cd8f5d0d00d8b7a0f61d",
+    "artifactHash": "c01da193565ca7d13649368655a577baa24189d9ea23f170476dcdb662034fed",
+    "manifestHash": "3493c17a287bb63e1d7c59520784d72e9d458ac4fda9fe3cf7c927f7841c74ae",
+    "metricsHash": "e5f8e979324ef822b7031658a2b5dd05f46e83a8e66ba6981748a00105958786",
+    "scoreHash": "4dd63f7c9e2d977ce946adcee52907fc6a5adae6b3342117ace031ff5ac41e8e",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -18.594686017340308
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-64ab7cc30ab620da",
+    "runKey": "64ab7cc30ab620dad295b5b28bea850922734976f205cc252c97c95627107358",
+    "resultHash": "b3f56481882292c4bacc2cb6166006156033671f36bdd3cffb5a0648e30e45c0",
+    "artifactHash": "339e8158d49fa817e34b6a2c23c910b9c72d055b25043536e0a365266f9b1afa",
+    "manifestHash": "602a5f993a8b76415f79358ca480c1cf8d0fdb970fa1f7bb47a097d2da991229",
+    "metricsHash": "eb5f4cd415546fb99c14eb7f0a9bde18f3049a4919de7af7e6d3ef664296a066",
+    "scoreHash": "fcc657dae8e1a7b4f02dc8383055c50a7c16f32ceb12068039a07155954ad834",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 99.04288508701481
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

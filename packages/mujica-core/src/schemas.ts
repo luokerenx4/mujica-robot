@@ -273,6 +273,91 @@ const integratedMissionTaskSchema = z.object({
   if (!task.missionPhases.some((phase) => phase.intent === "resume")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a resume phase" });
 });
 
+const causalMissionExitSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("elapsed"),
+    afterSeconds: z.number().finite().positive(),
+  }).strict(),
+  z.object({
+    kind: z.literal("external-push-start"),
+    timeoutSeconds: z.number().finite().positive(),
+  }).strict(),
+  z.object({
+    kind: z.literal("external-push-end"),
+    timeoutSeconds: z.number().finite().positive(),
+  }).strict(),
+  z.object({
+    kind: z.literal("recovery-stable"),
+    timeoutSeconds: z.number().finite().positive(),
+  }).strict(),
+]);
+
+const causalMissionPhaseSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1),
+  intent: z.enum(["operate", "disturbance", "recover", "resume", "stop"]),
+  requiredCapabilities: z.array(idSchema).min(1).refine(
+    (capabilities) => new Set(capabilities).size === capabilities.length,
+    "required capabilities must be unique",
+  ),
+  command: motionCommandSchema,
+  exit: causalMissionExitSchema,
+}).strict();
+
+const causalMissionTaskSchema = z.object({
+  version: z.literal(8), ...taskBase,
+  missionPhases: z.array(causalMissionPhaseSchema).min(3).max(32),
+  recoveryTarget: z.object({
+    minimumBaseHeightM: z.number().finite().positive(),
+    maximumBodyTiltRad: z.number().finite().min(0).max(Math.PI),
+    maximumLinearSpeedMps: z.number().finite().nonnegative(),
+    maximumAngularSpeedRadPerSec: z.number().finite().nonnegative(),
+    holdSeconds: z.number().finite().positive(),
+  }).strict(),
+}).strict().superRefine((task, context) => {
+  const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
+  if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.recoveryTarget.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must align to an integer control step" });
+  const phaseIds = new Set<string>();
+  let maximumPathSeconds = 0;
+  task.missionPhases.forEach((phase, index) => {
+    if (phaseIds.has(phase.id)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "id"], message: "mission phase ids must be unique" });
+    phaseIds.add(phase.id);
+    const exitSeconds = phase.exit.kind === "elapsed" ? phase.exit.afterSeconds : phase.exit.timeoutSeconds;
+    maximumPathSeconds += exitSeconds;
+    if (!aligned(exitSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "exit duration must align to an integer control step" });
+    const next = task.missionPhases[index + 1];
+    if (phase.exit.kind === "external-push-start" && next?.intent !== "disturbance") {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "external-push-start must enter a disturbance phase" });
+    }
+    if (phase.exit.kind === "external-push-end" && (phase.intent !== "disturbance" || next?.intent !== "recover")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "external-push-end must leave a disturbance phase for recovery" });
+    }
+    if (phase.exit.kind === "recovery-stable" && (phase.intent !== "recover" || next?.intent !== "resume")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "recovery-stable must leave recovery for resume" });
+    }
+    if (phase.intent === "disturbance" && phase.exit.kind !== "external-push-end") {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "disturbance phase must exit when the external push ends" });
+    }
+    if (phase.intent === "recover" && phase.exit.kind !== "recovery-stable") {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "recovery phase must exit on stable recovery" });
+    }
+    if (next?.intent === "disturbance" && phase.exit.kind !== "external-push-start") {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "phase before disturbance must exit when the external push starts" });
+    }
+    if (!next && phase.exit.kind !== "elapsed") {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "exit"], message: "final Mission phase must have an elapsed exit" });
+    }
+  });
+  if (maximumPathSeconds > task.durationSeconds + 1e-9) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must cover the sum of every phase exit timeout" });
+  }
+  if (!task.missionPhases.some((phase) => phase.intent === "disturbance")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a disturbance phase" });
+  if (!task.missionPhases.some((phase) => phase.intent === "recover")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a recovery phase" });
+  if (!task.missionPhases.some((phase) => phase.intent === "resume")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a resume phase" });
+  if (task.missionPhases.at(-1)?.intent !== "stop") context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission must end with a stop phase" });
+});
+
 export const taskSchema = z.union([
   z.object({ version: z.literal(2), ...taskBase, motionCommand: motionCommandSchema }).strict(),
   scheduledTaskSchema,
@@ -280,6 +365,7 @@ export const taskSchema = z.union([
   scheduledRecoveryTaskSchema,
   continuousRecoveryTaskSchema,
   integratedMissionTaskSchema,
+  causalMissionTaskSchema,
 ]);
 
 const initialBasePoseSchema = z.object({
@@ -387,6 +473,8 @@ export const objectiveSchema = z.object({
     minimumJointLimitMarginRad: z.number().finite().default(-1_000_000),
     maximumPeakActuator: z.number().nonnegative().default(1_000_000),
     maximumDisallowedCollisionSteps: z.number().int().nonnegative().default(1_000_000),
+    minimumMissionCompletion: z.number().min(0).max(1).default(0),
+    maximumMissionPhaseTimeouts: z.number().int().nonnegative().default(1_000_000),
     maximumRegression: z.number().nonnegative(),
   }).strict(),
 }).strict();
@@ -430,6 +518,9 @@ const trainingOptimizationFields = {
     commandProgress: z.number().finite().min(0).max(20),
     velocityTracking: z.number().finite().min(0).max(20),
     stopStability: z.number().finite().min(0).max(20),
+    recoverySuccess: z.number().finite().min(0).max(500).optional(),
+    phaseTimeoutPenalty: z.number().finite().min(0).max(500).optional(),
+    timeoutFreeCompletion: z.number().finite().min(0).max(500).optional(),
   }).strict().optional(),
   recoveryReward: z.object({
     upright: z.number().finite().min(0).max(20),

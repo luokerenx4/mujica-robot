@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-waist-design",
+    "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+    "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+    "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-b5415a712be91666",
+    "experimentId": "001-f5bfdccb209d",
+    "experimentHash": "f5bfdccb209db432c970eece909f7eeffe9f313cbb8e4110ba4e90861b468689"
+  },
+  "proposal": {
+    "strategy": "lateral-reach-expanded-abduction-workspace",
+    "hypothesis": "The inverted Mission failure is a foot-workspace failure rather than a need for another torso contact. Moving each hip mount 40 mm outward and expanding abduction travel from 0.65 to 1.0 rad gives the existing recovery sequence a wider four-foot support envelope without adding contacts, actions, sensors, or mass.",
+    "expectedEffect": "Create at least one additional foot-support opportunity after target loss while preserving ordinary command tracking and all four declared foot contacts."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: forward-progress regressed from passing to failing",
+        "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "impact-right-degraded: forward-progress regressed from passing to failing",
+        "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: transition-terminal-planar regressed from passing to failing",
+        "command-tracking: delayed-forward: lateral-drift regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 207.62987535337098,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "28b1f42c3b94ccafe3c00d82897438803886583136a83a73d25a3f1a1f73cf6e"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: forward-progress regressed from passing to failing",
+    "candidateScoreDelta": 1.2240727486085845,
+    "weightedScoreDelta": 1.2240727486085845
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-179aea9f3bc5fb32",
+    "runKey": "179aea9f3bc5fb3299861638a8996682c552aaad3cd8f19107e74ea7b486d515",
+    "resultHash": "47e43a8aa0b6982244d65ccbd553737d7e319372efb3cd8f5d0d00d8b7a0f61d",
+    "artifactHash": "c01da193565ca7d13649368655a577baa24189d9ea23f170476dcdb662034fed",
+    "manifestHash": "3493c17a287bb63e1d7c59520784d72e9d458ac4fda9fe3cf7c927f7841c74ae",
+    "metricsHash": "e5f8e979324ef822b7031658a2b5dd05f46e83a8e66ba6981748a00105958786",
+    "scoreHash": "4dd63f7c9e2d977ce946adcee52907fc6a5adae6b3342117ace031ff5ac41e8e",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -18.594686017340308
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-2899b6d3c26797d2",
+    "runKey": "2899b6d3c26797d284feeb959e657e195b663cbd39ca8561710cbab527e055f5",
+    "resultHash": "f64a718a3143e076824db277b1a199ac33128707aafa6003a93250130f7979e3",
+    "artifactHash": "384c7d196b95b7bd06a89ff68765df8c0f01a9dc9e18fe551c9b6fe41ee9d217",
+    "manifestHash": "e6b9858c6b48dccf6ed6ebd3631b2d0a0a68a89665fb160f2a9e5f5cce295fed",
+    "metricsHash": "8e18c34c028ade0fa29d02224eaa4f79196ccdbe3683baeff8330c8b3287ac44",
+    "scoreHash": "0cb541bc917b1cef1f7f8991641fa546b0c935c903cdcc434ee1f86a36b47724",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -17.370613268731724
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

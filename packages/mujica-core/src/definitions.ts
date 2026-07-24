@@ -237,14 +237,14 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
       if (promotionBenchmark.version !== 2) throw new Error(`Curriculum Training '${id}' promotionBenchmark must be a Mission Suite`);
       for (const entry of training.curriculum) {
         const task = await loadTask(root, entry.task);
-        if (entry.role === "mission" && task.version !== 7) throw new Error(`Curriculum Training '${id}' Mission entry '${entry.id}' must use an integrated Mission Task`);
+        if (entry.role === "mission" && task.version !== 7 && task.version !== 8) throw new Error(`Curriculum Training '${id}' Mission entry '${entry.id}' must use an integrated Mission Task`);
         for (const scenario of entry.scenarios) await loadScenario(root, scenario);
       }
     } else {
       const promotionBenchmark = await loadBenchmark(root, training.promotionBenchmark);
       if (promotionBenchmark.version !== 2) throw new Error(`Mission Progression Training '${id}' promotionBenchmark must be a Mission Suite`);
       const task = await loadTask(root, training.mission.task);
-      if (task.version !== 7) throw new Error(`Mission Progression Training '${id}' must use an integrated Mission Task`);
+      if (task.version !== 7 && task.version !== 8) throw new Error(`Mission Progression Training '${id}' must use an integrated Mission Task`);
       for (const scenario of training.mission.scenarios) await loadScenario(root, scenario);
       const phaseIndices = new Map(task.missionPhases.map((phase, index) => [phase.id, index]));
       let previousPhaseIndex = -1;
@@ -271,7 +271,7 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     for (const item of benchmark.cases) {
       const task = await loadTask(root, item.task); await loadScenario(root, item.scenario);
       if (benchmark.version === 2) {
-        if (task.version !== 7) throw new Error(`Mission Suite '${benchmark.id}' case '${item.id}' must use an integrated Mission Task`);
+        if (task.version !== 7 && task.version !== 8) throw new Error(`Mission Suite '${benchmark.id}' case '${item.id}' must use an integrated Mission Task`);
         for (const phase of task.missionPhases) for (const capability of phase.requiredCapabilities) missionCapabilities.add(capability);
       }
     }

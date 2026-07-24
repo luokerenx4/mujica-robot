@@ -43,6 +43,46 @@ with a named phase. The current quadruped Mission is:
 | traverse | 13.00–16.00 s | operate | switch to lateral motion |
 | stop | 16.00–18.00 s | stop | brake and hold |
 
+### Causal phase contract
+
+Task v8 replaces absolute phase labels with a Runtime-owned causal phase
+machine. Each ordered phase owns the active motion command and one typed exit:
+
+- `elapsed` after an authored phase-local duration;
+- `external-push-start` when the sampled disturbance actually begins;
+- `external-push-end` when that disturbance actually ends;
+- `recovery-stable` after the authored recovery target has remained satisfied
+  for its full dwell.
+
+Event exits carry a hard phase-local timeout. Reaching a timeout advances the
+episode so later mission resumption and safe stop remain observable, but the
+transition is recorded as `timedOut: true` and cannot count as satisfying the
+phase. This is intentionally not a generic predicate language. The bounded
+vocabulary has direct simulator and future device-telemetry meanings.
+
+The active command changes when Runtime enters a phase. A Controller or Policy
+receives only that command through the declared Observation ABI; it does not
+receive phase id, Scenario id, seed, exit condition, remaining timeout, or
+future command. Runtime Events and trajectory rows preserve actual phase
+boundaries and transition causes.
+
+The quadruped recovery phase explicitly commands zero motion. Asking the robot
+to continue walking while also requiring a low-speed stable-standing dwell is
+an internally contradictory test. The causal sequence therefore becomes
+`impact end → zero-command stabilization/self-righting → stable dwell →
+restore pending forward command`. This makes emergency braking and mission
+resumption observable command transitions instead of hiding them inside a
+fixed recovery window.
+
+Mission-progression training remains prefix-based, but a Task v8 prefix ends
+only after the named phase exits. Every episode still begins at phase one.
+Consequently a recovery curriculum must first walk into the sampled impact and
+experience its resulting state; it cannot reset into an authored fallen pose.
+
+Task v7 remains readable for immutable historical artifacts. New north-star
+Missions use Task v8 so Domain Profile timing randomization cannot disagree
+with reward attribution or teach a wall-clock script.
+
 The Runtime records one initial reset and forbids resets inside a Mission Case.
 It publishes per-phase duration, health, tracking error, tilt, displacement,
 recovery-target occupancy, and actual Controller modes.
@@ -94,6 +134,18 @@ Training may add a bounded `missionReward` with three explicit terms:
 - signed command-direction progress for active `operate` and `resume` phases;
 - velocity tracking for those commanded-motion phases;
 - zero-command stability during `stop`.
+
+Task v8 additionally permits three sparse, Judge-aligned causal terms:
+
+- a terminal bonus when the `recovery-stable` condition is actually met;
+- a terminal penalty when any phase exits by timeout;
+- a terminal bonus when the full Mission completes with zero phase timeouts.
+
+Sparse causal terms are attached to the trajectory return even when the
+learned residual has no authority on that exact transition step. PPO updates
+remain masked to steps where the actor had non-zero authority, so the terminal
+signal can assign credit to an earlier learned approach or impact action
+without training the Policy on Program-only recovery Actions.
 
 The extra terms are applied only while the learned actor has non-zero
 authority. They do not reward the Policy for recovery work performed entirely

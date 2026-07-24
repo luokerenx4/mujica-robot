@@ -1,0 +1,76 @@
+{
+  "version": 4,
+  "id": "003-64b75d9ca722",
+  "experimentHash": "64b75d9ca7222cb5d1645abdacc1584d896bde517e79390746baad55c40f33d4",
+  "sequence": 3,
+  "sessionId": "session-b5415a712be91666",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+  "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+  "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "8981e84cb50f2197e25ad54ed1139ae9a254f747b16f8187e84f9e9c3b655be3",
+  "historyHash": "035f72d5e46a4795bfb0b564fa5f33b0b030c01190a7901d85393a69e9e221ff",
+  "historyCount": 14,
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "proposal": {
+    "strategy": "lateral-reach-low-clearance-inverted-brace",
+    "hypothesis": "If the first brace still leaves the feet above the floor, a straighter knee and 70 mm additional abduction should lower the existing foot contacts without adding passive supports. A smaller 30 mm shoulder offset limits the ordinary-gait moment-arm penalty.",
+    "expectedEffect": "Lower at least two foot sites to the floor during the inverted plateau while retaining positive joint-limit margin and the complete Mission command phases."
+  },
+  "policyId": null,
+  "score": 38.24694460574024,
+  "delta": 53.03514538937696,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: forward-progress regressed from passing to failing",
+      "impact-left-exact: signed-forward-progress regressed from passing to failing",
+      "impact-right-exact: disallowed-collision regressed from passing to failing",
+      "impact-left-degraded: forward-progress regressed from passing to failing",
+      "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-left-degraded: backward-displacement regressed from passing to failing",
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-right-degraded: forward-progress regressed from passing to failing",
+      "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-right-degraded: backward-displacement regressed from passing to failing",
+      "self-righting-morphology-v2: front: final-base-height regressed from passing to failing",
+      "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+      "command-tracking: delayed-forward: planar-velocity-tracking regressed from passing to failing",
+      "command-tracking: disturbed-lateral: forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 41,
+    "candidateViolationCount": 32,
+    "previousViolationSeverity": 177.78128625413592,
+    "candidateViolationSeverity": 100.06696603012948,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "51e1080cf96268d7c0b0f7122426947fa0a62d1982d3693def59c82fb7428d68",
+    "acceptedRunId": "run-179aea9f3bc5fb32",
+    "candidateRunId": "run-64ab7cc30ab620da",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 57776,
+  "completed": true
+}

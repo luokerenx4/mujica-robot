@@ -1,0 +1,74 @@
+{
+  "version": 4,
+  "id": "002-9b09abe62bef",
+  "experimentHash": "9b09abe62befb4366a3a78a71cbfa1c6d91d4a0aeacbb2da9761f0bfc1d5b208",
+  "sequence": 2,
+  "sessionId": "session-b5415a712be91666",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+  "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+  "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "46d113e4be4a2417afd709c66250f0b5e0cf8b0bfd656e7874d3854de46f3c20",
+  "historyHash": "bc4ff0a811b6fc604e8be979da36e8856ed0498e01ab6c2fefc3e061d03ee603",
+  "historyCount": 13,
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "proposal": {
+    "strategy": "lateral-reach-contact-seeking-inverted-brace",
+    "hypothesis": "Expanded joint range cannot help if the rise phase interpolates back to an upright stance while the torso is inverted. A contact-seeking brace should use the same four feet, 1.2 rad abduction travel, and a bounded inverted-only target until two feet regain support.",
+    "expectedEffect": "Turn the observed zero-support inverted plateau into a two-foot support event, then allow the existing waist and phased recovery to continue without changing locomotion commands."
+  },
+  "policyId": null,
+  "score": 68.63295184000769,
+  "delta": 83.42115262364442,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: forward-progress regressed from passing to failing",
+      "impact-left-exact: signed-forward-progress regressed from passing to failing",
+      "impact-left-exact: transition-terminal-yaw regressed from passing to failing",
+      "impact-left-exact: unsettled-yaw regressed from passing to failing",
+      "impact-right-exact: backward-displacement regressed from passing to failing",
+      "impact-right-exact: transition-terminal-yaw regressed from passing to failing",
+      "impact-left-degraded: forward-progress regressed from passing to failing",
+      "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-left-degraded: backward-displacement regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-left-degraded: disallowed-collision regressed from passing to failing",
+      "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+      "command-tracking: disturbed-lateral: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 41,
+    "candidateViolationCount": 36,
+    "previousViolationSeverity": 177.78128625413592,
+    "candidateViolationSeverity": 77.54220926352065,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "79bc6c7ad9516d490955e4453f08875ceb54cc4b2c01d448294f8d5815be447d",
+    "acceptedRunId": "run-179aea9f3bc5fb32",
+    "candidateRunId": "run-fb135055e08bb6da",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 55498,
+  "completed": true
+}

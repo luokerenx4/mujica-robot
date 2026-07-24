@@ -293,6 +293,9 @@ class ArticulatedBehaviorSupervisorController:
             "commandMode": locomotion_telemetry.get("commandMode"),
             "commandProgressM": locomotion_telemetry.get("commandProgressM"),
             "measuredProgressM": locomotion_telemetry.get("measuredProgressM"),
+            "commandRestartCount": locomotion_telemetry.get(
+                "commandRestartCount"
+            ),
             "waistPositionRad": np.asarray(
                 observation["joint-position"], dtype=np.float64
             )[6:8].tolist(),

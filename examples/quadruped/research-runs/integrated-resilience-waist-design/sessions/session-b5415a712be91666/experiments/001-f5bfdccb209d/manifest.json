@@ -1,0 +1,70 @@
+{
+  "version": 4,
+  "id": "001-f5bfdccb209d",
+  "experimentHash": "f5bfdccb209db432c970eece909f7eeffe9f313cbb8e4110ba4e90861b468689",
+  "sequence": 1,
+  "sessionId": "session-b5415a712be91666",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+  "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+  "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "90b2eac58b3b80e310d54d738619914f5096891d8c3bc834eb7be531b4a35e02",
+  "historyHash": "f8a548dc0603be46623a28516f2a77593bea12070be281e6ba5a25719744649c",
+  "historyCount": 12,
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "proposal": {
+    "strategy": "lateral-reach-expanded-abduction-workspace",
+    "hypothesis": "The inverted Mission failure is a foot-workspace failure rather than a need for another torso contact. Moving each hip mount 40 mm outward and expanding abduction travel from 0.65 to 1.0 rad gives the existing recovery sequence a wider four-foot support envelope without adding contacts, actions, sensors, or mass.",
+    "expectedEffect": "Create at least one additional foot-support opportunity after target loss while preserving ordinary command tracking and all four declared foot contacts."
+  },
+  "policyId": null,
+  "score": -19.200627781159312,
+  "delta": -4.412426997522594,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: forward-progress regressed from passing to failing",
+      "impact-left-exact: signed-forward-progress regressed from passing to failing",
+      "impact-left-degraded: forward-progress regressed from passing to failing",
+      "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-left-degraded: backward-displacement regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-left-degraded: disallowed-collision regressed from passing to failing",
+      "impact-right-degraded: forward-progress regressed from passing to failing",
+      "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-right-degraded: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: transition-terminal-planar regressed from passing to failing",
+      "command-tracking: delayed-forward: lateral-drift regressed from passing to failing"
+    ],
+    "previousViolationCount": 41,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 177.78128625413592,
+    "candidateViolationSeverity": 207.62987535337098,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "9329bcd0e696f68faee5ea9bb1d79c63e61a44bfbc6c8d0253ed6767bbd261c7",
+    "acceptedRunId": "run-179aea9f3bc5fb32",
+    "candidateRunId": "run-2899b6d3c26797d2",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 59420,
+  "completed": true
+}

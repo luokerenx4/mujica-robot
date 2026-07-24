@@ -1,0 +1,64 @@
+{
+  "version": 3,
+  "id": "articulated-brace-locomotion",
+  "name": "Continuous-Mission articulated-brace locomotion residual",
+  "assembly": "resilient-command-conditioned-waist-3dof",
+  "trainer": "articulated-brace-locomotion-residual-ppo",
+  "priorController": "articulated-behavior-supervisor",
+  "mission": {
+    "task": "integrated-resilience-mission",
+    "scenarios": [
+      "mission-impact-left",
+      "mission-impact-right",
+      "mission-impact-left-degraded",
+      "mission-impact-right-degraded"
+    ]
+  },
+  "progression": [
+    {
+      "id": "exact-complete-missions",
+      "throughPhase": "stop",
+      "untilStep": 4096,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+    },
+    {
+      "id": "randomized-complete-missions",
+      "throughPhase": "stop",
+      "untilStep": 8192,
+      "domainProfile": "quadruped-resilient-mission-v1"
+    }
+  ],
+  "promotionBenchmark": "integrated-resilience-mission",
+  "totalSteps": 8192,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0001,
+  "gamma": 0.995,
+  "gaeLambda": 0.97,
+  "clipRatio": 0.12,
+  "entropyCoefficient": 0.0002,
+  "residualPenalty": 0.1,
+  "qualityReward": {
+    "jointAcceleration": 0.0001,
+    "bodyAngularAcceleration": 0.0002,
+    "actionSlew": 0.0001,
+    "actuatorSaturation": 0.005,
+    "footSlip": 0,
+    "footImpact": 0
+  },
+  "missionReward": {
+    "commandProgress": 5,
+    "velocityTracking": 1,
+    "stopStability": 2,
+    "recoverySuccess": 100,
+    "phaseTimeoutPenalty": 200,
+    "timeoutFreeCompletion": 100
+  },
+  "recoveryReward": {
+    "upright": 2,
+    "height": 1,
+    "stillness": 2,
+    "support": 1
+  }
+}

@@ -1,0 +1,590 @@
+[
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-2c2867adccdca750",
+    "experimentId": "001-e9997df1cda1",
+    "sequence": 1,
+    "startedAt": "2026-07-24T13:41:26.655Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "proposal": {
+      "strategy": "pose-directed-waist-impulse",
+      "hypothesis": "The neutral waist behaves as added passive complexity. A pose-directed roll or pitch impulse followed by a smaller counter-bend should move the split torso out of the inverted contact basin before the leg rise phase.",
+      "expectedEffect": "Increase recovery-target occupancy and stable-standing dwell while reducing final tilt, joint-limit use, and self-contact on the same continuous Mission."
+    },
+    "policyId": null,
+    "score": -14.341341581612248,
+    "delta": -0.04751377158138581,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "self-righting-morphology-v2: front: final-body-tilt regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-base-height regressed from passing to failing",
+        "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+        "self-righting-morphology-v2: back: disallowed-collision regressed from passing to failing",
+        "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: back-forward: disallowed-collision regressed from passing to failing"
+      ],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 185.80447834667783,
+      "candidateViolationSeverity": 180.9033630029695
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-2c2867adccdca750",
+    "experimentId": "002-6dae00f711e7",
+    "sequence": 2,
+    "startedAt": "2026-07-24T13:41:26.655Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "proposal": {
+      "strategy": "sign-reversed-waist-impulse",
+      "hypothesis": "The first waist moment may have driven the rear torso into the support surface. Reversing only the pose-conditioned waist moment tests the mechanical sign while preserving leg sequencing and all locked inputs.",
+      "expectedEffect": "Increase recovery-target occupancy and stable-standing dwell while reducing final tilt, joint-limit use, and self-contact on the same continuous Mission."
+    },
+    "policyId": null,
+    "score": -14.999920665084119,
+    "delta": -0.7060928550532566,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing",
+        "impact-left-exact: disallowed-collision regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-body-tilt regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-base-height regressed from passing to failing",
+        "self-righting-morphology-v2: back: disallowed-collision regressed from passing to failing",
+        "recovery-handoff: back-forward: disallowed-collision regressed from passing to failing"
+      ],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 185.80447834667783,
+      "candidateViolationSeverity": 187.5719168011405
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-b3797d8ed8f46fce",
+    "experimentId": "001-639814ac0611",
+    "sequence": 1,
+    "startedAt": "2026-07-24T16:20:01.794Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "7e31244fcb9bdd6483a672dd49f4f2caff919cad4b7f35579e3c94cf24dc9608",
+    "proposal": {
+      "strategy": "dynamic-retry-parity-with-neutral-waist",
+      "hypothesis": "The articulated candidate was judged with a stale recovery fork that never marked dynamic entry and never reclassified the fallen pose. Porting the accepted rigid Controller's retry semantics while holding the waist neutral isolates software parity from morphology.",
+      "expectedEffect": "Recover the exact dynamic Mission cases and eliminate the false morphology regression without changing static recovery targets, waist moments, geometry, or locked inputs."
+    },
+    "policyId": null,
+    "score": -14.831459552449525,
+    "delta": -0.5376317424186627,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: disallowed-collision regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing"
+      ],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 44,
+      "previousViolationSeverity": 186.04979183341183,
+      "candidateViolationSeverity": 178.05572088705924
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-29626346c24d3213",
+    "experimentId": "001-c77b034e46be",
+    "sequence": 1,
+    "startedAt": "2026-07-24T16:23:12.796Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "7e31244fcb9bdd6483a672dd49f4f2caff919cad4b7f35579e3c94cf24dc9608",
+    "proposal": {
+      "strategy": "dynamic-retry-parity-with-neutral-waist",
+      "hypothesis": "The first parity experiment improved severity but introduced self-collision during the initial dynamic impulse because articulated damping was changed before a pose retry existed. Keep the accepted initial dynamics, then enable reclassification, retry timing, and retry-only damping with a neutral waist.",
+      "expectedEffect": "Preserve zero disallowed collision steps before the retry while improving dynamic recovery severity, without changing static targets, waist moments, geometry, or locked inputs."
+    },
+    "policyId": null,
+    "score": -15.189916639944906,
+    "delta": -0.8960888299140439,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 186.04979183341183,
+      "candidateViolationSeverity": 182.25506722115077
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-29626346c24d3213",
+    "experimentId": "002-1d516c9c2f57",
+    "sequence": 2,
+    "startedAt": "2026-07-24T16:23:12.796Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "7e31244fcb9bdd6483a672dd49f4f2caff919cad4b7f35579e3c94cf24dc9608",
+    "proposal": {
+      "strategy": "dynamic-retry-parity-with-bounded-waist-moment",
+      "hypothesis": "After restoring causal parity, a small pose-directed waist moment only inside the dynamic recovery path may enlarge the retry basin without changing static self-righting or locomotion.",
+      "expectedEffect": "Improve the remaining degraded dynamic recovery cases while preserving exact Mission, static self-righting, handoff, and command regressions."
+    },
+    "policyId": null,
+    "score": -14.293827810030862,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Candidate verdict is REVERT; only KEEP may create a revision"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-14a8c87684b0cc2f",
+    "experimentId": "001-e93194663cf1",
+    "sequence": 1,
+    "startedAt": "2026-07-24T16:33:54.517Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "127e3a42c2a168f80a1a92a278f09e7be003f85f72c3031ba9ef3b535c9cbd60",
+    "proposal": null,
+    "policyId": null,
+    "score": -14.293827810030862,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Researcher command failed with exit 1: error: Module not found \"examples/quadruped/research/integrated-resilience-waist-design/agent.mjs\""
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-640f3078b9349ed0",
+    "experimentId": "001-140af53cae12",
+    "sequence": 1,
+    "startedAt": "2026-07-24T16:34:22.967Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "127e3a42c2a168f80a1a92a278f09e7be003f85f72c3031ba9ef3b535c9cbd60",
+    "proposal": {
+      "strategy": "dynamic-retry-parity-with-bounded-waist-moment",
+      "hypothesis": "After restoring causal parity, a small pose-directed waist moment only inside the dynamic recovery path may enlarge the retry basin without changing static self-righting or locomotion.",
+      "expectedEffect": "Improve the remaining degraded dynamic recovery cases while preserving exact Mission, static self-righting, handoff, and command regressions."
+    },
+    "policyId": null,
+    "score": -14.788200783636718,
+    "delta": -0.49437297360585575,
+    "verdict": "KEEP",
+    "decision": {
+      "selectionReason": "fewer-gate-violations",
+      "gateReasons": [],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 186.04979183341183,
+      "candidateViolationSeverity": 177.78128625413592
+    },
+    "revisionId": "quadruped-r-b1f06e0ffbc8",
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-e16081113a7ebf6d",
+    "experimentId": "001-31991b52c254",
+    "sequence": 1,
+    "startedAt": "2026-07-24T16:44:22.121Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "127e3a42c2a168f80a1a92a278f09e7be003f85f72c3031ba9ef3b535c9cbd60",
+    "proposal": {
+      "strategy": "reduce-kept-dynamic-waist-moment",
+      "hypothesis": "The kept 0.18 rad retry moment recovered three Mission gates but paid a downstream tracking penalty. A 0.10 rad moment may retain the basin change while reducing that disturbance.",
+      "expectedEffect": "Preserve the 41-violation feasibility tier and improve aggregate Mission score without regressing static self-righting, handoff, or command tracking."
+    },
+    "policyId": null,
+    "score": -15.089256809258439,
+    "delta": -0.30105602562172074,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 180.77680034821014
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-3af0c7f1b10fa878",
+    "experimentId": "001-e9d2e270be5b",
+    "sequence": 1,
+    "startedAt": "2026-07-24T17:49:07.219Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "0199487158d608ab760de4e878b6c7a763472093eeb011df0237290090e34b0c",
+    "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+    "proposal": {
+      "strategy": "segmented-dorsal-rollover-keel",
+      "hypothesis": "The fully inverted robot rests on a broad, nearly flat torso while every foot is 0.3–0.5 m above the floor. A light segmented dorsal keel creates a narrow unstable support line, allowing the existing bounded waist retry moment and impact momentum to roll the torso into a side-contact basin where a foot can become reachable.",
+      "expectedEffect": "Increase departure from the pi-radian inverted pose and produce at least one foot-contact opportunity in the complete no-reset Mission without changing controller authority, exceeding 6.5 kg, or regressing command tracking and collision gates."
+    },
+    "policyId": null,
+    "score": -15.609246628628464,
+    "delta": -0.8210458449917457,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "impact-left-exact: disallowed-collision regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-body-tilt regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-base-height regressed from passing to failing",
+        "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+        "self-righting-morphology-v2: back: disallowed-collision regressed from passing to failing",
+        "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: disallowed-collision regressed from passing to failing",
+        "recovery-handoff: left-forward: lateral-drift regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 187.60503956531417
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-5f29461f5612c3bc",
+    "experimentId": "001-846209667c85",
+    "sequence": 1,
+    "startedAt": "2026-07-24T17:52:23.917Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "9885bf8b897b73f07ec338b5a33e730420ca58fad9b59a1c87d31a0f6e53b784",
+    "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+    "proposal": {
+      "strategy": "waist-clearance-segmented-rollover-keel",
+      "hypothesis": "The first keel left the inverted basin but its two segments overlapped by 4–6 mm at the waist and injected forces during ordinary locomotion. Shortening both inner ends to leave a 90 mm surface gap and halving added mass should preserve the rollover support line without cross-waist contact.",
+      "expectedEffect": "Retain the first keel's lower final inverted tilt and higher torso clearance while eliminating keel-to-keel contact, ordinary-gait regressions, and new disallowed self-collision."
+    },
+    "policyId": null,
+    "score": -12.613642690925648,
+    "delta": 2.17455809271107,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 168.21978013264953
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-aa40ce3d6c3a7642",
+    "experimentId": "001-7681e15af6fc",
+    "sequence": 1,
+    "startedAt": "2026-07-24T17:54:39.565Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "5ecd04136e0adbac6c0d63e7120be756c7469d2592ebe86dc632db619583ddd8",
+    "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+    "proposal": {
+      "strategy": "low-profile-waist-clearance-rollover-keel",
+      "hypothesis": "The waist-clearance keel improved primary score by 2.17 and severity by 9.56 without ordinary command-tracking regressions, but its 130 mm outer height perturbed exact yaw and atomic recovery boundaries. A 100 mm outer profile with 40 g total mass should retain a narrow inverted support line while reducing recovery impulse and joint-limit disturbance.",
+      "expectedEffect": "Preserve all previously passing Mission and regression gates while retaining a measurable reduction in inverted tilt, normalized violation severity, or aggregate Mission score."
+    },
+    "policyId": null,
+    "score": -17.853654998281893,
+    "delta": -3.0654542146451753,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: disallowed-collision regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: forward-progress regressed from passing to failing",
+        "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "impact-right-degraded: forward-progress regressed from passing to failing",
+        "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 186.41507374904626
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-bd61931aa77007e8",
+    "experimentId": "001-463fc1133659",
+    "sequence": 1,
+    "startedAt": "2026-07-24T17:58:34.164Z",
+    "binding": {
+      "sameLab": false,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "752d8cb6c89866ec78bc3e56341ac7451700f90026f01a1a3b60f59596f9cf43",
+    "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+    "proposal": {
+      "strategy": "rollover-keel-with-geometry-conditioned-recovery-damping",
+      "hypothesis": "The useful 130 mm keel changes the recovery plant, so retaining the old recovery gains is not a fair complete-robot design. Raising only static sagittal recovery damping from 2.4 to 3.0 should contain the observed front-knee and back-hip overshoot, while reducing retry-only waist targets from 0.18 to 0.14 rad should preserve the keel's inverted-basin escape with less yaw and collision disturbance.",
+      "expectedEffect": "Preserve all previously passing Mission, self-righting, handoff, and command-tracking gates while retaining the clearance keel's lower violation severity and improved Mission score."
+    },
+    "policyId": null,
+    "score": -11.862362576463095,
+    "delta": 2.925838207173623,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "impact-left-exact: disallowed-collision regressed from passing to failing",
+        "impact-right-exact: transition-terminal-yaw regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 44,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 169.95056105818864
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "current-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-b5415a712be91666",
+    "experimentId": "001-f5bfdccb209d",
+    "sequence": 1,
+    "startedAt": "2026-07-24T18:47:27.161Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": true
+    },
+    "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+    "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+    "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+    "proposal": {
+      "strategy": "lateral-reach-expanded-abduction-workspace",
+      "hypothesis": "The inverted Mission failure is a foot-workspace failure rather than a need for another torso contact. Moving each hip mount 40 mm outward and expanding abduction travel from 0.65 to 1.0 rad gives the existing recovery sequence a wider four-foot support envelope without adding contacts, actions, sensors, or mass.",
+      "expectedEffect": "Create at least one additional foot-support opportunity after target loss while preserving ordinary command tracking and all four declared foot contacts."
+    },
+    "policyId": null,
+    "score": -19.200627781159312,
+    "delta": -4.412426997522594,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: forward-progress regressed from passing to failing",
+        "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "impact-right-degraded: forward-progress regressed from passing to failing",
+        "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: transition-terminal-planar regressed from passing to failing",
+        "command-tracking: delayed-forward: lateral-drift regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 207.62987535337098
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "current-session",
+    "researchId": "integrated-resilience-waist-design",
+    "sessionId": "session-b5415a712be91666",
+    "experimentId": "002-9b09abe62bef",
+    "sequence": 2,
+    "startedAt": "2026-07-24T18:47:27.161Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": true
+    },
+    "labHash": "988d5f6f2053fd3142ed745836e966afc1bf2b2c8eb720ca76853aa24b0831d5",
+    "programHash": "eecb83bb4ae3fdc11708436f3a5420315541f5ad88b6127cb64cbf4318cce3d4",
+    "benchmarkLockHash": "ee7f682500624c61ab05598df11b92e684e6807fd2d1b4c6bd759d204dca355f",
+    "proposal": {
+      "strategy": "lateral-reach-contact-seeking-inverted-brace",
+      "hypothesis": "Expanded joint range cannot help if the rise phase interpolates back to an upright stance while the torso is inverted. A contact-seeking brace should use the same four feet, 1.2 rad abduction travel, and a bounded inverted-only target until two feet regain support.",
+      "expectedEffect": "Turn the observed zero-support inverted plateau into a two-foot support event, then allow the existing waist and phased recovery to continue without changing locomotion commands."
+    },
+    "policyId": null,
+    "score": 68.63295184000769,
+    "delta": 83.42115262364442,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "impact-left-exact: transition-terminal-yaw regressed from passing to failing",
+        "impact-left-exact: unsettled-yaw regressed from passing to failing",
+        "impact-right-exact: backward-displacement regressed from passing to failing",
+        "impact-right-exact: transition-terminal-yaw regressed from passing to failing",
+        "impact-left-degraded: forward-progress regressed from passing to failing",
+        "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+        "command-tracking: disturbed-lateral: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 36,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 77.54220926352065
+    },
+    "revisionId": null,
+    "error": null
+  }
+]

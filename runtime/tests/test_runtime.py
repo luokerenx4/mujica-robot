@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -816,17 +816,27 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(metrics["targetDistance"], 0.8)
         self.assertAlmostEqual(metrics["forwardProgress"], 0.5)
 
-    def test_integrated_mission_exposes_authored_no_reset_phase_evidence(self):
+    def test_integrated_mission_exposes_causal_no_reset_phase_evidence(self):
         task = json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text())
-        self.assertEqual(active_mission_phase(task, 0.0)["id"], "approach")
-        self.assertEqual(active_mission_phase(task, 2.5)["id"], "impact")
-        self.assertEqual(active_mission_phase(task, 2.66)["id"], "recover")
-        self.assertEqual(active_mission_phase(task, 16.0)["id"], "stop")
+        self.assertEqual(task["version"], 8)
+        self.assertEqual(task["missionPhases"][0]["exit"]["kind"], "external-push-start")
+        self.assertEqual(task["missionPhases"][1]["exit"]["kind"], "external-push-end")
+        self.assertEqual(task["missionPhases"][2]["exit"]["kind"], "recovery-stable")
 
         rows = []
         for index, phase in enumerate(task["missionPhases"]):
             rows.append({
+                "step": index + 1,
+                "commandStep": index,
+                "time": float(index + 1),
                 "missionStage": phase["id"],
+                "missionPhaseEnteredAtSeconds": float(index),
+                "missionTransition": {
+                    "condition": phase["exit"]["kind"],
+                    "cause": phase["exit"]["kind"],
+                    "conditionMet": True,
+                    "timedOut": False,
+                },
                 "qpos": [float(index), 0.0, 0.35],
                 "measuredMotion": [0.1, 0.0, 0.0],
                 "motionCommand": [0.1, 0.0, 0.0],
@@ -836,13 +846,89 @@ class RuntimeContractTest(unittest.TestCase):
                 "controllerTelemetry": {"mode": "locomotion" if phase["intent"] != "recover" else "recovery"},
             })
         evidence = mission_phase_metrics(rows, task)
-        self.assertEqual(evidence["kind"], "continuous-mission")
+        self.assertEqual(evidence["kind"], "causal-continuous-mission")
+        self.assertEqual(evidence["phaseAuthority"], "runtime-events")
         self.assertEqual(evidence["resetPolicy"], "no-reset-within-case")
         self.assertEqual(evidence["episodeResetCount"], 1)
         self.assertEqual(evidence["phaseCount"], 7)
         self.assertIn("self-righting", evidence["requiredCapabilities"])
         self.assertEqual(evidence["phases"][-1]["id"], "stop")
         self.assertEqual(evidence["phases"][-1]["controllerModes"], ["locomotion"])
+
+    def test_causal_mission_advances_from_disturbance_and_robot_state(self):
+        model, compiled = compiled_assembly("force-sensing-3dof")
+        command = {
+            "frame": "world",
+            "linearVelocityMps": [0.0, 0.0],
+            "yawRateRadPerSec": 0.0,
+        }
+        task = {
+            "version": 8,
+            "id": "causal",
+            "name": "Causal",
+            "durationSeconds": 0.36,
+            "controlHz": 50,
+            "healthyHeight": [0.001, 0.8],
+            "terminateOnFall": False,
+            "missionPhases": [
+                {"id": "approach", "name": "Approach", "intent": "operate", "requiredCapabilities": ["walking"], "command": command, "exit": {"kind": "external-push-start", "timeoutSeconds": 0.1}},
+                {"id": "impact", "name": "Impact", "intent": "disturbance", "requiredCapabilities": ["impact"], "command": command, "exit": {"kind": "external-push-end", "timeoutSeconds": 0.1}},
+                {"id": "recover", "name": "Recover", "intent": "recover", "requiredCapabilities": ["recovery"], "command": command, "exit": {"kind": "recovery-stable", "timeoutSeconds": 0.1}},
+                {"id": "resume", "name": "Resume", "intent": "resume", "requiredCapabilities": ["resume"], "command": command, "exit": {"kind": "elapsed", "afterSeconds": 0.02}},
+                {"id": "stop", "name": "Stop", "intent": "stop", "requiredCapabilities": ["stop"], "command": command, "exit": {"kind": "elapsed", "afterSeconds": 0.02}},
+            ],
+            "recoveryTarget": {
+                "minimumBaseHeightM": 0.001,
+                "maximumBodyTiltRad": np.pi,
+                "maximumLinearSpeedMps": 100.0,
+                "maximumAngularSpeedRadPerSec": 100.0,
+                "holdSeconds": 0.04,
+            },
+        }
+        scenario = {
+            **json.loads((PROJECT / "scenarios" / "mission-impact-left.scenario.json").read_text()),
+            "externalPush": {
+                "timeSeconds": 0.04,
+                "durationSeconds": 0.02,
+                "forceNewton": 1.0,
+                "directionXY": [0.0, 1.0],
+            },
+        }
+        environment = RobotEnvironment(model, compiled, task, scenario, 42)
+        environment.reset()
+        phase_rows = []
+        while True:
+            result = environment.step(np.zeros(12))
+            phase_rows.append((result.info["missionPhase"], result.info["missionTransition"]))
+            if result.terminated or result.truncated:
+                break
+        transitions = [transition for _, transition in phase_rows if transition is not None]
+        self.assertEqual([item["from"] for item in transitions], ["approach", "impact", "recover", "resume", "stop"])
+        self.assertEqual([item["cause"] for item in transitions[:3]], ["external-push-start", "external-push-end", "recovery-stable"])
+        self.assertTrue(all(not item["timedOut"] for item in transitions))
+        self.assertTrue(environment.mission_completed)
+        approach_event = next(event for event in environment.events if event.get("from") == "approach")
+        self.assertAlmostEqual(approach_event["time"], 0.06)
+
+        prefix = RobotEnvironment(model, compiled, task, scenario, 42, episode_end_phase="impact")
+        prefix.reset()
+        while True:
+            result = prefix.step(np.zeros(12))
+            if result.terminated or result.truncated:
+                break
+        self.assertTrue(prefix.mission_prefix_completed)
+        self.assertFalse(prefix.mission_completed)
+        self.assertEqual(prefix.mission_phase()["id"], "recover")
+
+        no_push = {**scenario, "externalPush": None}
+        timed = RobotEnvironment(model, compiled, task, no_push, 42)
+        timed.reset()
+        for _ in range(5):
+            result = timed.step(np.zeros(12))
+        transition = result.info["missionTransition"]
+        self.assertEqual(transition["from"], "approach")
+        self.assertEqual(transition["cause"], "timeout")
+        self.assertTrue(transition["timedOut"])
 
     def test_phased_self_right_controller_classifies_pose_and_exposes_phase_telemetry(self):
         root = PROJECT / "controllers" / "phased-self-right"
@@ -869,6 +955,31 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(read_controller_telemetry(controller)["phase"], "capture")
         controller.act(observation, 1.3)
         self.assertEqual(read_controller_telemetry(controller)["phase"], "rise")
+
+    def test_articulated_supervisor_treats_stop_to_forward_as_fresh_locomotion(self):
+        root = PROJECT / "controllers" / "articulated-behavior-supervisor"
+        definition = json.loads((root / "controller.json").read_text())
+        controller = load_program_controller(root, definition)
+        controller.reset(7201)
+        observation = {
+            "joint-position": np.zeros(14),
+            "joint-velocity": np.zeros(14),
+            "base-height": np.array([0.42]),
+            "base-orientation": np.array([1.0, 0.0, 0.0, 0.0]),
+            "base-velocity": np.zeros(6),
+            "imu-angular-velocity": np.zeros(3),
+            "foot-contact-force": np.full(4, 15.0),
+            "actuator-delay-steps": np.array([0.0]),
+            "motion-command": np.array([0.2, 0.0, 0.0]),
+        }
+        self.assertEqual(controller.act(observation, 0.0).shape, (14,))
+        observation["motion-command"] = np.zeros(3)
+        controller.act(observation, 0.02)
+        observation["motion-command"] = np.array([0.2, 0.0, 0.0])
+        controller.act(observation, 0.04)
+        telemetry = read_controller_telemetry(controller)
+        self.assertEqual(telemetry["commandRestartCount"], 1)
+        self.assertEqual(telemetry["locomotionStrategy"], "legacy-forward")
 
     def test_behavior_supervisor_distinguishes_gait_excursion_from_resting_fall(self):
         root = PROJECT / "controllers" / "behavior-supervisor"
@@ -1377,15 +1488,23 @@ class RuntimeContractTest(unittest.TestCase):
     def test_integrated_mission_resets_lateral_reward_reference_at_each_phase(self):
         model, compiled = compiled_assembly("force-sensing-3dof")
         task = {
-            **json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text()),
+            "version": 8,
+            "id": "phase-reference",
+            "name": "Phase reference",
+            "controlHz": 50,
+            "healthyHeight": [0.05, 0.8],
+            "terminateOnFall": False,
+            "recoveryTarget": {
+                "minimumBaseHeightM": 0.32,
+                "maximumBodyTiltRad": 0.35,
+                "maximumLinearSpeedMps": 0.2,
+                "maximumAngularSpeedRadPerSec": 0.5,
+                "holdSeconds": 0.02,
+            },
             "missionPhases": [
-                {"id": "first", "name": "First", "atSeconds": 0, "intent": "operate", "requiredCapabilities": ["walking"]},
-                {"id": "second", "name": "Second", "atSeconds": 0.02, "intent": "operate", "requiredCapabilities": ["walking"]},
-                {"id": "recover", "name": "Recover", "atSeconds": 0.04, "intent": "recover", "requiredCapabilities": ["self-righting"]},
-            ],
-            "motionCommandSchedule": [
-                {"atSeconds": 0, "command": {"frame": "world", "linearVelocityMps": [0.2, 0], "yawRateRadPerSec": 0}},
-                {"atSeconds": 0.02, "command": {"frame": "world", "linearVelocityMps": [0, 0.2], "yawRateRadPerSec": 0}},
+                {"id": "first", "name": "First", "intent": "operate", "requiredCapabilities": ["walking"], "command": {"frame": "world", "linearVelocityMps": [0.2, 0], "yawRateRadPerSec": 0}, "exit": {"kind": "elapsed", "afterSeconds": 0.02}},
+                {"id": "second", "name": "Second", "intent": "operate", "requiredCapabilities": ["walking"], "command": {"frame": "world", "linearVelocityMps": [0, 0.2], "yawRateRadPerSec": 0}, "exit": {"kind": "elapsed", "afterSeconds": 0.02}},
+                {"id": "stop", "name": "Stop", "intent": "stop", "requiredCapabilities": ["controlled-stop"], "command": {"frame": "world", "linearVelocityMps": [0, 0], "yawRateRadPerSec": 0}, "exit": {"kind": "elapsed", "afterSeconds": 0.02}},
             ],
             "durationSeconds": 0.06,
         }
@@ -1394,11 +1513,10 @@ class RuntimeContractTest(unittest.TestCase):
         environment.data.qpos[0] += 0.1
         first = environment.step(np.zeros(12))
         self.assertEqual(first.info["missionPhase"], "first")
-        environment.data.qpos[0] += 0.1
         second = environment.step(np.zeros(12))
         self.assertEqual(second.info["missionPhase"], "second")
         self.assertLess(second.info["lateralDisplacement"], 0.02)
-        self.assertEqual(active_mission_phase(task, 0.02)["id"], "second")
+        self.assertEqual(second.info["missionPhaseEnteredAtSeconds"], 0.02)
 
     def test_mission_reward_is_signed_and_requires_actor_authority(self):
         info = {
@@ -1419,6 +1537,37 @@ class RuntimeContractTest(unittest.TestCase):
         }, weights, 0.1)
         self.assertEqual(stop_bonus, 1.0)
         self.assertEqual(stop_terms["stopStability"], 1.0)
+        causal_weights = {
+            **weights,
+            "recoverySuccess": 100.0,
+            "phaseTimeoutPenalty": 200.0,
+            "timeoutFreeCompletion": 100.0,
+        }
+        timeout_bonus, timeout_terms = mission_reward_bonus({
+            **info,
+            "missionTransition": {
+                "condition": "recovery-stable",
+                "conditionMet": False,
+                "timedOut": True,
+                "to": "resume",
+            },
+        }, causal_weights, 0.0)
+        self.assertEqual(timeout_bonus, -200.0)
+        self.assertEqual(timeout_terms["phaseTimeoutPenalty"], -200.0)
+        completed_bonus, completed_terms = mission_reward_bonus({
+            **info,
+            "missionCompleted": True,
+            "missionPhaseTimeoutCount": 0,
+            "missionTransition": {
+                "condition": "recovery-stable",
+                "conditionMet": True,
+                "timedOut": False,
+                "to": None,
+            },
+        }, causal_weights, 0.0)
+        self.assertEqual(completed_bonus, 200.0)
+        self.assertEqual(completed_terms["recoverySuccess"], 100.0)
+        self.assertEqual(completed_terms["timeoutFreeCompletion"], 100.0)
 
     def test_ppo_performs_a_real_small_training_run(self):
         model, compiled = compiled_assembly("baseline")
@@ -1601,6 +1750,11 @@ class RuntimeContractTest(unittest.TestCase):
         ]
         self.assertEqual(mission_prefix_end_seconds(task, "approach"), 0.02)
         self.assertEqual(mission_prefix_end_seconds(task, "stop"), 0.06)
+        causal_task = json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text())
+        self.assertEqual(
+            mission_progression_episode_limit(causal_task, "recover"),
+            {"episodeEndSeconds": 20.0, "episodeEndPhase": "recover"},
+        )
         self.assertEqual(select_progression_index(progression, 0), 0)
         self.assertEqual(select_progression_index(progression, 32), 1)
         request = {

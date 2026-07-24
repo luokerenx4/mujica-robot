@@ -126,7 +126,9 @@ describe("read-only Studio snapshot", () => {
       },
     });
     const html = await readFile(first.indexPath, "utf8");
-    expect(html).toContain("Release authority · Continuous Mission Case");
+    expect(html).toContain("Release authority · Causal Continuous Mission Case");
+    expect(html).toContain("Timed-out phases");
+    expect(html).toContain("Runtime events");
     expect(html).toContain("Mission Suite");
     expect(html).toContain("Skill probes");
     expect(html).toContain("mujica-continuous-mission-context");

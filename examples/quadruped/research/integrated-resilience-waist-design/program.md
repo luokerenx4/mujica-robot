@@ -4,6 +4,12 @@ Treat the waist as a bounded complete-robot hypothesis, not as a guaranteed fix 
 
 The primary authority is the locked `integrated-resilience-mission` Benchmark. Every Case is one no-reset Episode through approach, impact, recovery, resumed locomotion, redirection, lateral traversal, and stop. Do not replace it with separate recovery or locomotion tasks.
 
+The Mission is causal rather than clock-labelled: Runtime-observed push start,
+push end, and stable recovery advance the phase graph. A timeout lets the Case
+continue for downstream diagnosis but is always a gate failure. Training
+curricula may shorten the episode only by ending after a Mission phase exits;
+they may not reset directly into a skill phase.
+
 The rigid `resilient-command-conditioned-history-3dof/behavior-supervisor` subject is the baseline. The proposed plant adds two orthogonal waist joints and actuators. A four-step raw history at fourteen actions would raise the Observation width from 145 to 165 and violate the Charter. The first articulated candidate therefore removes raw commanded/applied history and retains only the measured actuator-delay scalar, yielding a 53-coordinate Observation ABI. This observability trade is part of the design and must remain visible.
 
 Each proposal must state which coupled mechanism it changes:
@@ -77,3 +83,55 @@ without increasing the primary violation count, but did not create foot
 support and did regress safety gates. A future design family should change
 the lateral support/contact pair or leg reach geometry, not scan another keel
 height, mass, damping, or retry magnitude in this bounded program.
+
+## Lateral-reach recovery family
+
+The next bounded family keeps the four authored feet as the only declared
+work contacts. Adding passive rails or outriggers would change contact topology
+and violate the current Charter's exactly-four-contact envelope. Instead, the
+Agent may change:
+
+- hip-mount lateral position;
+- abduction joint and target range;
+- foot radius and its explicit mass;
+- an inverted-only, contact-seeking leg target; and
+- waist action only while that brace has fewer than two supporting feet.
+
+The fourth keel witness ended at `2.681 rad` body tilt and `0.121 m` torso
+height. Its foot sites were still about `0.220–0.383 m` above the floor. This
+is the diagnostic target: first create a real support opportunity using the
+robot's feet, then ask whether the complete Mission improves. A support event
+does not pay for a collision, joint-limit, yaw, command, or atomic recovery
+regression.
+
+The family contains four causal points:
+
+1. expanded shoulder and abduction workspace without a new recovery phase;
+2. an inverted-only two-foot contact-seeking brace;
+3. a lower-clearance variant with straighter knees; and
+4. bounded waist assist only while the brace lacks two-foot support.
+
+Return the Lab exhaustion signal after all four strategy identifiers appear in
+cross-Session history. If one point is kept, subsequent points build from that
+kept source as usual. RL remains downstream: do not train a residual against a
+plant that still offers no foot-contact authority.
+
+## Lateral-reach result
+
+Session `session-b5415a712be91666` completed all four points. Expanded range
+without contact-seeking sequencing was worse. The contact-seeking brace was a
+qualitative change: exact-left, exact-right, and degraded-right ended upright,
+aggregate score improved `-14.788 → 68.633`, total violations fell `41 → 36`,
+and normalized severity fell `177.781 → 77.542`.
+
+The Judge still reverted it because fourteen previously passing gates
+regressed, principally Mission progress/yaw, degraded-left collision, back
+handoff progress, and disturbed-lateral tracking. The lower-clearance brace
+reduced violations further to `32` but had worse severity and sixteen
+regressions. Waist assist added no meaningful benefit.
+
+This family is exhausted as a release experiment, but experiment
+`002-9b09abe62bef` is frozen as an explicit non-promoted development branch.
+The rigid Robot Revision remains selected. The next loop must tune command
+tracking and handoff on the viable brace plant; it must not return to keel
+height or brace geometry search.

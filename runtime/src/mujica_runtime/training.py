@@ -88,19 +88,39 @@ def mission_reward_bonus(
     weights: dict[str, Any] | None,
     actor_authority: float,
 ) -> tuple[float, dict[str, float]]:
-    terms = {"commandProgress": 0.0, "velocityTracking": 0.0, "stopStability": 0.0}
-    if not weights or info.get("missionPhase") is None or actor_authority <= 0.0:
+    terms = {
+        "commandProgress": 0.0,
+        "velocityTracking": 0.0,
+        "stopStability": 0.0,
+        "recoverySuccess": 0.0,
+        "phaseTimeoutPenalty": 0.0,
+        "timeoutFreeCompletion": 0.0,
+    }
+    if not weights or info.get("missionPhase") is None:
         return 0.0, terms
-    target = np.asarray(info.get("motionCommand", np.zeros(3)), dtype=np.float64)
-    target_speed = float(np.linalg.norm(target[:2]))
-    intent = info.get("missionIntent")
-    if target_speed > 1e-9 and intent not in ("disturbance", "recover", "stop"):
-        terms["commandProgress"] = float(weights.get("commandProgress", 0.0)) * float(info.get("normalizedProgressRate", 0.0))
-        velocity_error = float(info.get("velocityError", 0.0))
-        terms["velocityTracking"] = float(weights.get("velocityTracking", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
-    elif intent == "stop":
-        velocity_error = float(info.get("velocityError", 0.0))
-        terms["stopStability"] = float(weights.get("stopStability", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
+    if actor_authority > 0.0:
+        target = np.asarray(info.get("motionCommand", np.zeros(3)), dtype=np.float64)
+        target_speed = float(np.linalg.norm(target[:2]))
+        intent = info.get("missionIntent")
+        if target_speed > 1e-9 and intent not in ("disturbance", "recover", "stop"):
+            terms["commandProgress"] = float(weights.get("commandProgress", 0.0)) * float(info.get("normalizedProgressRate", 0.0))
+            velocity_error = float(info.get("velocityError", 0.0))
+            terms["velocityTracking"] = float(weights.get("velocityTracking", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
+        elif intent == "stop":
+            velocity_error = float(info.get("velocityError", 0.0))
+            terms["stopStability"] = float(weights.get("stopStability", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
+    transition = info.get("missionTransition")
+    if isinstance(transition, dict):
+        if transition.get("condition") == "recovery-stable" and transition.get("conditionMet") is True:
+            terms["recoverySuccess"] = float(weights.get("recoverySuccess", 0.0))
+        if transition.get("timedOut") is True:
+            terms["phaseTimeoutPenalty"] = -float(weights.get("phaseTimeoutPenalty", 0.0))
+        if (
+            transition.get("to") is None
+            and info.get("missionCompleted") is True
+            and int(info.get("missionPhaseTimeoutCount", 0)) == 0
+        ):
+            terms["timeoutFreeCompletion"] = float(weights.get("timeoutFreeCompletion", 0.0))
     return float(sum(terms.values())), terms
 
 
@@ -263,6 +283,23 @@ def mission_prefix_end_seconds(task: dict[str, Any], through_phase: str) -> floa
     raise RuntimeError(f"Mission progression names unknown phase '{through_phase}'")
 
 
+def mission_progression_episode_limit(
+    task: dict[str, Any],
+    through_phase: str,
+) -> dict[str, Any]:
+    version = int(task.get("version", 0))
+    if version == 7:
+        return {"episodeEndSeconds": mission_prefix_end_seconds(task, through_phase)}
+    if version == 8:
+        if through_phase not in {str(phase["id"]) for phase in task["missionPhases"]}:
+            raise RuntimeError(f"Mission progression names unknown phase '{through_phase}'")
+        return {
+            "episodeEndSeconds": float(task["durationSeconds"]),
+            "episodeEndPhase": through_phase,
+        }
+    raise RuntimeError("Mission progression requires an integrated Mission Task")
+
+
 @dataclass
 class PPOTrainer:
     hidden_sizes: list[int]
@@ -286,7 +323,7 @@ class PPOTrainer:
                 "role": "mission-progression",
                 "task": request["task"],
                 "scenarios": request["scenarios"],
-                "episodeEndSeconds": mission_prefix_end_seconds(
+                **mission_progression_episode_limit(
                     request["task"], str(stage["throughPhase"])
                 ),
             } for stage in progression]
@@ -351,6 +388,7 @@ class PPOTrainer:
                 "globalStepStart": completed_steps,
                 "throughPhase": entry.get("throughPhase"),
                 "episodeEndSeconds": entry.get("episodeEndSeconds", float(entry["task"]["durationSeconds"])),
+                "episodeEndPhase": entry.get("episodeEndPhase"),
                 "domainProfileId": effective_domain_profile.get("id") if effective_domain_profile else None,
                 "domainProfileHash": entry.get("domainProfileHash") or request.get("domainProfileHash"),
                 "steps": 0,
@@ -365,6 +403,7 @@ class PPOTrainer:
                 episode_seed,
                 domain_sample,
                 entry.get("episodeEndSeconds"),
+                entry.get("episodeEndPhase"),
             )
 
         environment = make_environment()
@@ -409,7 +448,7 @@ class PPOTrainer:
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
-            batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability")}
+            batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability", "recoverySuccess", "phaseTimeoutPenalty", "timeoutFreeCompletion")}
             batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
@@ -511,6 +550,9 @@ class PPOTrainer:
                 curriculum_step_counts[int(domain_samples[-1]["curriculumIndex"])] += 1
                 if done:
                     domain_samples[-1]["completed"] = True
+                    domain_samples[-1]["observedDurationSeconds"] = float(environment.data.time)
+                    domain_samples[-1]["missionCompleted"] = bool(environment.mission_completed)
+                    domain_samples[-1]["missionPrefixCompleted"] = bool(environment.mission_prefix_completed)
                     completed_rewards.append(episode_reward); episode_reward = 0.0
                     if completed_steps < total_steps:
                         environment = make_environment()
@@ -599,6 +641,12 @@ class PPOTrainer:
                     "scheduledStartStep": 0 if index == 0 else int(curriculum[index - 1]["untilStep"]),
                     "scheduledUntilStep": int(entry["untilStep"]),
                     "episodeEndSeconds": float(entry["episodeEndSeconds"]),
+                    "episodeEndPhase": entry.get("episodeEndPhase"),
+                    "meanObservedDurationSeconds": float(np.mean([
+                        float(sample["observedDurationSeconds"])
+                        for sample in domain_samples
+                        if sample["curriculum"] == entry["id"] and sample.get("observedDurationSeconds") is not None
+                    ])) if any(sample["curriculum"] == entry["id"] and sample.get("observedDurationSeconds") is not None for sample in domain_samples) else None,
                     "domainProfileId": entry["domainProfile"]["id"] if entry.get("domainProfile") else (
                         request["domainProfile"]["id"] if request.get("domainProfile") else None
                     ),

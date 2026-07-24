@@ -1,7 +1,7 @@
 {
   "version": 1,
   "id": "quadruped-waist-3dof",
-  "name": "Fourteen-actuator split-torso spatial quadruped",
+  "name": "Fourteen-actuator split-torso quadruped with contact-seeking lateral brace",
   "mjcf": "model.xml",
   "mounts": [
     { "id": "torso-sensor", "type": "sensor-bus", "site": "imu-site", "exclusive": false },
@@ -18,7 +18,7 @@
   "actions": [
     { "name": "joint-torque", "kind": "actuator", "size": 14, "source": "actuator:all", "unit": "nm", "low": -8, "high": 8 }
   ],
-  "massKg": 6.12,
+  "massKg": 6.16,
   "license": "Apache-2.0",
-  "attribution": "Original two-axis articulated quadruped model created for Mujica"
+  "attribution": "Original two-axis articulated quadruped with enlarged four-foot recovery workspace created for Mujica"
 }

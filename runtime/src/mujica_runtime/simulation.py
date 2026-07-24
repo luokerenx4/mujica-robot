@@ -81,12 +81,36 @@ def read_controller_telemetry(controller: Any) -> dict[str, Any] | None:
         raise RuntimeError("Controller telemetry() must return finite JSON data") from error
 
 
-def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float, measurement_start_seconds: float = 0.0) -> dict[str, Any]:
+def resolved_motion_command_schedule(
+    task: dict[str, Any],
+    trajectory: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if int(task["version"]) != 8:
+        return compile_motion_command_schedule(task)
+    schedule: list[dict[str, Any]] = []
+    previous: np.ndarray | None = None
+    control_hz = float(task["controlHz"])
+    for row in trajectory:
+        command = np.asarray(row["motionCommand"], dtype=np.float64)
+        if previous is not None and np.array_equal(previous, command):
+            continue
+        at_step = int(row["commandStep"])
+        schedule.append({
+            "atStep": at_step,
+            "atSeconds": at_step / control_hz,
+            "command": command.copy(),
+            "missionPhase": row.get("missionStage"),
+        })
+        previous = command
+    return schedule
+
+
+def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float, measurement_start_seconds: float = 0.0, trajectory: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
-    schedule = compile_motion_command_schedule(task)
+    schedule = resolved_motion_command_schedule(task, trajectory or [])
     target_displacement = np.zeros(2, dtype=np.float64)
     for index, segment in enumerate(schedule):
-        end_seconds = float(schedule[index + 1]["atSeconds"]) if index + 1 < len(schedule) else float(task["durationSeconds"])
+        end_seconds = float(schedule[index + 1]["atSeconds"]) if index + 1 < len(schedule) else measurement_start_seconds + duration_seconds
         start_seconds = max(float(segment["atSeconds"]), measurement_start_seconds)
         if end_seconds > start_seconds:
             target_displacement += np.asarray(segment["command"][:2], dtype=np.float64) * (end_seconds - start_seconds)
@@ -119,7 +143,7 @@ def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, dis
 
 
 def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any], objective: dict[str, Any]) -> dict[str, Any]:
-    schedule = compile_motion_command_schedule(task)
+    schedule = resolved_motion_command_schedule(task, trajectory)
     measurement = objective.get("transientMeasurement", {"planarToleranceMps": 0.12, "yawRateToleranceRadPerSec": 0.25, "holdSeconds": 0.2})
     control_hz = float(task["controlHz"])
     hold_steps = max(1, int(np.ceil(float(measurement["holdSeconds"]) * control_hz - 1e-12)))
@@ -135,7 +159,7 @@ def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str
     transitions: list[dict[str, Any]] = []
     for index, segment in enumerate(schedule[1:], start=1):
         at_step = int(segment["atStep"])
-        end_step = int(schedule[index + 1]["atStep"]) if index + 1 < len(schedule) else round(float(task["durationSeconds"]) * control_hz)
+        end_step = int(schedule[index + 1]["atStep"]) if index + 1 < len(schedule) else (int(trajectory[-1]["step"]) if trajectory else at_step)
         rows = [row for row in trajectory if at_step <= int(row["commandStep"]) < end_step]
         previous = np.asarray(schedule[index - 1]["command"], dtype=np.float64)
         target = np.asarray(segment["command"], dtype=np.float64)
@@ -179,11 +203,21 @@ def mission_phase_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any]
     if not phases:
         return None
     control_hz = float(task["controlHz"])
+    causal = int(task["version"]) == 8
     evidence: list[dict[str, Any]] = []
     for index, phase in enumerate(phases):
-        start = float(phase["atSeconds"])
-        end = float(phases[index + 1]["atSeconds"]) if index + 1 < len(phases) else float(task["durationSeconds"])
         rows = [row for row in trajectory if row.get("missionStage") == phase["id"]]
+        if causal:
+            start = float(rows[0].get("missionPhaseEnteredAtSeconds", 0.0)) if rows else 0.0
+            transition = next((row.get("missionTransition") for row in reversed(rows) if row.get("missionTransition") is not None), None)
+            end = float(rows[-1]["time"]) if rows else start
+            exit_seconds = float(phase["exit"].get("afterSeconds", phase["exit"].get("timeoutSeconds", 0.0)))
+            expected_steps = round(exit_seconds * control_hz)
+        else:
+            start = float(phase["atSeconds"])
+            end = float(phases[index + 1]["atSeconds"]) if index + 1 < len(phases) else float(task["durationSeconds"])
+            transition = None
+            expected_steps = round((end - start) * control_hz)
         first_position = np.asarray(rows[0]["qpos"][:3], dtype=np.float64) if rows else np.zeros(3, dtype=np.float64)
         final_position = np.asarray(rows[-1]["qpos"][:3], dtype=np.float64) if rows else first_position
         planar_errors = [
@@ -201,10 +235,14 @@ def mission_phase_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any]
         })
         evidence.append({
             **phase,
+            "atSeconds": start,
             "endSeconds": end,
-            "expectedSteps": round((end - start) * control_hz),
+            "expectedSteps": expected_steps,
             "observedSteps": len(rows),
             "observedDurationSeconds": len(rows) / control_hz,
+            "transitionCause": transition.get("cause") if transition else ("clock" if not causal else None),
+            "exitConditionMet": transition.get("conditionMet") if transition else (True if not causal else False),
+            "timedOut": bool(transition.get("timedOut")) if transition else False,
             "healthyFraction": float(np.mean([bool(row["healthy"]) for row in rows])) if rows else 0.0,
             "meanPlanarTrackingErrorMps": float(np.mean(planar_errors)) if planar_errors else 0.0,
             "meanYawRateTrackingErrorRadPerSec": float(np.mean(yaw_errors)) if yaw_errors else 0.0,
@@ -219,7 +257,8 @@ def mission_phase_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any]
         for capability in phase["requiredCapabilities"]
     })
     return {
-        "kind": "continuous-mission",
+        "kind": "causal-continuous-mission" if causal else "continuous-mission",
+        "phaseAuthority": "runtime-events" if causal else "authored-clock",
         "resetPolicy": "no-reset-within-case",
         "episodeResetCount": 1,
         "phaseCount": len(evidence),
@@ -424,8 +463,10 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     minimum_limit_margin = minimum_joint_limit_margin(environment.model, environment.data)
     disallowed_collision_steps = 0
     recovery_target = request["task"].get("recoveryTarget")
-    recovery_evaluation_start = float(
-        request["task"].get("recoveryEvaluationStartSeconds", 0.0)
+    recovery_evaluation_start = (
+        None
+        if int(request["task"]["version"]) == 8
+        else float(request["task"].get("recoveryEvaluationStartSeconds", 0.0))
     )
     recovery_hold_steps = max(1, round(float(recovery_target["holdSeconds"]) * float(request["task"]["controlHz"]))) if recovery_target else 0
     recovery_stable_steps = 0
@@ -449,6 +490,21 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         ):
             mobility_initial_position = environment.data.qpos[:3].copy()
             mobility_started_at = float(request["task"]["mobilityMeasurementStartSeconds"])
+        if int(request["task"]["version"]) == 8:
+            phase_before_action = environment.mission_phase()
+            if (
+                phase_before_action is not None
+                and phase_before_action["intent"] == "recover"
+                and recovery_evaluation_start is None
+            ):
+                recovery_evaluation_start = float(environment.data.time)
+            if (
+                phase_before_action is not None
+                and phase_before_action["intent"] == "resume"
+                and mobility_initial_position is None
+            ):
+                mobility_initial_position = environment.data.qpos[:3].copy()
+                mobility_started_at = float(environment.data.time)
         action = controller.act({name: values.copy() for name, values in observation.items()}, float(environment.data.time))
         controller_telemetry = read_controller_telemetry(controller)
         controller_phase = (
@@ -518,6 +574,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         recovery_target_satisfied = False
         recovery_evaluation_active = (
             recovery_target is not None
+            and recovery_evaluation_start is not None
             and float(environment.data.time) + 1e-9 >= recovery_evaluation_start
         )
         if recovery_target and recovery_evaluation_active:
@@ -543,7 +600,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                 maximum_recovery_stable_steps = max(maximum_recovery_stable_steps, recovery_stable_steps)
                 if time_to_stable_stand is None and recovery_stable_steps >= recovery_hold_steps:
                     time_to_stable_stand = (
-                        float(recovery_entered_at) - recovery_evaluation_start
+                        float(recovery_entered_at) - float(recovery_evaluation_start)
                     )
                     environment.events.append({
                         "type": "robot.self-righted",
@@ -558,13 +615,24 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                 recovery_stable_steps = 0
                 recovery_entered_at = None
         mission_stage: str | None = None
-        if int(request["task"]["version"]) == 7:
+        if int(request["task"]["version"]) in (7, 8):
             current_time = float(environment.data.time)
-            phase = active_mission_phase(request["task"], current_time)
-            mission_stage = str(phase["id"]) if phase is not None else None
+            phase = (
+                active_mission_phase(request["task"], current_time)
+                if int(request["task"]["version"]) == 7
+                else next(
+                    (
+                        candidate
+                        for candidate in request["task"]["missionPhases"]
+                        if candidate["id"] == info.get("missionPhase")
+                    ),
+                    None,
+                )
+            )
+            mission_stage = str(info["missionPhase"]) if int(request["task"]["version"]) == 8 and info.get("missionPhase") is not None else (str(phase["id"]) if phase is not None else None)
             if mission_stage is not None:
                 mission_stage_steps[mission_stage] = mission_stage_steps.get(mission_stage, 0) + 1
-                if mission_stage != previous_mission_stage:
+                if int(request["task"]["version"]) == 7 and mission_stage != previous_mission_stage:
                     environment.events.append({
                         "type": "mission.stage-changed",
                         "time": current_time,
@@ -573,7 +641,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                         "intent": phase["intent"],
                         "requiredCapabilities": phase["requiredCapabilities"],
                     })
-                    previous_mission_stage = mission_stage
+                previous_mission_stage = mission_stage
         elif int(request["task"]["version"]) == 6:
             push = environment.external_push
             current_time = float(environment.data.time)
@@ -600,7 +668,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                 previous_mission_stage = mission_stage
         foot_contact_force = result.observation.get("foot-contact-force")
         foot_positions_world = environment.foot_positions_world()
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "missionStage": mission_stage, "recoveryEvaluationActive": recovery_evaluation_active, "recoveryTargetSatisfied": recovery_target_satisfied, "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "missionStage": mission_stage, "missionPhaseEnteredAtSeconds": info.get("missionPhaseEnteredAtSeconds"), "missionPhaseElapsedSeconds": info.get("missionPhaseElapsedSeconds"), "missionTransition": info.get("missionTransition"), "recoveryEvaluationActive": recovery_evaluation_active, "recoveryTargetSatisfied": recovery_target_satisfied, "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -612,7 +680,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     transition_metrics = transition_response_metrics(trajectory, request["task"], request["objective"])
     quality_metrics = motion_quality_metrics(trajectory, float(request["task"]["controlHz"]), compiled["actionLow"], compiled["actionHigh"])
     metrics = {
-        "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.max_steps),
+        "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.step_index if int(request["task"]["version"]) == 8 and environment.mission_completed else environment.max_steps),
         "fell": fell, "motionCommand": mean_motion_command.tolist(), "meanMotionCommand": mean_motion_command.tolist(), "meanMeasuredMotion": mean_measured_motion.tolist(),
         "planarVelocityTrackingError": float(np.linalg.norm(mean_measured_motion[:2] - mean_motion_command[:2])), "yawRateTrackingError": abs(float(mean_measured_motion[2] - mean_motion_command[2])),
         "meanVelocityTrackingError": totals["velocityError"] / steps, "meanPlanarVelocityTrackingError": totals["planarVelocityError"] / steps, "meanYawRateTrackingError": totals["yawRateError"] / steps, "meanUpright": totals["upright"] / steps,
@@ -622,7 +690,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "initialBodyTiltRad": initial_body_tilt, "minimumBodyTiltRad": minimum_body_tilt, "finalBodyTiltRad": quaternion_body_tilt(environment.data.qpos[3:7]), "finalBaseHeightM": float(environment.data.qpos[2]),
         "selfRightingTask": recovery_target is not None, "recoveryTriggered": recovery_triggered,
         "selfRightingSuccess": 1.0 if recovery_triggered and time_to_stable_stand is not None else 0.0,
-        "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]) - recovery_evaluation_start,
+        "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]) - float(recovery_evaluation_start or 0.0),
         "stableStandingDwellSeconds": maximum_recovery_stable_steps / float(request["task"]["controlHz"]),
         "finalStableStandingDwellSeconds": recovery_stable_steps / float(request["task"]["controlHz"]),
         "minimumJointLimitMarginRad": minimum_limit_margin, "disallowedCollisionSteps": disallowed_collision_steps,
@@ -637,12 +705,20 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
             request["task"],
             float(environment.data.time) - float(mobility_started_at or 0.0),
             float(mobility_started_at or 0.0),
+            trajectory,
         ),
     }
     metrics["episodeInitialBasePosition"] = initial_position.tolist()
     metrics["mobilityMeasurementStartedAtSeconds"] = mobility_started_at
     metrics["recoveryEvaluationStartedAtSeconds"] = (
         recovery_evaluation_start if recovery_target is not None else None
+    )
+    metrics["missionCompleted"] = bool(environment.mission_completed) if int(request["task"]["version"]) == 8 else True
+    metrics["missionPhaseTimeoutCount"] = sum(
+        1
+        for event in environment.events
+        if event["type"] in ("mission.stage-changed", "mission.completed")
+        and bool(event.get("timedOut"))
     )
     metrics["missionStageDurationsSeconds"] = {
         stage: steps / float(request["task"]["controlHz"])

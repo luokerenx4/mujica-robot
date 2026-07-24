@@ -673,6 +673,8 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     if (candidateCase && (candidateCase.metrics.minimumJointLimitMarginRad ?? 1_000_000) < objective.gates.minimumJointLimitMarginRad) gateReasons.push(`${candidateCase.case.id}: joint-limit margin ${(candidateCase.metrics.minimumJointLimitMarginRad ?? 0).toFixed(3)} below gate`);
     if (candidateCase && candidateCase.metrics.peakActuator > objective.gates.maximumPeakActuator) gateReasons.push(`${candidateCase.case.id}: peak actuator ${candidateCase.metrics.peakActuator.toFixed(3)} exceeds gate`);
     if (candidateCase && (candidateCase.metrics.disallowedCollisionSteps ?? 0) > objective.gates.maximumDisallowedCollisionSteps) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.disallowedCollisionSteps ?? 0} disallowed collision steps exceed gate`);
+    if (candidateCase && Number(candidateCase.metrics.missionCompleted ?? true) < objective.gates.minimumMissionCompletion) gateReasons.push(`${candidateCase.case.id}: causal Mission did not complete`);
+    if (candidateCase && (candidateCase.metrics.missionPhaseTimeoutCount ?? 0) > objective.gates.maximumMissionPhaseTimeouts) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.missionPhaseTimeoutCount ?? 0} Mission phase timeouts exceed gate`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) gateReasons.push(`${candidateCase.case.id}: score regression exceeds gate`);
   }
   const allowedChangeHashes: Record<string, string> = {};
@@ -723,7 +725,7 @@ export function candidateSelection(gateReasons: string[], scoreDelta: number, ba
 }
 
 export type GateAssessment = {
-  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "joint-jerk" | "body-angular-jerk" | "action-slew" | "actuator-saturation" | "foot-slip" | "foot-impact" | "self-righting" | "stable-stand-time" | "stable-standing-dwell" | "final-body-tilt" | "final-base-height" | "joint-limit-margin" | "peak-actuator" | "disallowed-collision" | "score-regression";
+  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "joint-jerk" | "body-angular-jerk" | "action-slew" | "actuator-saturation" | "foot-slip" | "foot-impact" | "self-righting" | "stable-stand-time" | "stable-standing-dwell" | "final-body-tilt" | "final-base-height" | "joint-limit-margin" | "peak-actuator" | "disallowed-collision" | "mission-completion" | "mission-phase-timeouts" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
 
@@ -776,6 +778,8 @@ export function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjecti
     objective.gates.maximumDisallowedCollisionSteps ?? 1_000_000,
     Math.max(candidate.metrics.steps ?? 1, 1),
   ));
+  gates.push(lower("mission-completion", "missionCompleted", Number(candidate.metrics.missionCompleted ?? true), objective.gates.minimumMissionCompletion ?? 0));
+  gates.push(upper("mission-phase-timeouts", "missionPhaseTimeoutCount", candidate.metrics.missionPhaseTimeoutCount ?? 0, objective.gates.maximumMissionPhaseTimeouts ?? 1_000_000, 1));
   if (baseline) gates.push(lower("score-regression", "scoreDelta", candidate.score.total - baseline.score.total, -objective.gates.maximumRegression));
   return gates;
 }
