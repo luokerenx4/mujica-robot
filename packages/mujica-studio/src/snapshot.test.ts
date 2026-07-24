@@ -135,6 +135,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("mujica-policy-training-context");
     expect(html).toContain("active actor authority");
     expect(html).toContain("Mission phase learning evidence");
+    expect(html).toContain("curriculum sampling");
+    expect(html).toContain("Mission progression · every episode starts at Mission phase 1");
     expect(html).toContain("promotion:'locked-judge-only'");
     expect(html).toContain("mujica-human-observation-draft");
     expect(html).toContain("mujica-research-brief-selector");

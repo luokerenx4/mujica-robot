@@ -41,6 +41,8 @@ async function policyArtifacts(projectRoot: string): Promise<Array<Record<string
     const trainedPolicyId = manifest.derivedFromPolicy ?? manifest.id;
     const domainProfilePath = join(directory, "domain-profile.json");
     const domainProfile = await exists(domainProfilePath) ? JSON.parse(await readFile(domainProfilePath, "utf8")) : null;
+    const progressionPath = join(directory, "mission-progression.json");
+    const progression = await exists(progressionPath) ? JSON.parse(await readFile(progressionPath, "utf8")) : null;
     if (
       entry.name !== manifest.id
       || manifest.modelHash !== modelHash
@@ -58,6 +60,7 @@ async function policyArtifacts(projectRoot: string): Promise<Array<Record<string
         manifest.domainProfileHash !== domainProfile.hash
         || domainProfile.hash !== hashJson({ definition: domainProfile.definition, evidenceHash: domainProfile.evidenceHash })
       ) ? ["domain-profile-hash"] : []),
+      ...(progression && manifest.progressionHash !== hashJson(progression) ? ["mission-progression-hash"] : []),
     ];
     const updates = Array.isArray(metrics.updates) ? metrics.updates : [];
     const activeFractions: number[] = updates.map((item: any) => Number(item.activePolicyFraction)).filter(Number.isFinite);
@@ -86,6 +89,8 @@ async function policyArtifacts(projectRoot: string): Promise<Array<Record<string
         domainCoverage: coverage,
         variedDomainParameters,
         curriculumCoverage: metrics.curriculumCoverage ?? null,
+        curriculumSampling: metrics.curriculumSampling ?? training.curriculumSampling ?? "episode-probability",
+        missionProgression: metrics.missionProgression ?? null,
         missionPhaseCoverage: metrics.missionPhaseCoverage ?? null,
         activePolicyFraction: activeFractions.length ? {
           minimum: Math.min(...activeFractions),
@@ -792,6 +797,7 @@ function renderPolicyEvidence(){
   const authority=policy.authority?.residualGate;
   const varied=policy.training?.variedDomainParameters??[];
   const curriculum=Object.entries(policy.training?.curriculumCoverage??{});
+  const progression=Object.entries(policy.training?.missionProgression??{});
   const missionPhases=Object.values(policy.training?.missionPhaseCoverage??{});
   const skillExposure=curriculum.filter(([,item])=>item.role==='skill').reduce((sum,[,item])=>sum+Number(item.steps??0),0);
   const missionExposure=curriculum.filter(([,item])=>item.role==='mission').reduce((sum,[,item])=>sum+Number(item.steps??0),0);
@@ -801,14 +807,16 @@ function renderPolicyEvidence(){
     ['Episodes',policy.training?.episodes??'—'],
     ['Actor authority',active?Number(active.mean*100).toFixed(1)+'%':'full/undeclared'],
     ['Domain variation',varied.length?varied.length+' dimensions':'exact plant'],
-    ['Skill / Mission',curriculum.length?skillExposure.toLocaleString()+' / '+missionExposure.toLocaleString()+' steps':'legacy'],
+    ['Training structure',progression.length?progression.length+' Mission stages':curriculum.length?skillExposure.toLocaleString()+' / '+missionExposure.toLocaleString()+' steps':'legacy'],
   ].map(x=>'<div class="stat"><strong class="'+(x[1]==='UNREVIEWED'?'bad':'')+'">'+esc(x[1])+'</strong>'+esc(x[0])+'</div>').join('');
   q('#policy-detail').innerHTML='<span class="tag '+(status==='PROMOTED'?'verdict-KEEP':status==='CANDIDATE'?'verdict-REVERT':'severity-blocking')+'">'+status+'</span> <code>'+esc(policy.id)+'</code>'
     +'<br>Training <code>'+esc(policy.training?.runId)+'</code> · config <code>'+esc(policy.training?.id)+'</code> · seed '+esc(policy.seed)
     +'<br>active actor authority '+(active?esc(Number(active.minimum*100).toFixed(1))+'–'+esc(Number(active.maximum*100).toFixed(1))+'%, mean '+esc(Number(active.mean*100).toFixed(1))+'%':'not recorded')
     +' · mean residual gate '+(Number.isFinite(Number(policy.training?.meanResidualGateScale))?esc(Number(policy.training.meanResidualGateScale).toFixed(3)):'not gated')
-    +'<br>domain <code>'+esc(policy.training?.domainProfileId??'none')+'</code> · '+(varied.length?'varied '+varied.map(esc).join(', '):'no sampled variation')
+    +'<br>domain <code>'+esc(progression.length?'per-stage':policy.training?.domainProfileId??'none')+'</code> · '+(varied.length?'varied '+varied.map(esc).join(', '):'no sampled variation')
     +(curriculum.length?'<br>curriculum '+curriculum.map(([id,item])=>'<code>'+esc(id)+'</code> ['+esc(item.role)+'] '+esc(Number(item.steps??0).toLocaleString())+' steps · '+esc(item.episodesCompleted)+'/'+esc(item.episodesStarted)+' episodes completed').join('<br>'):'')
+    +(curriculum.length?'<br>curriculum sampling <code>'+esc(policy.training?.curriculumSampling??'episode-probability')+'</code> · '+curriculum.map(([id,item])=>'<code>'+esc(id)+'</code> target '+esc(Number((item.targetStepShare??0)*100).toFixed(1))+'% / actual '+esc(Number((item.actualStepShare??0)*100).toFixed(1))+'% · actor '+(Number.isFinite(Number(item.activePolicyFraction))?esc(Number(item.activePolicyFraction*100).toFixed(1))+'%':'not recorded')).join(' · '):'')
+    +(progression.length?'<br><strong>Mission progression · every episode starts at Mission phase 1</strong>'+progression.map(([id,item])=>'<br><code>'+esc(id)+'</code> through <code>'+esc(item.throughPhase)+'</code> · scheduled '+esc(Number(item.scheduledStartStep??0).toLocaleString())+'–'+esc(Number(item.scheduledUntilStep??0).toLocaleString())+' steps · observed '+esc(Number(item.observedStartStep??0).toLocaleString())+'–'+esc(Number(item.observedEndStep??0).toLocaleString())+' · '+esc(Number(item.episodeEndSeconds??0).toFixed(2))+' s episodes · domain <code>'+esc(item.domainProfileId??'none')+'</code> · actor '+esc(Number((item.activePolicyFraction??0)*100).toFixed(1))+'%').join(''):'')
     +(missionPhases.length?'<br><strong>Mission phase learning evidence</strong>'+missionPhases.map(item=>'<br><code>'+esc(item.phase)+'</code> ['+esc(item.intent)+'] '+esc(Number(item.steps??0).toLocaleString())+' steps · actor '+esc(Number((item.activePolicyFraction??0)*100).toFixed(1))+'% · signed progress '+esc(Number(item.commandedProgressM??0).toFixed(3))+' m · reward base/shaped/learned '+esc(Number(item.meanBaseReward??0).toFixed(3))+' / '+esc(Number(item.meanMissionReward??0).toFixed(3))+' / '+esc(Number(item.meanLearningReward??0).toFixed(3))).join(''):'')
     +(policy.training?.missionReward?'<br>Mission reward weights <code>'+esc(JSON.stringify(policy.training.missionReward))+'</code>':'')
     +'<br>authority '+esc(policy.authority?.kind??'direct policy')+(authority?' · modes '+esc((authority.allowedModes??[]).join(', '))+' · requires '+esc(JSON.stringify(authority.requiredTelemetry??{}))+' · ramp '+esc(authority.rampSeconds??0)+'s':'')

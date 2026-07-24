@@ -441,6 +441,7 @@ export const trainingSchema = z.union([
   }).strict(),
   z.object({
     version: z.literal(2), ...trainingOptimizationFields,
+    curriculumSampling: z.enum(["episode-probability", "step-share"]).optional(),
     curriculum: z.array(z.object({
       id: idSchema,
       role: z.enum(["skill", "mission"]),
@@ -458,6 +459,32 @@ export const trainingSchema = z.union([
     }
     if (!training.curriculum.some((item) => item.role === "mission")) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculum"], message: "curriculum requires at least one Mission entry" });
+    }
+  }),
+  z.object({
+    version: z.literal(3), ...trainingOptimizationFields,
+    mission: z.object({
+      task: idSchema,
+      scenarios: z.array(idSchema).min(1),
+    }).strict(),
+    progression: z.array(z.object({
+      id: idSchema,
+      throughPhase: idSchema,
+      untilStep: z.number().int().positive(),
+      domainProfile: idSchema.optional(),
+    }).strict()).min(2).max(8),
+    promotionBenchmark: idSchema,
+  }).strict().superRefine((training, context) => {
+    if (new Set(training.progression.map((item) => item.id)).size !== training.progression.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["progression"], message: "progression ids must be unique" });
+    }
+    training.progression.forEach((stage, index) => {
+      if (index > 0 && stage.untilStep <= training.progression[index - 1]!.untilStep) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["progression", index, "untilStep"], message: "progression step boundaries must be strictly increasing" });
+      }
+    });
+    if (training.progression.at(-1)?.untilStep !== training.totalSteps) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["progression"], message: "final progression boundary must equal totalSteps" });
     }
   }),
 ]);

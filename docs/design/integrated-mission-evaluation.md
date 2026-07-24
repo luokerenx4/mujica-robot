@@ -59,19 +59,27 @@ and degraded left/right plant conditions.
 
 ## Training contract
 
-Training v2 defines a weighted curriculum rather than one implicit episode
-source. Each entry is labeled `skill` or `mission`; the trainer records
-episodes and steps actually sampled from every entry.
+Training v3 defines a Mission progression around one integrated Task and one
+Scenario family. Every episode begins at the authored Mission start. A stage
+may stop after a named phase, but it cannot jump into a synthetic state,
+reorder phases, or shorten a later stage. The final stage must include the
+complete Mission and its cumulative step boundary must equal the Training
+budget.
 
-The first curriculum used:
+The current progression is:
 
-- 35% isolated recovery-to-locomotion Skills across four fallen poses;
-- 65% complete left/right integrated Missions;
-- continuous domain randomization of mass, damping, actuator strength,
-  friction, observation noise, delay, impact time, force, and direction.
+- through `redirect` under an exact plant, retaining the causal chain
+  `approach → impact → recover → resume → redirect` and enough post-handoff
+  time for the learned residual to receive authority;
+- through the final `stop` phase under that exact plant;
+- through the final `stop` phase under randomized mass, damping, actuator
+  strength, friction, sensing, delay, impact time, force, and direction.
 
-Sampling weights are intent, not evidence. The frozen Policy records observed
-coverage. Studio shows both the requested roles and actual step exposure.
+Stage-specific Domain Profiles alter training data difficulty, not the locked
+Judge. Each episode records its stage, full Task identity, Scenario, effective
+end time, Domain Profile, parameters, and global step interval. Atomic
+self-righting and command Tasks remain useful diagnostic probes but are no
+longer sampled by the main Policy training loop.
 
 ### Phase-conditioned credit assignment
 
@@ -94,10 +102,12 @@ The frozen Policy records, per Mission phase, step exposure, active-actor
 fraction, effective residual authority, signed progress, base reward, shaped
 reward, quality penalty, and final learning reward.
 
-Curriculum `weight` is the probability of selecting an entry when an episode
-starts. It is not a step quota: Skills and Missions have different durations,
-so actual step exposure can differ substantially. Frozen coverage is the
-evidence.
+Legacy Training v2 still supports `episode-probability` and `step-share` for
+reproducing existing Policies. It is not the main integrated-robot
+development contract. Training v3 advances monotonically by cumulative global
+steps and only switches stages at safe episode boundaries, so it never
+interrupts a physical trajectory. Frozen evidence records scheduled and
+observed boundaries instead of presenting desired weights as experience.
 
 ## First measured result
 
@@ -157,6 +167,45 @@ PPO steps alone therefore repeat mostly Program-only experience. The next
 experiment should change the handoff/data curriculum or the Controller
 boundary, not merely increase the budget or weaken the Judge.
 
+The next bounded change replaces the disconnected Skill/Mission sampler with
+the governed Mission progression above. The first measured 10-second prefix
+ended at the start of `redirect` and exposed zero actor-authority steps because
+the supervisor was still settling. The governed stage therefore extends
+through `redirect` to 13 seconds. This changes data availability, not the
+authority gate: impact entry, recovery, and settling remain Program-only. Its
+hypothesis is that exact complete causal prefixes will produce post-recovery
+actor data before the final randomized stage, while every sample still
+contains the approach and impact states that caused the recovery.
+
+## Mission-progression experiment result
+
+The first 10-second prefix reached the authored `resume` phase but exposed
+zero actor-authority steps: the Program supervisor remained in recovery or
+settling until after that boundary. Extending the first stage through
+`redirect` and aligning its boundary to four complete 13-second episodes
+produced the intended evidence:
+
+- exact causal-prefix actor fraction: `21.5%`;
+- exact complete-Mission actor fraction: `43.3%`;
+- randomized complete-Mission actor fraction: `0.0%`, `9.6%`, and `12.4%`
+  across three seeds.
+
+The locked Mission-Suite results were:
+
+| Policy | Seed / steps | Score |
+| --- | ---: | ---: |
+| `integrated-resilience-curriculum-2cb0c34f14903dd2` | 260736 / 8,192 | 38.863401 |
+| `integrated-resilience-curriculum-3bd389ded6b6e380` | 260737 / 8,192 | 38.867625 |
+| `integrated-resilience-curriculum-d1b4e9d8e61cb107` | 260738 / 8,192 | 38.853282 |
+
+The selected seed is still `REVERT`: baseline `38.935033`, proposed
+`38.867625`, delta `-0.067408`. Exact Missions self-right but move opposite
+the requested direction after handoff; degraded Missions still fail recovery.
+The main architectural gain is therefore trustworthy continuous data and
+credit-assignment evidence, not a promoted Controller. The next optimization
+must address negative `redirect` progress and broaden successful recovery
+basins before increasing PPO budget.
+
 ## HCI
 
 Studio renders a `Continuous Mission · one Episode, no reset` panel above the
@@ -166,6 +215,9 @@ Skill/Mission step counts, residual authority, domain coverage, lineage, and
 the bound Candidate. New Policies additionally expose per-phase signed
 progress, actor exposure, and base/shaped/learning reward so a human and Coding
 Agent can distinguish “not trained here” from “trained here and got worse.”
+For Training v3 it displays the stage's terminal phase, scheduled and observed
+global-step interval, episode duration, Domain Profile, actor fraction, and
+phase-local learning evidence.
 
 `Copy Mission context for Agent` exports the frozen phase measurements and
 exact headless reproduction command. Its authority boundary is explicit:

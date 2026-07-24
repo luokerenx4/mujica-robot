@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -144,6 +144,14 @@ class RuntimeContractTest(unittest.TestCase):
             assert_domain_profile_plant_compatible({
                 "compiled": compatible["compiled"],
                 "domainProfile": {"id": "wrong", "plantHash": "b" * 64},
+            })
+        with self.assertRaisesRegex(RuntimeError, "stage-wrong"):
+            assert_domain_profile_plant_compatible({
+                "compiled": compatible["compiled"],
+                "progression": [{
+                    "id": "stage",
+                    "domainProfile": {"id": "stage-wrong", "plantHash": "b" * 64},
+                }],
             })
 
     def test_visual_replay_is_content_addressed_and_reuses_only_complete_frames(self):
@@ -1326,6 +1334,7 @@ class RuntimeContractTest(unittest.TestCase):
             ],
             "seed": 11,
             "training": {
+                "curriculumSampling": "step-share",
                 "totalSteps": 64,
                 "rolloutSteps": 32,
                 "epochs": 1,
@@ -1346,6 +1355,18 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertGreater(coverage["skill"]["episodesStarted"], 0)
             self.assertGreater(coverage["mission"]["episodesStarted"], 0)
             self.assertEqual({item["role"] for item in coverage.values()}, {"skill", "mission"})
+            self.assertEqual(metrics["curriculumSampling"], "step-share")
+            self.assertLess(abs(coverage["skill"]["actualStepShare"] - 0.5), 0.08)
+            self.assertLess(abs(coverage["mission"]["actualStepShare"] - 0.5), 0.08)
+            self.assertEqual(coverage["skill"]["activePolicySteps"], coverage["skill"]["steps"])
+            self.assertEqual(coverage["mission"]["activePolicySteps"], coverage["mission"]["steps"])
+            self.assertEqual(coverage["skill"]["activePolicyFraction"], 1.0)
+            self.assertEqual(coverage["mission"]["meanActorAuthority"], 1.0)
+            self.assertAlmostEqual(
+                coverage["skill"]["stepShareDeviation"]
+                + coverage["mission"]["stepShareDeviation"],
+                0.0,
+            )
             self.assertEqual(
                 {item["phase"] for item in metrics["missionPhaseCoverage"].values()},
                 {"approach", "recover", "stop"},
@@ -1353,6 +1374,128 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertEqual(
                 sum(item["steps"] for item in metrics["missionPhaseCoverage"].values()),
                 coverage["mission"]["steps"],
+            )
+
+    def test_step_share_curriculum_corrects_for_unequal_episode_lengths(self):
+        weights = np.asarray([0.35, 0.65], dtype=np.float64)
+        rng = np.random.default_rng(17)
+        completed = np.zeros(2, dtype=np.int64)
+        episode_lengths = np.asarray([450, 900], dtype=np.int64)
+        selections = []
+        while int(completed.sum()) < 8192:
+            selected = select_curriculum_index(weights, completed, rng, "step-share")
+            selections.append(selected)
+            completed[selected] += min(
+                int(episode_lengths[selected]), 8192 - int(completed.sum())
+            )
+        actual = completed / completed.sum()
+        self.assertLess(abs(float(actual[0]) - 0.35), 0.04)
+        self.assertLess(abs(float(actual[1]) - 0.65), 0.04)
+        self.assertGreater(selections.count(0), 1)
+        with self.assertRaisesRegex(RuntimeError, "Unsupported curriculum sampling"):
+            select_curriculum_index(weights, completed, rng, "unknown")
+
+    def test_mission_progression_expands_one_continuous_task_prefix(self):
+        model, compiled = compiled_assembly("baseline")
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        zero_command = {
+            "frame": "world",
+            "linearVelocityMps": [0.0, 0.0],
+            "yawRateRadPerSec": 0.0,
+        }
+        task = {
+            "version": 7,
+            "id": "mission",
+            "name": "Mission",
+            "durationSeconds": 0.06,
+            "controlHz": 50,
+            "healthyHeight": [0.05, 0.8],
+            "terminateOnFall": False,
+            "motionCommandSchedule": [{"atSeconds": 0, "command": zero_command}],
+            "missionPhases": [
+                {"id": "approach", "name": "Approach", "atSeconds": 0, "intent": "operate", "requiredCapabilities": ["walking"]},
+                {"id": "recover", "name": "Recover", "atSeconds": 0.02, "intent": "recover", "requiredCapabilities": ["self-righting"]},
+                {"id": "stop", "name": "Stop", "atSeconds": 0.04, "intent": "stop", "requiredCapabilities": ["controlled-stop"]},
+            ],
+        }
+        exact = {
+            "id": "exact",
+            "parameters": {"bodyMassScale": {"minimum": 1.0, "maximum": 1.0}},
+        }
+        randomized = {
+            "id": "randomized",
+            "parameters": {"bodyMassScale": {"minimum": 1.1, "maximum": 1.1}},
+        }
+        progression = [
+            {
+                "id": "approach-prefix",
+                "throughPhase": "approach",
+                "untilStep": 32,
+                "domainProfile": exact,
+                "domainProfileHash": "a" * 64,
+            },
+            {
+                "id": "complete-mission",
+                "throughPhase": "stop",
+                "untilStep": 64,
+                "domainProfile": randomized,
+                "domainProfileHash": "b" * 64,
+            },
+        ]
+        self.assertEqual(mission_prefix_end_seconds(task, "approach"), 0.02)
+        self.assertEqual(mission_prefix_end_seconds(task, "stop"), 0.06)
+        self.assertEqual(select_progression_index(progression, 0), 0)
+        self.assertEqual(select_progression_index(progression, 32), 1)
+        request = {
+            "modelPath": str(model),
+            "compiled": compiled,
+            "task": task,
+            "scenarios": [scenario],
+            "progression": progression,
+            "seed": 13,
+            "training": {
+                "totalSteps": 64,
+                "rolloutSteps": 32,
+                "epochs": 1,
+                "minibatchSize": 16,
+                "learningRate": 0.0003,
+                "gamma": 0.99,
+                "gaeLambda": 0.95,
+                "clipRatio": 0.2,
+                "entropyCoefficient": 0.01,
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            PPOTrainer(hidden_sizes=[16]).train(request, Path(directory))
+            metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
+            stages = metrics["missionProgression"]
+            self.assertEqual(metrics["trainingMode"], "mission-progression")
+            self.assertIsNone(metrics["curriculumCoverage"])
+            self.assertEqual(stages["approach-prefix"]["episodeEndSeconds"], 0.02)
+            self.assertEqual(stages["complete-mission"]["episodeEndSeconds"], 0.06)
+            self.assertEqual(stages["approach-prefix"]["observedEndStep"], 32)
+            self.assertEqual(stages["complete-mission"]["observedStartStep"], 32)
+            self.assertEqual(stages["approach-prefix"]["domainProfileId"], "exact")
+            self.assertEqual(stages["complete-mission"]["domainProfileId"], "randomized")
+            self.assertEqual(
+                {sample["domainProfileId"] for sample in metrics["domainSamples"]},
+                {"exact", "randomized"},
+            )
+            self.assertEqual(
+                {
+                    item["phase"]
+                    for item in metrics["missionPhaseCoverage"].values()
+                    if item["curriculum"] == "approach-prefix"
+                },
+                {"approach"},
+            )
+            self.assertEqual(
+                {
+                    item["phase"]
+                    for item in metrics["missionPhaseCoverage"].values()
+                    if item["curriculum"] == "complete-mission"
+                },
+                {"approach", "recover", "stop"},
             )
 
 

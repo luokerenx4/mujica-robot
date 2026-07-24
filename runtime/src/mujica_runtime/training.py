@@ -152,6 +152,50 @@ def effective_action_transform(base: dict[str, Any] | None, config: dict[str, An
     return transform
 
 
+def select_curriculum_index(
+    weights: np.ndarray,
+    completed_steps: np.ndarray,
+    rng: np.random.Generator,
+    sampling: str,
+) -> int:
+    if sampling == "episode-probability":
+        return int(rng.choice(len(weights), p=weights))
+    if sampling != "step-share":
+        raise RuntimeError(f"Unsupported curriculum sampling '{sampling}'")
+    total = float(completed_steps.sum())
+    if total <= 0.0:
+        return int(rng.choice(len(weights), p=weights))
+    deficits = weights * total - completed_steps
+    maximum = float(deficits.max())
+    tied = np.flatnonzero(np.isclose(deficits, maximum, rtol=0.0, atol=1e-9))
+    if tied.size == 1:
+        return int(tied[0])
+    tied_weights = weights[tied] / weights[tied].sum()
+    return int(rng.choice(tied, p=tied_weights))
+
+
+def select_progression_index(
+    progression: list[dict[str, Any]], completed_steps: int
+) -> int:
+    for index, stage in enumerate(progression):
+        if completed_steps < int(stage["untilStep"]):
+            return index
+    return len(progression) - 1
+
+
+def mission_prefix_end_seconds(task: dict[str, Any], through_phase: str) -> float:
+    if int(task.get("version", 0)) != 7:
+        raise RuntimeError("Mission progression requires an integrated Mission Task")
+    phases = task["missionPhases"]
+    for index, phase in enumerate(phases):
+        if phase["id"] != through_phase:
+            continue
+        if index + 1 < len(phases):
+            return float(phases[index + 1]["atSeconds"])
+        return float(task["durationSeconds"])
+    raise RuntimeError(f"Mission progression names unknown phase '{through_phase}'")
+
+
 @dataclass
 class PPOTrainer:
     hidden_sizes: list[int]
@@ -165,8 +209,21 @@ class PPOTrainer:
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
         torch.use_deterministic_algorithms(True, warn_only=True)
+        progression = request.get("progression")
         curriculum = request.get("curriculum")
-        if not curriculum:
+        if progression:
+            if not request.get("task") or not request.get("scenarios"):
+                raise RuntimeError("Mission progression requires one expanded Task and at least one Scenario")
+            curriculum = [{
+                **stage,
+                "role": "mission-progression",
+                "task": request["task"],
+                "scenarios": request["scenarios"],
+                "episodeEndSeconds": mission_prefix_end_seconds(
+                    request["task"], str(stage["throughPhase"])
+                ),
+            } for stage in progression]
+        elif not curriculum:
             curriculum = [{
                 "id": "legacy-training",
                 "role": "skill",
@@ -174,16 +231,37 @@ class PPOTrainer:
                 "task": request["task"],
                 "scenarios": request["scenarios"],
             }]
-        weights = np.asarray([float(entry["weight"]) for entry in curriculum], dtype=np.float64)
+        weights = np.asarray(
+            [1.0 for _ in curriculum]
+            if progression
+            else [float(entry["weight"]) for entry in curriculum],
+            dtype=np.float64,
+        )
         weights /= weights.sum()
+        curriculum_sampling = (
+            "mission-progression"
+            if progression
+            else str(config.get("curriculumSampling", "episode-probability"))
+        )
         curriculum_rng = np.random.default_rng(seed + 20_000_000)
         scenario_indices = {str(entry["id"]): 0 for entry in curriculum}
+        curriculum_step_counts = np.zeros(len(curriculum), dtype=np.int64)
+        curriculum_active_policy_steps = np.zeros(len(curriculum), dtype=np.int64)
+        curriculum_actor_authority_sums = np.zeros(len(curriculum), dtype=np.float64)
+        curriculum_learning_reward_sums = np.zeros(len(curriculum), dtype=np.float64)
         episode_index = 0
+        completed_steps = 0
         domain_samples: list[dict[str, Any]] = []
 
         def make_environment() -> RobotEnvironment:
             nonlocal episode_index
-            curriculum_index = int(curriculum_rng.choice(len(curriculum), p=weights))
+            curriculum_index = (
+                select_progression_index(curriculum, completed_steps)
+                if progression
+                else select_curriculum_index(
+                    weights, curriculum_step_counts, curriculum_rng, curriculum_sampling
+                )
+            )
             entry = curriculum[curriculum_index]
             entry_id = str(entry["id"])
             scenario_index = scenario_indices[entry_id]
@@ -192,20 +270,35 @@ class PPOTrainer:
             episode_index += 1
             episode_seed = seed + episode_index
             domain_seed = seed + 10_000_000 + episode_index
-            domain_sample = sample_domain_profile(request.get("domainProfile"), domain_seed)
+            effective_domain_profile = entry.get("domainProfile") or request.get("domainProfile")
+            domain_sample = sample_domain_profile(effective_domain_profile, domain_seed)
             domain_samples.append({
                 "episode": episode_index,
                 "curriculum": entry_id,
+                "curriculumIndex": curriculum_index,
                 "role": entry["role"],
                 "task": entry["task"]["id"],
                 "scenario": scenario["id"],
                 "environmentSeed": episode_seed,
                 "domainSeed": domain_seed,
+                "globalStepStart": completed_steps,
+                "throughPhase": entry.get("throughPhase"),
+                "episodeEndSeconds": entry.get("episodeEndSeconds", float(entry["task"]["durationSeconds"])),
+                "domainProfileId": effective_domain_profile.get("id") if effective_domain_profile else None,
+                "domainProfileHash": entry.get("domainProfileHash") or request.get("domainProfileHash"),
                 "steps": 0,
                 "completed": False,
                 "parameters": domain_sample,
             })
-            return RobotEnvironment(Path(request["modelPath"]), request["compiled"], entry["task"], scenario, episode_seed, domain_sample)
+            return RobotEnvironment(
+                Path(request["modelPath"]),
+                request["compiled"],
+                entry["task"],
+                scenario,
+                episode_seed,
+                domain_sample,
+                entry.get("episodeEndSeconds"),
+            )
 
         environment = make_environment()
         program_prior: Controller | None = None
@@ -236,7 +329,7 @@ class PPOTrainer:
         normalizer = RunningNormalizer(observation_size)
         total_steps = int(config["totalSteps"]); rollout_steps = int(config["rolloutSteps"])
         metrics: list[dict[str, Any]] = []
-        completed_steps = 0; episode_reward = 0.0; completed_rewards: list[float] = []
+        episode_reward = 0.0; completed_rewards: list[float] = []
         mission_phase_samples: dict[str, dict[str, Any]] = {}
         lows = np.asarray(request["compiled"]["actionLow"], dtype=np.float32); highs = np.asarray(request["compiled"]["actionHigh"], dtype=np.float32)
 
@@ -281,6 +374,10 @@ class PPOTrainer:
                 actor_authority = float(batch_policy_masks[-1]) * float((action_transform or {}).get("residualScale", 1.0))
                 mission_bonus, mission_terms = mission_reward_bonus(result.info, config.get("missionReward"), actor_authority)
                 learning_reward = result.reward - quality_penalty + mission_bonus
+                curriculum_index = int(domain_samples[-1]["curriculumIndex"])
+                curriculum_active_policy_steps[curriculum_index] += int(actor_authority > 0.0)
+                curriculum_actor_authority_sums[curriculum_index] += actor_authority
+                curriculum_learning_reward_sums[curriculum_index] += learning_reward
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
                 batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(learning_reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
@@ -317,6 +414,7 @@ class PPOTrainer:
                     sample["commandedProgressM"] += float(result.info.get("commandedProgressDeltaM", 0.0))
                 observation_map = result.observation; observation = environment.vector(observation_map); completed_steps += 1
                 domain_samples[-1]["steps"] += 1
+                curriculum_step_counts[int(domain_samples[-1]["curriculumIndex"])] += 1
                 if done:
                     domain_samples[-1]["completed"] = True
                     completed_rewards.append(episode_reward); episode_reward = 0.0
@@ -372,6 +470,8 @@ class PPOTrainer:
             "updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards),
             "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
             "qualityRewardReferences": QUALITY_REWARD_REFERENCES,
+            "trainingMode": "mission-progression" if progression else "curriculum",
+            "curriculumSampling": curriculum_sampling,
             "domainProfile": {
                 "id": request["domainProfile"]["id"],
                 "hash": request["domainProfileHash"],
@@ -384,12 +484,47 @@ class PPOTrainer:
                 str(entry["id"]): {
                     "role": entry["role"],
                     "weight": float(entry["weight"]),
+                    "targetStepShare": float(weights[index]),
                     "episodesStarted": sum(sample["curriculum"] == entry["id"] for sample in domain_samples),
                     "episodesCompleted": sum(sample["curriculum"] == entry["id"] and sample["completed"] for sample in domain_samples),
-                    "steps": sum(int(sample["steps"]) for sample in domain_samples if sample["curriculum"] == entry["id"]),
+                    "steps": int(curriculum_step_counts[index]),
+                    "actualStepShare": float(curriculum_step_counts[index] / completed_steps),
+                    "stepShareDeviation": float(curriculum_step_counts[index] / completed_steps - weights[index]),
+                    "activePolicySteps": int(curriculum_active_policy_steps[index]),
+                    "activePolicyFraction": float(curriculum_active_policy_steps[index] / max(curriculum_step_counts[index], 1)),
+                    "meanActorAuthority": float(curriculum_actor_authority_sums[index] / max(curriculum_step_counts[index], 1)),
+                    "meanLearningReward": float(curriculum_learning_reward_sums[index] / max(curriculum_step_counts[index], 1)),
                 }
-                for entry in curriculum
-            },
+                for index, entry in enumerate(curriculum)
+            } if not progression else None,
+            "missionProgression": {
+                str(entry["id"]): {
+                    "throughPhase": entry["throughPhase"],
+                    "scheduledStartStep": 0 if index == 0 else int(curriculum[index - 1]["untilStep"]),
+                    "scheduledUntilStep": int(entry["untilStep"]),
+                    "episodeEndSeconds": float(entry["episodeEndSeconds"]),
+                    "domainProfileId": entry["domainProfile"]["id"] if entry.get("domainProfile") else (
+                        request["domainProfile"]["id"] if request.get("domainProfile") else None
+                    ),
+                    "domainProfileHash": entry.get("domainProfileHash") or request.get("domainProfileHash"),
+                    "episodesStarted": sum(sample["curriculum"] == entry["id"] for sample in domain_samples),
+                    "episodesCompleted": sum(sample["curriculum"] == entry["id"] and sample["completed"] for sample in domain_samples),
+                    "steps": int(curriculum_step_counts[index]),
+                    "observedStartStep": min(
+                        (int(sample["globalStepStart"]) for sample in domain_samples if sample["curriculum"] == entry["id"]),
+                        default=None,
+                    ),
+                    "observedEndStep": max(
+                        (int(sample["globalStepStart"]) + int(sample["steps"]) for sample in domain_samples if sample["curriculum"] == entry["id"]),
+                        default=None,
+                    ),
+                    "activePolicySteps": int(curriculum_active_policy_steps[index]),
+                    "activePolicyFraction": float(curriculum_active_policy_steps[index] / max(curriculum_step_counts[index], 1)),
+                    "meanActorAuthority": float(curriculum_actor_authority_sums[index] / max(curriculum_step_counts[index], 1)),
+                    "meanLearningReward": float(curriculum_learning_reward_sums[index] / max(curriculum_step_counts[index], 1)),
+                }
+                for index, entry in enumerate(curriculum)
+            } if progression else None,
             "missionPhaseCoverage": {
                 key: {
                     "curriculum": sample["curriculum"],
@@ -414,9 +549,11 @@ class PPOTrainer:
 
 
 def assert_domain_profile_plant_compatible(request: dict[str, Any]) -> None:
-    profile = request.get("domainProfile")
-    if profile and profile.get("plantHash") is not None and profile["plantHash"] != request["compiled"]["plantHash"]:
-        raise RuntimeError(f"Training Domain Profile '{profile['id']}' plantHash does not match compiled Assembly '{request['compiled']['id']}'")
+    profiles = [request.get("domainProfile")]
+    profiles.extend(stage.get("domainProfile") for stage in request.get("progression") or [])
+    for profile in profiles:
+        if profile and profile.get("plantHash") is not None and profile["plantHash"] != request["compiled"]["plantHash"]:
+            raise RuntimeError(f"Training Domain Profile '{profile['id']}' plantHash does not match compiled Assembly '{request['compiled']['id']}'")
 
 
 def train(request: dict[str, Any]) -> dict[str, Any]:
@@ -424,7 +561,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
     assert_domain_profile_plant_compatible(request)
     module = load_python_module((trainer_root / definition["entry"]).resolve(), f"mujica_trainer_{definition['id'].replace('-', '_')}")
     trainer = module.create_trainer()
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "plantHash": request["compiled"]["plantHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request.get("task"), "scenarios": request.get("scenarios"), "curriculum": request.get("curriculum"), "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "plantHash": request["compiled"]["plantHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request.get("task"), "scenarios": request.get("scenarios"), "curriculum": request.get("curriculum"), "progression": request.get("progression"), "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
     training_run_id = f"training-{run_key[:16]}"; training_run = project_dir / "training-runs" / training_run_id
     if (training_run / "manifest.json").exists(): return {**json.loads((training_run / "result.json").read_text()), "artifactPath": str(training_run), "cached": True}
     policy_result: dict[str, Any] = {}
@@ -435,7 +572,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
         started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time() - started
         model_hash = hash_file(work / "model.pt")
         observation_hash = hash_json(request["compiled"]["observationContract"]); action_hash = hash_json(request["compiled"]["actionContract"])
-        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "plantHash": request["compiled"]["plantHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]) if request.get("task") else None, "scenarioHashes": [hash_json(item) for item in request.get("scenarios", [])], "curriculumHash": hash_json(request["curriculum"]) if request.get("curriculum") else None, "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
+        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "plantHash": request["compiled"]["plantHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]) if request.get("task") else None, "scenarioHashes": [hash_json(item) for item in request.get("scenarios", [])], "curriculumHash": hash_json(request["curriculum"]) if request.get("curriculum") else None, "progressionHash": hash_json(request["progression"]) if request.get("progression") else None, "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
         policy_id = f"{request['training']['id']}-{hash_json(policy_identity)[:16]}"; policy_dir = project_dir / "policies" / policy_id
         reuse_policy = False
         if policy_dir.exists():
@@ -454,6 +591,15 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
                     "evidenceHash": request.get("domainProfileEvidenceHash"),
                     "hash": request["domainProfileHash"],
                 })
+            if request.get("progression"):
+                write_json(target / "mission-progression.json", [{
+                    "id": stage["id"],
+                    "throughPhase": stage["throughPhase"],
+                    "untilStep": stage["untilStep"],
+                    "domainProfile": stage.get("domainProfile"),
+                    "domainProfileEvidenceHash": stage.get("domainProfileEvidenceHash"),
+                    "domainProfileHash": stage.get("domainProfileHash"),
+                } for stage in request["progression"]])
             write_json(target / "manifest.json", {"version": 1, "id": policy_id, **policy_identity, "hardware": hardware_info(), "trainingDeterminism": "best-effort", "evaluationDeterminism": "same-environment-bitwise-intended", "createdByTrainingRun": training_run_id})
         if not reuse_policy: atomic_directory(policy_dir, policy_writer)
         policy_result = {"trainingRunId": training_run_id, "policyId": policy_id, "policyPath": str(policy_dir), "modelHash": model_hash, "trainingMetrics": training_metrics, "elapsedSeconds": elapsed}

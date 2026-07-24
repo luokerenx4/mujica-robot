@@ -26,6 +26,10 @@ no-reset Missions.
   Mission shaping only under learned-actor authority.
 - [x] Frozen Policy evidence records per-phase progress, reward, and actor
   authority for Studio and Agent inspection.
+- [x] Training v3 grows monotonically longer prefixes of one integrated
+  Mission; the final stage is necessarily the complete Task.
+- [x] Each Mission stage freezes its Domain Profile, observed global-step
+  interval, actor authority, and phase-local reward evidence.
 - [ ] Improve degraded-impact recovery and signed post-recovery progress
   without weakening the Suite.
 - [ ] Replace synthetic plant ranges with calibrated/HIL evidence before
@@ -64,15 +68,24 @@ no-reset Missions.
   `redirect`, 12.5% in `traverse`, and 24.0% in `stop`. One alternate seed
   received zero Mission-phase actor authority, showing that the next bottleneck
   is handoff/data availability rather than PPO budget alone.
+- Training v3 replaced detached recovery Skills with monotonically expanding
+  prefixes of one Task v7 Mission. The 13-second exact prefix gives the actor
+  `21.5%` authority exposure and the exact full-Mission stage gives `43.3%`.
+- Three Mission-progression seeds scored `38.863401`, `38.867625`, and
+  `38.853282`. The selected seed remains `REVERT` against `38.935033`; improved
+  causal data did not yet correct negative post-handoff `redirect` progress or
+  degraded recovery.
 
 ## Next experiment
 
 Keep the Mission Suite frozen. Change only the governed training surface:
 
-1. change the recovery-to-policy handoff or curriculum so successful Mission
-   episodes supply substantially more post-recovery actor data;
-2. retain phase-conditioned reward and authority evidence;
-3. preserve impact entry and self-righting as Program-only authority until a
+1. keep the new Mission progression and change reward/credit assignment so
+   residual authority during `redirect` produces positive signed progress;
+2. improve the Program recovery basin under randomized degraded Missions so
+   the learned actor receives downstream authority consistently;
+3. retain phase-conditioned reward and authority evidence;
+4. preserve impact entry and self-righting as Program-only authority until a
    separate governed experiment explicitly changes that safety boundary;
-4. reject every experiment unless degraded recovery gates improve and no exact
+5. reject every experiment unless degraded recovery gates improve and no exact
    Mission gate regresses.

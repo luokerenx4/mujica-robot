@@ -1,33 +1,35 @@
 {
-  "version": 2,
+  "version": 3,
   "id": "integrated-resilience-curriculum",
-  "name": "Skill and full-Mission residual PPO curriculum",
+  "name": "Continuous integrated-Mission residual PPO progression",
   "assembly": "resilient-command-conditioned-history-3dof",
   "trainer": "resilient-residual-ppo",
   "priorController": "behavior-supervisor",
-  "domainProfile": "quadruped-resilient-mission-v1",
-  "curriculum": [
+  "mission": {
+    "task": "integrated-resilience-mission",
+    "scenarios": [
+      "mission-impact-left",
+      "mission-impact-right"
+    ]
+  },
+  "progression": [
     {
-      "id": "recovery-handoff-skill",
-      "role": "skill",
-      "task": "recover-forward",
-      "scenarios": [
-        "fallen-front",
-        "fallen-back",
-        "fallen-left",
-        "fallen-right"
-      ],
-      "weight": 0.35
+      "id": "recover-resume-and-redirect-exact",
+      "throughPhase": "redirect",
+      "untilStep": 2600,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
     },
     {
-      "id": "integrated-mission",
-      "role": "mission",
-      "task": "integrated-resilience-mission",
-      "scenarios": [
-        "mission-impact-left",
-        "mission-impact-right"
-      ],
-      "weight": 0.65
+      "id": "complete-mission-exact",
+      "throughPhase": "stop",
+      "untilStep": 4400,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+    },
+    {
+      "id": "complete-mission-randomized",
+      "throughPhase": "stop",
+      "untilStep": 8192,
+      "domainProfile": "quadruped-resilient-mission-v1"
     }
   ],
   "promotionBenchmark": "integrated-resilience-mission",

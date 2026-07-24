@@ -449,22 +449,31 @@ describe("Robot Assembly compiler", () => {
     expect(historyLab.execution).toMatchObject({ kind: "policy", referenceController: "latency-aware-spatial-gait" });
     const curriculum = await loadTraining(project, "integrated-resilience-curriculum");
     expect(curriculum).toMatchObject({
-      version: 2,
+      version: 3,
       promotionBenchmark: "integrated-resilience-mission",
-      curriculum: [
-        { id: "recovery-handoff-skill", role: "skill", weight: 0.35 },
-        { id: "integrated-mission", role: "mission", weight: 0.65 },
+      mission: {
+        task: "integrated-resilience-mission",
+        scenarios: ["mission-impact-left", "mission-impact-right"],
+      },
+      progression: [
+        { id: "recover-resume-and-redirect-exact", throughPhase: "redirect", untilStep: 2600 },
+        { id: "complete-mission-exact", throughPhase: "stop", untilStep: 4400 },
+        { id: "complete-mission-randomized", throughPhase: "stop", untilStep: 8192 },
       ],
       missionReward: { commandProgress: 3, velocityTracking: 0.5, stopStability: 1 },
     });
-    if (curriculum.version !== 2) throw new Error("Expected curriculum Training");
+    if (curriculum.version !== 3) throw new Error("Expected Mission Progression Training");
     expect(trainingSchema.safeParse({
       ...curriculum,
-      curriculum: curriculum.curriculum.filter((entry) => entry.role === "skill"),
+      progression: curriculum.progression.map((stage) => ({ ...stage, untilStep: stage.untilStep - 1 })),
     }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
       missionReward: { ...curriculum.missionReward, commandProgress: 21 },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      progression: curriculum.progression.slice(0, 2),
     }).success).toBe(false);
   });
 

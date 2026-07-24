@@ -375,6 +375,19 @@ export async function projectWorkCommand(input: string, options: { project?: str
     .map((item, index) => ({ rank: index + 1, ...item }));
   const failingBenchmarks = new Set(blockers.map((item) => item.benchmark));
   const lanes: DevelopmentWorkOrder["lanes"] = [];
+  const reviewedController = await controllerIdentity(project.rootDir, review.subject.controller);
+  let reviewedProgramPrior: string | null = null;
+  if (reviewedController.definition.kind === "policy") {
+    const architecture = JSON.parse(await readFile(confined(
+      project.rootDir,
+      `policies/${reviewedController.definition.policy}/architecture.json`,
+    ), "utf8"));
+    if (architecture.actionTransform?.kind === "program-controller-residual") {
+      reviewedProgramPrior = typeof architecture.actionTransform.controllerId === "string"
+        ? architecture.actionTransform.controllerId
+        : null;
+    }
+  }
   for (const labId of await listResearchLabIds(project.rootDir)) {
     const lab = await loadResearchLab(project.rootDir, labId);
     if (!failingBenchmarks.has(lab.benchmark)) continue;
@@ -382,7 +395,11 @@ export async function projectWorkCommand(input: string, options: { project?: str
     let subject: { assembly: string; controller: string; training?: string; candidate?: string };
     let followupController: string;
     if (lab.execution.kind === "controller") {
-      compatible = lab.execution.assembly === review.subject.assembly && lab.execution.controller === review.subject.controller && review.subject.controllerKind === "program";
+      compatible = lab.execution.assembly === review.subject.assembly
+        && (
+          (review.subject.controllerKind === "program" && lab.execution.controller === review.subject.controller)
+          || (review.subject.controllerKind === "policy" && lab.execution.controller === reviewedProgramPrior)
+        );
       subject = { assembly: lab.execution.assembly, controller: lab.execution.controller };
       followupController = lab.execution.controller;
     } else if (lab.execution.kind === "policy") {

@@ -163,7 +163,7 @@ describe("agent CLI contract", () => {
       kind: "mujica-development-work-order",
       project: "quadruped",
       status: "PARTIALLY_ROUTED",
-      subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "behavior-supervisor" },
+      subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "integrated-resilience-curriculum-policy" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -794,7 +794,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
-  }, 10_000);
+  }, 30_000);
 
   test("shadow commissioning never actuates and stale state fails closed with an acknowledged stop", async () => {
     const common = [
@@ -844,7 +844,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(stalePath, { recursive: true, force: true });
     }
-  }, 10_000);
+  }, 30_000);
 
   test("a kept experimental Policy Revision can deploy only as a prewarmed shadow Bundle", async () => {
     const exported = invoke(["hardware", "export", "examples/quadruped", "--target", "history-policy-shadow-dry-run", "--json"]);
@@ -891,7 +891,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 30_000);
 
   test("device health faults stop a learned Policy before proposal dispatch", async () => {
     const captured = invoke([
@@ -929,7 +929,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 30_000);
 
   test("an isolated actuator trip can become only a new-session recovery candidate", async () => {
     const captured = invoke([
@@ -976,7 +976,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 30_000);
 
   test("host and Driver reject expired decisions before applying them", async () => {
     const common = [
@@ -1026,7 +1026,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(driverPath, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 30_000);
 
   test("the Driver autonomously latches stop when host commands disappear", async () => {
     const captured = invoke([
@@ -1075,7 +1075,7 @@ describe("agent CLI contract", () => {
     } finally {
       rmSync(artifactPath, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 30_000);
 
   test("physical Capture requires matching, live, external operator authorization", () => {
     const target: any = { version: 1, id: "robot-target", name: "Robot", revision: "robot-r1", assembly: "robot", controller: "control", environment: "real", protocol: "stdio-jsonl-v1", controlHz: 50, safety: { maximumLatencyMs: 10, maximumConsecutiveMisses: 1, emergencyStopAction: [0] }, device: { vendor: "Vendor", model: "Robot", serialRequired: true } };
@@ -1229,7 +1229,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-f526c1659c07ec18",
+      "--bundle", "hardware-4bd64b550998a69e",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

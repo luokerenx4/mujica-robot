@@ -232,13 +232,31 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     const training = await loadTraining(root, id); const assembly = await compileAssembly(root, training.assembly); await loadTrainer(root, training.trainer);
     if (training.version === 1) {
       await loadTask(root, training.task); for (const scenario of training.scenarios) await loadScenario(root, scenario);
-    } else {
+    } else if (training.version === 2) {
       const promotionBenchmark = await loadBenchmark(root, training.promotionBenchmark);
       if (promotionBenchmark.version !== 2) throw new Error(`Curriculum Training '${id}' promotionBenchmark must be a Mission Suite`);
       for (const entry of training.curriculum) {
         const task = await loadTask(root, entry.task);
         if (entry.role === "mission" && task.version !== 7) throw new Error(`Curriculum Training '${id}' Mission entry '${entry.id}' must use an integrated Mission Task`);
         for (const scenario of entry.scenarios) await loadScenario(root, scenario);
+      }
+    } else {
+      const promotionBenchmark = await loadBenchmark(root, training.promotionBenchmark);
+      if (promotionBenchmark.version !== 2) throw new Error(`Mission Progression Training '${id}' promotionBenchmark must be a Mission Suite`);
+      const task = await loadTask(root, training.mission.task);
+      if (task.version !== 7) throw new Error(`Mission Progression Training '${id}' must use an integrated Mission Task`);
+      for (const scenario of training.mission.scenarios) await loadScenario(root, scenario);
+      const phaseIndices = new Map(task.missionPhases.map((phase, index) => [phase.id, index]));
+      let previousPhaseIndex = -1;
+      for (const [index, stage] of training.progression.entries()) {
+        const phaseIndex = phaseIndices.get(stage.throughPhase);
+        if (phaseIndex === undefined) throw new Error(`Mission Progression Training '${id}' stage '${stage.id}' names unknown phase '${stage.throughPhase}'`);
+        if (phaseIndex < previousPhaseIndex) throw new Error(`Mission Progression Training '${id}' stage '${stage.id}' cannot shorten the Mission prefix`);
+        previousPhaseIndex = phaseIndex;
+        if (stage.domainProfile) await loadDomainProfile(root, stage.domainProfile);
+        if (index === training.progression.length - 1 && phaseIndex !== task.missionPhases.length - 1) {
+          throw new Error(`Mission Progression Training '${id}' final stage must include the complete Mission`);
+        }
       }
     }
     if (training.domainProfile) await loadDomainProfile(root, training.domainProfile);

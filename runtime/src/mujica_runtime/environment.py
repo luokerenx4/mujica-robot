@@ -51,7 +51,16 @@ def active_mission_phase(task: dict[str, Any], time_seconds: float) -> dict[str,
 
 
 class RobotEnvironment:
-    def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int, domain_sample: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        model_path: Path,
+        compiled: dict[str, Any],
+        task: dict[str, Any],
+        scenario: dict[str, Any],
+        seed: int,
+        domain_sample: dict[str, Any] | None = None,
+        episode_end_seconds: float | None = None,
+    ):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
         self.compiled = compiled
@@ -108,7 +117,17 @@ class RobotEnvironment:
         self.seed = seed
         self.control_dt = 1.0 / float(task["controlHz"])
         self.physics_steps = max(1, round(self.control_dt / self.model.opt.timestep))
-        self.max_steps = round(float(task["durationSeconds"]) * float(task["controlHz"]))
+        authored_duration = float(task["durationSeconds"])
+        effective_duration = authored_duration if episode_end_seconds is None else float(episode_end_seconds)
+        if effective_duration <= 0.0 or effective_duration > authored_duration:
+            raise RuntimeError(
+                f"Training episode end {effective_duration} must be within the authored Task duration {authored_duration}"
+            )
+        raw_max_steps = effective_duration * float(task["controlHz"])
+        if abs(raw_max_steps - round(raw_max_steps)) > 1e-9:
+            raise RuntimeError("Training episode end must align to the Task control grid")
+        self.episode_end_seconds = effective_duration
+        self.max_steps = round(raw_max_steps)
         self.step_index = 0
         self.motion_command_schedule = compile_motion_command_schedule(task)
         self.motion_command_by_step = {int(segment["atStep"]): segment["command"] for segment in self.motion_command_schedule}

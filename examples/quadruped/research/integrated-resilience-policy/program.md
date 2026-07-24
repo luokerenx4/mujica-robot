@@ -16,6 +16,16 @@ It removed no locked violations. Prefer changes that improve signed
 post-recovery task progress and phase-conditioned credit assignment. Record
 actual Skill/Mission exposure and actor authority for every Policy.
 
+The original 35% Skill weight became only 5.5% of actual steps, but correcting
+that quota would preserve the wrong abstraction: isolated fallen-pose Skills
+discard the approach and impact states that produced recovery. The current
+bounded experiment uses Training v3 Mission progression. Every episode starts
+at `approach`; it first runs through the post-handoff `redirect` on an exact
+plant, then completes the Mission on exact and randomized plants. The original
+10-second prefix exposed zero actor steps, so stage completion must be checked
+against frozen authority evidence rather than phase labels. Only the locked
+full-Mission Judge can promote a Policy.
+
 The Judge runs exact and degraded left/right complete Missions, then static
 self-righting, recovery-handoff, command-tracking, and transition regressions.
 No aggregate improvement may compensate for a recovery or safety regression.

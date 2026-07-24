@@ -1,0 +1,167 @@
+[
+  {
+    "id": "recover-resume-and-redirect-exact",
+    "throughPhase": "redirect",
+    "untilStep": 2600,
+    "domainProfile": {
+      "version": 1,
+      "id": "quadruped-resilient-resume-curriculum-v1",
+      "name": "Post-recovery locomotion curriculum",
+      "provenance": {
+        "kind": "synthetic",
+        "evidence": null,
+        "notes": "Training-only stage-zero curriculum. It alternates the two locked impact directions on the exact recoverable plant so every successful episode can contribute post-recovery actor data. It makes no robustness claim; variation remains assigned to quadruped-resilient-mission-v1 and independent held-out Benchmarks."
+      },
+      "parameters": {
+        "bodyMassScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "jointDampingScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "actuatorStrengthScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "frictionScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "observationNoiseStd": {
+          "minimum": 0,
+          "maximum": 0
+        },
+        "actuatorDelayJitterSteps": {
+          "minimum": 0,
+          "maximum": 0
+        },
+        "pushTimeOffsetSeconds": {
+          "minimum": 0,
+          "maximum": 0
+        },
+        "pushForceScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "pushDirectionJitterRad": {
+          "minimum": 0,
+          "maximum": 0
+        }
+      }
+    },
+    "domainProfileEvidenceHash": null,
+    "domainProfileHash": "3c16012f2e419f47241123df2a019eb585a3970e418a379d061b806ede486749"
+  },
+  {
+    "id": "complete-mission-exact",
+    "throughPhase": "stop",
+    "untilStep": 4400,
+    "domainProfile": {
+      "version": 1,
+      "id": "quadruped-resilient-resume-curriculum-v1",
+      "name": "Post-recovery locomotion curriculum",
+      "provenance": {
+        "kind": "synthetic",
+        "evidence": null,
+        "notes": "Training-only stage-zero curriculum. It alternates the two locked impact directions on the exact recoverable plant so every successful episode can contribute post-recovery actor data. It makes no robustness claim; variation remains assigned to quadruped-resilient-mission-v1 and independent held-out Benchmarks."
+      },
+      "parameters": {
+        "bodyMassScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "jointDampingScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "actuatorStrengthScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "frictionScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "observationNoiseStd": {
+          "minimum": 0,
+          "maximum": 0
+        },
+        "actuatorDelayJitterSteps": {
+          "minimum": 0,
+          "maximum": 0
+        },
+        "pushTimeOffsetSeconds": {
+          "minimum": 0,
+          "maximum": 0
+        },
+        "pushForceScale": {
+          "minimum": 1,
+          "maximum": 1
+        },
+        "pushDirectionJitterRad": {
+          "minimum": 0,
+          "maximum": 0
+        }
+      }
+    },
+    "domainProfileEvidenceHash": null,
+    "domainProfileHash": "3c16012f2e419f47241123df2a019eb585a3970e418a379d061b806ede486749"
+  },
+  {
+    "id": "complete-mission-randomized",
+    "throughPhase": "stop",
+    "untilStep": 8192,
+    "domainProfile": {
+      "version": 1,
+      "id": "quadruped-resilient-mission-v1",
+      "name": "Synthetic continuous mission and impact envelope",
+      "provenance": {
+        "kind": "synthetic",
+        "evidence": null,
+        "notes": "Training-only engineering envelope. Impact time, magnitude, and planar direction vary continuously around two authored opposing base directions; plant ranges remain synthetic until replaced by HIL or real identification."
+      },
+      "parameters": {
+        "bodyMassScale": {
+          "minimum": 0.92,
+          "maximum": 1.08
+        },
+        "jointDampingScale": {
+          "minimum": 0.75,
+          "maximum": 1.25
+        },
+        "actuatorStrengthScale": {
+          "minimum": 0.9,
+          "maximum": 1.1
+        },
+        "frictionScale": {
+          "minimum": 0.8,
+          "maximum": 1.15
+        },
+        "observationNoiseStd": {
+          "minimum": 0,
+          "maximum": 0.002
+        },
+        "actuatorDelayJitterSteps": {
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pushTimeOffsetSeconds": {
+          "minimum": -0.3,
+          "maximum": 0.3
+        },
+        "pushForceScale": {
+          "minimum": 0.75,
+          "maximum": 1.25
+        },
+        "pushDirectionJitterRad": {
+          "minimum": -0.35,
+          "maximum": 0.35
+        }
+      }
+    },
+    "domainProfileEvidenceHash": null,
+    "domainProfileHash": "6a897a4e16f28a2c21046e86610a9ac564201710204cd776af682c5603ba9af8"
+  }
+]

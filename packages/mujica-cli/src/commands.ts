@@ -505,14 +505,29 @@ export async function simulateCommand(projectDir: string, options: { assembly: s
 export async function executeTraining(project: ProjectContext, training: TrainingDefinition, seed: number, deadlineMs?: number) {
   const assembly = await compileAssembly(project.rootDir, training.assembly); const trainer = await loadTrainer(project.rootDir, training.trainer);
   const trainerHash = await hashDirectory(trainer.rootDir); const sourceHash = await runtimeSourceHash(); const harnessHash = await harnessSourceHash(); const harnessDependencyHash = await harnessDependencyLockHash();
-  const task = training.version === 1 ? await loadTask(project.rootDir, training.task) : null;
+  const task = training.version === 1
+    ? await loadTask(project.rootDir, training.task)
+    : training.version === 3
+      ? await loadTask(project.rootDir, training.mission.task)
+      : null;
   const scenarios = [];
   if (training.version === 1) for (const id of training.scenarios) scenarios.push(await loadScenario(project.rootDir, id));
+  if (training.version === 3) for (const id of training.mission.scenarios) scenarios.push(await loadScenario(project.rootDir, id));
   const curriculum = training.version === 2 ? await Promise.all(training.curriculum.map(async (entry) => ({
     ...entry,
     task: await loadTask(project.rootDir, entry.task),
     scenarios: await Promise.all(entry.scenarios.map(async (id) => await loadScenario(project.rootDir, id))),
   }))) : null;
+  const progression = training.version === 3 ? await Promise.all(training.progression.map(async (stage) => {
+    const profile = stage.domainProfile ? await domainProfileIdentity(project.rootDir, stage.domainProfile) : null;
+    if (profile) assertDomainProfilePlantCompatible(profile.definition, assembly);
+    return {
+      ...stage,
+      domainProfile: profile?.definition ?? null,
+      domainProfileHash: profile?.hash ?? null,
+      domainProfileEvidenceHash: profile?.evidenceHash ?? null,
+    };
+  })) : null;
   let priorController: { definition: ControllerDefinition; rootDir: string; hash: string } | null = null;
   if (training.priorController) {
     const prior = await loadController(project.rootDir, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training prior '${training.priorController}' must be a program Controller`);
@@ -529,8 +544,13 @@ export async function executeTraining(project: ProjectContext, training: Trainin
     runtimeVersion, runtimeSourceHash: sourceHash, harnessSourceHash: harnessHash, harnessDependencyLockHash: harnessDependencyHash, projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), training, trainer: trainer.definition, trainerRoot: trainer.rootDir, trainerHash,
     priorController: priorController?.definition ?? null, priorControllerRoot: priorController?.rootDir ?? null, priorControllerHash: priorController?.hash ?? null,
     domainProfile, domainProfileHash, domainProfileEvidenceHash,
-    task, scenarios, curriculum, seed, dependencyLockHash: await dependencyLockHash(),
-    sourceHashes: { runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash, priorController: priorController?.hash ?? null, domainProfile: domainProfileHash, assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training) },
+    task, scenarios, curriculum, progression, seed, dependencyLockHash: await dependencyLockHash(),
+    sourceHashes: {
+      runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash,
+      priorController: priorController?.hash ?? null, domainProfile: domainProfileHash,
+      progressionDomainProfiles: progression?.map((stage) => ({ id: stage.id, hash: stage.domainProfileHash })) ?? null,
+      assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training),
+    },
   }, timeoutMs);
 }
 
