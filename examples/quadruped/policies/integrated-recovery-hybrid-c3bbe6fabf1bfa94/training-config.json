@@ -1,0 +1,65 @@
+{
+  "version": 3,
+  "id": "integrated-recovery-hybrid",
+  "name": "Continuous-Mission code and RL recovery progression",
+  "assembly": "resilient-command-conditioned-history-3dof",
+  "trainer": "recovery-settle-residual-ppo",
+  "priorController": "behavior-supervisor",
+  "totalSteps": 131072,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 5e-05,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.12,
+  "entropyCoefficient": 0,
+  "residualScale": 0.04,
+  "residualPenalty": 1,
+  "qualityReward": {
+    "jointAcceleration": 0.0002,
+    "bodyAngularAcceleration": 0.001,
+    "actionSlew": 0.0002,
+    "actuatorSaturation": 0.01,
+    "footSlip": 0,
+    "footImpact": 0
+  },
+  "missionReward": {
+    "commandProgress": 3,
+    "velocityTracking": 0.5,
+    "stopStability": 1
+  },
+  "recoveryReward": {
+    "upright": 2,
+    "height": 1,
+    "stillness": 10,
+    "support": 1
+  },
+  "mission": {
+    "task": "integrated-resilience-mission",
+    "scenarios": [
+      "mission-impact-left-degraded"
+    ]
+  },
+  "progression": [
+    {
+      "id": "continuous-recovery-envelope",
+      "throughPhase": "recover",
+      "untilStep": 65536,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+    },
+    {
+      "id": "complete-mission-exact-plants",
+      "throughPhase": "stop",
+      "untilStep": 98304,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+    },
+    {
+      "id": "complete-mission-randomized-plants",
+      "throughPhase": "stop",
+      "untilStep": 131072,
+      "domainProfile": "quadruped-resilient-mission-v1"
+    }
+  ],
+  "promotionBenchmark": "integrated-resilience-mission"
+}

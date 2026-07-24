@@ -171,7 +171,7 @@ def program_residual_gate_scale(
     transform: dict[str, Any],
     program_prior: Controller,
 ) -> float:
-    """Fail closed when a learned residual is outside its declared behavior mode."""
+    """Fail closed when a learned residual is outside its declared safe envelope."""
     gate = transform.get("residualGate")
     if gate is None:
         return 1.0
@@ -191,6 +191,25 @@ def program_residual_gate_scale(
     for field, expected in gate.get("requiredTelemetry", {}).items():
         if telemetry.get(field) != expected:
             return 0.0
+    for bounds_key, compare in (
+        ("minimumTelemetry", lambda value, bound: value >= bound),
+        ("maximumTelemetry", lambda value, bound: value <= bound),
+    ):
+        bounds = gate.get(bounds_key, {})
+        if not isinstance(bounds, dict):
+            return 0.0
+        for field, raw_bound in bounds.items():
+            raw_value = telemetry.get(field)
+            if (
+                isinstance(raw_bound, bool)
+                or not isinstance(raw_bound, (int, float))
+                or not np.isfinite(float(raw_bound))
+                or isinstance(raw_value, bool)
+                or not isinstance(raw_value, (int, float))
+                or not np.isfinite(float(raw_value))
+                or not compare(float(raw_value), float(raw_bound))
+            ):
+                return 0.0
     ramp_seconds = float(gate.get("rampSeconds", 0.0))
     if ramp_seconds <= 0.0:
         return 1.0

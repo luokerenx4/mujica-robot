@@ -1,0 +1,45 @@
+diff --git a/before/controllers/behavior-supervisor/controller.json b/after/controllers/behavior-supervisor/controller.json
+index 55cfc75..8ea6c97 100644
+--- a/before/controllers/behavior-supervisor/controller.json
++++ b/after/controllers/behavior-supervisor/controller.json
+@@ -297,7 +297,8 @@
+       "maximumRecoveryLinearSpeedMps": 0.2,
+       "maximumRecoveryAngularSpeedRadPerSec": 0.5,
+       "contactThresholdNewton": 1,
+-      "minimumSupportFeet": 2
++      "minimumSupportFeet": 2,
++      "dynamicSideCaptureTiltRad": 0.6
+     }
+   }
+ }
+diff --git a/before/controllers/behavior-supervisor/recovery.py b/after/controllers/behavior-supervisor/recovery.py
+index c4f4bdd..2d27069 100644
+--- a/before/controllers/behavior-supervisor/recovery.py
++++ b/after/controllers/behavior-supervisor/recovery.py
+@@ -175,7 +175,13 @@ class PhasedSelfRightController:
+                 if dynamic_retry
+                 else self.config["captureUntilSeconds"]
+             )
+-            if elapsed < impulse_seconds:
++            initial_dynamic_side_capture = (
++                self.dynamic_entry
++                and self.retry_count == 0
++                and pose in ("left", "right")
++                and tilt <= self.config["dynamicSideCaptureTiltRad"]
++            )
++            if elapsed < impulse_seconds and not initial_dynamic_side_capture:
+                 self.phase = "impulse"
+                 target = impulse.copy()
+             elif elapsed < capture_until_seconds:
+diff --git a/before/controllers/integrated-recovery-hybrid-policy/controller.json b/after/controllers/integrated-recovery-hybrid-policy/controller.json
+index 9012941..eca28ee 100644
+--- a/before/controllers/integrated-recovery-hybrid-policy/controller.json
++++ b/after/controllers/integrated-recovery-hybrid-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "integrated-recovery-hybrid-policy",
+   "name": "Frozen state-gated code and RL recovery candidate",
+   "kind": "policy",
+-  "policy": "integrated-resilience-curriculum-3bd389ded6b6e380",
++  "policy": "integrated-recovery-hybrid-c3bbe6fabf1bfa94",
+   "deterministic": true
+ }

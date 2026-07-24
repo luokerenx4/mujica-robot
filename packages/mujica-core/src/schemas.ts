@@ -431,6 +431,12 @@ const trainingOptimizationFields = {
     velocityTracking: z.number().finite().min(0).max(20),
     stopStability: z.number().finite().min(0).max(20),
   }).strict().optional(),
+  recoveryReward: z.object({
+    upright: z.number().finite().min(0).max(20),
+    height: z.number().finite().min(0).max(20),
+    stillness: z.number().finite().min(0).max(20),
+    support: z.number().finite().min(0).max(20),
+  }).strict().optional(),
 };
 
 export const trainingSchema = z.union([

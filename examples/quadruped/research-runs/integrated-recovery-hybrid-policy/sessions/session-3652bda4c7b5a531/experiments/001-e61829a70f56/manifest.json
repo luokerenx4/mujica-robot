@@ -1,0 +1,69 @@
+{
+  "version": 4,
+  "id": "001-e61829a70f56",
+  "experimentHash": "e61829a70f56a225ab7ab22bba9e3e0ab4426839d54007409d2e960666149b4d",
+  "sequence": 1,
+  "sessionId": "session-3652bda4c7b5a531",
+  "researchId": "integrated-recovery-hybrid-policy",
+  "labHash": "5df5da2f01b82eccb51f0c570dcfc80bf46a9245e7c028f1b6b868bb3b3cea87",
+  "programHash": "30cd77081c0b438bb4785f952534cec83f26294a09c29e50361e2f6d1dbe06d8",
+  "benchmarkLockHash": "0a49f9609bbf67619db0c0c9874135b521fcff1ce77d7b983a3492d662a39772",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "a89a2df04101f70dbc6c0c1556b870cffd52fe0e6cceb4a530dc42ecfd5079ca",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py",
+    "controllers/integrated-recovery-hybrid-policy/controller.json"
+  ],
+  "proposal": {
+    "strategy": "initial-side-capture-plus-state-gated-settle-policy",
+    "hypothesis": "Restricting early capture to retry-zero dynamic side falls should make the degraded-left near-upright basin reachable without changing the degraded-right retry. A small residual with authority only in the observable stand envelope can damp the remaining program recovery limit cycle while leaving impact, impulse, capture, rise, retry, handoff, and locomotion program-only.",
+    "expectedEffect": "Recover impact-left-degraded or materially reduce its locked recovery violations while preserving both exact Missions, the degraded-right retry path, and every static and locomotion regression."
+  },
+  "policyId": "integrated-recovery-hybrid-c03a04620da8289a",
+  "score": 38.29473096918893,
+  "delta": -0.5728940272553089,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: unsettled-yaw regressed from passing to failing",
+      "impact-left-exact: disallowed-collision regressed from passing to failing",
+      "impact-right-exact: backward-displacement regressed from passing to failing",
+      "impact-right-exact: joint-limit-margin regressed from passing to failing",
+      "impact-right-exact: disallowed-collision regressed from passing to failing",
+      "impact-left-degraded: forward-progress regressed from passing to failing",
+      "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "reference-controller: impact-left-exact: unsettled-yaw regressed from passing to failing",
+      "reference-controller: impact-left-exact: disallowed-collision regressed from passing to failing",
+      "reference-controller: impact-right-exact: backward-displacement regressed from passing to failing",
+      "reference-controller: impact-right-exact: joint-limit-margin regressed from passing to failing",
+      "reference-controller: impact-right-exact: disallowed-collision regressed from passing to failing",
+      "reference-controller: impact-left-degraded: forward-progress regressed from passing to failing",
+      "reference-controller: impact-left-degraded: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 30,
+    "previousViolationSeverity": 70.97541871272351,
+    "candidateViolationSeverity": 75.6710249254981,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "a95ae08bac0d1ddc977d2243c48fcc256a55b69f4e139799b3ac5d0b433abe47",
+    "acceptedRunId": "run-619fbc170d72803e",
+    "candidateRunId": "run-02a4f796720afb16",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 275908,
+  "completed": true
+}

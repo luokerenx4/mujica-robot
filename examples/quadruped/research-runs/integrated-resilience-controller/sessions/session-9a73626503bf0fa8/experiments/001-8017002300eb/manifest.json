@@ -1,0 +1,57 @@
+{
+  "version": 4,
+  "id": "001-8017002300eb",
+  "experimentHash": "8017002300ebd28528ac8368adb6d7cbe7689e2f64b73879eef3afcc85d0d59b",
+  "sequence": 1,
+  "sessionId": "session-9a73626503bf0fa8",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "776e5fa25d1d42d8e912bdf9926ddf74595e8407a81041e5fa605470fc2f4bef",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "initial-dynamic-side-capture-and-settle",
+    "hypothesis": "The first experiment proved that early capture moves the initial degraded side fall out of the inverted basin, but its ordinary recovery gains keep the upright robot hopping forever and the same rule harms a later side retry. Restricting early capture to the first dynamic side entry, then latching a lower-stiffness higher-damping stand controller once measured tilt and height are safe, should convert that reachable upright state into a qualified handoff.",
+    "expectedEffect": "Make impact-left-degraded reach a stable recovery handoff without changing the baseline right-degraded retry or any exact/static recovery path, reducing Suite violations with no passing-gate regression."
+  },
+  "policyId": null,
+  "score": 43.68770381268011,
+  "delta": 4.568685733058757,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-left-degraded: transition-terminal-yaw regressed from passing to failing",
+      "impact-left-degraded: planar-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 28,
+    "previousViolationSeverity": 59.19363004535584,
+    "candidateViolationSeverity": 66.12534223911354,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "af03a418f7d6ba027ec95c0c43f2f14e904c7beb8f66272027bc0e289ac9499a",
+    "acceptedRunId": "run-22912ea70a12b4ac",
+    "candidateRunId": "run-baf551325a3c453f",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 73057,
+  "completed": true
+}

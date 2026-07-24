@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "harnessSourceHash": "47bab7e8153737a1e20a587e21292abf72ff0d552f1306fe547d278ce3ef6d6f",
+  "harnessDependencyLockHash": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+  "sourceKind": "robot-revision",
+  "maximumCaptureMode": "actuate",
+  "target": {
+    "version": 1,
+    "id": "spatial-dry-run",
+    "name": "3-DOF quadruped driver protocol dry-run",
+    "revision": "quadruped-r-b1a3d1f7161a",
+    "assembly": "force-sensing-3dof",
+    "controller": "spatial-forward-gait",
+    "driver": "mujoco-protocol-simulator",
+    "environment": "dry-run",
+    "protocol": "stdio-jsonl-v1",
+    "controlHz": 50,
+    "safety": {
+      "maximumLatencyMs": 10,
+      "commandLeaseMs": 100,
+      "maximumCommandLeaseOverrunMs": 25,
+      "maximumStateAgeMs": 20,
+      "requireDecisionDeadline": true,
+      "requireDeviceHealth": true,
+      "maximumMotorTemperatureC": 80,
+      "maximumMotorCurrentA": 20,
+      "minimumBusVoltageV": 20,
+      "maximumBusVoltageV": 30,
+      "requirePostStopHealthCheck": true,
+      "postStopHealthySamples": 3,
+      "postStopMinimumHealthyDurationMs": 20,
+      "maximumConsecutiveMisses": 2,
+      "emergencyStopAction": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "device": {
+      "vendor": "Mujica",
+      "model": "Protocol simulator",
+      "serialRequired": false
+    }
+  },
+  "revisionId": "quadruped-r-b1a3d1f7161a",
+  "revisionHash": "7d17d19c5cb9010f11d61be290a8ee73952d3427a9dc0cce3af1f05c646dce98",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "modelXmlHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+  "controllerHash": "ae8378692ed5574aa14dfdda529032535e15cbf5803156b24286bea9026f095c",
+  "driverPackage": {
+    "version": 1,
+    "id": "mujoco-protocol-simulator",
+    "name": "MuJoCo stdio protocol simulator",
+    "protocol": "stdio-jsonl-v1",
+    "executable": "driver.py",
+    "environments": [
+      "dry-run"
+    ],
+    "device": {
+      "vendor": "Mujica",
+      "model": "Protocol simulator"
+    },
+    "capabilities": [
+      "applied-action",
+      "command-lease",
+      "decision-deadline",
+      "device-health",
+      "latched-stop-health",
+      "shadow-action",
+      "state-abi-v1",
+      "state-age-ms",
+      "stop-ack"
+    ]
+  },
+  "driverPackageHash": "d15cfd4adf98ce7f81b769b0e93b0b3f28dd5a2a542b7a41ec9253638cc4849c",
+  "driverExecutableHash": "a09034a290b136ea823a2c0dde6b6f71db6320ed49164c0055fc459783b4dbd4",
+  "observationContractHash": "2ff56dd62b5e01bcf72998c7fdebc3753b182881f19a9e7fe87349a92684f38f",
+  "actionContractHash": "5e8053eb0aa413c0d86c163bf1691b8672d12d136870233b5fd97d7945a82bf7",
+  "stateContractHash": "9b2d89089ceb3c78e395acc3cde7d1550d151c19bed16a093c7aa9cca98d641c",
+  "protocol": "stdio-jsonl-v1",
+  "id": "hardware-ea76e745855fc98a",
+  "bundleHash": "ea76e745855fc98a9e9f83a51c4b5890bd7ac28bbe9e288ce339efe7de34ed38",
+  "completed": true
+}

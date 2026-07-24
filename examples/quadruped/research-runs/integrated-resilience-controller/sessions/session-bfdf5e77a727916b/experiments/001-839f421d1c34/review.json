@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-bfdf5e77a727916b",
+    "experimentId": "001-839f421d1c34",
+    "experimentHash": "839f421d1c34b6f417223163def58f869a2f6c17f5c7c380a3e5189003b81be7"
+  },
+  "proposal": {
+    "strategy": "state-qualified-dynamic-side-capture",
+    "hypothesis": "Both degraded Missions cross near upright during a dynamic side-recovery impulse, then continue the fixed-duration impulse and overshoot into the inverted basin. Ending only the dynamic side impulse when measured tilt is already below 0.6 rad should begin capture before the contact bifurcation without changing exact sagittal or static side recovery.",
+    "expectedEffect": "Prevent at least one degraded Mission from becoming fully inverted, reduce recovery/joint-limit violation severity, and preserve all exact Mission plus atomic self-righting and handoff gates."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-degraded: lateral-drift regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-yaw regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: transition-terminal-yaw regressed from passing to failing",
+        "impact-right-degraded: planar-overshoot regressed from passing to failing",
+        "impact-right-degraded: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 32,
+      "previousViolationSeverity": 59.19363004535584,
+      "candidateViolationSeverity": 100.57061813027825,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "d9af0130540236249de3a764fa240dfe3b95612420f0545b85503f7c62fc23ab"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left-degraded",
+    "seed": 7203,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-degraded: lateral-drift regressed from passing to failing",
+    "candidateScoreDelta": 14.771175499376033,
+    "weightedScoreDelta": 14.771175499376033
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-22912ea70a12b4ac",
+    "runKey": "22912ea70a12b4acbd240e4208a5e2a29d7062d1d36caaa5e936bbd1172c22cd",
+    "resultHash": "a8ec0b910b22415c8a1750e1ea81080f6becf6cde51cfb8f73d82cf704df025a",
+    "artifactHash": "88ab791f9b3cf074dd14d09350ddacd2f23e89c407abee700fc3b1a53c2d2a84",
+    "manifestHash": "a9a39054d005407b26ef446724751907bbed914f2c673ba605f11ba7ee9cb6fb",
+    "metricsHash": "b1f31862ff3ea5188d13c3a7f93317b55e7b5de5509db7cc3ae1a1c8b3be922a",
+    "scoreHash": "e48994dbbaf7cdba8b904ecc7236ed6f66b97f542e1cd9032eeee2e0ff65aec3",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": -20.9083784073532
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-86447bf6b789ca9f",
+    "runKey": "86447bf6b789ca9f1ab5b34541cdf882bff654031cea318d76d9d1d104ab93c0",
+    "resultHash": "4d1c68f3feb6a665b9de891eab7589196c819dd5e7c5cc5a6b71a4632672978e",
+    "artifactHash": "b846e093642b6fdfc4cc9c22dda9b6e4004593de1655128cc1dd3d59ef5253b5",
+    "manifestHash": "ea506820767842f8b27d44ff437355b6d70dab0c09cc9a9a74d6309fa6229bc9",
+    "metricsHash": "38d80cc3c4ccda3655cdfca48cb85c608bf398d8d18f5e4f8a5692122e5b7a0c",
+    "scoreHash": "e6d78af07cfb789ecd54d1853d7ea83526748878a1da0911f05db797df96429b",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": -6.1372029079771675
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

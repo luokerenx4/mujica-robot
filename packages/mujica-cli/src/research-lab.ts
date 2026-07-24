@@ -607,6 +607,22 @@ async function assertStagedBenchmarkInputsUnedited(originalProject: ProjectConte
   }
 }
 
+export function policyBehaviorEvaluation(evaluation: Evaluation): Evaluation {
+  return {
+    ...evaluation,
+    cases: evaluation.cases.map((item) => {
+      const trainingComplexity = Number(item.score.terms?.trainingSteps ?? 0);
+      return {
+        ...item,
+        score: {
+          ...item.score,
+          total: item.score.total - trainingComplexity,
+        },
+      };
+    }),
+  };
+}
+
 async function evaluateRegressions(options: {
   originalProject: ProjectContext; stagedProject: ProjectContext; lab: ResearchLabDefinition; previousSubject: { assembly: string; controller: string }; candidateSubject: { assembly: string; controller: string }; referenceSubject?: { assembly: string; controller: string }; deadlineMs: number;
 }): Promise<{ results: any[]; gateReasons: string[] }> {
@@ -622,7 +638,10 @@ async function evaluateRegressions(options: {
       ? await evaluatePair(options.originalProject, originalBenchmark, options.referenceSubject.assembly, options.referenceSubject.controller, undefined, options.deadlineMs)
       : previous;
     const candidate = await evaluatePair(options.stagedProject, stagedBenchmark, options.candidateSubject.assembly, options.candidateSubject.controller, undefined, options.deadlineMs);
-    const reasons = researchGateReasons(objective, baseline, reference, candidate).map((reason) => `${id}: ${reason}`); gateReasons.push(...reasons);
+    const gateBaseline = options.lab.execution.kind === "policy" ? policyBehaviorEvaluation(baseline) : baseline;
+    const gateReference = options.lab.execution.kind === "policy" ? policyBehaviorEvaluation(reference) : reference;
+    const gateCandidate = options.lab.execution.kind === "policy" ? policyBehaviorEvaluation(candidate) : candidate;
+    const reasons = researchGateReasons(objective, gateBaseline, gateReference, gateCandidate).map((reason) => `${id}: ${reason}`); gateReasons.push(...reasons);
     results.push({ benchmark: id, lockHash: originalLock.lockHash, previous, reference: options.referenceSubject ? reference : null, candidate, gateReasons: reasons });
   }
   return { results, gateReasons };

@@ -25,6 +25,7 @@ describe("Robot Assembly compiler", () => {
     expect(workOrder.lanes.map((item) => item.researchLab)).toEqual([
       "integrated-resilience-waist-design",
       "integrated-resilience-controller",
+      "integrated-recovery-hybrid-policy",
       "integrated-resilience-policy",
     ]);
     expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);

@@ -1,0 +1,58 @@
+{
+  "version": 4,
+  "id": "001-2b310b58530a",
+  "experimentHash": "2b310b58530a92d4bd6c0f32c7c19be708947d143459eb7b9bd67d178f55ad7c",
+  "sequence": 1,
+  "sessionId": "session-d62c18a99ffed48e",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "85e49ab728926cf0cfd7e56e4af36f51493e38e1dadd09d4bc058c597c5992af",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "initial-side-capture-with-feedback-free-final-stand",
+    "hypothesis": "Early capture moves the initial degraded side fall out of the inverted basin. The near-feasible candidate lost posture because it replaced the gradual rise too early, while the first candidate reached full height but kept injecting roll/pitch feedback after alpha reached one. Preserving the complete rise and disabling only that feedback at the final stand should keep support while removing the limit cycle.",
+    "expectedEffect": "Qualify or materially stabilize impact-left-degraded, preserve the baseline right-degraded retry and every exact/static path, and remove the remaining recovery-induced transition regression."
+  },
+  "policyId": null,
+  "score": 39.024191328265275,
+  "delta": -0.09482675135608076,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-left-degraded: transition-terminal-yaw regressed from passing to failing",
+      "impact-left-degraded: planar-overshoot regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 28,
+    "previousViolationSeverity": 59.19363004535584,
+    "candidateViolationSeverity": 61.96577046965755,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "5ae1b3ad8991aad8ed98e685c9f6ca1945e1ac13db7e139ce7996ad822515e44",
+    "acceptedRunId": "run-22912ea70a12b4ac",
+    "candidateRunId": "run-507c4ef7d165f4e0",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 68773,
+  "completed": true
+}

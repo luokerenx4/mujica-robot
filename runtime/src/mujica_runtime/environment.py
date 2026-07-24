@@ -375,6 +375,8 @@ class RobotEnvironment:
         self.previous_xy = self.data.qpos[:2].copy()
         return StepResult(self.observation(), float(reward), terminated, truncated, {
             "height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error,
+            "baseLinearSpeedMps": float(np.linalg.norm(self.data.qvel[:3])),
+            "baseAngularSpeedRadPerSec": float(np.linalg.norm(self.data.qvel[3:6])),
             "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(),
             "missionPhase": mission_phase_id, "missionIntent": mission_phase.get("intent") if mission_phase is not None else None,
             "stepDisplacementXY": step_displacement_xy.copy(), "commandedProgressDeltaM": commanded_progress_delta,

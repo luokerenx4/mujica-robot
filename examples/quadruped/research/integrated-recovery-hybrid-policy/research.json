@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "id": "integrated-recovery-hybrid-policy",
+  "name": "Integrated Mission code and RL recovery research",
+  "program": "research/integrated-recovery-hybrid-policy/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "integrated-recovery-hybrid",
+    "controller": "integrated-recovery-hybrid-policy",
+    "referenceController": "behavior-supervisor",
+    "seed": 260727
+  },
+  "editable": {
+    "paths": [
+      "controllers/behavior-supervisor/recovery.py",
+      "controllers/behavior-supervisor/controller.json",
+      "trainers/recovery-settle-residual-ppo/**",
+      "training/integrated-recovery-hybrid.training.json",
+      "controllers/integrated-recovery-hybrid-policy/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 900,
+    "maximumTrainingSteps": 131072
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "policy-revision"
+}

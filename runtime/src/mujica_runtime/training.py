@@ -104,6 +104,59 @@ def mission_reward_bonus(
     return float(sum(terms.values())), terms
 
 
+def recovery_reward_bonus(
+    info: dict[str, Any],
+    telemetry: dict[str, Any] | None,
+    weights: dict[str, Any] | None,
+    actor_authority: float,
+) -> tuple[float, dict[str, float]]:
+    terms = {"upright": 0.0, "height": 0.0, "stillness": 0.0, "support": 0.0}
+    if (
+        not weights
+        or actor_authority <= 0.0
+        or not isinstance(telemetry, dict)
+        or telemetry.get("mode") != "recovery"
+    ):
+        return 0.0, terms
+    values = {
+        "tilt": telemetry.get("bodyTiltRad"),
+        "height": info.get("height"),
+        "linearSpeed": info.get("baseLinearSpeedMps"),
+        "angularSpeed": info.get("baseAngularSpeedRadPerSec"),
+        "supportFeet": telemetry.get("supportFeet"),
+    }
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not np.isfinite(float(value))
+        for value in values.values()
+    ):
+        return 0.0, terms
+    tilt = float(values["tilt"])
+    height = float(values["height"])
+    linear_speed = float(values["linearSpeed"])
+    angular_speed = float(values["angularSpeed"])
+    support_feet = float(values["supportFeet"])
+    terms["upright"] = float(weights.get("upright", 0.0)) * float(
+        np.exp(-8.0 * tilt * tilt)
+    )
+    terms["height"] = float(weights.get("height", 0.0)) * float(
+        np.clip((height - 0.05) / (0.32 - 0.05), 0.0, 1.0)
+    )
+    terms["stillness"] = float(weights.get("stillness", 0.0)) * float(
+        1.0
+        / (
+            1.0
+            + 2.0 * linear_speed * linear_speed
+            + 2.0 * angular_speed * angular_speed
+        )
+    )
+    terms["support"] = float(weights.get("support", 0.0)) * float(
+        np.clip(support_feet / 4.0, 0.0, 1.0)
+    )
+    return float(sum(terms.values())), terms
+
+
 def normalize_masked_advantages(
     advantages: np.ndarray, policy_masks: np.ndarray
 ) -> np.ndarray:
@@ -337,6 +390,7 @@ class PPOTrainer:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability")}
+            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
@@ -346,11 +400,17 @@ class PPOTrainer:
                 with torch.no_grad():
                     mean, value, log_std = network(obs_tensor); distribution = torch.distributions.Normal(mean, log_std.exp()); action_tensor = distribution.sample(); log_prob = distribution.log_prob(action_tensor).sum(-1)
                 raw_action = action_tensor[0].numpy()
+                prior_telemetry: dict[str, Any] | None = None
                 if action_transform and action_transform.get("kind") == "program-controller-residual":
                     if program_prior is None: raise RuntimeError("Program residual prior is unavailable")
                     prior_action = program_prior.act(
                         observation_map, float(environment.data.time)
                     )
+                    telemetry_provider = getattr(program_prior, "telemetry", None)
+                    if telemetry_provider is not None:
+                        provided = telemetry_provider()
+                        if isinstance(provided, dict):
+                            prior_telemetry = provided
                     residual_gate_scale = program_residual_gate_scale(
                         action_transform, program_prior
                     )
@@ -373,7 +433,13 @@ class PPOTrainer:
                 quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
                 actor_authority = float(batch_policy_masks[-1]) * float((action_transform or {}).get("residualScale", 1.0))
                 mission_bonus, mission_terms = mission_reward_bonus(result.info, config.get("missionReward"), actor_authority)
-                learning_reward = result.reward - quality_penalty + mission_bonus
+                recovery_bonus, recovery_terms = recovery_reward_bonus(
+                    result.info,
+                    prior_telemetry,
+                    config.get("recoveryReward"),
+                    actor_authority,
+                )
+                learning_reward = result.reward - quality_penalty + mission_bonus + recovery_bonus
                 curriculum_index = int(domain_samples[-1]["curriculumIndex"])
                 curriculum_active_policy_steps[curriculum_index] += int(actor_authority > 0.0)
                 curriculum_actor_authority_sums[curriculum_index] += actor_authority
@@ -385,6 +451,8 @@ class PPOTrainer:
                 for name, value in quality_terms.items(): batch_quality_terms[name].append(value)
                 batch_mission_bonuses.append(mission_bonus)
                 for name, value in mission_terms.items(): batch_mission_terms[name].append(value)
+                batch_recovery_bonuses.append(recovery_bonus)
+                for name, value in recovery_terms.items(): batch_recovery_terms[name].append(value)
                 phase_id = result.info.get("missionPhase")
                 if phase_id is not None:
                     curriculum_id = str(domain_samples[-1]["curriculum"])
@@ -400,6 +468,7 @@ class PPOTrainer:
                         "actorAuthoritySum": 0.0,
                         "baseRewardSum": 0.0,
                         "missionRewardSum": 0.0,
+                        "recoveryRewardSum": 0.0,
                         "learningRewardSum": 0.0,
                         "qualityPenaltySum": 0.0,
                         "commandedProgressM": 0.0,
@@ -409,6 +478,7 @@ class PPOTrainer:
                     sample["actorAuthoritySum"] += actor_authority
                     sample["baseRewardSum"] += float(result.reward)
                     sample["missionRewardSum"] += mission_bonus
+                    sample["recoveryRewardSum"] += recovery_bonus
                     sample["learningRewardSum"] += learning_reward
                     sample["qualityPenaltySum"] += quality_penalty
                     sample["commandedProgressM"] += float(result.info.get("commandedProgressDeltaM", 0.0))
@@ -454,6 +524,8 @@ class PPOTrainer:
                 "meanQualityTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_quality_terms.items()},
                 "meanMissionReward": float(np.mean(batch_mission_bonuses)),
                 "meanMissionTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_mission_terms.items()},
+                "meanRecoveryReward": float(np.mean(batch_recovery_bonuses)),
+                "meanRecoveryTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_recovery_terms.items()},
                 "meanResidualGateScale": float(np.mean(batch_residual_gate_scales)) if batch_residual_gate_scales else None,
                 "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
                 "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
@@ -538,6 +610,7 @@ class PPOTrainer:
                     "meanActorAuthority": sample["actorAuthoritySum"] / sample["steps"],
                     "meanBaseReward": sample["baseRewardSum"] / sample["steps"],
                     "meanMissionReward": sample["missionRewardSum"] / sample["steps"],
+                    "meanRecoveryReward": sample["recoveryRewardSum"] / sample["steps"],
                     "meanLearningReward": sample["learningRewardSum"] / sample["steps"],
                     "meanQualityPenalty": sample["qualityPenaltySum"] / sample["steps"],
                     "commandedProgressM": sample["commandedProgressM"],

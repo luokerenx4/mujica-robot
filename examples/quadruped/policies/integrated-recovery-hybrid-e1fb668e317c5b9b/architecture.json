@@ -1,0 +1,43 @@
+{
+  "kind": "history-gru-actor-critic",
+  "observationSize": 145,
+  "actionSize": 12,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "history": {
+    "commandStart": 41,
+    "appliedStart": 89,
+    "steps": 4,
+    "actionSize": 12,
+    "recurrentSize": 32
+  },
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScale": 0.08,
+    "residualGate": {
+      "kind": "prior-telemetry-mode",
+      "allowedModes": [
+        "recovery"
+      ],
+      "requiredTelemetry": {
+        "dynamicRecovery": true,
+        "recoveryRetryCount": 0,
+        "recoveryPose": "right"
+      },
+      "minimumTelemetry": {
+        "baseHeightM": 0.25,
+        "supportFeet": 2
+      },
+      "maximumTelemetry": {
+        "bodyTiltRad": 0.8
+      },
+      "rampSeconds": 0
+    },
+    "controllerId": "behavior-supervisor",
+    "controllerHash": "32be7209ddb04b0862e1395f7aba1b355ef576032a8be7fee8fc9c69432d16b1"
+  }
+}

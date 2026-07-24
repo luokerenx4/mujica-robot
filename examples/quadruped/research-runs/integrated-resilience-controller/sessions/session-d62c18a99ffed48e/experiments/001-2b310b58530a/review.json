@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-d62c18a99ffed48e",
+    "experimentId": "001-2b310b58530a",
+    "experimentHash": "2b310b58530a92d4bd6c0f32c7c19be708947d143459eb7b9bd67d178f55ad7c"
+  },
+  "proposal": {
+    "strategy": "initial-side-capture-with-feedback-free-final-stand",
+    "hypothesis": "Early capture moves the initial degraded side fall out of the inverted basin. The near-feasible candidate lost posture because it replaced the gradual rise too early, while the first candidate reached full height but kept injecting roll/pitch feedback after alpha reached one. Preserving the complete rise and disabling only that feedback at the final stand should keep support while removing the limit cycle.",
+    "expectedEffect": "Qualify or materially stabilize impact-left-degraded, preserve the baseline right-degraded retry and every exact/static path, and remove the remaining recovery-induced transition regression."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-yaw regressed from passing to failing",
+        "impact-left-degraded: planar-overshoot regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 28,
+      "previousViolationSeverity": 59.19363004535584,
+      "candidateViolationSeverity": 61.96577046965755,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "fe2515d2c540eff3adca3930b845c13dea2dabe6031aea18c1d2ec0d86914049"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left-degraded",
+    "seed": 7203,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+    "candidateScoreDelta": -0.37930700542432305,
+    "weightedScoreDelta": -0.37930700542432305
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-22912ea70a12b4ac",
+    "runKey": "22912ea70a12b4acbd240e4208a5e2a29d7062d1d36caaa5e936bbd1172c22cd",
+    "resultHash": "a8ec0b910b22415c8a1750e1ea81080f6becf6cde51cfb8f73d82cf704df025a",
+    "artifactHash": "88ab791f9b3cf074dd14d09350ddacd2f23e89c407abee700fc3b1a53c2d2a84",
+    "manifestHash": "a9a39054d005407b26ef446724751907bbed914f2c673ba605f11ba7ee9cb6fb",
+    "metricsHash": "b1f31862ff3ea5188d13c3a7f93317b55e7b5de5509db7cc3ae1a1c8b3be922a",
+    "scoreHash": "e48994dbbaf7cdba8b904ecc7236ed6f66b97f542e1cd9032eeee2e0ff65aec3",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": -20.9083784073532
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-507c4ef7d165f4e0",
+    "runKey": "507c4ef7d165f4e080d5cc09988ffa7e7cd0f83ffa1d1b4516c20f76bc662f79",
+    "resultHash": "4224f7b0ff05486719c44a45804e853a6bd8db11468f3c4cafbdc9ff8334c353",
+    "artifactHash": "193feda0a6be475e3134cd403dbbaa5456f64eefa995c78641cdbfffb6ebd17b",
+    "manifestHash": "fa14f94464816ab4c487812f8ba1c9ee53bf4c81d29c9f111dc68421671181a0",
+    "metricsHash": "053a51f5a492f43e9a73c9d4c5c61f5c84aacb15d9110b222796355219f2cae8",
+    "scoreHash": "a7cce9ddef6165c792740187ffa3ffc41335a1ec231a213b2c1f11072a174a5d",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": -21.287685412777524
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

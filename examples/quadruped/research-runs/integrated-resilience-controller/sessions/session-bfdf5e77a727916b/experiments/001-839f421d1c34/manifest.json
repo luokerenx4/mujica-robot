@@ -1,0 +1,63 @@
+{
+  "version": 4,
+  "id": "001-839f421d1c34",
+  "experimentHash": "839f421d1c34b6f417223163def58f869a2f6c17f5c7c380a3e5189003b81be7",
+  "sequence": 1,
+  "sessionId": "session-bfdf5e77a727916b",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "b31e743ef5ffefc902793811d7c047a8123be15eb1571a65bb0c5ef37d3338cf",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "state-qualified-dynamic-side-capture",
+    "hypothesis": "Both degraded Missions cross near upright during a dynamic side-recovery impulse, then continue the fixed-duration impulse and overshoot into the inverted basin. Ending only the dynamic side impulse when measured tilt is already below 0.6 rad should begin capture before the contact bifurcation without changing exact sagittal or static side recovery.",
+    "expectedEffect": "Prevent at least one degraded Mission from becoming fully inverted, reduce recovery/joint-limit violation severity, and preserve all exact Mission plus atomic self-righting and handoff gates."
+  },
+  "policyId": null,
+  "score": 42.897876016484396,
+  "delta": 3.778857936863041,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: lateral-drift regressed from passing to failing",
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-left-degraded: transition-terminal-yaw regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-right-degraded: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-right-degraded: transition-terminal-yaw regressed from passing to failing",
+      "impact-right-degraded: planar-overshoot regressed from passing to failing",
+      "impact-right-degraded: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 32,
+    "previousViolationSeverity": 59.19363004535584,
+    "candidateViolationSeverity": 100.57061813027825,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "35468facab14b0d554ab4ee5fa0db14cb9bf3041c4244841c701092b91711959",
+    "acceptedRunId": "run-22912ea70a12b4ac",
+    "candidateRunId": "run-86447bf6b789ca9f",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 75898,
+  "completed": true
+}

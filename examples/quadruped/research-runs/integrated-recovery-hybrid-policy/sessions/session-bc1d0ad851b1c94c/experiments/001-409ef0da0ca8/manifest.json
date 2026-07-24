@@ -1,0 +1,66 @@
+{
+  "version": 4,
+  "id": "001-409ef0da0ca8",
+  "experimentHash": "409ef0da0ca896efa139e99104846fc56e4b3fb1aad01759ee4aaae7e786f5c0",
+  "sequence": 1,
+  "sessionId": "session-bc1d0ad851b1c94c",
+  "researchId": "integrated-recovery-hybrid-policy",
+  "labHash": "bc3e63112be312ff99449c6e54906c4624ef478e9ebb4a08774561a2aad1d022",
+  "programHash": "cbd2292ad1a7137a90ba7bf77a444e6493bef431aa38294cdfbf47f78775a952",
+  "benchmarkLockHash": "0838304507654c6c9fb73fc435a44ea30b3f7a090152b1f8961b09d55660473d",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "f5b21a6810eb585760559625ccf0d0edcd62c52001ed0726f17bdcc6b415713a",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py",
+    "controllers/integrated-recovery-hybrid-policy/controller.json"
+  ],
+  "proposal": {
+    "strategy": "initial-side-capture-plus-state-gated-settle-policy",
+    "hypothesis": "Restricting early capture to retry-zero dynamic side falls should make the degraded-left near-upright basin reachable without changing the degraded-right retry. A small residual with authority only in the observable stand envelope can damp the remaining program recovery limit cycle while leaving impact, impulse, capture, rise, retry, handoff, and locomotion program-only.",
+    "expectedEffect": "Recover impact-left-degraded or materially reduce its locked recovery violations while preserving both exact Missions, the degraded-right retry path, and every static and locomotion regression."
+  },
+  "policyId": "integrated-recovery-hybrid-c3bbe6fabf1bfa94",
+  "score": 37.4127471860906,
+  "delta": -1.4548778103536435,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: forward-progress regressed from passing to failing",
+      "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "reference-controller: impact-left-degraded: forward-progress regressed from passing to failing",
+      "reference-controller: impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "command-tracking: stop: score-regression regressed from passing to failing",
+      "command-transitions: accelerate-stop: score-regression regressed from passing to failing",
+      "command-transitions: forward-reverse-stop: score-regression regressed from passing to failing",
+      "command-transitions: lateral-redirection: score-regression regressed from passing to failing",
+      "command-transitions: yaw-redirection: score-regression regressed from passing to failing",
+      "command-transitions: delayed-braking: score-regression regressed from passing to failing",
+      "command-transitions: payload-lateral-redirection: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 26,
+    "previousViolationSeverity": 70.97541871272351,
+    "candidateViolationSeverity": 66.25092015236037,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "6d297dbb61776e74216d6563bb50541cc89638ee4275e76186f9a07cb83d0e97",
+    "acceptedRunId": "run-b91d04e219a6ee01",
+    "candidateRunId": "run-cbf964bdae287d84",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 223947,
+  "completed": true
+}

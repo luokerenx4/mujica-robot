@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
-import { assertResearchLabEditableChanges, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
+import { assertResearchLabEditableChanges, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
@@ -35,6 +35,25 @@ describe("agent CLI contract", () => {
       .toEqual(["reference-controller: no-lexicographic-improvement", "motion-quality: delayed drift"]);
     expect(policyReferenceGateReasons({ ...referenceDecision, verdict: "KEEP", selectionReason: "fewer-gate-violations" }, []))
       .toEqual([]);
+  });
+
+  test("Policy regression gates compare behavior without charging training complexity twice", () => {
+    const evaluation = {
+      aggregateScore: -3.1072,
+      cases: [{
+        case: { id: "stop", gating: true },
+        metrics: {},
+        score: {
+          total: -3.1072,
+          terms: { survival: 10, trainingSteps: -13.1072 },
+        },
+        resultHash: "a".repeat(64),
+      }],
+    };
+    const behavior = policyBehaviorEvaluation(evaluation as any);
+    expect(behavior.cases[0]?.score.total).toBeCloseTo(10);
+    expect(behavior.cases[0]?.score.terms?.trainingSteps).toBe(-13.1072);
+    expect(behavior.aggregateScore).toBe(evaluation.aggregateScore);
   });
 
   test("help is machine discoverable", () => {
@@ -177,6 +196,7 @@ describe("agent CLI contract", () => {
     expect(data.workOrder.lanes.map((item: any) => item.researchLab)).toEqual([
       "integrated-resilience-waist-design",
       "integrated-resilience-controller",
+      "integrated-recovery-hybrid-policy",
       "integrated-resilience-policy",
     ]);
     expect(data.workOrder.uncoveredSurfaces).toEqual([]);
@@ -1210,7 +1230,7 @@ describe("agent CLI contract", () => {
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.researchLabs).toBe(15);
+    expect(envelope.data.definitions.researchLabs).toBe(16);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
     expect(envelope.data.definitions.domainProfiles).toBe(7);
     expect(envelope.data.definitions.calibrations).toBe(2);
@@ -1230,7 +1250,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-4bd64b550998a69e",
+      "--bundle", "hardware-c0ceaa0ce38d0568",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

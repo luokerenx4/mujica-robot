@@ -1,0 +1,55 @@
+{
+  "version": 4,
+  "id": "001-a0d56e7b0996",
+  "experimentHash": "a0d56e7b0996435f26f31b1a9ef8551111e64bb3605d5c0207d8e66f5330c096",
+  "sequence": 1,
+  "sessionId": "session-23930902538cbe4d",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "b146a4fd723c3a40b24f9ab144b235c7bec3d4c322bf6f2a5cb466b0fa947d9d",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "initial-dynamic-side-capture-and-rigid-stand",
+    "hypothesis": "Early capture moves the initial degraded side fall out of the inverted basin. The first candidate then kept injecting pose/rate feedback near upright and hopped; lowering support stiffness in the second candidate made it collapse. Restricting early capture to the first dynamic side entry and latching the ordinary load-bearing stand target without pose-feedback amplification once measured tilt and height are safe should dissipate motion without losing support.",
+    "expectedEffect": "Make impact-left-degraded reach a stable recovery handoff without changing the baseline right-degraded retry or any exact/static recovery path, reducing Suite violations with no passing-gate regression."
+  },
+  "policyId": null,
+  "score": 43.47050439094239,
+  "delta": 4.3514863113210325,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 25,
+    "previousViolationSeverity": 59.19363004535584,
+    "candidateViolationSeverity": 54.25182539833896,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "45d115f810c9c15d6345dfd500b5a12b8577ab8dfa6973fa5b1ef2e5b737ee6b",
+    "acceptedRunId": "run-22912ea70a12b4ac",
+    "candidateRunId": "run-9f6bbc9ce453733c",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 64096,
+  "completed": true
+}

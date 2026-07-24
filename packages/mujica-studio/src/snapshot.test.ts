@@ -101,6 +101,7 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((item) => item.researchLab)).toEqual([
       "integrated-resilience-waist-design",
       "integrated-resilience-controller",
+      "integrated-recovery-hybrid-policy",
       "integrated-resilience-policy",
     ]);
     expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces).toEqual([]);
@@ -135,6 +136,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("ML Policy evidence · training is not promotion");
     expect(html).toContain("mujica-policy-training-context");
     expect(html).toContain("active actor authority");
+    expect(html).toContain("safe envelope min");
+    expect(html).toContain("reward base/mission/recovery/learned");
     expect(html).toContain("Mission phase learning evidence");
     expect(html).toContain("curriculum sampling");
     expect(html).toContain("Mission progression · every episode starts at Mission phase 1");

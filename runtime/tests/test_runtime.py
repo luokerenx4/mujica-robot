@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -346,6 +346,68 @@ class RuntimeContractTest(unittest.TestCase):
                 Prior({"mode": "locomotion"}),
             )
 
+    def test_program_residual_gate_enforces_numeric_telemetry_envelope(self):
+        class Prior:
+            def __init__(self, telemetry):
+                self.value = telemetry
+
+            def telemetry(self):
+                return self.value
+
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["recovery"],
+                "requiredTelemetry": {
+                    "phase": "recovery.settle",
+                    "dynamicRecovery": True,
+                    "recoveryRetryCount": 0,
+                },
+                "minimumTelemetry": {
+                    "baseHeightM": 0.32,
+                    "supportFeet": 2,
+                },
+                "maximumTelemetry": {
+                    "bodyTiltRad": 0.4,
+                },
+            }
+        }
+        inside = {
+            "mode": "recovery",
+            "phase": "recovery.settle",
+            "dynamicRecovery": True,
+            "recoveryRetryCount": 0,
+            "baseHeightM": 0.32,
+            "supportFeet": 2,
+            "bodyTiltRad": 0.4,
+        }
+        self.assertEqual(program_residual_gate_scale(transform, Prior(inside)), 1.0)
+        for field, outside in (
+            ("baseHeightM", 0.319),
+            ("supportFeet", 1),
+            ("bodyTiltRad", 0.401),
+        ):
+            telemetry = {**inside, field: outside}
+            self.assertEqual(
+                program_residual_gate_scale(transform, Prior(telemetry)),
+                0.0,
+                field,
+            )
+        for unsafe in (
+            {key: value for key, value in inside.items() if key != "bodyTiltRad"},
+            {**inside, "bodyTiltRad": float("nan")},
+            {**inside, "baseHeightM": True},
+            {**inside, "supportFeet": "2"},
+        ):
+            self.assertEqual(program_residual_gate_scale(transform, Prior(unsafe)), 0.0)
+        self.assertEqual(
+            program_residual_gate_scale(
+                {"residualGate": {**transform["residualGate"], "minimumTelemetry": []}},
+                Prior(inside),
+            ),
+            0.0,
+        )
+
     def test_quality_reward_is_explicit_normalized_and_neutral_when_omitted(self):
         info = {"motionQuality": {
             "jointAccelerationMeanAbsRadPerSec2": 500.0,
@@ -359,6 +421,45 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(penalty, 3.0)
         self.assertEqual(terms, {name: 0.5 for name in terms})
         self.assertEqual(quality_reward_penalty(info, None)[0], 0.0)
+
+    def test_recovery_reward_requires_authority_and_rewards_stable_support(self):
+        weights = {"upright": 4.0, "height": 2.0, "stillness": 3.0, "support": 1.0}
+        info = {
+            "height": 0.32,
+            "baseLinearSpeedMps": 0.0,
+            "baseAngularSpeedRadPerSec": 0.0,
+        }
+        telemetry = {
+            "mode": "recovery",
+            "bodyTiltRad": 0.0,
+            "supportFeet": 4,
+        }
+        bonus, terms = recovery_reward_bonus(info, telemetry, weights, 0.08)
+        self.assertAlmostEqual(bonus, 10.0)
+        self.assertEqual(terms, weights)
+        self.assertEqual(recovery_reward_bonus(info, telemetry, weights, 0.0)[0], 0.0)
+        self.assertEqual(
+            recovery_reward_bonus(
+                info,
+                {**telemetry, "bodyTiltRad": float("nan")},
+                weights,
+                0.08,
+            )[0],
+            0.0,
+        )
+        unstable, unstable_terms = recovery_reward_bonus(
+            {
+                **info,
+                "height": 0.1,
+                "baseLinearSpeedMps": 2.0,
+                "baseAngularSpeedRadPerSec": 3.0,
+            },
+            {**telemetry, "bodyTiltRad": 1.0, "supportFeet": 1},
+            weights,
+            0.08,
+        )
+        self.assertLess(unstable, bonus)
+        self.assertLess(unstable_terms["stillness"], 0.2)
 
     def test_residual_policy_updates_ignore_steps_without_action_authority(self):
         advantages = np.asarray([100.0, 2.0, 4.0, -100.0], dtype=np.float32)

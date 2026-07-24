@@ -1,0 +1,167 @@
+diff --git a/before/controllers/behavior-supervisor/controller.json b/after/controllers/behavior-supervisor/controller.json
+index 55cfc75..6891496 100644
+--- a/before/controllers/behavior-supervisor/controller.json
++++ b/after/controllers/behavior-supervisor/controller.json
+@@ -69,10 +69,22 @@
+       "minimumDynamicRecoveryTargetSteps": 1,
+       "handoffBlendSeconds": 2,
+       "postRecoveryGaitByPose": {
+-        "front": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "back": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "left": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "right": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 }
++        "front": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "back": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "left": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "right": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        }
+       },
+       "missionCommandDeadband": 0.02
+     },
+@@ -110,7 +122,12 @@
+       "delayedTractionTransitionYawDampingGain": 0.1,
+       "delayedTractionRecoveryHipScale": 1.8,
+       "delayedTractionRecoveryRampSeconds": 0.05,
+-      "startupRampSecondsByDelaySteps": [0, 0, 0.8, 0],
++      "startupRampSecondsByDelaySteps": [
++        0,
++        0,
++        0.8,
++        0
++      ],
+       "delayedTractionRecoveryPhaseLeadSeconds": 0,
+       "delayedTractionRecoveryFrequencyScale": 1,
+       "delayedTractionKpSagittalScale": 1,
+@@ -200,12 +217,12 @@
+         "right": 0.3
+       },
+       "feedbackByPose": {
+-      "front": {
+-        "rollGain": 0.4,
+-        "rollRateGain": 0.05,
+-        "pitchGain": 1.5,
+-        "pitchRateGain": 0.15
+-      },
++        "front": {
++          "rollGain": 0.4,
++          "rollRateGain": 0.05,
++          "pitchGain": 1.5,
++          "pitchRateGain": 0.15
++        },
+         "back": {
+           "rollGain": 0.2,
+           "rollRateGain": 0.05,
+@@ -297,7 +314,14 @@
+       "maximumRecoveryLinearSpeedMps": 0.2,
+       "maximumRecoveryAngularSpeedRadPerSec": 0.5,
+       "contactThresholdNewton": 1,
+-      "minimumSupportFeet": 2
++      "minimumSupportFeet": 2,
++      "dynamicSideCaptureTiltRad": 0.6,
++      "dynamicSideSettleTiltRad": 0.4,
++      "dynamicSideSettleMinimumHeightM": 0.32,
++      "dynamicSideSettleKpAbduction": 22,
++      "dynamicSideSettleKdAbduction": 3.5,
++      "dynamicSideSettleKpSagittal": 32,
++      "dynamicSideSettleKdSagittal": 4
+     }
+   }
+ }
+diff --git a/before/controllers/behavior-supervisor/recovery.py b/after/controllers/behavior-supervisor/recovery.py
+index c4f4bdd..b255ad9 100644
+--- a/before/controllers/behavior-supervisor/recovery.py
++++ b/after/controllers/behavior-supervisor/recovery.py
+@@ -72,6 +72,7 @@ class PhasedSelfRightController:
+         self.retry_count = 0
+         self.dynamic_entry = False
+         self.feedback_hold = False
++        self.dynamic_side_settle = False
+         self.previous_action = None
+         self.last_telemetry = {
+             "phase": self.phase,
+@@ -175,7 +176,23 @@ class PhasedSelfRightController:
+                 if dynamic_retry
+                 else self.config["captureUntilSeconds"]
+             )
+-            if elapsed < impulse_seconds:
++            dynamic_side_capture = (
++                self.dynamic_entry
++                and self.retry_count == 0
++                and pose in ("left", "right")
++                and tilt <= self.config["dynamicSideCaptureTiltRad"]
++            )
++            if (
++                dynamic_side_capture
++                and float(observation["base-height"][0])
++                >= self.config["dynamicSideSettleMinimumHeightM"]
++                and tilt <= self.config["dynamicSideSettleTiltRad"]
++            ):
++                self.dynamic_side_settle = True
++            if self.dynamic_side_settle:
++                self.phase = "settle"
++                target = self.stand_target.copy()
++            elif elapsed < impulse_seconds and not dynamic_side_capture:
+                 self.phase = "impulse"
+                 target = impulse.copy()
+             elif elapsed < capture_until_seconds:
+@@ -235,12 +252,20 @@ class PhasedSelfRightController:
+             "dynamicRecovery": self.dynamic_entry,
+         }
+         abduction_damping = (
+-            self.config["kdAbductionByPose"].get(pose, self.config["kdAbduction"])
++            self.config["dynamicSideSettleKdAbduction"]
++            if self.dynamic_side_settle
++            else self.config["kdAbductionByPose"].get(
++                pose, self.config["kdAbduction"]
++            )
+         )
+         sagittal_damping = (
+-            self.config["dynamicRiseKdSagittal"]
+-            if self.dynamic_entry
+-            else self.config["kdSagittal"]
++            self.config["dynamicSideSettleKdSagittal"]
++            if self.dynamic_side_settle
++            else (
++                self.config["dynamicRiseKdSagittal"]
++                if self.dynamic_entry
++                else self.config["kdSagittal"]
++            )
+         )
+         return target, abduction_damping, sagittal_damping
+ 
+@@ -251,12 +276,22 @@ class PhasedSelfRightController:
+             observation, time_seconds
+         )
+         action = np.empty((4, 3), dtype=np.float64)
++        kp_abduction = (
++            self.config["dynamicSideSettleKpAbduction"]
++            if self.dynamic_side_settle
++            else self.config["kpAbduction"]
++        )
++        kp_sagittal = (
++            self.config["dynamicSideSettleKpSagittal"]
++            if self.dynamic_side_settle
++            else self.config["kpSagittal"]
++        )
+         action[:, 0] = (
+-            self.config["kpAbduction"] * (target[:, 0] - q[:, 0])
++            kp_abduction * (target[:, 0] - q[:, 0])
+             - abduction_damping * qd[:, 0]
+         )
+         action[:, 1:] = (
+-            self.config["kpSagittal"] * (target[:, 1:] - q[:, 1:])
++            kp_sagittal * (target[:, 1:] - q[:, 1:])
+             - sagittal_damping * qd[:, 1:]
+         )
+         action = np.clip(action.reshape(-1), -8.0, 8.0)

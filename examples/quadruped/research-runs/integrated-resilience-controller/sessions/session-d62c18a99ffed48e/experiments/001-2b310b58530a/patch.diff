@@ -1,0 +1,122 @@
+diff --git a/before/controllers/behavior-supervisor/controller.json b/after/controllers/behavior-supervisor/controller.json
+index 55cfc75..689a570 100644
+--- a/before/controllers/behavior-supervisor/controller.json
++++ b/after/controllers/behavior-supervisor/controller.json
+@@ -69,10 +69,22 @@
+       "minimumDynamicRecoveryTargetSteps": 1,
+       "handoffBlendSeconds": 2,
+       "postRecoveryGaitByPose": {
+-        "front": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "back": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "left": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "right": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 }
++        "front": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "back": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "left": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "right": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        }
+       },
+       "missionCommandDeadband": 0.02
+     },
+@@ -110,7 +122,12 @@
+       "delayedTractionTransitionYawDampingGain": 0.1,
+       "delayedTractionRecoveryHipScale": 1.8,
+       "delayedTractionRecoveryRampSeconds": 0.05,
+-      "startupRampSecondsByDelaySteps": [0, 0, 0.8, 0],
++      "startupRampSecondsByDelaySteps": [
++        0,
++        0,
++        0.8,
++        0
++      ],
+       "delayedTractionRecoveryPhaseLeadSeconds": 0,
+       "delayedTractionRecoveryFrequencyScale": 1,
+       "delayedTractionKpSagittalScale": 1,
+@@ -200,12 +217,12 @@
+         "right": 0.3
+       },
+       "feedbackByPose": {
+-      "front": {
+-        "rollGain": 0.4,
+-        "rollRateGain": 0.05,
+-        "pitchGain": 1.5,
+-        "pitchRateGain": 0.15
+-      },
++        "front": {
++          "rollGain": 0.4,
++          "rollRateGain": 0.05,
++          "pitchGain": 1.5,
++          "pitchRateGain": 0.15
++        },
+         "back": {
+           "rollGain": 0.2,
+           "rollRateGain": 0.05,
+@@ -297,7 +314,8 @@
+       "maximumRecoveryLinearSpeedMps": 0.2,
+       "maximumRecoveryAngularSpeedRadPerSec": 0.5,
+       "contactThresholdNewton": 1,
+-      "minimumSupportFeet": 2
++      "minimumSupportFeet": 2,
++      "dynamicSideCaptureTiltRad": 0.6
+     }
+   }
+ }
+diff --git a/before/controllers/behavior-supervisor/recovery.py b/after/controllers/behavior-supervisor/recovery.py
+index c4f4bdd..9f47adf 100644
+--- a/before/controllers/behavior-supervisor/recovery.py
++++ b/after/controllers/behavior-supervisor/recovery.py
+@@ -175,7 +175,13 @@ class PhasedSelfRightController:
+                 if dynamic_retry
+                 else self.config["captureUntilSeconds"]
+             )
+-            if elapsed < impulse_seconds:
++            dynamic_side_capture = (
++                self.dynamic_entry
++                and self.retry_count == 0
++                and pose in ("left", "right")
++                and tilt <= self.config["dynamicSideCaptureTiltRad"]
++            )
++            if elapsed < impulse_seconds and not dynamic_side_capture:
+                 self.phase = "impulse"
+                 target = impulse.copy()
+             elif elapsed < capture_until_seconds:
+@@ -199,13 +205,22 @@ class PhasedSelfRightController:
+                 if dynamic_retry and self.phase == "stand":
+                     self.feedback_hold = True
+                 target = (1.0 - alpha) * capture + alpha * self.stand_target
+-                target = self.stabilized_target(
+-                    target,
+-                    roll,
+-                    pitch,
+-                    velocity[3:6],
+-                    pose,
++                dynamic_side_stand = (
++                    self.dynamic_entry
++                    and self.retry_count == 0
++                    and pose in ("left", "right")
++                    and alpha >= 1.0
+                 )
++                if dynamic_side_stand:
++                    self.phase = "settle"
++                else:
++                    target = self.stabilized_target(
++                        target,
++                        roll,
++                        pitch,
++                        velocity[3:6],
++                        pose,
++                    )
+ 
+         maximum_abduction = self.config[
+             "maximumAbsoluteAbductionTargetRadByPose"
