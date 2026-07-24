@@ -1,0 +1,62 @@
+{
+  "version": 4,
+  "id": "001-9d235d259169",
+  "experimentHash": "9d235d259169d7142e8ab5494a96044198fe7f9a59a6c2dbc859783bb2f53e0e",
+  "sequence": 1,
+  "sessionId": "session-62b5a1eab9d3d22e",
+  "researchId": "articulated-brace-locomotion-policy",
+  "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+  "programHash": "f0d505ff3f3129566184e56f177bc7b7ed3ce4a1954dafac2f28a86fda18f42c",
+  "benchmarkLockHash": "795f5482764611e528a483f87758df1dec704a24619ac63a32a5869ed23a19a8",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "be8430b9c4ad232283917612ce1a9150600731ae62114b293b18067dec76ae5a",
+  "historyHash": "68ce3fa617a4a82de96371952610fd9f30bc91fcba7f9e56dec32412ea64c4a9",
+  "historyCount": 1,
+  "researcherChangedPaths": [
+    "trainers/articulated-brace-locomotion-residual-ppo/trainer.py",
+    "training/articulated-brace-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-brace-locomotion-policy/controller.json",
+    "trainers/articulated-brace-locomotion-residual-ppo/trainer.py",
+    "training/articulated-brace-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "post-recovery-durable-handoff-suffix-residual",
+    "hypothesis": "The complete-Mission trace localizes the new failure after a successful self-right: the fixed handoff reaches high locomotion authority, then the robot relapses during traverse or stop. A residual gated by observable Program transitionCount and limited to settling/locomotion can learn the causal post-recovery suffix while remaining exactly zero during approach, impact, recovery, and static exact Cases. Full stop-completion and recovery credit makes durable behavior—not first self-right—the optimized return.",
+    "expectedEffect": "Reduce recovery relapse and restore final height/tilt in both degraded complete Cases without changing exact approach, impact, self-righting, or Program recovery authority; the unchanged locked Mission and regression gates decide promotion."
+  },
+  "policyId": "articulated-brace-locomotion-49d0068604af7ffb",
+  "score": 57.44218274412115,
+  "delta": 23.00722286103973,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: transition-terminal-yaw regressed from passing to failing",
+      "impact-right-degraded: recovery-relapse regressed from passing to failing",
+      "reference-controller: no-lexicographic-improvement"
+    ],
+    "previousViolationCount": 48,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 114.37104112101008,
+    "candidateViolationSeverity": 89.30612267090838,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "5caeccc5d0f15ed4ee5e56bd1c31052e7e77c80c8d6edacd55db1d090586fded",
+    "acceptedRunId": "run-051ad49430c6846c",
+    "candidateRunId": "run-a91a8a02b3b3429a",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 143589,
+  "completed": true
+}

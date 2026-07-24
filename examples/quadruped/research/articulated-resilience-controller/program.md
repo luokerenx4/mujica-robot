@@ -68,6 +68,10 @@ Prefer one deployable mechanism per experiment:
 - an active-to-zero command edge may trigger recovery only when measured
   height, tilt, and angular speed jointly establish a disturbance; an ordinary
   controlled stop must remain locomotion-owned.
+- recovery-to-locomotion authority may advance only while measured height,
+  tilt, angular speed, and foot support remain stable. If that evidence
+  degrades, authority must continuously back away from locomotion, and complete
+  handoff must require a stable dwell rather than wall-clock expiry alone.
 
 Any new state must reset from observable command boundaries and be exposed in
 Controller telemetry. It must behave identically in MuJoCo and a hardware

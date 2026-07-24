@@ -492,3 +492,39 @@ phase-local learning evidence.
 exact headless reproduction command. Its authority boundary is explicit:
 Skills train and diagnose, a Mission Case witnesses end-to-end behavior, and
 the locked Mission Suite alone decides promotion.
+
+## Durable handoff research result
+
+The post-recovery relapse contract changed the optimization target from
+“reached standing once” to “remained physically recovered through the rest of
+the job.” Two governed experiments demonstrate how code and ML share that
+target without sharing promotion authority.
+
+The Program experiment
+`session-f4a4c740cf4ffb50/001-561fad4d8a36` replaced a fixed recovery-to-
+locomotion timer with a closed-loop authority integrator. The integrator used
+only height, tilt, angular speed, and support contacts. It raised aggregate
+score `62.7223 → 68.1143`, reduced violations `43 → 41`, and delayed the first
+degraded-right relapse by almost three seconds. It still regressed terminal
+tilt and height, so the Judge reverted it.
+
+The Policy experiment
+`session-62b5a1eab9d3d22e/001-9d235d259169` trained on complete Mission
+episodes with bounded residual authority only after an observable Program
+recovery transition. Training score improved substantially over the previous
+Policy, but exact-left backward displacement and degraded-right progress, yaw,
+and relapse gates regressed. The Judge reverted it as well.
+
+This is the intended auto-research contract:
+
+1. immutable complete-Mission evidence identifies a causal boundary;
+2. Program and ML Labs receive separate editable source closures;
+3. each Lab may improve its local signal without receiving release authority;
+4. gate regressions dominate aggregate reward or score; and
+5. rejected code, Policy, training, and A/B trajectories remain inspectable in
+   Studio and reproducible through the CLI.
+
+The next learned candidate should add recurrent contact/action history and a
+direct causal relapse credit path. It must retain zero authority during
+approach, impact, and Program recovery, and it must still be judged on the
+same four complete no-reset Cases.

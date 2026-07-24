@@ -458,6 +458,127 @@ function installMomentumDirectedRecoveryEntry(supervisorConfig, recoveryConfig) 
   );
 }
 
+function installStabilityConditionedHandoff(config) {
+  Object.assign(definition.config.supervisor, config);
+
+  supervisor = replaceExact(
+    supervisor,
+    `        self.handoff_streak = 0
+        self.transition_count = 0
+`,
+    `        self.handoff_streak = 0
+        self.handoff_blend = 0.0
+        self.handoff_last_time = None
+        self.handoff_stable = False
+        self.handoff_support_feet = 0
+        self.transition_count = 0
+`,
+    "handoff integrator reset state",
+  );
+  supervisor = replaceExact(
+    supervisor,
+    `            "handoffStreakSteps": 0,
+            "recoveryCompleted": False,
+`,
+    `            "handoffStreakSteps": 0,
+            "handoffBlend": 0.0,
+            "handoffStable": False,
+            "handoffSupportFeet": 0,
+            "recoveryCompleted": False,
+`,
+    "initial handoff telemetry",
+  );
+  supervisor = replaceExact(
+    supervisor,
+    `        elif mode == "settling":
+            self.handoff_streak = 0
+            self.locomotion.reset(self.seed + self.transition_count)
+`,
+    `        elif mode == "settling":
+            self.handoff_streak = 0
+            self.handoff_blend = 0.0
+            self.handoff_last_time = time_seconds
+            self.handoff_stable = False
+            self.handoff_support_feet = 0
+            self.locomotion.reset(self.seed + self.transition_count)
+`,
+    "settling handoff reset",
+  );
+  supervisor = replaceExact(
+    supervisor,
+    `            elapsed = max(0.0, time_seconds - self.mode_started_at)
+            blend = min(1.0, elapsed / self.config["handoffBlendSeconds"])
+            action = (1.0 - blend) * recovery_action + blend * locomotion_action
+            child = self.recovery.telemetry()
+            if blend >= 1.0:
+`,
+    `            handoff_dt = max(
+                0.0, time_seconds - float(self.handoff_last_time)
+            )
+            self.handoff_last_time = time_seconds
+            angular_speed = float(
+                np.linalg.norm(
+                    np.asarray(
+                        observation["imu-angular-velocity"], dtype=np.float64
+                    )
+                )
+            )
+            contacts = np.asarray(
+                observation["foot-contact-force"], dtype=np.float64
+            )
+            self.handoff_support_feet = int(
+                np.count_nonzero(
+                    contacts >= self.config["handoffMinimumFootContactN"]
+                )
+            )
+            self.handoff_stable = (
+                height >= self.config["handoffMinimumHeightM"]
+                and tilt <= self.config["handoffMaximumTiltRad"]
+                and angular_speed
+                <= self.config["handoffMaximumAngularSpeedRadPerSec"]
+                and self.handoff_support_feet
+                >= self.config["handoffMinimumSupportFeet"]
+            )
+            if self.handoff_stable:
+                self.handoff_blend = min(
+                    1.0,
+                    self.handoff_blend
+                    + handoff_dt / self.config["handoffBlendSeconds"],
+                )
+                self.handoff_streak += 1
+            else:
+                self.handoff_blend = max(
+                    0.0,
+                    self.handoff_blend
+                    - handoff_dt * self.config["handoffBackoffRatePerSec"],
+                )
+                self.handoff_streak = 0
+            blend = self.handoff_blend
+            action = (1.0 - blend) * recovery_action + blend * locomotion_action
+            child = self.recovery.telemetry()
+            if (
+                blend >= 1.0
+                and self.handoff_streak
+                >= self.config["handoffCompletionStableSteps"]
+            ):
+`,
+    "stability-conditioned handoff authority",
+  );
+  supervisor = replaceExact(
+    supervisor,
+    `            "handoffStreakSteps": self.handoff_streak,
+            "recoveryCompleted": self.recovery_completed,
+`,
+    `            "handoffStreakSteps": self.handoff_streak,
+            "handoffBlend": self.handoff_blend,
+            "handoffStable": self.handoff_stable,
+            "handoffSupportFeet": self.handoff_support_feet,
+            "recoveryCompleted": self.recovery_completed,
+`,
+    "live handoff telemetry",
+  );
+}
+
 const common = {
   progressPhaseDeficitStartM: 0.08,
   progressPhaseDeficitFullM: 0.42,
@@ -546,6 +667,23 @@ const strategies = [
       dynamicEntryLateralDominanceRatio: 0.9,
     },
   },
+  {
+    strategy: "stability-conditioned-recovery-locomotion-handoff",
+    hypothesis:
+      "The accepted right-degraded trace begins diverging while the fixed wall-clock cross-fade is still increasing locomotion authority: action saturation and angular speed rise at roughly 75% blend, yet the Supervisor continues to 100% and meets the redirect-to-traverse command edge on the next step. Integrating authority only while measured height, tilt, angular speed, and foot support remain safe—and continuously backing off when they do not—should make recovery-to-locomotion a closed-loop transition instead of a timer.",
+    expectedEffect:
+      "Eliminate post-recovery relapse in the degraded Cases without weakening the Mission Judge, while preserving complete phase progression and ordinary locomotion regressions.",
+    kind: "handoff",
+    config: {
+      handoffMinimumHeightM: 0.36,
+      handoffMaximumTiltRad: 0.28,
+      handoffMaximumAngularSpeedRadPerSec: 1.2,
+      handoffMinimumFootContactN: 3,
+      handoffMinimumSupportFeet: 2,
+      handoffBackoffRatePerSec: 0.8,
+      handoffCompletionStableSteps: 10,
+    },
+  },
 ];
 
 const selected = strategies.find(
@@ -563,6 +701,8 @@ if (selected.kind === "momentum-recovery") {
   );
 } else if (selected.kind === "early-recovery") {
   installDisturbanceConditionedRecoveryEntry(selected.config);
+} else if (selected.kind === "handoff") {
+  installStabilityConditionedHandoff(selected.config);
 } else {
   installMeasuredPhaseAndSupportFeedback(selected.config);
 }

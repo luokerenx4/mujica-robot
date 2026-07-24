@@ -1,0 +1,125 @@
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.json b/after/controllers/articulated-behavior-supervisor/controller.json
+index 0b5e92a..55156fc 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.json
++++ b/after/controllers/articulated-behavior-supervisor/controller.json
+@@ -95,7 +95,14 @@
+           "kneeAmplitude": 0.048
+         }
+       },
+-      "missionCommandDeadband": 0.02
++      "missionCommandDeadband": 0.02,
++      "handoffMinimumHeightM": 0.36,
++      "handoffMaximumTiltRad": 0.28,
++      "handoffMaximumAngularSpeedRadPerSec": 1.2,
++      "handoffMinimumFootContactN": 3,
++      "handoffMinimumSupportFeet": 2,
++      "handoffBackoffRatePerSec": 0.8,
++      "handoffCompletionStableSteps": 10
+     },
+     "locomotion": {
+       "kpAbduction": 16.82265,
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.py b/after/controllers/articulated-behavior-supervisor/controller.py
+index ad9f177..5114fea 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.py
++++ b/after/controllers/articulated-behavior-supervisor/controller.py
+@@ -40,6 +40,10 @@ class ArticulatedBehaviorSupervisorController:
+         self.mode_started_at = 0.0
+         self.fallen_streak = 0
+         self.handoff_streak = 0
++        self.handoff_blend = 0.0
++        self.handoff_last_time = None
++        self.handoff_stable = False
++        self.handoff_support_feet = 0
+         self.transition_count = 0
+         self.last_transition_reason = "reset"
+         self.recovery_completed = False
+@@ -54,6 +58,9 @@ class ArticulatedBehaviorSupervisorController:
+             "modeDwellSeconds": 0.0,
+             "fallenStreakSteps": 0,
+             "handoffStreakSteps": 0,
++            "handoffBlend": 0.0,
++            "handoffStable": False,
++            "handoffSupportFeet": 0,
+             "recoveryCompleted": False,
+             "missionCommandStarted": False,
+             "waistPositionRad": [0.0, 0.0],
+@@ -165,6 +172,10 @@ class ArticulatedBehaviorSupervisorController:
+             self.handoff_streak = 0
+         elif mode == "settling":
+             self.handoff_streak = 0
++            self.handoff_blend = 0.0
++            self.handoff_last_time = time_seconds
++            self.handoff_stable = False
++            self.handoff_support_feet = 0
+             self.locomotion.reset(self.seed + self.transition_count)
+             self.locomotion_time_origin = time_seconds
+         elif mode == "locomotion":
+@@ -212,11 +223,55 @@ class ArticulatedBehaviorSupervisorController:
+                 observation,
+                 max(0.0, time_seconds - self.locomotion_time_origin),
+             )
+-            elapsed = max(0.0, time_seconds - self.mode_started_at)
+-            blend = min(1.0, elapsed / self.config["handoffBlendSeconds"])
++            handoff_dt = max(
++                0.0, time_seconds - float(self.handoff_last_time)
++            )
++            self.handoff_last_time = time_seconds
++            angular_speed = float(
++                np.linalg.norm(
++                    np.asarray(
++                        observation["imu-angular-velocity"], dtype=np.float64
++                    )
++                )
++            )
++            contacts = np.asarray(
++                observation["foot-contact-force"], dtype=np.float64
++            )
++            self.handoff_support_feet = int(
++                np.count_nonzero(
++                    contacts >= self.config["handoffMinimumFootContactN"]
++                )
++            )
++            self.handoff_stable = (
++                height >= self.config["handoffMinimumHeightM"]
++                and tilt <= self.config["handoffMaximumTiltRad"]
++                and angular_speed
++                <= self.config["handoffMaximumAngularSpeedRadPerSec"]
++                and self.handoff_support_feet
++                >= self.config["handoffMinimumSupportFeet"]
++            )
++            if self.handoff_stable:
++                self.handoff_blend = min(
++                    1.0,
++                    self.handoff_blend
++                    + handoff_dt / self.config["handoffBlendSeconds"],
++                )
++                self.handoff_streak += 1
++            else:
++                self.handoff_blend = max(
++                    0.0,
++                    self.handoff_blend
++                    - handoff_dt * self.config["handoffBackoffRatePerSec"],
++                )
++                self.handoff_streak = 0
++            blend = self.handoff_blend
+             action = (1.0 - blend) * recovery_action + blend * locomotion_action
+             child = self.recovery.telemetry()
+-            if blend >= 1.0:
++            if (
++                blend >= 1.0
++                and self.handoff_streak
++                >= self.config["handoffCompletionStableSteps"]
++            ):
+                 self.switch("locomotion", time_seconds, "bounded-action-blend-complete")
+                 self.mission_command_started = (
+                     float(
+@@ -268,6 +323,9 @@ class ArticulatedBehaviorSupervisorController:
+             "modeDwellSeconds": max(0.0, time_seconds - self.mode_started_at),
+             "fallenStreakSteps": self.fallen_streak,
+             "handoffStreakSteps": self.handoff_streak,
++            "handoffBlend": self.handoff_blend,
++            "handoffStable": self.handoff_stable,
++            "handoffSupportFeet": self.handoff_support_feet,
+             "recoveryCompleted": self.recovery_completed,
+             "missionCommandStarted": self.mission_command_started,
+             "recoveryPose": self.recovery_pose,

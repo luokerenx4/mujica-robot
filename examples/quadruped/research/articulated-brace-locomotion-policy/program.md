@@ -23,16 +23,19 @@ handoff, and safe behavior outside the residual gate. Learned authority must:
 - remain per-actuator bounded and ramped;
 - preserve zero authority outside explicitly listed Program modes.
 
-The current failure begins during one-step-delay approach locomotion, before
-impact. A useful Policy therefore needs measured locomotion authority early
-enough to affect impact entry, while remaining unable to replace recovery
-logic. Prefer changing one of:
+The latest locked Judge adds a later causal failure: after successful
+self-righting, the right-degraded Case relapses during the continuous
+redirect/traverse/stop suffix. A useful Policy may therefore receive bounded
+authority only after an observable Program recovery transition, including the
+`settling` handoff, while remaining exactly zero during approach, impact, and
+Program recovery. Prefer changing one of:
 
 - leg-versus-waist residual authority;
-- locomotion gate dwell, tilt ceiling, or ramp;
+- post-recovery transition gate, tilt ceiling, or ramp;
 - PPO budget/step size and prior regularization;
 - complete-Mission progression boundary; or
-- bounded reward weight for signed command progress and phase timeout.
+- bounded reward weight for signed command progress, stop stability, successful
+  recovery, phase timeout, and timeout-free completion.
 
 Do not increase PPO steps without changing the measured authority or credit
 assignment bottleneck. Training reward is evidence about learning, never

@@ -1,0 +1,122 @@
+diff --git a/before/controllers/articulated-brace-locomotion-policy/controller.json b/after/controllers/articulated-brace-locomotion-policy/controller.json
+index bf2c75e..8a746a8 100644
+--- a/before/controllers/articulated-brace-locomotion-policy/controller.json
++++ b/after/controllers/articulated-brace-locomotion-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "articulated-brace-locomotion-policy",
+   "name": "Frozen articulated-brace locomotion residual Policy",
+   "kind": "policy",
+-  "policy": "articulated-brace-locomotion-62104cabfbc91e7a",
++  "policy": "articulated-brace-locomotion-49d0068604af7ffb",
+   "deterministic": true
+ }
+diff --git a/before/trainers/articulated-brace-locomotion-residual-ppo/trainer.py b/after/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
+index b73b0e3..bbf1fe1 100644
+--- a/before/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
++++ b/after/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
+@@ -8,31 +8,31 @@ def create_trainer():
+         action_transform={
+             "kind": "program-controller-residual",
+             "residualScaleByAction": [
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.1,
+-                0.1,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.50,
++                0.50,
+             ],
+             "residualGate": {
+                 "kind": "prior-telemetry-mode",
+-                "allowedModes": ["locomotion"],
++                "allowedModes": ["settling", "locomotion"],
+                 "minimumTelemetry": {
+-                    "modeDwellSeconds": 0.2,
++                    "transitionCount": 3,
+                 },
+                 "maximumTelemetry": {
+-                    "bodyTiltRad": 0.8,
++                    "bodyTiltRad": 0.7,
+                 },
+-                "rampSeconds": 0.2,
++                "rampSeconds": 0.3,
+             },
+         },
+     )
+diff --git a/before/training/articulated-brace-locomotion.training.json b/after/training/articulated-brace-locomotion.training.json
+index aa09a44..29fce59 100644
+--- a/before/training/articulated-brace-locomotion.training.json
++++ b/after/training/articulated-brace-locomotion.training.json
+@@ -18,27 +18,27 @@
+     {
+       "id": "exact-complete-missions",
+       "throughPhase": "stop",
+-      "untilStep": 4096,
++      "untilStep": 16384,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "randomized-complete-missions",
+       "throughPhase": "stop",
+-      "untilStep": 8192,
++      "untilStep": 32768,
+       "domainProfile": "quadruped-resilient-mission-v1"
+     }
+   ],
+   "promotionBenchmark": "integrated-resilience-mission",
+-  "totalSteps": 8192,
++  "totalSteps": 32768,
+   "rolloutSteps": 256,
+   "epochs": 4,
+   "minibatchSize": 64,
+-  "learningRate": 0.0001,
++  "learningRate": 0.00005,
+   "gamma": 0.995,
+   "gaeLambda": 0.97,
+   "clipRatio": 0.12,
+-  "entropyCoefficient": 0.0002,
+-  "residualPenalty": 0.1,
++  "entropyCoefficient": 0.0005,
++  "residualPenalty": 0.2,
+   "qualityReward": {
+     "jointAcceleration": 0.0001,
+     "bodyAngularAcceleration": 0.0002,
+@@ -48,12 +48,12 @@
+     "footImpact": 0
+   },
+   "missionReward": {
+-    "commandProgress": 5,
++    "commandProgress": 4,
+     "velocityTracking": 1,
+-    "stopStability": 2,
+-    "recoverySuccess": 100,
+-    "phaseTimeoutPenalty": 200,
+-    "timeoutFreeCompletion": 100
++    "stopStability": 8,
++    "recoverySuccess": 150,
++    "phaseTimeoutPenalty": 250,
++    "timeoutFreeCompletion": 150
+   },
+   "recoveryReward": {
+     "upright": 2,

@@ -120,11 +120,52 @@ recovery using causal Program telemetry `recoveryCompleted=false`. Its newly
 trained Policy lost degraded-right self-righting and increased violations
 `42 → 45`. Verdict: `REVERT`.
 
-These experiments prove a useful learned correction exists, but not yet a
-promotable Policy. The Program remains the release subject. Future work should
-improve recovery-to-locomotion stability or train a recurrent/contact-aware
-residual; it must not raise sample budget or widen authority without a new
-measured hypothesis.
+### Closed-loop handoff and learned Mission suffix
+
+The strengthened relapse gate localized a concrete handoff edge in immutable
+Run `run-ff7d8750aaeae444`. On degraded-right:
+
+- the Supervisor entered `settling` at `11.70 s`;
+- locomotion authority reached roughly `75%` near `13.20 s`, when angular
+  speed and saturated action began to grow;
+- the wall-clock blend completed at the same redirect-to-traverse boundary;
+- the first relapse was emitted at `14.80 s`.
+
+Session `session-f4a4c740cf4ffb50` replaced the wall-clock-only cross-fade with
+a stability-conditioned authority integrator. Height, yaw-invariant tilt,
+angular speed, and support contacts advanced or backed off locomotion
+authority, with no Scenario or Mission-phase input.
+
+- score improved `62.7223 → 68.1143`;
+- violations improved `43 → 41`;
+- normalized severity improved `87.786 → 79.425`;
+- the first degraded-right relapse moved from `14.80 s` to `17.72 s`;
+- the robot crossed traverse but entered a late oscillatory handoff and failed
+  the previously passing final tilt/height gates;
+- verdict: `REVERT`.
+
+Session `session-62b5a1eab9d3d22e` then trained a `32,768`-step residual on
+complete Missions. Learned authority was zero in approach, impact, and
+recovery; it activated only in `settling`/`locomotion` after at least three
+observable Program transitions. Completion, stop stability, recovery, and
+timeout credit made the whole post-recovery suffix part of the return.
+
+- previous Policy score improved `34.4350 → 57.4422`;
+- violations improved `48 → 43`;
+- normalized severity improved `114.371 → 89.306`;
+- degraded-right ended upright at `0.366 m`, but accumulated three relapse
+  episodes and regressed backward-progress and terminal-yaw gates;
+- exact-left also regressed its backward-displacement gate;
+- the Candidate did not lexicographically beat the Program reference;
+- verdict: `REVERT`.
+
+These experiments prove both intervention surfaces carry useful signal but
+neither is promotable. The Program rule delayed failure without stabilizing
+the authority loop; PPO improved its predecessor while exploiting trajectories
+that still crossed the physical relapse envelope. The Program remains the
+release subject. The next experiment must change the learned state/credit
+contract—most likely recurrent contact/action history plus direct relapse
+credit—not merely widen torque authority or repeat scalar stability thresholds.
 
 ## Acceptance
 
@@ -150,5 +191,8 @@ measured hypothesis.
   Mission Suite.
 - [x] Replace terminal-frame recovery luck with a causal post-recovery relapse
   event, score term, hard gate, diagnostics, and Studio evidence.
-- [ ] Optimize the recovery-to-locomotion handoff against the strengthened
-  complete-Mission Judge.
+- [x] Test one closed-loop Program handoff and one bounded learned post-recovery
+  suffix against the strengthened complete-Mission Judge; preserve both as
+  immutable `REVERT` evidence.
+- [ ] Add causal relapse credit and recurrent contact/action history to the
+  learned suffix without expanding its Program-telemetry authority boundary.
