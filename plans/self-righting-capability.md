@@ -55,6 +55,8 @@ Out of scope:
 - [x] Lock one Benchmark shared by both candidates.
 - [x] Route remaining blockers to bounded controller-code, RL-policy, and complete-design Labs.
 - [x] Compare, review, and retain the rigid torso after the waist fails to justify its added mechanism.
+- [x] Re-open the waist hypothesis under the complete no-reset Mission rather
+  than relying on isolated self-righting evidence.
 - [ ] Integrate recovery selection with the locomotion supervisor and add perturbed-pose robustness cases before calling the capability operationally complete.
 
 ## Decision rule
@@ -79,6 +81,18 @@ Treat the waist as a testable design hypothesis. Promote it only if the rigid to
 - The deterministic behavior supervisor now executes one continuous `approach → impact → recovery → resume` mission and passes mirrored left/right impacts without reset. A dedicated residual Policy may act only after `recoveryCompleted=true`; it cannot perturb impact entry or self-righting.
 - Continuous-episode PPO now masks actor optimization by actual residual authority while retaining whole-episode critic learning. A separate episode-isolation fix prevents the resume gait mutated by one supervisor instance from leaking into later training episodes.
 - Stage-zero Policy `resilient-mission-residual-8af2efac119bc98c` passes both continuous missions with zero safety violations but scores `0.126070` below the deterministic supervisor, so it is retained as `REVERT` evidence. Perturbed plant, impact, and fallen-pose recovery remain open before this capability is operationally complete.
+- Integrated Candidate `integrated-resilience-waist-design` was judged on four
+  complete `approach → impact → recover → resume → redirect → traverse → stop`
+  Missions. Its neutral comparison scored `-14.293828` versus rigid
+  `38.935033` and failed all four recovery handoffs.
+- Research session `session-2c2867adccdca750` found a real but insufficient
+  mechanical signal: experiment `001-e9997df1cda1` reduced Mission violations
+  `44 → 42`, then failed isolated recovery, joint-limit, and collision
+  regressions. Experiment `002-6dae00f711e7` worsened the Mission. Both were
+  reverted and the rigid robot remains selected.
+- The next waist attempt must co-design split-torso geometry, contact
+  workspace, and leg/waist sequencing. An isolated self-righting gain cannot
+  justify a morphology that fails the continuous mission.
 
 ## Progress log
 
@@ -92,3 +106,8 @@ Treat the waist as a testable design hypothesis. Promote it only if the rigid to
 - 2026-07-24: Trained residual Policy `phased-self-righting-residual-5ae0422798bf8d30` from the successful prior. Strict replay rejected it despite strong training reward, establishing that phase/contact sequence preservation must be an explicit ML constraint.
 - 2026-07-24: Integrated recovery into the locomotion supervisor and locked a reset-free mirrored-impact mission. Added post-recovery-only residual PPO, actor-authority masking, and per-episode Controller configuration isolation. The best 8,192-step seed preserved every continuous-mission gate but was honestly rejected for a `-0.126070` score delta.
 - 2026-07-24: Published current Development Review `development-review-f0ed5ab54c39bb4c` and Work Order `development-work-order-2f89c0b56af2f552`. Studio snapshot `studio-7ba7a27c3fb48f79` compares 700-frame supervisor and learned-Policy Runs on the same left-impact mission while preserving the Policy as a non-promoted candidate.
+- 2026-07-24: Re-opened the waist as a complete-robot hypothesis on the
+  18-second Mission Suite. Research session `session-2c2867adccdca750`
+  preserved two reverted source experiments, and current Work Order
+  `development-work-order-0981e41eb1643ca7` routes complete-design,
+  Controller-code, and RL-policy work under the same locked acceptance test.

@@ -30,6 +30,10 @@ no-reset Missions.
   Mission; the final stage is necessarily the complete Task.
 - [x] Each Mission stage freezes its Domain Profile, observed global-step
   interval, actor authority, and phase-local reward evidence.
+- [x] Complete-design, Controller-code, and RL-policy lanes are judged by the
+  same locked Mission Suite instead of private capability tests.
+- [x] Studio exposes a complete-design Candidate's mass, Action, Observation,
+  and cost burden beside its latest governed Mission evidence.
 - [ ] Improve degraded-impact recovery and signed post-recovery progress
   without weakening the Suite.
 - [ ] Replace synthetic plant ranges with calibrated/HIL evidence before
@@ -75,17 +79,31 @@ no-reset Missions.
   `38.853282`. The selected seed remains `REVERT` against `38.935033`; improved
   causal data did not yet correct negative post-handoff `redirect` progress or
   degraded recovery.
+- A 14-action articulated-waist Candidate was evaluated on the same four
+  complete Missions. Its neutral comparison scored `-14.293828` against the
+  rigid robot's `38.935033` and failed all four recovery handoffs.
+- Governed waist experiment `001-e9997df1cda1` improved mechanical failure
+  count and severity (`44 → 42`, `185.804 → 180.903`) but regressed isolated
+  recovery safety; reversing the impulse worsened the Mission. Both attempts
+  were reverted, so the partial signal cannot masquerade as a design win.
+- Work Order `development-work-order-0981e41eb1643ca7` now keeps morphology,
+  Controller code, and RL Policy as separate intervention surfaces under one
+  Mission authority.
 
 ## Next experiment
 
-Keep the Mission Suite frozen. Change only the governed training surface:
+Keep the Mission Suite frozen. Run bounded interventions without splitting the
+acceptance test:
 
 1. keep the new Mission progression and change reward/credit assignment so
    residual authority during `redirect` produces positive signed progress;
 2. improve the Program recovery basin under randomized degraded Missions so
    the learned actor receives downstream authority consistently;
-3. retain phase-conditioned reward and authority evidence;
-4. preserve impact entry and self-righting as Program-only authority until a
+3. for the design lane, change split-torso geometry/contact workspace together
+   with leg/waist sequencing; do not accept another neutral-servo or sign-only
+   comparison;
+4. retain phase-conditioned reward and authority evidence;
+5. preserve impact entry and self-righting as Program-only authority until a
    separate governed experiment explicitly changes that safety boundary;
-5. reject every experiment unless degraded recovery gates improve and no exact
+6. reject every experiment unless degraded recovery gates improve and no exact
    Mission gate regresses.

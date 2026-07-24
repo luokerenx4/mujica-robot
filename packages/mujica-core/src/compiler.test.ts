@@ -21,15 +21,16 @@ describe("Robot Assembly compiler", () => {
       humanReviewStatus: "REQUIRED",
     });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.status).toBe("PARTIALLY_ROUTED");
+    expect(workOrder.status).toBe("READY");
     expect(workOrder.lanes.map((item) => item.researchLab)).toEqual([
+      "integrated-resilience-waist-design",
       "integrated-resilience-controller",
       "integrated-resilience-policy",
     ]);
     expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
     expect(workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
-    expect(workOrder.uncoveredSurfaces.some((item) => item.surface === "assembly")).toBe(true);
+    expect(workOrder.uncoveredSurfaces).toEqual([]);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 
@@ -181,7 +182,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("resilient-command-conditioned-history-3dof");
     expect(result.project.manifest.defaults.controller).toBe("behavior-supervisor");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "resilient-command-conditioned-waist-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);

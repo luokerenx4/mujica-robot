@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "resilient-command-conditioned-waist-3dof",
+  "name": "Two-axis waist resilience candidate with observation-budgeted delay state",
+  "base": "quadruped-waist-3dof",
+  "components": [
+    {
+      "id": "body-imu",
+      "component": "body-imu",
+      "mount": "torso-sensor"
+    },
+    {
+      "id": "actuator-history",
+      "component": "waist-actuator-delay-state",
+      "mount": "torso-sensor"
+    },
+    {
+      "id": "motion-command-input",
+      "component": "motion-command-input",
+      "mount": "torso-sensor"
+    },
+    {
+      "id": "foot-force-kit",
+      "component": "foot-force-sensor",
+      "mount": "foot-array"
+    }
+  ]
+}

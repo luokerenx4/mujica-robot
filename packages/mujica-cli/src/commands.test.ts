@@ -162,8 +162,8 @@ describe("agent CLI contract", () => {
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "PARTIALLY_ROUTED",
-      subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "integrated-resilience-curriculum-policy" },
+      status: "READY",
+      subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "behavior-supervisor" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -175,10 +175,11 @@ describe("agent CLI contract", () => {
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "integrated-resilience-mission" && item.case === "impact-right-degraded")).toBeDefined();
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "heavy-weak")).toBeDefined();
     expect(data.workOrder.lanes.map((item: any) => item.researchLab)).toEqual([
+      "integrated-resilience-waist-design",
       "integrated-resilience-controller",
       "integrated-resilience-policy",
     ]);
-    expect(data.workOrder.uncoveredSurfaces.some((item: any) => item.surface === "assembly")).toBe(true);
+    expect(data.workOrder.uncoveredSurfaces).toEqual([]);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
   }, 20_000);
@@ -1203,13 +1204,13 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 12, 14]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14, 12, 14]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6, 6]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.researchLabs).toBe(14);
+    expect(envelope.data.definitions.researchLabs).toBe(15);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
     expect(envelope.data.definitions.domainProfiles).toBe(7);
     expect(envelope.data.definitions.calibrations).toBe(2);

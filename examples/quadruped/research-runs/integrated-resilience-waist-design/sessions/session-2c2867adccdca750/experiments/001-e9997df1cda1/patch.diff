@@ -1,0 +1,135 @@
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.json b/after/controllers/articulated-behavior-supervisor/controller.json
+index 4695770..a3627e4 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.json
++++ b/after/controllers/articulated-behavior-supervisor/controller.json
+@@ -54,7 +54,10 @@
+   },
+   "config": {
+     "waist": {
+-      "neutralTargetRad": [0, 0],
++      "neutralTargetRad": [
++        0,
++        0
++      ],
+       "kp": 18,
+       "kd": 3,
+       "maximumAbsoluteAction": 8
+@@ -75,10 +78,22 @@
+       "minimumDynamicRecoveryTargetSteps": 1,
+       "handoffBlendSeconds": 2,
+       "postRecoveryGaitByPose": {
+-        "front": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "back": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "left": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 },
+-        "right": { "hipAmplitude": 0.14, "kneeAmplitude": 0.048 }
++        "front": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "back": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "left": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        },
++        "right": {
++          "hipAmplitude": 0.14,
++          "kneeAmplitude": 0.048
++        }
+       },
+       "missionCommandDeadband": 0.02
+     },
+@@ -116,7 +131,12 @@
+       "delayedTractionTransitionYawDampingGain": 0.1,
+       "delayedTractionRecoveryHipScale": 1.8,
+       "delayedTractionRecoveryRampSeconds": 0.05,
+-      "startupRampSecondsByDelaySteps": [0, 0, 0.8, 0],
++      "startupRampSecondsByDelaySteps": [
++        0,
++        0,
++        0.8,
++        0
++      ],
+       "delayedTractionRecoveryPhaseLeadSeconds": 0,
+       "delayedTractionRecoveryFrequencyScale": 1,
+       "delayedTractionKpSagittalScale": 1,
+@@ -187,18 +207,48 @@
+       "kdWaist": 3,
+       "maximumWaistTargetRad": 0.62,
+       "waistImpulseTargetByPose": {
+-        "front": [0, 0],
+-        "back": [0, 0],
+-        "left": [0, 0],
+-        "right": [0, 0],
+-        "upright": [0, 0]
++        "front": [
++          0,
++          0.5
++        ],
++        "back": [
++          0,
++          -0.5
++        ],
++        "left": [
++          0.5,
++          0
++        ],
++        "right": [
++          -0.5,
++          0
++        ],
++        "upright": [
++          0,
++          0
++        ]
+       },
+       "waistCaptureTargetByPose": {
+-        "front": [0, 0],
+-        "back": [0, 0],
+-        "left": [0, 0],
+-        "right": [0, 0],
+-        "upright": [0, 0]
++        "front": [
++          0,
++          -0.2
++        ],
++        "back": [
++          0,
++          0.2
++        ],
++        "left": [
++          -0.2,
++          0
++        ],
++        "right": [
++          0.2,
++          0
++        ],
++        "upright": [
++          0,
++          0
++        ]
+       },
+       "dynamicEntryAngularSpeedThresholdRadPerSec": 1.5,
+       "dynamicRiseKdSagittal": 4,
+@@ -223,12 +273,12 @@
+         "right": 0.3
+       },
+       "feedbackByPose": {
+-      "front": {
+-        "rollGain": 0.4,
+-        "rollRateGain": 0.05,
+-        "pitchGain": 1.5,
+-        "pitchRateGain": 0.15
+-      },
++        "front": {
++          "rollGain": 0.4,
++          "rollRateGain": 0.05,
++          "pitchGain": 1.5,
++          "pitchRateGain": 0.15
++        },
+         "back": {
+           "rollGain": 0.2,
+           "rollRateGain": 0.05,

@@ -206,6 +206,52 @@ credit-assignment evidence, not a promoted Controller. The next optimization
 must address negative `redirect` progress and broaden successful recovery
 basins before increasing PPO budget.
 
+## Complete-robot co-design result
+
+The same Mission now judges morphology as well as Controller and Policy work.
+This closes an important loophole: a waist may not be selected because it looks
+useful in an isolated self-righting reset while making impact entry, recovery
+handoff, resumed walking, or braking worse.
+
+The first integrated waist Candidate changed the complete robot from:
+
+| Burden | Selected rigid robot | Proposed articulated robot |
+| --- | ---: | ---: |
+| Mass | 6.03 kg | 6.23 kg |
+| Action width | 12 | 14 |
+| Observation width | 145 | 53 |
+| Component cost | 6 | 6 |
+
+The smaller proposed Observation is a deliberate trade, not a free
+improvement. The Charter caps Observation width at 145, so adding two waist
+actuators to the existing four-step raw action history would exceed the
+contract. The Candidate removes raw commanded/applied history and retains only
+measured actuator-delay state. Studio exposes this burden beside the Candidate
+hypothesis.
+
+A neutral-waist comparison on the four-case Mission Suite scored
+`38.935033 → -14.293828` (`-53.228861`) and failed recovery in all four cases.
+Two governed source experiments then changed waist recovery sequencing:
+
+- experiment `001-e9997df1cda1` reduced Mission violations `44 → 42` and summed
+  normalized severity `185.804 → 180.903`, showing that articulation can change
+  the mechanical recovery basin, but it introduced isolated recovery,
+  joint-limit, and self-contact regressions and was reverted;
+- experiment `002-6dae00f711e7` reversed the waist impulse, worsened violations
+  `44 → 46` and severity `185.804 → 187.572`, and was also reverted.
+
+The rigid robot therefore remains selected. This is not evidence that a waist
+is universally useless. It is evidence that the current split-torso geometry
+and borrowed recovery sequence do not compose safely with the complete
+Mission. The next morphology experiment must jointly change geometry, contact
+workspace, and leg/waist sequencing rather than trying another isolated gain or
+sign.
+
+Development Work Order `development-work-order-0981e41eb1643ca7` now routes the
+same locked Mission blockers into three parallel bounded lanes:
+complete-design, Controller code, and RL Policy. None may promote from its
+local training or diagnostic score.
+
 ## HCI
 
 Studio renders a `Continuous Mission · one Episode, no reset` panel above the

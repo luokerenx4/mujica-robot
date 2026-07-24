@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "waist-actuator-delay-state",
+  "name": "Actuator delay state for the fourteen-action waist design",
+  "type": "actuator-delay-state",
+  "fragment": "model.xml",
+  "compatibleMounts": ["sensor-bus"],
+  "providesMounts": [],
+  "observations": [
+    { "name": "actuator-delay-steps", "kind": "sensor", "size": 1, "source": "control:actuator-delay-steps", "unit": "control-step" }
+  ],
+  "actions": [],
+  "dependencies": [],
+  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "physical": { "centerOfMassM": [0, 0, 0], "inertiaDiagonalKgM2": [0, 0, 0] },
+  "geometry": [],
+  "joints": [],
+  "actuators": [],
+  "sensors": [
+    { "name": "actuator-delay-steps", "kind": "actuator-delay", "source": "runtime" }
+  ],
+  "massKg": 0,
+  "cost": 1,
+  "license": "Apache-2.0",
+  "attribution": "Runtime-provided actuator delay state for the articulated design"
+}

@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-waist-design",
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-2c2867adccdca750",
+    "experimentId": "001-e9997df1cda1",
+    "experimentHash": "e9997df1cda1e0e23c5b9f832b2374de908f4318d0f9d51b7bda763e48ed7ccb"
+  },
+  "proposal": {
+    "strategy": "pose-directed-waist-impulse",
+    "hypothesis": "The neutral waist behaves as added passive complexity. A pose-directed roll or pitch impulse followed by a smaller counter-bend should move the split torso out of the inverted contact basin before the leg rise phase.",
+    "expectedEffect": "Increase recovery-target occupancy and stable-standing dwell while reducing final tilt, joint-limit use, and self-contact on the same continuous Mission."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "self-righting-morphology-v2: front: final-body-tilt regressed from passing to failing",
+        "self-righting-morphology-v2: front: final-base-height regressed from passing to failing",
+        "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+        "self-righting-morphology-v2: back: disallowed-collision regressed from passing to failing",
+        "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+        "recovery-handoff: back-forward: disallowed-collision regressed from passing to failing"
+      ],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 185.80447834667783,
+      "candidateViolationSeverity": 180.9033630029695,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "7a271f66c917c153fe443b5e4820f1919d369c3e6364d7072fc718273a8c7968"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left-degraded",
+    "seed": 7203,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": -0.36343652398419657,
+    "weightedScoreDelta": -0.36343652398419657
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-947230397610a3df",
+    "runKey": "947230397610a3dfa67394c1ea6f55ffc64baef3218059f9656e482dc87d510f",
+    "resultHash": "55b6fe39c174cb7737eb58a154a4cdce2b9d962c498f481ab387b6484ddcacb1",
+    "artifactHash": "b278db4d7c679b433771cf935dc9caaf4fde700a2f9d83f931fc434dcf301ffc",
+    "manifestHash": "3ee4f010521c039cac86564dae9cb7bc61b1a6e7555932541b1c6a8928b7e952",
+    "metricsHash": "6046bb14ac6669efe37c4bca4368db223331a4eeaf34e585600d4b6b44172d7f",
+    "scoreHash": "fe9cf7590979f89ca35c2d17789f91c8e1ccac7db56ed4ccdf8433546f079608",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -14.370224622471719
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-2f94c8ffe004acaf",
+    "runKey": "2f94c8ffe004acafbaf29c772f99548f21165630c17e438ba6e6f06ef9aaf9ea",
+    "resultHash": "6114cee546c7386f1690775aa231c697eb52cb61ef90dea53a21140b96c91bb1",
+    "artifactHash": "397797130012f5c53cb0332d1027e18a86b3b5932e15d5882d950a3f2c14bcb6",
+    "manifestHash": "12f5fa75ad0c4ed9ec28b57ccd9fd3420c98b31d3d95fdd72e58fedc2b3d742f",
+    "metricsHash": "d8388d8ea326fc97c830241d8e84e83dcb6f80451f7bb49dd4d26f19423a5441",
+    "scoreHash": "8c4f3aa3489aa30feae3ad598f95fcd174ad785bbe5db06ae17256e6f89c1894",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -14.733661146455916
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

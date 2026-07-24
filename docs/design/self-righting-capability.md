@@ -136,6 +136,33 @@ future attempt must jointly optimize torso geometry and leg/waist sequencing, th
 the already-passing rigid baseline by enough to pay for `+0.2 kg`, two actuators, a wider
 Observation/Action ABI, self-contact risk, and hardware reliability cost.
 
+The hypothesis was then tested at the complete-robot boundary rather than only
+inside the four resettable recovery poses. Candidate
+`integrated-resilience-waist-design` uses the full 18-second Mission Suite:
+approach, impact, recovery, resumed walking, redirection, lateral traversal,
+and stop all share one physical and Controller state. The proposed robot is
+6.23 kg with 14 actions, versus 6.03 kg and 12 actions for the selected rigid
+robot. To remain within the 145-value Observation Charter, the proposal removes
+raw four-step command history and retains measured actuator-delay state,
+yielding an Observation width of 53. That observability loss is part of the
+design burden.
+
+With neutral waist targets, the integrated Candidate scored `-14.293828`
+against rigid `38.935033` and failed self-righting in all four exact/degraded,
+left/right Missions. Research session `session-2c2867adccdca750` then tried two
+bounded code changes. The first reduced aggregate Mission violation count
+`44 → 42` and normalized severity `185.804 → 180.903`, but introduced locked
+joint-limit, collision, and isolated recovery regressions. Reversing the
+impulse worsened the Mission to 46 violations. Both attempts are immutable
+`REVERT` evidence.
+
+This integrated result is stronger than a collection of independent scores:
+it shows that the current waist can influence the recovery basin, but cannot
+yet carry the robot through the handoff into the rest of its job. The selected
+rigid robot remains the baseline. Further morphology work must change
+split-torso geometry, contact workspace, and coordinated leg/waist motion as
+one complete-design experiment.
+
 ## RL residual result
 
 PPO was then placed on top of the successful program prior rather than asked to rediscover recovery. The first `0.05` residual-authority run and a second `0.001` run both completed 8,192 steps and reported strong episode reward. Frozen deterministic evaluation still failed three of four recovery cases in the tighter run: back recovery passed, front lost the stable target, and left/right fell into the inverted basin.
