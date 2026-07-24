@@ -42,6 +42,19 @@ export const developmentCharterSchema = z.object({
     limbCount: z.number().int().nonnegative(),
     notes: z.string(),
   }).strict(),
+  northStar: z.object({
+    statement: z.string().min(1),
+    stage: idSchema,
+    benchmark: idSchema,
+    requireHumanReview: z.boolean(),
+  }).strict(),
+  designConstraints: z.object({
+    maximumTotalMassKg: z.number().positive(),
+    maximumComponentCost: z.number().nonnegative(),
+    maximumActionSize: z.number().int().positive(),
+    maximumObservationSize: z.number().int().positive(),
+    requiredContactPointCount: z.number().int().nonnegative(),
+  }).strict(),
   capabilityStages: z.array(z.object({
     id: idSchema,
     name: z.string().min(1),

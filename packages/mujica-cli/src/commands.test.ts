@@ -103,10 +103,93 @@ describe("agent CLI contract", () => {
       const invalid = invoke(["validate", projectRoot, "--json"]);
       expect(invalid.code).toBe(1);
       expect(JSON.parse(invalid.stderr).error.message).toContain("missing-scene");
+
+      charter.capabilityStages[0].scenarios[0].scenario = "nominal";
+      charter.northStar.stage = "missing-stage";
+      await writeFile(charterPath, JSON.stringify(charter));
+      const invalidNorthStar = invoke(["validate", projectRoot, "--json"]);
+      expect(invalidNorthStar.code).toBe(1);
+      expect(JSON.parse(invalidNorthStar.stderr).error.message).toContain("missing-stage");
+
+      charter.northStar.stage = "nominal-foundation";
+      charter.northStar.benchmark = "missing-benchmark";
+      await writeFile(charterPath, JSON.stringify(charter));
+      const invalidNorthStarBenchmark = invoke(["validate", projectRoot, "--json"]);
+      expect(invalidNorthStarBenchmark.code).toBe(1);
+      expect(JSON.parse(invalidNorthStarBenchmark.stderr).error.message).toContain("is not named by stage");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
   });
+
+  test("reviews one robot requirement from compiled design through locked north-star evidence", () => {
+    const first = invoke(["project", "review", "examples", "--project", "hexapod", "--json"]);
+    expect(first.code).toBe(0);
+    const data = JSON.parse(first.stdout).data;
+    expect(data.review).toMatchObject({
+      project: "hexapod",
+      subject: { assembly: "hexapod", controller: "tripod-gait" },
+      summary: {
+        status: "HUMAN_REVIEW_REQUIRED",
+        designPassed: true,
+        passedStages: 1,
+        totalStages: 1,
+        violationCount: 0,
+        interventionSurfaces: [{ surface: "human-review" }],
+      },
+      northStar: {
+        benchmark: "starter-locomotion",
+        numericalSatisfied: true,
+        satisfied: false,
+        humanReviewStatus: "REQUIRED",
+      },
+      stages: [{ id: "nominal-foundation", authoredStatus: "active", observedStatus: "PASS" }],
+    });
+    expect(data.review.design.constraints).toHaveLength(5);
+    expect(data.review.design.constraints.every((constraint: { passed: boolean }) => constraint.passed)).toBe(true);
+    expect(data.review.benchmarks[0].cases[0].gates.length).toBeGreaterThan(0);
+    expect(data.reviewHash).toBe(hashJson(data.review));
+    const repeated = invoke(["project", "review", "examples", "--project", "hexapod", "--json"]);
+    expect(JSON.parse(repeated.stdout).data.id).toBe(data.id);
+    const inspected = invoke(["project", "inspect", "examples", "--project", "hexapod", "--json"]);
+    expect(JSON.parse(inspected.stdout).data.developmentReviews).toContain(data.id);
+  }, 20_000);
+
+  test("keeps numerical success below the north star when the robot violates its design envelope", async () => {
+    const workspace = await mkdtemp(resolve(tmpdir(), "mujica-design-envelope-"));
+    try {
+      await mkdir(resolve(workspace, "projects"));
+      await writeFile(resolve(workspace, "mujica-workspace.json"), JSON.stringify({
+        version: 1, name: "Design envelope test", projectsDirectory: "projects", defaultProject: null,
+      }));
+      expect(invoke(["project", "create", workspace, "--id", "heavy-hexapod", "--name", "Heavy Hexapod", "--template", "hexapod", "--json"]).code).toBe(0);
+      const projectRoot = resolve(workspace, "projects", "heavy-hexapod");
+      expect(invoke(["benchmark", "lock", projectRoot, "--benchmark", "starter-locomotion", "--json"]).code).toBe(0);
+      const charterPath = resolve(projectRoot, "development-charter.json");
+      const charter = JSON.parse(await readFile(charterPath, "utf8"));
+      charter.designConstraints.maximumTotalMassKg = 1;
+      charter.northStar.requireHumanReview = false;
+      await writeFile(charterPath, JSON.stringify(charter));
+      const reviewed = invoke(["project", "review", projectRoot, "--json"]);
+      expect(reviewed.code).toBe(0);
+      const review = JSON.parse(reviewed.stdout).data.review;
+      expect(review.summary).toMatchObject({
+        status: "DEVELOPMENT_REQUIRED",
+        designPassed: false,
+        violationCount: 0,
+        interventionSurfaces: [{ surface: "design" }],
+      });
+      expect(review.northStar).toMatchObject({ numericalSatisfied: false, satisfied: false });
+      expect(review.design.constraints.find((constraint: { id: string }) => constraint.id === "total-mass")).toMatchObject({
+        comparator: "<=",
+        value: 6.2,
+        threshold: 1,
+        passed: false,
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  }, 20_000);
 
   test("human and Agent debugging share exact Run and Capture evidence contexts", async () => {
     const runId = "run-e8bd80892b0f0123";
@@ -362,7 +445,7 @@ describe("agent CLI contract", () => {
     expect(studioEnvelope.artifacts.map((item: any) => item.kind)).toEqual(["hardware-replay", "studio-snapshot"]);
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 8,
+      version: 9,
       selectedRun: null,
       comparisonRun: null,
       selectedHardwareCapture: {
@@ -492,7 +575,7 @@ describe("agent CLI contract", () => {
     });
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 8,
+      version: 9,
       selectedTwinAudit: {
         id: envelope.data.id,
         auditHash: envelope.data.auditHash,
@@ -1117,7 +1200,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-76c139429c785eed",
+      "--bundle", "hardware-2dee14da161d49fa",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

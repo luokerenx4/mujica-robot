@@ -163,6 +163,11 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   const project = await loadProject(projectDir); const root = project.rootDir;
   const charter = await loadDevelopmentCharter(root);
   if (charter.project !== project.manifest.id) throw new Error(`Development Charter project '${charter.project}' must match Mujica project '${project.manifest.id}'`);
+  const northStarStage = charter.capabilityStages.find((stage) => stage.id === charter.northStar.stage);
+  if (!northStarStage) throw new Error(`Development Charter north-star stage '${charter.northStar.stage}' does not exist`);
+  if (!northStarStage.scenarios.some((witness) => witness.benchmark === charter.northStar.benchmark)) {
+    throw new Error(`Development Charter north-star Benchmark '${charter.northStar.benchmark}' is not named by stage '${charter.northStar.stage}'`);
+  }
   const controllerIds = await directoryIds(join(root, "controllers"));
   for (const id of controllerIds) {
     const controller = await loadController(root, id);

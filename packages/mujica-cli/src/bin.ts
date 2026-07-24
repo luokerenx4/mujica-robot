@@ -9,7 +9,7 @@ import {
 } from "./commands";
 import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand, researchTimelineStudioCommand } from "./research-lab";
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
-import { projectCreateCommand, projectInspectCommand, projectListCommand, workspaceStudioCommand } from "./project";
+import { projectCreateCommand, projectInspectCommand, projectListCommand, projectReviewCommand, workspaceStudioCommand } from "./project";
 import { twinAuditCommand, twinInspectCommand, twinStudioCommand } from "./twin";
 
 const HELP = `mujica — AI-native robot development harness
@@ -18,6 +18,7 @@ USAGE
   mujica project list <workspace> [--json]
   mujica project inspect <workspace-or-project> [--project ID] [--json]
   mujica project create <workspace> --id ID --name NAME --template hexapod [--json]
+  mujica project review <workspace-or-project> [--project ID] [--assembly ID] [--controller ID] [--json]
   mujica validate|inspect <project> [--json]
   mujica component list <project> [--json]
   mujica component inspect <project> --component ID [--json]
@@ -75,6 +76,7 @@ const CAPABILITIES = [
   { id: "project.list", usage: "mujica project list <workspace> [--json]", effect: "read-only" },
   { id: "project.inspect", usage: "mujica project inspect <workspace-or-project> [--project ID] [--json]", effect: "read-only" },
   { id: "project.create", usage: "mujica project create <workspace> --id ID --name NAME --template hexapod [--json]", effect: "mutates-project" },
+  { id: "project.review", usage: "mujica project review <workspace-or-project> [--project ID] [--assembly ID] [--controller ID] [--json]", effect: "creates-artifact" },
   { id: "validate", usage: "mujica validate <project> [--json]", effect: "read-only" },
   { id: "inspect", usage: "mujica inspect <project> [--json]", effect: "read-only" },
   { id: "component.list", usage: "mujica component list <project> [--json]", effect: "read-only" },
@@ -134,6 +136,7 @@ function printHuman(command: string, data: any): void {
   if (command === "project.list") process.stdout.write(`${data.projects.map((project: any) => `${project.isDefault ? "*" : " "}\t${project.id}\t${project.morphology.class}/${project.morphology.limbCount}\t${project.name}`).join("\n")}\n`);
   else if (command === "project.inspect") process.stdout.write(`project=${data.project.id}\nproposition=${data.charter.proposition}\nmorphology=${data.charter.morphology.class}/${data.charter.morphology.limbCount}\nstages=${data.charter.capabilityStages.map((stage: any) => `${stage.id}:${stage.status}`).join(",")}\n`);
   else if (command === "project.create") process.stdout.write(`project=${data.project.id}\ntemplate=${data.template}\npath=${data.path}\nnext=mujica benchmark lock ${JSON.stringify(data.path)} --benchmark ${data.project.defaults.benchmark}\n`);
+  else if (command === "project.review") process.stdout.write(`review=${data.id}\nstatus=${data.review.summary.status}\ndesign=${data.review.summary.designPassed ? "PASS" : "FAIL"}\nstages=${data.review.summary.passedStages}/${data.review.summary.totalStages}\nviolations=${data.review.summary.violationCount}\npath=${data.path}\n`);
   else if (command === "validate") process.stdout.write(`Valid Mujica project '${data.project.id}'\nassemblies=${data.assemblies.length} components=${data.components.length}\n`);
   else if (command === "controller.list") process.stdout.write(`${data.controllers.map((controller: any) => `${controller.id}\t${controller.kind}\tcompatible=${controller.compatibleAssemblies.join(",") || "none"}`).join("\n")}\n`);
   else if (command === "domain.list") process.stdout.write(`${data.profiles.map((profile: any) => `${profile.id}\t${profile.provenance.kind}\t${profile.hash.slice(0, 16)}`).join("\n")}\n`);
@@ -193,12 +196,17 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     let envelope: any;
     if (command === "project") {
       const action = args.shift(); commandId = `project.${action}`;
-      const { values, positionals } = parseArgs({ args, options: { id: { type: "string" }, name: { type: "string" }, template: { type: "string", default: "hexapod" }, project: { type: "string" }, json: { type: "boolean", default: false } }, allowPositionals: true });
+      const { values, positionals } = parseArgs({ args, options: { id: { type: "string" }, name: { type: "string" }, template: { type: "string", default: "hexapod" }, project: { type: "string" }, assembly: { type: "string" }, controller: { type: "string" }, json: { type: "boolean", default: false } }, allowPositionals: true });
       const input = one(positionals, `mujica project ${action} <workspace-or-project>`);
       if (action === "list") envelope = await projectListCommand(input);
       else if (action === "inspect") envelope = await projectInspectCommand(input, values.project);
       else if (action === "create") envelope = await projectCreateCommand(input, { id: required(values.id, "id"), name: required(values.name, "name"), template: values.template });
-      else throw new Error("Usage: mujica project list|inspect|create ...");
+      else if (action === "review") envelope = await projectReviewCommand(input, {
+        ...(values.project === undefined ? {} : { project: values.project }),
+        ...(values.assembly === undefined ? {} : { assembly: values.assembly }),
+        ...(values.controller === undefined ? {} : { controller: values.controller }),
+      });
+      else throw new Error("Usage: mujica project list|inspect|create|review ...");
     } else if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
       const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, "twin-audit": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
       const input = one(positionals, `mujica ${command} <project>`);

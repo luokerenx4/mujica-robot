@@ -7,6 +7,7 @@ project/
   mujica.json
   development-charter.json
   morphology.json
+  development-reviews/<immutable-id>/manifest.json + review.json + report.md
   robots/<id>/robot.json + model.xml
   components/<id>/component.json + model.xml
   assemblies/<id>.robot.json
@@ -46,12 +47,20 @@ project/
 IDs use lowercase letters, digits, and hyphens and must match their directory or filename. Relative paths are confined beneath the project or package that owns them. Unknown JSON keys fail validation so typos cannot silently change a robot.
 
 `development-charter.json` freezes the project's proposition, operational
-domain, exclusions, capability stages, and the exact Benchmark cases that
-witness each stage. `morphology.json` names the base body and contact sites for
-Runtime diagnosis independently of any four-leg naming convention. Morphology
-is carried in compiled output but excluded from executable Assembly identity,
-so an observability-only metadata improvement does not invalidate compatible
-Policies.
+domain, exclusions, capability stages, north-star stage/Benchmark, human-review
+requirement, compiled design resource envelope, and the exact Benchmark cases
+that witness each stage. `morphology.json` names the base body and contact sites
+for Runtime diagnosis independently of any four-leg naming convention.
+Morphology is carried in compiled output but excluded from executable Assembly
+identity, so an observability-only metadata improvement does not invalidate
+compatible Policies.
+
+A content-addressed Development Review binds that Charter to one compiled
+Assembly/Controller subject, evaluates every unique locked Benchmark it names,
+and records resource margins, stage PASS/FAIL, gate findings, hypotheses, and
+exact reproduction commands. Passing numerical gates remains
+`HUMAN_REVIEW_REQUIRED` when the Charter says visual review is part of
+acceptance.
 
 A Human Observation is a separate immutable hypothesis, never part of a Run,
 Capture, or Judge result. Its draft selects one Run time (and optional comparison

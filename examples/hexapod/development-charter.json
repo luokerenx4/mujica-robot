@@ -34,6 +34,19 @@
     "limbCount": 6,
     "notes": "Free-base hexapod with two actuated sagittal joints and one contact sensor per leg."
   },
+  "northStar": {
+    "statement": "Establish a stable six-foot locomotion foundation that survives and advances in the commanded direction on the locked nominal test.",
+    "stage": "nominal-foundation",
+    "benchmark": "starter-locomotion",
+    "requireHumanReview": true
+  },
+  "designConstraints": {
+    "maximumTotalMassKg": 6.2,
+    "maximumComponentCost": 0,
+    "maximumActionSize": 12,
+    "maximumObservationSize": 41,
+    "requiredContactPointCount": 6
+  },
   "capabilityStages": [
     {
       "id": "nominal-foundation",

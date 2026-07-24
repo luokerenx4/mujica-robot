@@ -5,6 +5,7 @@ mujica help [--json]
 mujica project list <workspace> [--json]
 mujica project inspect <workspace-or-project> [--project ID] [--json]
 mujica project create <workspace> --id ID --name NAME --template hexapod [--json]
+mujica project review <workspace-or-project> [--project ID] [--assembly ID] [--controller ID] [--json]
 mujica validate <project> [--json]
 mujica inspect <project> [--json]
 mujica component list <project> [--json]
@@ -66,6 +67,13 @@ complete executable template, substitutes only project identity, validates the
 Charter and all source definitions, and publishes atomically. The initial
 `hexapod` template is intentionally concrete rather than an invalid blank
 framework.
+
+`project review` joins the Charter to one compiled Assembly/Controller subject.
+It checks the declared design resource envelope, evaluates every unique locked
+Benchmark named by the capability stages, records per-case gates and
+reproduction commands, and publishes an immutable north-star Review. Authored
+stage status remains project intent; observed PASS/FAIL remains derived
+evidence.
 
 `controller list` exposes each Program or Policy Controller and the Assemblies it can legally execute against. `controller inspect` includes the complete Program Controller interface or frozen Policy pointer plus structured incompatibility reasons. Program Controller Observation requirements are a named subset; produced Action channels must exactly match the compiled Assembly in order, size, and bounds. Incompatible pairs fail before Python Runtime invocation.
 

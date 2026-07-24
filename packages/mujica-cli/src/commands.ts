@@ -31,7 +31,7 @@ export function assertDomainProfilePlantCompatible(profile: { id: string; plantH
   }
 }
 
-async function controllerIdentity(projectDir: string, id: string, override?: ControllerDefinition): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string; trainingSteps: number }> {
+export async function controllerIdentity(projectDir: string, id: string, override?: ControllerDefinition): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string; trainingSteps: number }> {
   const controller = await loadController(projectDir, id);
   const definition = override ?? controller.definition;
   if (definition.id !== id || definition.kind !== controller.definition.kind) throw new Error(`Controller override must preserve id and kind for '${id}'`);
@@ -677,7 +677,7 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
   return success("candidate.apply", { ...result, revisionId, revisionPath: target }, project, [projectArtifact("revision", revisionId, target, true)]);
 }
 
-type EvaluationResult = Awaited<ReturnType<typeof evaluatePair>>;
+export type EvaluationResult = Awaited<ReturnType<typeof evaluatePair>>;
 
 export function candidateSelection(gateReasons: string[], scoreDelta: number, baselineViolationCount: number) {
   const feasible = gateReasons.length === 0;
@@ -686,7 +686,7 @@ export function candidateSelection(gateReasons: string[], scoreDelta: number, ba
   return { verdict, selectionReason };
 }
 
-type GateAssessment = {
+export type GateAssessment = {
   id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "joint-jerk" | "body-angular-jerk" | "action-slew" | "actuator-saturation" | "foot-slip" | "foot-impact" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
@@ -696,7 +696,7 @@ export function upperViolationSeverity(value: number, threshold: number, normali
   return margin < 0 ? -margin / Math.max(normalization, 1e-9) : 0;
 }
 
-function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, candidate: EvaluationResult["cases"][number], baseline: EvaluationResult["cases"][number] | undefined): GateAssessment[] {
+export function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, candidate: EvaluationResult["cases"][number], baseline: EvaluationResult["cases"][number] | undefined): GateAssessment[] {
   const enforced = candidate.case.gating !== false; const gates: GateAssessment[] = [];
   const lower = (id: GateAssessment["id"], metric: string, value: number, threshold: number): GateAssessment => { const margin = value - threshold; return { id, metric, comparator: ">=", threshold, value, margin, passed: margin >= 0, enforced, severity: margin < 0 ? -margin / Math.max(Math.abs(threshold), 1e-9) : 0 }; };
   const upper = (id: GateAssessment["id"], metric: string, value: number, threshold: number, normalization?: number): GateAssessment => { const margin = threshold - value; return { id, metric, comparator: "<=", threshold, value, margin, passed: margin >= 0, enforced, severity: upperViolationSeverity(value, threshold, normalization) }; };
@@ -730,7 +730,7 @@ function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjective>>, c
   return gates;
 }
 
-function diagnosticHypotheses(violations: GateAssessment[]) {
+export function diagnosticHypotheses(violations: GateAssessment[]) {
   const hypotheses: Array<{ kind: "hypothesis"; surface: "controller" | "assembly" | "training"; description: string; rationale: string }> = [];
   if (violations.some((gate) => gate.id === "survival")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect the fall event and pre-fall trajectory before changing task performance terms.", rationale: "The measured survival gate failed; stability is prerequisite evidence." });
   if (violations.some((gate) => gate.id === "forward-progress" || gate.id === "signed-forward-progress" || gate.id === "backward-displacement")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.", rationale: "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance." });

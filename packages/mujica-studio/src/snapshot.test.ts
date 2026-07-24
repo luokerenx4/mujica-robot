@@ -16,6 +16,12 @@ describe("read-only Studio snapshot", () => {
     expect(result.snapshot.projects.find((item) => item.id === "hexapod")).toMatchObject({
       morphology: { class: "legged", limbCount: 6 },
       capabilityStages: [{ id: "nominal-foundation", status: "active" }],
+      developmentReview: {
+        status: "HUMAN_REVIEW_REQUIRED",
+        designPassed: true,
+        passedStages: 1,
+        totalStages: 1,
+      },
     });
     const html = await readFile(result.indexPath, "utf8");
     expect(html).toContain("Mujica Workspace");
@@ -81,6 +87,40 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Hardware Captures");
     expect(html).toContain("gate-regression");
     expect(html).toContain("Content-Security-Policy");
+  });
+
+  test("projects the immutable requirement-to-north-star Review without upgrading human hypotheses", async () => {
+    const hexapod = resolve(import.meta.dir, "../../../examples/hexapod");
+    const result = await writeStudioSnapshot(hexapod, { run: "run-d7305300508ff5c0" });
+    expect(result.snapshot.developmentReview).toMatchObject({
+      manifest: {
+        status: "HUMAN_REVIEW_REQUIRED",
+        northStarSatisfied: false,
+      },
+      review: {
+        summary: {
+          status: "HUMAN_REVIEW_REQUIRED",
+          designPassed: true,
+          passedStages: 1,
+          totalStages: 1,
+          violationCount: 0,
+          interventionSurfaces: [{ surface: "human-review" }],
+        },
+        northStar: {
+          numericalSatisfied: true,
+          satisfied: false,
+          humanReviewStatus: "REQUIRED",
+        },
+      },
+    });
+    expect(result.snapshot.developmentReview?.manifest.id).toMatch(/^development-review-[a-f0-9]{16}$/);
+    expect(result.snapshot.developmentReview?.manifest.reviewHash).toBe(hashJson(result.snapshot.developmentReview?.review));
+    const html = await readFile(result.indexPath, "utf8");
+    expect(html).toContain("Executable Development Review");
+    expect(html).toContain("Compiled design envelope");
+    expect(html).toContain("Observed capability stages");
+    expect(html).toContain("mujica-development-review-context");
+    expect(html).toContain("visualInput:'hypothesis-only'");
   });
 
   test("refuses to invent a missing run", async () => {

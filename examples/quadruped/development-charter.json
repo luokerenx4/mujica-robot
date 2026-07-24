@@ -36,6 +36,19 @@
     "limbCount": 4,
     "notes": "Free-base quadruped with three actuated joints per leg in the current development Assembly."
   },
+  "northStar": {
+    "statement": "Follow bounded planar velocity and yaw commands across held-out plant variation while preserving governed shadow-commissioning evidence.",
+    "stage": "robust-transfer",
+    "benchmark": "sim-to-real-audit",
+    "requireHumanReview": true
+  },
+  "designConstraints": {
+    "maximumTotalMassKg": 6.5,
+    "maximumComponentCost": 6,
+    "maximumActionSize": 12,
+    "maximumObservationSize": 145,
+    "requiredContactPointCount": 4
+  },
   "capabilityStages": [
     {
       "id": "command-foundation",

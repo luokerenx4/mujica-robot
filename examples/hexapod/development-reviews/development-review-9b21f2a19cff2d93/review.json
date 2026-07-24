@@ -1,0 +1,588 @@
+{
+  "version": 1,
+  "kind": "mujica-development-review",
+  "project": "hexapod",
+  "charterHash": "b6c40a23c322c4285fe0cde1f9fa6a44a50a19474e0b8da84b132b54fdc5a8bc",
+  "morphologyHash": "336b45be30ee745ef575dd6310fa8e0dc8ae2362ed0f630abc71987a6a397caa",
+  "subject": {
+    "assembly": "hexapod",
+    "assemblyHash": "517277ebc49546f4cd6cffc8eb0dc64661e9c6fac38a875d09436cfb7120e5e3",
+    "controller": "tripod-gait",
+    "controllerHash": "ac50f7425434bcf5dadfa5fb572866e01089c96e67532d857ed811c933b3e4a2",
+    "controllerKind": "program"
+  },
+  "design": {
+    "subject": {
+      "totalMassKg": 6.2,
+      "componentCost": 0,
+      "actionSize": 12,
+      "observationSize": 41,
+      "contactPointCount": 6
+    },
+    "constraints": [
+      {
+        "id": "total-mass",
+        "label": "Total compiled mass",
+        "comparator": "<=",
+        "value": 6.2,
+        "threshold": 6.2,
+        "unit": "kg",
+        "margin": 0,
+        "passed": true
+      },
+      {
+        "id": "component-cost",
+        "label": "Component cost proxy",
+        "comparator": "<=",
+        "value": 0,
+        "threshold": 0,
+        "unit": "cost",
+        "margin": 0,
+        "passed": true
+      },
+      {
+        "id": "action-size",
+        "label": "Action width",
+        "comparator": "<=",
+        "value": 12,
+        "threshold": 12,
+        "unit": "channels",
+        "margin": 0,
+        "passed": true
+      },
+      {
+        "id": "observation-size",
+        "label": "Observation width",
+        "comparator": "<=",
+        "value": 41,
+        "threshold": 41,
+        "unit": "channels",
+        "margin": 0,
+        "passed": true
+      },
+      {
+        "id": "contact-points",
+        "label": "Declared contact points",
+        "comparator": "==",
+        "value": 6,
+        "threshold": 6,
+        "unit": "points",
+        "margin": 0,
+        "passed": true
+      }
+    ]
+  },
+  "benchmarks": [
+    {
+      "id": "starter-locomotion",
+      "lockHash": "365da7b4d5b3e2ff1f9c04b0f5e36de65479e150ffb798dce5e2d179ad976825",
+      "objective": "starter-locomotion",
+      "subject": {
+        "assembly": "hexapod",
+        "controller": "tripod-gait"
+      },
+      "baseline": {
+        "assembly": "hexapod",
+        "controller": "tripod-gait"
+      },
+      "aggregateScore": 14.613240839730318,
+      "aggregateDelta": 0,
+      "status": "PASS",
+      "violationCount": 0,
+      "violations": [],
+      "worstCase": "nominal-forward",
+      "cases": [
+        {
+          "id": "nominal-forward",
+          "task": "forward-walk",
+          "scenario": "nominal",
+          "seed": 601,
+          "gating": true,
+          "score": 14.613240839730318,
+          "scoreDelta": 0,
+          "resultHash": "34863d30d1066b0ac6ac8615ea991f4af4d9f917666a9368b956b9a0a22bc25e",
+          "metrics": {
+            "durationSeconds": 3.999999999999781,
+            "steps": 200,
+            "survivalRate": 1,
+            "fell": false,
+            "motionCommand": [
+              0.20000000000000015,
+              0,
+              0
+            ],
+            "meanMotionCommand": [
+              0.20000000000000015,
+              0,
+              0
+            ],
+            "meanMeasuredMotion": [
+              0.0468444031673668,
+              -0.0004828066960634755,
+              0.0013116392326221538
+            ],
+            "planarVelocityTrackingError": 0.15315635782906922,
+            "yawRateTrackingError": 0.0013116392326221538,
+            "meanVelocityTrackingError": 0.17520737390247668,
+            "meanPlanarVelocityTrackingError": 0.173789009649917,
+            "meanYawRateTrackingError": 0.01690143320672114,
+            "meanUpright": 0.9915451342200197,
+            "meanAbsolutePitchRad": 0.012525585018013787,
+            "minimumPitchRad": -0.03612800393569151,
+            "maximumPitchRad": 0.0011539245208904616,
+            "maximumBackwardPitchRad": 0.03612800393569151,
+            "maximumAbsolutePitchRad": 0.03612800393569151,
+            "maximumAbsolutePitchRateRadPerSec": 0.7269999495539415,
+            "meanBodyTiltRad": 0.016910464610708532,
+            "maximumBodyTiltRad": 0.04967453639389754,
+            "meanEnergy": 9.448736203075471,
+            "meanSmoothness": 0.4471989361534125,
+            "peakActuator": 6,
+            "motionQualityFootEvidenceAvailable": true,
+            "motionQualityContactThresholdNewton": 1,
+            "meanJointJerkRadPerSec3": 326.0790290125387,
+            "peakJointJerkRadPerSec3": 11346.287753427709,
+            "meanBodyAngularJerkRadPerSec3": 49.36553842312795,
+            "peakBodyAngularJerkRadPerSec3": 3722.6661171966634,
+            "meanActionSlewRatePerSec": 11.049180588460363,
+            "peakActionSlewRatePerSec": 413.2502458353441,
+            "actuatorSaturationRate": 0.0025,
+            "meanFootSlipSpeedMps": 0.018809215598434226,
+            "peakFootSlipSpeedMps": 0.26379204170734627,
+            "totalFootSlipDistanceM": 0.2012586069032459,
+            "meanFootContactImpactNPerSec": 62.09038262678046,
+            "peakFootContactImpactNPerSec": 12738.143803480678,
+            "peakFootContactForceNewton": 254.76287606961355,
+            "motionCommandSchedule": [
+              {
+                "atStep": 0,
+                "atSeconds": 0,
+                "command": [
+                  0.2,
+                  0,
+                  0
+                ]
+              }
+            ],
+            "transitionCount": 0,
+            "transitions": [],
+            "maximumTransitionTerminalPlanarTrackingError": 0,
+            "maximumTransitionTerminalYawRateTrackingError": 0,
+            "maximumPlanarSettlingTimeSeconds": 0,
+            "maximumPlanarBrakingSettlingTimeSeconds": 0,
+            "maximumYawRateSettlingTimeSeconds": 0,
+            "maximumPlanarOvershootMps": 0,
+            "maximumYawRateOvershootRadPerSec": 0,
+            "unsettledPlanarTransitionCount": 0,
+            "unsettledYawRateTransitionCount": 0,
+            "initialBasePosition": [
+              0,
+              0,
+              0.38
+            ],
+            "finalBasePosition": [
+              0.18793077119538937,
+              -0.0014346562964247498,
+              0.35017432412407057
+            ],
+            "netDisplacement": [
+              0.18793077119538937,
+              -0.0014346562964247498,
+              -0.029825675875929436
+            ],
+            "targetPlanarDisplacement": [
+              0.8,
+              0
+            ],
+            "forwardDisplacement": 0.18793077119538937,
+            "targetDistance": 0.8,
+            "forwardProgress": 0.2349134639942367,
+            "signedForwardProgress": 0.2349134639942367,
+            "backwardDisplacement": 0,
+            "meanForwardVelocity": 0.046982692798849916,
+            "lateralDrift": 0.0014346562964247498,
+            "distanceTraveled": 0.5003088444296521
+          },
+          "gates": [
+            {
+              "id": "survival",
+              "metric": "survivalRate",
+              "comparator": ">=",
+              "threshold": 0.95,
+              "value": 1,
+              "margin": 0.050000000000000044,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "forward-progress",
+              "metric": "forwardProgress",
+              "comparator": ">=",
+              "threshold": 0.1,
+              "value": 0.2349134639942367,
+              "margin": 0.1349134639942367,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "signed-forward-progress",
+              "metric": "signedForwardProgress",
+              "comparator": ">=",
+              "threshold": 0.1,
+              "value": 0.2349134639942367,
+              "margin": 0.1349134639942367,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "backward-displacement",
+              "metric": "backwardDisplacement",
+              "comparator": "<=",
+              "threshold": 0.05,
+              "value": 0,
+              "margin": 0.05,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "backward-pitch",
+              "metric": "maximumBackwardPitchRad",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.03612800393569151,
+              "margin": 999999.963871996,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "pitch-angle",
+              "metric": "maximumAbsolutePitchRad",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.03612800393569151,
+              "margin": 999999.963871996,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "pitch-rate",
+              "metric": "maximumAbsolutePitchRateRadPerSec",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.7269999495539415,
+              "margin": 999999.2730000505,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "body-tilt",
+              "metric": "maximumBodyTiltRad",
+              "comparator": "<=",
+              "threshold": 0.2,
+              "value": 0.04967453639389754,
+              "margin": 0.15032546360610247,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "lateral-drift",
+              "metric": "lateralDrift",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.0014346562964247498,
+              "margin": 999999.9985653437,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "planar-velocity-tracking",
+              "metric": "planarVelocityTrackingError",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.15315635782906922,
+              "margin": 999999.8468436422,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "yaw-rate-tracking",
+              "metric": "yawRateTrackingError",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.0013116392326221538,
+              "margin": 999999.9986883608,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "transition-terminal-planar",
+              "metric": "maximumTransitionTerminalPlanarTrackingError",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "transition-terminal-yaw",
+              "metric": "maximumTransitionTerminalYawRateTrackingError",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "planar-settling-time",
+              "metric": "maximumPlanarSettlingTimeSeconds",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "planar-braking-settling-time",
+              "metric": "maximumPlanarBrakingSettlingTimeSeconds",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "yaw-settling-time",
+              "metric": "maximumYawRateSettlingTimeSeconds",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "planar-overshoot",
+              "metric": "maximumPlanarOvershootMps",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "yaw-overshoot",
+              "metric": "maximumYawRateOvershootRadPerSec",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "unsettled-planar",
+              "metric": "unsettledPlanarTransitionCount",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "unsettled-yaw",
+              "metric": "unsettledYawRateTransitionCount",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0,
+              "margin": 1000000,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "joint-jerk",
+              "metric": "meanJointJerkRadPerSec3",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 326.0790290125387,
+              "margin": 999673.9209709874,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "body-angular-jerk",
+              "metric": "meanBodyAngularJerkRadPerSec3",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 49.36553842312795,
+              "margin": 999950.6344615768,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "action-slew",
+              "metric": "meanActionSlewRatePerSec",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 11.049180588460363,
+              "margin": 999988.9508194115,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "actuator-saturation",
+              "metric": "actuatorSaturationRate",
+              "comparator": "<=",
+              "threshold": 1,
+              "value": 0.0025,
+              "margin": 0.9975,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "foot-slip",
+              "metric": "meanFootSlipSpeedMps",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 0.018809215598434226,
+              "margin": 999999.9811907844,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "foot-impact",
+              "metric": "peakFootContactImpactNPerSec",
+              "comparator": "<=",
+              "threshold": 1000000,
+              "value": 12738.143803480678,
+              "margin": 987261.8561965193,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            },
+            {
+              "id": "score-regression",
+              "metric": "scoreDelta",
+              "comparator": ">=",
+              "threshold": -0.05,
+              "value": 0,
+              "margin": 0.05,
+              "passed": true,
+              "enforced": true,
+              "severity": 0
+            }
+          ],
+          "violations": [],
+          "violationSeverity": 0,
+          "findings": [],
+          "hypotheses": [],
+          "reproduceArgv": [
+            "simulate",
+            "/Users/ame/Documents/2607toydev/mujica/examples/hexapod",
+            "--assembly",
+            "hexapod",
+            "--controller",
+            "tripod-gait",
+            "--task",
+            "forward-walk",
+            "--scenario",
+            "nominal",
+            "--objective",
+            "starter-locomotion",
+            "--seed",
+            "601"
+          ]
+        }
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "nominal-foundation",
+      "name": "Nominal gait foundation",
+      "authoredStatus": "active",
+      "observedStatus": "PASS",
+      "benchmarks": [
+        {
+          "id": "starter-locomotion",
+          "status": "PASS",
+          "lockHash": "365da7b4d5b3e2ff1f9c04b0f5e36de65479e150ffb798dce5e2d179ad976825",
+          "violationCount": 0
+        }
+      ],
+      "witnesses": [
+        {
+          "task": "forward-walk",
+          "scenario": "nominal",
+          "benchmark": "starter-locomotion",
+          "role": "release",
+          "cases": [
+            "nominal-forward"
+          ],
+          "passed": true
+        }
+      ],
+      "exitCriteria": [
+        "The locked nominal Benchmark completes without a survival gate violation.",
+        "The authoritative Studio replay and metrics agree on the observed motion.",
+        "Any next robustness or ML stage is added to this Charter with explicit scenarios first."
+      ]
+    }
+  ],
+  "northStar": {
+    "statement": "Establish a stable six-foot locomotion foundation that survives and advances in the commanded direction on the locked nominal test.",
+    "stage": "nominal-foundation",
+    "benchmark": "starter-locomotion",
+    "requireHumanReview": true,
+    "satisfied": false,
+    "numericalSatisfied": true,
+    "humanReviewStatus": "REQUIRED",
+    "designPassed": true,
+    "stageStatus": "PASS",
+    "benchmarkStatus": "PASS"
+  },
+  "summary": {
+    "status": "HUMAN_REVIEW_REQUIRED",
+    "designPassed": true,
+    "passedStages": 1,
+    "totalStages": 1,
+    "violationCount": 0,
+    "worstCase": null,
+    "interventionSurfaces": [
+      {
+        "surface": "human-review",
+        "rationale": "Numerical gates pass; inspect the authoritative replay before accepting the capability claim."
+      }
+    ]
+  }
+}

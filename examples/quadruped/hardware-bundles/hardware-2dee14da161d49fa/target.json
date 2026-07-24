@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "history-policy-shadow-dry-run",
+  "name": "Capture-calibrated history Policy shadow deployment",
+  "revision": "quadruped-p-ed7ad2ff20dd",
+  "revisionKind": "policy",
+  "assembly": "force-sensing-history-3dof",
+  "controller": "capture-calibrated-history-residual-gait",
+  "driver": "mujoco-protocol-simulator",
+  "environment": "dry-run",
+  "protocol": "stdio-jsonl-v1",
+  "controlHz": 50,
+  "safety": {
+    "maximumLatencyMs": 10,
+    "commandLeaseMs": 100,
+    "maximumCommandLeaseOverrunMs": 25,
+    "maximumStateAgeMs": 20,
+    "requireDecisionDeadline": true,
+    "requireDeviceHealth": true,
+    "maximumMotorTemperatureC": 80,
+    "maximumMotorCurrentA": 20,
+    "minimumBusVoltageV": 20,
+    "maximumBusVoltageV": 30,
+    "requirePostStopHealthCheck": true,
+    "postStopHealthySamples": 3,
+    "postStopMinimumHealthyDurationMs": 20,
+    "maximumConsecutiveMisses": 2,
+    "emergencyStopAction": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "device": {
+    "vendor": "Mujica",
+    "model": "Protocol simulator",
+    "serialRequired": false
+  }
+}
