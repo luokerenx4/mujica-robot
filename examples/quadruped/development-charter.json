@@ -1,8 +1,8 @@
 {
   "version": 1,
   "project": "quadruped",
-  "title": "Commanded quadruped mobility from simulation to governed hardware",
-  "proposition": "Develop a compact four-legged robot that follows planar velocity and yaw commands, survives bounded disturbances, and carries reproducible evidence from MuJoCo through shadow hardware commissioning.",
+  "title": "Recoverable commanded quadruped mobility from simulation to governed hardware",
+  "proposition": "Develop a compact four-legged robot that can recover autonomously from bounded resting falls, follow planar velocity and yaw commands, survive bounded disturbances, and carry reproducible evidence from MuJoCo through shadow hardware commissioning.",
   "stakeholders": [
     "robot controls researcher",
     "ML researcher",
@@ -21,7 +21,8 @@
     "conditions": [
       "bounded payload variation",
       "bounded lateral disturbances",
-      "bounded sensing and actuator delay"
+      "bounded sensing and actuator delay",
+      "front, back, and side resting falls on level floor"
     ],
     "exclusions": [
       "stairs and discontinuous terrain",
@@ -37,15 +38,15 @@
     "notes": "Free-base quadruped with three actuated joints per leg in the current development Assembly."
   },
   "northStar": {
-    "statement": "Follow bounded planar velocity and yaw commands across held-out plant variation while preserving governed shadow-commissioning evidence.",
-    "stage": "robust-transfer",
-    "benchmark": "sim-to-real-audit",
+    "statement": "Recover from deterministic front, back, and side resting poses, then retain commanded mobility and governed transfer evidence.",
+    "stage": "self-righting",
+    "benchmark": "self-righting",
     "requireHumanReview": true
   },
   "designConstraints": {
     "maximumTotalMassKg": 6.5,
     "maximumComponentCost": 6,
-    "maximumActionSize": 12,
+    "maximumActionSize": 14,
     "maximumObservationSize": 145,
     "requiredContactPointCount": 4
   },
@@ -63,6 +64,23 @@
       "exitCriteria": [
         "All gating cases in the locked command-tracking Benchmark pass.",
         "Every accepted Controller remains compatible with the declared Assembly interface."
+      ]
+    },
+    {
+      "id": "self-righting",
+      "name": "Autonomous self-righting",
+      "question": "Can the complete robot recover from front, back, left-side, and right-side resting poses into a stable stand without unsafe contacts, joint-limit use, or excess actuator authority?",
+      "status": "active",
+      "scenarios": [
+        { "task": "self-right", "scenario": "fallen-front", "benchmark": "self-righting", "role": "release" },
+        { "task": "self-right", "scenario": "fallen-back", "benchmark": "self-righting", "role": "release" },
+        { "task": "self-right", "scenario": "fallen-left", "benchmark": "self-righting", "role": "release" },
+        { "task": "self-right", "scenario": "fallen-right", "benchmark": "self-righting", "role": "release" }
+      ],
+      "exitCriteria": [
+        "All four locked resting-pose cases reach and hold the shared stable-standing target.",
+        "Recovery respects joint-limit, collision, actuator, mass, cost, and Action-width gates.",
+        "The selected morphology retains required locked locomotion regressions."
       ]
     },
     {
@@ -97,6 +115,7 @@
   ],
   "nonGoals": [
     "Claiming arbitrary-terrain autonomy",
+    "Treating an articulated waist as required before rigid-torso recovery is measured",
     "Treating aggregate reward as a substitute for capability gates",
     "Granting hardware actuation authority from simulation evidence alone"
   ]

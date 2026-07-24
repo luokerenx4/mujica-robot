@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "id": "self-righting-rigid-controller",
+  "name": "Rigid-torso self-righting Controller research",
+  "program": "research/self-righting-rigid-controller/program.md",
+  "benchmark": "self-righting",
+  "regressions": [],
+  "execution": {
+    "kind": "controller",
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "rigid-self-right"
+  },
+  "editable": {
+    "paths": ["controllers/rigid-self-right/**"]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 360
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "robot-revision"
+}

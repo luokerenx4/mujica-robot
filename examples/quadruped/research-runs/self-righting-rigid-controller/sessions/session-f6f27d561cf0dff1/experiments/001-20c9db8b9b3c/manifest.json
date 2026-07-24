@@ -1,0 +1,51 @@
+{
+  "version": 4,
+  "id": "001-20c9db8b9b3c",
+  "experimentHash": "20c9db8b9b3c87034f4a27f129e8fa473acef060dfe7adc35ee05081c44fab1a",
+  "sequence": 1,
+  "sessionId": "session-f6f27d561cf0dff1",
+  "researchId": "self-righting-rigid-controller",
+  "labHash": "f8ff85fc3cddfa88ca3c34b6a1b66f22b33b26e54391b5eeb8ad46af1c9f2faa",
+  "programHash": "fe5e1d7afe1aa4d43d7694407d481e7ddf5f881930adb4b77afa747e7933a1f8",
+  "benchmarkLockHash": "56a7f8b3a4cef4df89744a4773d26720198a9eef14a8bd3ddf45390a96e069e9",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "7be244054678bb7f26a8373e956a285ba6a92de7246054ef87ff4697fc86ca05",
+  "researcherChangedPaths": [
+    "controllers/rigid-self-right/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/rigid-self-right/controller.py"
+  ],
+  "proposal": {
+    "strategy": "latched-roll-direction",
+    "hypothesis": "The baseline reaches the inverted singularity but recomputes and alternates its recovery direction there. Latching the initial fall axis and continuing the same roll should preserve angular intent through the upside-down phase.",
+    "expectedEffect": "Reduce final body tilt and enter the stable-standing target in at least one of the four fixed fallen-pose cases without changing morphology or actuator limits."
+  },
+  "policyId": null,
+  "score": -15.75250917126586,
+  "delta": 0.3956371237863401,
+  "verdict": "KEEP",
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 28,
+    "candidateViolationCount": 27,
+    "previousViolationSeverity": 47.953427616025124,
+    "candidateViolationSeverity": 44.12210286672526,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "fewer-gate-violations"
+  },
+  "revisionId": "quadruped-r-15b699d96b4e",
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "dd759f34739f9b1c5b1e3892ce1aa5835d4fe6dc9d9ba023abfec380b126ce94",
+    "acceptedRunId": "run-186077ce44b4e76c",
+    "candidateRunId": "run-947bc84a18050599",
+    "caseId": "right"
+  },
+  "durationMs": 6326,
+  "completed": true
+}

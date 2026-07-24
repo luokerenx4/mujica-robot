@@ -1,0 +1,53 @@
+{
+  "version": 4,
+  "id": "001-9ea8664fa77e",
+  "experimentHash": "9ea8664fa77eb5533d67e93470bca275016b75f9efb128b038d46a0f3cdd87ef",
+  "sequence": 1,
+  "sessionId": "session-86d634e81120be65",
+  "researchId": "self-righting-rigid-controller",
+  "labHash": "f8ff85fc3cddfa88ca3c34b6a1b66f22b33b26e54391b5eeb8ad46af1c9f2faa",
+  "programHash": "fe5e1d7afe1aa4d43d7694407d481e7ddf5f881930adb4b77afa747e7933a1f8",
+  "benchmarkLockHash": "5dc62feff4ee6f746c7a891658185164b147dbcdb68e13797cc1cb0d1ae3f4e3",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "ebeecc2f53393c408ea60da5bf3c2580dda0a79f1f1fe36657a01ad9ff879435",
+  "researcherChangedPaths": [
+    "controllers/rigid-self-right/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/rigid-self-right/controller.py"
+  ],
+  "proposal": {
+    "strategy": "upright-directed-roll",
+    "hypothesis": "The accepted latch preserves direction through the singularity, but the four traces still end inverted because its sign drives away from world-up. Inverting only the latched sign should send the same bounded maneuver toward upright instead.",
+    "expectedEffect": "Lower minimum and final body tilt, avoid crossing into the inverted basin, and enter the stable-standing target in at least one fixed fallen-pose case."
+  },
+  "policyId": null,
+  "score": -15.752773929070557,
+  "delta": -0.00026475780469681354,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "front: disallowed-collision regressed from passing to failing"
+    ],
+    "previousViolationCount": 27,
+    "candidateViolationCount": 27,
+    "previousViolationSeverity": 44.12210286672526,
+    "candidateViolationSeverity": 43.75553677122075,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "73d12ce4fdeba282f6bd194b08759fc418d9dfcb7100fa0ae715872c0449a45c",
+    "acceptedRunId": "run-4131a68192c07c85",
+    "candidateRunId": "run-ba81abc0b4100523",
+    "caseId": "front"
+  },
+  "durationMs": 5882,
+  "completed": true
+}

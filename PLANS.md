@@ -18,13 +18,13 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-| — | — | — |
+| [Self-righting capability and morphology study](plans/self-righting-capability.md) | Prove recovery from front, back, and side resting poses, comparing the current rigid body with an articulated torso before adding a waist to the robot design. | 2026-07-24 |
 
 ## Candidate plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-| [Self-righting capability and morphology study](plans/self-righting-capability.md) | Prove recovery from front, back, and side resting poses, comparing the current rigid body with an articulated torso before adding a waist to the robot design. | 2026-07-24 |
+| — | — | — |
 
 ## Completed plans
 

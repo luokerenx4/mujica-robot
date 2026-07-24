@@ -522,6 +522,41 @@ class RuntimeContractTest(unittest.TestCase):
         environment = RobotEnvironment(model, compiled, task, scenario, 7)
         np.testing.assert_allclose(environment.model.geom_friction[:, 0], 0.37)
 
+    def test_recovery_task_applies_an_exact_fallen_pose_without_ordinary_fall_termination(self):
+        model, compiled = compiled_assembly("self-righting-rigid-3dof")
+        task = json.loads((PROJECT / "tasks" / "self-right.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "fallen-left.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 6103)
+        observation = environment.reset()
+        np.testing.assert_allclose(environment.data.qpos[:3], scenario["initialBasePose"]["positionM"])
+        np.testing.assert_allclose(environment.data.qpos[3:7], scenario["initialBasePose"]["orientationWxyz"])
+        np.testing.assert_allclose(observation["base-orientation"], scenario["initialBasePose"]["orientationWxyz"])
+        self.assertEqual(environment.events[0]["initialBasePose"], scenario["initialBasePose"])
+        self.assertEqual(compile_motion_command_schedule(task)[0]["command"].tolist(), [0.0, 0.0, 0.0])
+        environment.data.qpos[2] = 0.01
+        result = environment.step(np.zeros(environment.model.nu))
+        self.assertFalse(result.terminated)
+
+    def test_self_righting_score_rewards_success_and_penalizes_slow_recovery(self):
+        objective = {
+            "weights": {
+                "survival": 0, "velocityTracking": 0, "upright": 0, "energy": 0, "smoothness": 0,
+                "componentMass": 0, "sensorChannels": 0, "trainingSteps": 0,
+                "selfRighting": 100, "recoveryTime": 2, "jointLimitMargin": 1,
+            },
+        }
+        base = {
+            "survivalRate": 1, "meanVelocityTrackingError": 0, "forwardProgress": 1, "meanUpright": 0,
+            "lateralDrift": 0, "meanEnergy": 0, "meanSmoothness": 0, "selfRightingSuccess": 1,
+            "minimumJointLimitMarginRad": 0.1,
+        }
+        compiled = {"totalMassKg": 0, "sensorChannelCount": 0}
+        fast = score_metrics({**base, "timeToStableStandSeconds": 1.5}, objective, compiled)["total"]
+        slow = score_metrics({**base, "timeToStableStandSeconds": 4.0}, objective, compiled)["total"]
+        failed = score_metrics({**base, "selfRightingSuccess": 0, "timeToStableStandSeconds": 6.0}, objective, compiled)["total"]
+        self.assertGreater(fast, slow)
+        self.assertGreater(slow, failed)
+
     def test_transition_controller_is_exact_for_an_unchanged_forward_command(self):
         baseline_root = PROJECT / "controllers" / "command-tracking-gait"; transition_root = PROJECT / "controllers" / "transition-aware-gait"
         baseline = load_program_controller(baseline_root, json.loads((baseline_root / "controller.json").read_text())); baseline.reset(7)

@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "id": "self-righting-residual-policy",
+  "name": "Residual PPO self-righting research",
+  "program": "research/self-righting-residual-policy/program.md",
+  "benchmark": "self-righting",
+  "regressions": [],
+  "execution": {
+    "kind": "policy",
+    "training": "self-righting-residual",
+    "controller": "trained-self-right",
+    "referenceController": "rigid-self-right",
+    "seed": 6201
+  },
+  "editable": {
+    "paths": [
+      "trainers/motion-quality-residual-ppo/**",
+      "training/self-righting-residual.training.json",
+      "controllers/trained-self-right/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 480,
+    "maximumTrainingSteps": 16384
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

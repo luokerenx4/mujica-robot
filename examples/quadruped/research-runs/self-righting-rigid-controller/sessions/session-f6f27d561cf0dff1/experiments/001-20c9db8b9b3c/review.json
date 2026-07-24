@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "self-righting-rigid-controller",
+    "labHash": "f8ff85fc3cddfa88ca3c34b6a1b66f22b33b26e54391b5eeb8ad46af1c9f2faa",
+    "programHash": "fe5e1d7afe1aa4d43d7694407d481e7ddf5f881930adb4b77afa747e7933a1f8",
+    "benchmarkLockHash": "56a7f8b3a4cef4df89744a4773d26720198a9eef14a8bd3ddf45390a96e069e9",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-f6f27d561cf0dff1",
+    "experimentId": "001-20c9db8b9b3c",
+    "experimentHash": "20c9db8b9b3c87034f4a27f129e8fa473acef060dfe7adc35ee05081c44fab1a"
+  },
+  "proposal": {
+    "strategy": "latched-roll-direction",
+    "hypothesis": "The baseline reaches the inverted singularity but recomputes and alternates its recovery direction there. Latching the initial fall axis and continuing the same roll should preserve angular intent through the upside-down phase.",
+    "expectedEffect": "Reduce final body tilt and enter the stable-standing target in at least one of the four fixed fallen-pose cases without changing morphology or actuator limits."
+  },
+  "judge": {
+    "verdict": "KEEP",
+    "decision": {
+      "verdict": "KEEP",
+      "gateReasons": [],
+      "previousViolationCount": 28,
+      "candidateViolationCount": 27,
+      "previousViolationSeverity": 47.953427616025124,
+      "candidateViolationSeverity": 44.12210286672526,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "fewer-gate-violations"
+    },
+    "decisionHash": "7443f95d9308d5498d11ca358b46d2fb8033d717e1261e1a75c6a414774ac818"
+  },
+  "selectedCase": {
+    "benchmark": "self-righting",
+    "id": "right",
+    "task": "self-right",
+    "scenario": "fallen-right",
+    "seed": 6104,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": 0.4340657876309173,
+    "weightedScoreDelta": 0.4340657876309173
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-186077ce44b4e76c",
+    "runKey": "186077ce44b4e76c84ebd894c3b6a31d3b089de8214116a88ee4de26eb85baed",
+    "resultHash": "954756fbf3e6d61706d36df46e3f1c0ee49fa08f6cf987ae9c47b9b26427a32f",
+    "artifactHash": "2720f9b8b74f5676064626227392d69e32bc3adcc43975f2d07715866aaddd77",
+    "manifestHash": "504452d9de14ecf47d4e895e249aec08d3671d77ba060b07edcccd2d9ccfe249",
+    "metricsHash": "70bd6c9cec9836ae07070bafdad37f7d0fdd6fcf19dbafccddb30e8c533cc7e1",
+    "scoreHash": "0b8bfbf67b9a88ca0fb9bca23b77d8e6b09a7379d13e66dbf23864c73a0642b4",
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "rigid-self-right",
+    "score": -16.19104026589045
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-947bc84a18050599",
+    "runKey": "947bc84a18050599630df4155f84888a89a627a96cf5bdaf5d3db18e3972916a",
+    "resultHash": "a95bbb2d491a13c4f0be4d4f7da7a991307f5ef84a64535649fd22e80e1e6b51",
+    "artifactHash": "9fc4dd7d4290f40caae13a8d5c28fe7b23c14238d6294b729058a280225bba84",
+    "manifestHash": "cdfc90a9149d7c50143f792cb45db073eb3141ce6b1ef477aaec2e030dfaf2ed",
+    "metricsHash": "6d1e013118afc7ee5209112be9b098b73ab4a138ee16a5b9b5c9d236adc4ff2d",
+    "scoreHash": "19bb541013565d662b83dbf216611fcbef14a9e55fc83599033f756ed38ae93b",
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "rigid-self-right",
+    "score": -15.756974478259533
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

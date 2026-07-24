@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "rigid-self-right",
+  "name": "Pose-conditioned rigid-torso self-righting baseline",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 12 },
+      { "name": "joint-velocity", "size": 12 },
+      { "name": "base-orientation", "size": 4 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 12, "low": -8, "high": 8 }
+    ]
+  },
+  "config": {
+    "uprightTiltRad": 0.55,
+    "kpAbduction": 22,
+    "kdAbduction": 2.8,
+    "kpSagittal": 32,
+    "kdSagittal": 2.4,
+    "tuckSeconds": 0.55,
+    "pushSeconds": 0.85,
+    "cycleSeconds": 0.7
+  }
+}

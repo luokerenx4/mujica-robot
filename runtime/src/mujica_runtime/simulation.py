@@ -25,6 +25,46 @@ def quaternion_body_tilt(quaternion: np.ndarray) -> float:
     world_up_dot_body_up = 1.0 - 2.0 * (x * x + y * y)
     return float(np.arccos(np.clip(world_up_dot_body_up, -1.0, 1.0)))
 
+def minimum_joint_limit_margin(model: mujoco.MjModel, data: mujoco.MjData) -> float:
+    margins: list[float] = []
+    for joint_index in range(model.njnt):
+        if not bool(model.jnt_limited[joint_index]):
+            continue
+        joint_type = int(model.jnt_type[joint_index])
+        if joint_type not in (int(mujoco.mjtJoint.mjJNT_HINGE), int(mujoco.mjtJoint.mjJNT_SLIDE)):
+            continue
+        qpos_index = int(model.jnt_qposadr[joint_index])
+        lower, upper = model.jnt_range[joint_index]
+        value = float(data.qpos[qpos_index])
+        margins.append(min(value - float(lower), float(upper) - value))
+    return min(margins, default=1_000_000.0)
+
+
+def has_disallowed_self_contact(model: mujoco.MjModel, data: mujoco.MjData) -> bool:
+    def within_two_kinematic_edges(descendant: int, ancestor: int) -> bool:
+        current = descendant
+        for _ in range(2):
+            current = int(model.body_parentid[current])
+            if current == ancestor:
+                return True
+            if current == 0:
+                break
+        return False
+
+    for contact_index in range(data.ncon):
+        contact = data.contact[contact_index]
+        first_body = int(model.geom_bodyid[int(contact.geom1)])
+        second_body = int(model.geom_bodyid[int(contact.geom2)])
+        if (
+            first_body > 0
+            and second_body > 0
+            and first_body != second_body
+            and not within_two_kinematic_edges(first_body, second_body)
+            and not within_two_kinematic_edges(second_body, first_body)
+        ):
+            return True
+    return False
+
 
 def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
@@ -244,6 +284,9 @@ def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: 
         "actuatorSaturation": -weights.get("actuatorSaturation", 0.0) * metrics.get("actuatorSaturationRate", 0.0),
         "footSlip": -weights.get("footSlip", 0.0) * metrics.get("meanFootSlipSpeedMps", 0.0),
         "footImpact": -weights.get("footImpact", 0.0) * metrics.get("meanFootContactImpactNPerSec", 0.0),
+        "selfRighting": weights.get("selfRighting", 0.0) * metrics.get("selfRightingSuccess", 0.0),
+        "recoveryTime": -weights.get("recoveryTime", 0.0) * metrics.get("timeToStableStandSeconds", 0.0),
+        "jointLimitMargin": weights.get("jointLimitMargin", 0.0) * min(metrics.get("minimumJointLimitMarginRad", 0.0), 1.0),
         "componentMass": -weights["componentMass"] * compiled["totalMassKg"],
         "sensorChannels": -weights["sensorChannels"] * compiled["sensorChannelCount"],
         "trainingSteps": -weights["trainingSteps"] * training_steps,
@@ -290,6 +333,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "qvel": environment.data.qvel.tolist(),
     }
     initial_position = environment.data.qpos[:3].copy()
+    initial_body_tilt = quaternion_body_tilt(environment.data.qpos[3:7])
     previous_position = initial_position.copy()
     distance_traveled = 0.0
     trajectory: list[dict[str, Any]] = []
@@ -301,8 +345,17 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     maximum_absolute_pitch_rate = 0.0
     body_tilt_total = 0.0
     maximum_body_tilt = 0.0
+    minimum_body_tilt = initial_body_tilt
     minimum_pitch = float("inf")
     maximum_pitch = float("-inf")
+    minimum_limit_margin = minimum_joint_limit_margin(environment.model, environment.data)
+    disallowed_collision_steps = 0
+    recovery_target = request["task"].get("recoveryTarget")
+    recovery_hold_steps = max(1, round(float(recovery_target["holdSeconds"]) * float(request["task"]["controlHz"]))) if recovery_target else 0
+    recovery_stable_steps = 0
+    maximum_recovery_stable_steps = 0
+    recovery_entered_at: float | None = None
+    time_to_stable_stand: float | None = None
     survived_steps = 0
     fell = False
     previous_pushing = False
@@ -328,11 +381,43 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         maximum_absolute_pitch_rate = max(maximum_absolute_pitch_rate, abs(pitch_rate))
         body_tilt_total += body_tilt
         maximum_body_tilt = max(maximum_body_tilt, body_tilt)
+        minimum_body_tilt = min(minimum_body_tilt, body_tilt)
         minimum_pitch = min(minimum_pitch, pitch)
         maximum_pitch = max(maximum_pitch, pitch)
+        minimum_limit_margin = min(minimum_limit_margin, minimum_joint_limit_margin(environment.model, environment.data))
+        disallowed_contact = has_disallowed_self_contact(environment.model, environment.data)
+        if disallowed_contact:
+            disallowed_collision_steps += 1
+        recovery_target_satisfied = False
+        if recovery_target:
+            recovery_target_satisfied = (
+                float(environment.data.qpos[2]) >= float(recovery_target["minimumBaseHeightM"])
+                and body_tilt <= float(recovery_target["maximumBodyTiltRad"])
+                and float(np.linalg.norm(environment.data.qvel[:3])) <= float(recovery_target["maximumLinearSpeedMps"])
+                and float(np.linalg.norm(environment.data.qvel[3:6])) <= float(recovery_target["maximumAngularSpeedRadPerSec"])
+            )
+            if recovery_target_satisfied:
+                if recovery_stable_steps == 0:
+                    recovery_entered_at = float(environment.data.time)
+                    environment.events.append({"type": "robot.recovery-target-entered", "time": recovery_entered_at})
+                recovery_stable_steps += 1
+                maximum_recovery_stable_steps = max(maximum_recovery_stable_steps, recovery_stable_steps)
+                if time_to_stable_stand is None and recovery_stable_steps >= recovery_hold_steps:
+                    time_to_stable_stand = float(recovery_entered_at)
+                    environment.events.append({
+                        "type": "robot.self-righted",
+                        "time": float(environment.data.time),
+                        "stableSince": time_to_stable_stand,
+                        "requiredDwellSeconds": float(recovery_target["holdSeconds"]),
+                    })
+            else:
+                if recovery_stable_steps > 0:
+                    environment.events.append({"type": "robot.recovery-target-exited", "time": float(environment.data.time), "stableSince": recovery_entered_at})
+                recovery_stable_steps = 0
+                recovery_entered_at = None
         foot_contact_force = result.observation.get("foot-contact-force")
         foot_positions_world = environment.foot_positions_world()
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "recoveryTargetSatisfied": recovery_target_satisfied, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -351,6 +436,12 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "meanAbsolutePitchRad": absolute_pitch_total / steps, "minimumPitchRad": minimum_pitch, "maximumPitchRad": maximum_pitch, "maximumBackwardPitchRad": max(0.0, -minimum_pitch),
         "maximumAbsolutePitchRad": maximum_absolute_pitch, "maximumAbsolutePitchRateRadPerSec": maximum_absolute_pitch_rate,
         "meanBodyTiltRad": body_tilt_total / steps, "maximumBodyTiltRad": maximum_body_tilt,
+        "initialBodyTiltRad": initial_body_tilt, "minimumBodyTiltRad": minimum_body_tilt, "finalBodyTiltRad": quaternion_body_tilt(environment.data.qpos[3:7]), "finalBaseHeightM": float(environment.data.qpos[2]),
+        "selfRightingTask": recovery_target is not None, "selfRightingSuccess": 1.0 if time_to_stable_stand is not None else 0.0,
+        "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]),
+        "stableStandingDwellSeconds": maximum_recovery_stable_steps / float(request["task"]["controlHz"]),
+        "finalStableStandingDwellSeconds": recovery_stable_steps / float(request["task"]["controlHz"]),
+        "minimumJointLimitMarginRad": minimum_limit_margin, "disallowedCollisionSteps": disallowed_collision_steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
         **quality_metrics,

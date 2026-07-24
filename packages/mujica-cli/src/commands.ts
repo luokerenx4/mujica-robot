@@ -637,6 +637,14 @@ export async function candidateCommand(projectDir: string, id: string, apply: bo
     if (candidateCase && candidateCase.metrics.maximumYawRateOvershootRadPerSec > objective.gates.maximumYawRateOvershootRadPerSec) gateReasons.push(`${candidateCase.case.id}: yaw-rate overshoot ${candidateCase.metrics.maximumYawRateOvershootRadPerSec.toFixed(3)} exceeds gate`);
     if (candidateCase && candidateCase.metrics.unsettledPlanarTransitionCount > objective.gates.maximumUnsettledPlanarTransitions) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.unsettledPlanarTransitionCount} planar transitions did not settle`);
     if (candidateCase && candidateCase.metrics.unsettledYawRateTransitionCount > objective.gates.maximumUnsettledYawRateTransitions) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.unsettledYawRateTransitionCount} yaw transitions did not settle`);
+    if (candidateCase && (candidateCase.metrics.selfRightingSuccess ?? 0) < objective.gates.minimumSelfRightingSuccess) gateReasons.push(`${candidateCase.case.id}: self-righting success ${(candidateCase.metrics.selfRightingSuccess ?? 0).toFixed(3)} below gate`);
+    if (candidateCase && (candidateCase.metrics.timeToStableStandSeconds ?? 0) > objective.gates.maximumTimeToStableStandSeconds) gateReasons.push(`${candidateCase.case.id}: stable-stand time ${(candidateCase.metrics.timeToStableStandSeconds ?? 0).toFixed(3)} exceeds gate`);
+    if (candidateCase && (candidateCase.metrics.stableStandingDwellSeconds ?? 0) < objective.gates.minimumStableStandingDwellSeconds) gateReasons.push(`${candidateCase.case.id}: stable-standing dwell ${(candidateCase.metrics.stableStandingDwellSeconds ?? 0).toFixed(3)} below gate`);
+    if (candidateCase && (candidateCase.metrics.finalBodyTiltRad ?? 0) > objective.gates.maximumFinalBodyTiltRad) gateReasons.push(`${candidateCase.case.id}: final body tilt ${(candidateCase.metrics.finalBodyTiltRad ?? 0).toFixed(3)} exceeds gate`);
+    if (candidateCase && (candidateCase.metrics.finalBaseHeightM ?? 1_000_000) < objective.gates.minimumFinalBaseHeightM) gateReasons.push(`${candidateCase.case.id}: final base height ${(candidateCase.metrics.finalBaseHeightM ?? 0).toFixed(3)} below gate`);
+    if (candidateCase && (candidateCase.metrics.minimumJointLimitMarginRad ?? 1_000_000) < objective.gates.minimumJointLimitMarginRad) gateReasons.push(`${candidateCase.case.id}: joint-limit margin ${(candidateCase.metrics.minimumJointLimitMarginRad ?? 0).toFixed(3)} below gate`);
+    if (candidateCase && candidateCase.metrics.peakActuator > objective.gates.maximumPeakActuator) gateReasons.push(`${candidateCase.case.id}: peak actuator ${candidateCase.metrics.peakActuator.toFixed(3)} exceeds gate`);
+    if (candidateCase && (candidateCase.metrics.disallowedCollisionSteps ?? 0) > objective.gates.maximumDisallowedCollisionSteps) gateReasons.push(`${candidateCase.case.id}: ${candidateCase.metrics.disallowedCollisionSteps ?? 0} disallowed collision steps exceed gate`);
     if (candidateCase && baselineCase && candidateCase.score.total - baselineCase.score.total < -objective.gates.maximumRegression) gateReasons.push(`${candidateCase.case.id}: score regression exceeds gate`);
   }
   const allowedChangeHashes: Record<string, string> = {};
@@ -687,7 +695,7 @@ export function candidateSelection(gateReasons: string[], scoreDelta: number, ba
 }
 
 export type GateAssessment = {
-  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "joint-jerk" | "body-angular-jerk" | "action-slew" | "actuator-saturation" | "foot-slip" | "foot-impact" | "score-regression";
+  id: "survival" | "forward-progress" | "signed-forward-progress" | "backward-displacement" | "backward-pitch" | "pitch-angle" | "pitch-rate" | "body-tilt" | "lateral-drift" | "planar-velocity-tracking" | "yaw-rate-tracking" | "transition-terminal-planar" | "transition-terminal-yaw" | "planar-settling-time" | "planar-braking-settling-time" | "yaw-settling-time" | "planar-overshoot" | "yaw-overshoot" | "unsettled-planar" | "unsettled-yaw" | "joint-jerk" | "body-angular-jerk" | "action-slew" | "actuator-saturation" | "foot-slip" | "foot-impact" | "self-righting" | "stable-stand-time" | "stable-standing-dwell" | "final-body-tilt" | "final-base-height" | "joint-limit-margin" | "peak-actuator" | "disallowed-collision" | "score-regression";
   metric: string; comparator: ">=" | "<="; threshold: number; value: number; margin: number; passed: boolean; enforced: boolean; severity: number;
 };
 
@@ -726,6 +734,20 @@ export function diagnosticGates(objective: Awaited<ReturnType<typeof loadObjecti
   gates.push(upper("actuator-saturation", "actuatorSaturationRate", candidate.metrics.actuatorSaturationRate ?? 0, objective.gates.maximumActuatorSaturationRate ?? 1, 1));
   gates.push(upper("foot-slip", "meanFootSlipSpeedMps", candidate.metrics.meanFootSlipSpeedMps ?? 0, objective.gates.maximumMeanFootSlipSpeedMps ?? 1_000_000));
   gates.push(upper("foot-impact", "peakFootContactImpactNPerSec", candidate.metrics.peakFootContactImpactNPerSec ?? 0, objective.gates.maximumPeakFootContactImpactNPerSec ?? 1_000_000));
+  gates.push(lower("self-righting", "selfRightingSuccess", candidate.metrics.selfRightingSuccess ?? 0, objective.gates.minimumSelfRightingSuccess ?? 0));
+  gates.push(upper("stable-stand-time", "timeToStableStandSeconds", candidate.metrics.timeToStableStandSeconds ?? 0, objective.gates.maximumTimeToStableStandSeconds ?? 1_000_000, 1));
+  gates.push(lower("stable-standing-dwell", "stableStandingDwellSeconds", candidate.metrics.stableStandingDwellSeconds ?? 0, objective.gates.minimumStableStandingDwellSeconds ?? 0));
+  gates.push(upper("final-body-tilt", "finalBodyTiltRad", candidate.metrics.finalBodyTiltRad ?? 0, objective.gates.maximumFinalBodyTiltRad ?? Math.PI, 0.5));
+  gates.push(lower("final-base-height", "finalBaseHeightM", candidate.metrics.finalBaseHeightM ?? 1_000_000, objective.gates.minimumFinalBaseHeightM ?? 0));
+  gates.push(lower("joint-limit-margin", "minimumJointLimitMarginRad", candidate.metrics.minimumJointLimitMarginRad ?? 1_000_000, objective.gates.minimumJointLimitMarginRad ?? 0));
+  gates.push(upper("peak-actuator", "peakActuator", candidate.metrics.peakActuator ?? 0, objective.gates.maximumPeakActuator ?? 1_000_000, 8));
+  gates.push(upper(
+    "disallowed-collision",
+    "disallowedCollisionSteps",
+    candidate.metrics.disallowedCollisionSteps ?? 0,
+    objective.gates.maximumDisallowedCollisionSteps ?? 1_000_000,
+    Math.max(candidate.metrics.steps ?? 1, 1),
+  ));
   if (baseline) gates.push(lower("score-regression", "scoreDelta", candidate.score.total - baseline.score.total, -objective.gates.maximumRegression));
   return gates;
 }
@@ -744,6 +766,12 @@ export function diagnosticHypotheses(violations: GateAssessment[]) {
   if (violations.some((gate) => gate.id === "action-slew" || gate.id === "actuator-saturation")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect applied-Action slew and saturation together, then test bounded output shaping, gain wind-up, delay compensation, or actuator authority.", rationale: "The applied control stream changed too quickly or spent too much time at declared control bounds." });
   if (violations.some((gate) => gate.id === "foot-slip")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect planted-foot intervals, load transfer, contact timing, and foot placement without changing the locked friction case.", rationale: "Exact MuJoCo foot-site motion while contact persisted exceeded the planted-slip gate." });
   if (violations.some((gate) => gate.id === "foot-impact")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect touchdown frames and test bounded clearance, phase timing, vertical landing speed, or joint damping.", rationale: "The positive touch-force derivative exceeded the locked contact-impact gate." });
+  if (violations.some((gate) => gate.id === "self-righting" || gate.id === "stable-stand-time" || gate.id === "stable-standing-dwell" || gate.id === "final-body-tilt" || gate.id === "final-base-height")) {
+    hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Inspect the frozen resting pose, recovery-target entry/exit events, and contact sequence; test a bounded pose-conditioned recovery state machine before changing the scenario.", rationale: "The robot did not reach and hold the shared stable-standing target within the locked time envelope." });
+    hypotheses.push({ kind: "hypothesis", surface: "assembly", description: "Compare rigid and articulated reachable recovery workspaces under the same controller authority and locked resting pose.", rationale: "A recovery failure may be a morphology reachability limit rather than a controller gain problem." });
+  }
+  if (violations.some((gate) => gate.id === "joint-limit-margin" || gate.id === "disallowed-collision")) hypotheses.push({ kind: "hypothesis", surface: "assembly", description: "Inspect joint-limit and self-contact frames, then change geometry, joint range, or recovery sequencing only inside an explicit complete-design lane.", rationale: "The attempted recovery used structurally unsafe configurations." });
+  if (violations.some((gate) => gate.id === "peak-actuator")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Reduce peak recovery authority or improve mechanical leverage without widening the locked actuator envelope.", rationale: "The attempted maneuver exceeded declared actuator authority." });
   if (violations.some((gate) => gate.id === "score-regression")) hypotheses.push({ kind: "hypothesis", surface: "controller", description: "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.", rationale: "The case regressed beyond the locked baseline allowance." });
   return hypotheses;
 }

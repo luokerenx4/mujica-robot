@@ -45,7 +45,7 @@ export function runtimeCompiled(assembly: CompiledAssembly): Record<string, unkn
   const actionLow = assembly.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.low ?? -1));
   const actionHigh = assembly.actionContract.channels.flatMap((channel) => Array(channel.size).fill(channel.high ?? 1));
   return {
-    version: assembly.version, id: assembly.id, assemblyHash: assembly.assemblyHash, executionHash: assembly.executionHash, modelHash: assembly.modelHash, plantHash: assembly.plantHash, baseHash: assembly.baseHash, catalogHash: assembly.catalogHash,
+    version: assembly.version, id: assembly.id, assemblyHash: assembly.assemblyHash, executionHash: assembly.executionHash, modelHash: assembly.modelHash, plantHash: assembly.plantHash, baseId: assembly.baseId, baseHash: assembly.baseHash, catalogHash: assembly.catalogHash,
     morphology: assembly.morphology, totalMassKg: assembly.totalMassKg, componentCost: assembly.componentCost, components: assembly.components,
     observationContract: assembly.observationContract, actionContract: assembly.actionContract,
     observationContractHash: hashJson(assembly.observationContract), actionContractHash: hashJson(assembly.actionContract),

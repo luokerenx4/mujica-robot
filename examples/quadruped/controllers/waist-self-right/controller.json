@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "waist-self-right",
+  "name": "Pose-conditioned articulated-torso self-righting baseline",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 14 },
+      { "name": "joint-velocity", "size": 14 },
+      { "name": "base-orientation", "size": 4 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 14, "low": -8, "high": 8 }
+    ]
+  },
+  "config": {
+    "uprightTiltRad": 0.55,
+    "kpAbduction": 22,
+    "kdAbduction": 2.8,
+    "kpSagittal": 32,
+    "kdSagittal": 2.4,
+    "kpWaist": 18,
+    "kdWaist": 3,
+    "maximumWaistTargetRad": 0.62,
+    "tuckSeconds": 0.45,
+    "cycleSeconds": 0.65
+  }
+}

@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "id": "self-righting-rigid-3dof",
+  "assemblyHash": "1d479e845ca54ac4a559b354bcaca01951d8db887ea4bd8008da79d9a0e74763",
+  "executionHash": "b04983d7936b43ae50e0688ea203ebfca243e0c48a04bfd32abd5e182489dc66",
+  "modelHash": "7eccace061a9a78e66d58392c7a368766585935c6f4c50a0da1672fb2a5ae47a",
+  "plantHash": "686fb75a9933c12b6adbcfe562cca4af7e17932e784aa3c482edd85d85b39cfa",
+  "baseId": "quadruped-3dof",
+  "baseHash": "ca633abf9c5a9e1ef276621935f6f369726f329fdf1f0493bde42b099ce89762",
+  "catalogHash": "0a8b8261ad7bd3031c1ac77fdf83f6485912eaac15ae2889cd0aca12fc125a2d",
+  "morphology": {
+    "version": 1,
+    "project": "quadruped",
+    "class": "legged",
+    "baseBody": "torso",
+    "limbCount": 4,
+    "contactPoints": [
+      {
+        "id": "front-left",
+        "site": "foot-fl-site",
+        "sensor": "foot-force-fl"
+      },
+      {
+        "id": "front-right",
+        "site": "foot-fr-site",
+        "sensor": "foot-force-fr"
+      },
+      {
+        "id": "rear-left",
+        "site": "foot-rl-site",
+        "sensor": "foot-force-rl"
+      },
+      {
+        "id": "rear-right",
+        "site": "foot-rr-site",
+        "sensor": "foot-force-rr"
+      }
+    ]
+  },
+  "totalMassKg": 6.03,
+  "componentCost": 5,
+  "components": [
+    {
+      "instanceId": "body-imu",
+      "componentId": "body-imu",
+      "mount": "torso-sensor",
+      "config": {},
+      "hash": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+      "massKg": 0.03,
+      "cost": 1,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          1e-05,
+          1e-05,
+          1e-05
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "body-gyro",
+          "kind": "gyro",
+          "source": "mjcf"
+        },
+        {
+          "name": "body-accelerometer",
+          "kind": "accelerometer",
+          "source": "mjcf"
+        }
+      ]
+    },
+    {
+      "instanceId": "motion-command-input",
+      "componentId": "motion-command-input",
+      "mount": "torso-sensor",
+      "config": {},
+      "hash": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+      "massKg": 0,
+      "cost": 0,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          0,
+          0,
+          0
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "motion-command",
+          "kind": "task-command",
+          "source": "runtime"
+        }
+      ]
+    },
+    {
+      "instanceId": "foot-force-kit",
+      "componentId": "foot-force-sensor",
+      "mount": "foot-array",
+      "config": {},
+      "hash": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c",
+      "massKg": 0.08,
+      "cost": 4,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          2e-05,
+          2e-05,
+          2e-05
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "foot-force-fl",
+          "kind": "touch",
+          "source": "mjcf"
+        },
+        {
+          "name": "foot-force-fr",
+          "kind": "touch",
+          "source": "mjcf"
+        },
+        {
+          "name": "foot-force-rl",
+          "kind": "touch",
+          "source": "mjcf"
+        },
+        {
+          "name": "foot-force-rr",
+          "kind": "touch",
+          "source": "mjcf"
+        }
+      ]
+    }
+  ],
+  "observationContract": {
+    "version": 1,
+    "assembly": "self-righting-rigid-3dof",
+    "channels": [
+      {
+        "name": "joint-position",
+        "kind": "joint-position",
+        "size": 12,
+        "source": "qpos:joints",
+        "unit": "rad"
+      },
+      {
+        "name": "joint-velocity",
+        "kind": "joint-velocity",
+        "size": 12,
+        "source": "qvel:joints",
+        "unit": "rad-s"
+      },
+      {
+        "name": "base-height",
+        "kind": "body-state",
+        "size": 1,
+        "source": "qpos:root-height",
+        "unit": "m"
+      },
+      {
+        "name": "base-orientation",
+        "kind": "body-state",
+        "size": 4,
+        "source": "qpos:root-quaternion",
+        "unit": "quaternion"
+      },
+      {
+        "name": "base-velocity",
+        "kind": "body-state",
+        "size": 6,
+        "source": "qvel:root",
+        "unit": "mixed"
+      },
+      {
+        "name": "imu-angular-velocity",
+        "kind": "sensor",
+        "size": 3,
+        "source": "sensor:body-gyro",
+        "unit": "rad-s"
+      },
+      {
+        "name": "imu-linear-acceleration",
+        "kind": "sensor",
+        "size": 3,
+        "source": "sensor:body-accelerometer",
+        "unit": "m-s2"
+      },
+      {
+        "name": "motion-command",
+        "kind": "command",
+        "size": 3,
+        "source": "task:motion-command",
+        "unit": "m/s,m/s,rad/s"
+      },
+      {
+        "name": "foot-contact-force",
+        "kind": "sensor",
+        "size": 4,
+        "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+        "unit": "n"
+      }
+    ],
+    "size": 48
+  },
+  "actionContract": {
+    "version": 1,
+    "assembly": "self-righting-rigid-3dof",
+    "channels": [
+      {
+        "name": "joint-torque",
+        "kind": "actuator",
+        "size": 12,
+        "source": "actuator:all",
+        "unit": "nm",
+        "low": -8,
+        "high": 8
+      }
+    ],
+    "size": 12
+  },
+  "observationContractHash": "ced459928fbdbd0cdd01339eaf408bb49bb2587d474a81555d4b678312fac833",
+  "actionContractHash": "2422d529304e208ef0c41bbe8f0fb4d79ff684552f99953a8aecfd207e801d9d",
+  "actionLow": [
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8,
+    -8
+  ],
+  "actionHigh": [
+    8,
+    8,
+    8,
+    8,
+    8,
+    8,
+    8,
+    8,
+    8,
+    8,
+    8,
+    8
+  ],
+  "sensorChannelCount": 10
+}

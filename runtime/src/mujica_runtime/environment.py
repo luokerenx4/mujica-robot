@@ -23,7 +23,7 @@ def motion_command_vector(command: dict[str, Any]) -> np.ndarray:
 
 
 def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]]:
-    if int(task["version"]) == 2:
+    if int(task["version"]) in (2, 4):
         return [{"atStep": 0, "atSeconds": 0.0, "command": motion_command_vector(task["motionCommand"])}]
     if int(task["version"]) != 3:
         raise RuntimeError(f"Unsupported Task version '{task['version']}'")
@@ -87,6 +87,13 @@ class RobotEnvironment:
             mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
         else:
             mujoco.mj_resetData(self.model, self.data)
+        initial_base_pose = self.scenario.get("initialBasePose")
+        if initial_base_pose is not None:
+            if self.model.nq < 7:
+                raise RuntimeError("Scenario initialBasePose requires a free-root robot")
+            self.data.qpos[:3] = np.asarray(initial_base_pose["positionM"], dtype=np.float64)
+            self.data.qpos[3:7] = np.asarray(initial_base_pose["orientationWxyz"], dtype=np.float64)
+            self.data.qvel[:6] = 0.0
         joint_position_noise = float(self.scenario.get("initialJointPositionNoiseStd", 0.0))
         joint_velocity_noise = float(self.scenario.get("initialJointVelocityNoiseStd", 0.0))
         if joint_position_noise:
@@ -105,6 +112,7 @@ class RobotEnvironment:
         initial_command = self.motion_command(0)
         self.events = [{
             "type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"], "motionCommand": initial_command.tolist(),
+            "initialBasePose": initial_base_pose,
             "plant": {
                 "bodyMassScale": self.body_mass_scale,
                 "jointDampingScale": self.joint_damping_scale,
@@ -265,7 +273,14 @@ class RobotEnvironment:
             "footContactImpactMeanNPerSec": float(np.mean(foot_contact_impacts)) if foot_contact_impacts is not None else 0.0,
         }
         velocity_reward = float(np.exp(-10.0 * velocity_error * velocity_error))
-        reward = (1.0 if healthy else -1.0) + 1.5 * velocity_reward + 0.75 * normalized_progress_rate + upright - 2.0 * lateral_displacement - 0.002 * energy - 0.001 * smoothness
+        if int(self.task["version"]) == 4:
+            quaternion = self.data.qpos[3:7]
+            world_up_alignment = float(1.0 - 2.0 * (quaternion[1] * quaternion[1] + quaternion[2] * quaternion[2]))
+            target_height = float(self.task["recoveryTarget"]["minimumBaseHeightM"])
+            height_progress = float(np.clip((height - 0.05) / max(target_height - 0.05, 1e-9), 0.0, 1.0))
+            reward = 4.0 * world_up_alignment + 2.0 * height_progress - 0.002 * energy - 0.001 * smoothness
+        else:
+            reward = (1.0 if healthy else -1.0) + 1.5 * velocity_reward + 0.75 * normalized_progress_rate + upright - 2.0 * lateral_displacement - 0.002 * energy - 0.001 * smoothness
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()

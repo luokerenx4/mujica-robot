@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "self-righting-rigid-controller",
+    "labHash": "f8ff85fc3cddfa88ca3c34b6a1b66f22b33b26e54391b5eeb8ad46af1c9f2faa",
+    "programHash": "fe5e1d7afe1aa4d43d7694407d481e7ddf5f881930adb4b77afa747e7933a1f8",
+    "benchmarkLockHash": "5dc62feff4ee6f746c7a891658185164b147dbcdb68e13797cc1cb0d1ae3f4e3",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-86d634e81120be65",
+    "experimentId": "001-9ea8664fa77e",
+    "experimentHash": "9ea8664fa77eb5533d67e93470bca275016b75f9efb128b038d46a0f3cdd87ef"
+  },
+  "proposal": {
+    "strategy": "upright-directed-roll",
+    "hypothesis": "The accepted latch preserves direction through the singularity, but the four traces still end inverted because its sign drives away from world-up. Inverting only the latched sign should send the same bounded maneuver toward upright instead.",
+    "expectedEffect": "Lower minimum and final body tilt, avoid crossing into the inverted basin, and enter the stable-standing target in at least one fixed fallen-pose case."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "front: disallowed-collision regressed from passing to failing"
+      ],
+      "previousViolationCount": 27,
+      "candidateViolationCount": 27,
+      "previousViolationSeverity": 44.12210286672526,
+      "candidateViolationSeverity": 43.75553677122075,
+      "feasibilityImproved": false,
+      "severityImproved": true,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "bfeccc151633b57929de3adc07ba855824481e2343de5e859068bf87d678f7c2"
+  },
+  "selectedCase": {
+    "benchmark": "self-righting",
+    "id": "front",
+    "task": "self-right",
+    "scenario": "fallen-front",
+    "seed": 6101,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: front: disallowed-collision regressed from passing to failing",
+    "candidateScoreDelta": 0.09398789369404348,
+    "weightedScoreDelta": 0.09398789369404348
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-4131a68192c07c85",
+    "runKey": "4131a68192c07c85aad277532580ed964919f6a8ed7a2ff935b6564b0c268339",
+    "resultHash": "3b383a4706154d31bb476d53b30b40dc1687ee7e667f75ad42ab76405202706d",
+    "artifactHash": "9098a60fbbc1ca5edcbb92027cc5a02b5a9575c1c3df1037eb6407dd853f57b5",
+    "manifestHash": "e129a988fe9fa6059e5004ed84c29dd03d442ef6a8bf89327f1cd206aeeb5a26",
+    "metricsHash": "841086b8ced6fa4110ac47805bc7e3f0569d48c2615783c2ea93a76ed6e1f1f9",
+    "scoreHash": "7cde6591360d92d388ee52feb39c915186ab76204ba0487df06b36016622cbd1",
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "rigid-self-right",
+    "score": -15.845698619840272
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-ba81abc0b4100523",
+    "runKey": "ba81abc0b4100523374a6455ff4dca30cdeba2fed6df869a37143b33b8abb2ae",
+    "resultHash": "2a1715ce2c0665ed4ed064c940ab102c6c91f3300e62096c92143cd33d19877c",
+    "artifactHash": "e5597df467fe54ff1b6154a03141c149af12b5d554aa389ff722f9f9d2def642",
+    "manifestHash": "a2952c9e509bec9711340f25e2408c5325e84425be8f8e6e07ce72fa0740c8b1",
+    "metricsHash": "38a446bc0cb4747338043680fd3b86605fa6f0028e499c788b0b5dbfe87a114f",
+    "scoreHash": "63b23912c3be3b9cf5074b1b67008b96930948ef8a0dbe8640ffc73ad6bbf25d",
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "rigid-self-right",
+    "score": -15.751710726146229
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

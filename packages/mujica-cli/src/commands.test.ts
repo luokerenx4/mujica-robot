@@ -163,7 +163,7 @@ describe("agent CLI contract", () => {
       kind: "mujica-development-work-order",
       project: "quadruped",
       status: "READY",
-      subject: { assembly: "command-conditioned-history-3dof", controller: "bounded-traction-gait" },
+      subject: { assembly: "self-righting-rigid-3dof", controller: "rigid-self-right" },
       uncoveredSurfaces: [],
       authorityBoundary: {
         prioritization: "derived",
@@ -172,11 +172,14 @@ describe("agent CLI contract", () => {
         northStarClaim: "new-development-review-required",
       },
     });
-    expect(data.workOrder.blockers[0]).toMatchObject({ rank: 1, benchmark: "sim-to-real-audit", case: "heavy-weak" });
-    expect(data.workOrder.lanes).toHaveLength(2);
-    expect(data.workOrder.lanes[0]).toMatchObject({ kind: "controller-code", researchLab: "robust-transfer-controller", primaryBenchmark: "sim-to-real-audit" });
-    expect(data.workOrder.lanes[1]).toMatchObject({ kind: "rl-policy", researchLab: "sim-to-real-residual-policy", primaryBenchmark: "sim-to-real-audit" });
-    expect(data.workOrder.blockers).toHaveLength(4);
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting" && item.case === "front")).toBeDefined();
+    expect(data.workOrder.lanes).toHaveLength(3);
+    expect(data.workOrder.lanes.map((lane: any) => [lane.kind, lane.researchLab])).toEqual([
+      ["complete-design", "self-righting-waist-design"],
+      ["controller-code", "self-righting-rigid-controller"],
+      ["rl-policy", "self-righting-residual-policy"],
+    ]);
+    expect(data.workOrder.lanes.every((lane: any) => lane.primaryBenchmark === "self-righting")).toBe(true);
     expect(data.workOrder.lanes.every((lane: any) => lane.runArgv.includes("<agent-command>"))).toBe(true);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
@@ -1201,14 +1204,14 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
+    expect(envelope.data.definitions.researchLabs).toBe(10);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
-    expect(envelope.data.definitions.researchLabs).toBe(7);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
@@ -1227,7 +1230,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-59feb46f3a150e08",
+      "--bundle", "hardware-3813b60c7568c41d",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

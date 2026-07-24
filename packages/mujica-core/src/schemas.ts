@@ -140,16 +140,46 @@ const scheduledTaskSchema = z.object({
   });
 });
 
+const recoveryTaskSchema = z.object({
+  version: z.literal(4), ...taskBase,
+  motionCommand: motionCommandSchema,
+  recoveryTarget: z.object({
+    minimumBaseHeightM: z.number().finite().positive(),
+    maximumBodyTiltRad: z.number().finite().min(0).max(Math.PI),
+    maximumLinearSpeedMps: z.number().finite().nonnegative(),
+    maximumAngularSpeedRadPerSec: z.number().finite().nonnegative(),
+    holdSeconds: z.number().finite().positive(),
+  }).strict(),
+}).strict().superRefine((task, context) => {
+  const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
+  if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.recoveryTarget.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryTarget.holdSeconds > task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must not exceed Task duration" });
+  if (task.motionCommand.linearVelocityMps.some((value) => value !== 0) || task.motionCommand.yawRateRadPerSec !== 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommand"], message: "recovery Tasks require a zero motion command" });
+  }
+});
+
 export const taskSchema = z.union([
   z.object({ version: z.literal(2), ...taskBase, motionCommand: motionCommandSchema }).strict(),
   scheduledTaskSchema,
+  recoveryTaskSchema,
 ]);
+
+const initialBasePoseSchema = z.object({
+  positionM: z.tuple([z.number().finite(), z.number().finite(), z.number().finite().positive()]),
+  orientationWxyz: z.tuple([z.number().finite(), z.number().finite(), z.number().finite(), z.number().finite()]),
+}).strict().superRefine((pose, context) => {
+  const norm = Math.hypot(...pose.orientationWxyz);
+  if (Math.abs(norm - 1) > 1e-9) context.addIssue({ code: z.ZodIssueCode.custom, path: ["orientationWxyz"], message: "must be a normalized quaternion" });
+});
 
 export const scenarioSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), friction: z.number().positive(), payloadKg: z.number().nonnegative(),
   lateralPush: z.object({ timeSeconds: z.number().nonnegative(), durationSeconds: z.number().positive(), forceNewton: z.number() }).strict().nullable(),
   observationNoiseStd: z.number().nonnegative(), actuatorDelaySteps: z.number().int().nonnegative(),
   initialJointPositionNoiseStd: z.number().nonnegative().default(0), initialJointVelocityNoiseStd: z.number().nonnegative().default(0),
+  initialBasePose: initialBasePoseSchema.optional(),
   bodyMassScale: z.number().positive().optional(), jointDampingScale: z.number().nonnegative().optional(), actuatorStrengthScale: z.number().positive().optional(),
 }).strict();
 
@@ -190,6 +220,7 @@ export const objectiveSchema = z.object({
     transitionTracking: z.number().default(0), energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
     jointJerk: z.number().default(0), bodyAngularJerk: z.number().default(0), actionSlew: z.number().default(0),
     actuatorSaturation: z.number().default(0), footSlip: z.number().default(0), footImpact: z.number().default(0),
+    selfRighting: z.number().default(0), recoveryTime: z.number().default(0), jointLimitMargin: z.number().default(0),
   }).strict(),
   transientMeasurement: z.object({
     planarToleranceMps: z.number().finite().nonnegative(), yawRateToleranceRadPerSec: z.number().finite().nonnegative(), holdSeconds: z.number().finite().positive(),
@@ -208,6 +239,14 @@ export const objectiveSchema = z.object({
     maximumMeanJointJerkRadPerSec3: z.number().nonnegative().default(1_000_000), maximumMeanBodyAngularJerkRadPerSec3: z.number().nonnegative().default(1_000_000),
     maximumMeanActionSlewRatePerSec: z.number().nonnegative().default(1_000_000), maximumActuatorSaturationRate: z.number().min(0).max(1).default(1),
     maximumMeanFootSlipSpeedMps: z.number().nonnegative().default(1_000_000), maximumPeakFootContactImpactNPerSec: z.number().nonnegative().default(1_000_000),
+    minimumSelfRightingSuccess: z.number().min(0).max(1).default(0),
+    maximumTimeToStableStandSeconds: z.number().nonnegative().default(1_000_000),
+    minimumStableStandingDwellSeconds: z.number().nonnegative().default(0),
+    maximumFinalBodyTiltRad: z.number().nonnegative().default(Math.PI),
+    minimumFinalBaseHeightM: z.number().nonnegative().default(0),
+    minimumJointLimitMarginRad: z.number().finite().default(-1_000_000),
+    maximumPeakActuator: z.number().nonnegative().default(1_000_000),
+    maximumDisallowedCollisionSteps: z.number().int().nonnegative().default(1_000_000),
     maximumRegression: z.number().nonnegative(),
   }).strict(),
 }).strict();

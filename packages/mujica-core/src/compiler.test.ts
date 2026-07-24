@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -12,9 +12,10 @@ describe("Robot Assembly compiler", () => {
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
+    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "light-strong" });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["controller-code", "rl-policy"]);
+    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["complete-design", "controller-code", "rl-policy"]);
+    expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["self-righting", "self-righting", "self-righting"]);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 
@@ -28,6 +29,27 @@ describe("Robot Assembly compiler", () => {
     expect(comparison.to.actionContract.size).toBe(8);
     expect(comparison.massDeltaKg).toBeCloseTo(0.08);
     expect(comparison.to.components.find((item) => item.componentId === "foot-force-sensor")?.sensors.map((item) => item.name)).toEqual(["foot-force-fl", "foot-force-fr", "foot-force-rl", "foot-force-rr"]);
+  });
+
+  test("self-righting compares an honest topology change under one executable contract", async () => {
+    const task = await loadTask(project, "self-right");
+    expect(taskSchema.parse(task)).toMatchObject({
+      version: 4,
+      recoveryTarget: { minimumBaseHeightM: 0.32, maximumBodyTiltRad: 0.35, holdSeconds: 0.5 },
+    });
+    const comparison = await compareAssemblies(project, "self-righting-rigid-3dof", "self-righting-waist-3dof");
+    expect(comparison.base).toMatchObject({
+      changed: true,
+      from: { id: "quadruped-3dof" },
+      to: { id: "quadruped-waist-3dof" },
+    });
+    expect(comparison.massDeltaKg).toBeCloseTo(0.2);
+    expect(comparison.observations.changed.map((item) => [item.from.name, item.from.size, item.to.size])).toEqual([
+      ["joint-position", 12, 14],
+      ["joint-velocity", 12, 14],
+    ]);
+    expect(comparison.actions.changed).toHaveLength(1);
+    expect(comparison.actions.changed[0]).toMatchObject({ from: { name: "joint-torque", size: 12 }, to: { name: "joint-torque", size: 14 } });
   });
 
   test("compiled morphology carries contact evidence without assuming four legs", async () => {
@@ -125,7 +147,7 @@ describe("Robot Assembly compiler", () => {
   });
 
   test("checked-in Program Controller declarations cover their direct Observation reads", async () => {
-    for (const id of ["baseline-gait", "force-aware-gait", "forward-gait", "spatial-forward-gait", "latency-aware-spatial-gait", "command-conditioned-spatial-gait"]) {
+    for (const id of ["baseline-gait", "force-aware-gait", "forward-gait", "spatial-forward-gait", "latency-aware-spatial-gait", "command-conditioned-spatial-gait", "rigid-self-right", "waist-self-right"]) {
       const controller = await loadController(project, id); if (controller.definition.kind !== "program") throw new Error(`${id} is not a Program Controller`);
       const source = await readFile(join(controller.rootDir, controller.definition.entry), "utf8");
       const reads = [...source.matchAll(/observation\["([a-z0-9-]+)"\]/g)].map((match) => match[1]!).sort();
@@ -145,7 +167,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("command-conditioned-history-3dof");
     expect(result.project.manifest.defaults.controller).toBe("bounded-traction-gait");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);

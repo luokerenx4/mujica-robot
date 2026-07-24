@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "self-righting-waist-design",
+  "name": "Articulated-waist complete robot research",
+  "program": "research/self-righting-waist-design/program.md",
+  "benchmark": "self-righting",
+  "regressions": [],
+  "execution": {
+    "kind": "development",
+    "candidate": "waist-self-righting"
+  },
+  "editable": {
+    "paths": [
+      "assemblies/self-righting-waist-3dof.robot.json",
+      "robots/quadruped-waist-3dof/**",
+      "controllers/waist-self-right/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 480
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "robot-revision"
+}

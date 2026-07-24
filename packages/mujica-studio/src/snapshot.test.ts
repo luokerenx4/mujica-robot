@@ -39,8 +39,8 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
-    expect(first.snapshot.benchmarks).toHaveLength(13);
-    expect(first.snapshot.candidates).toHaveLength(9);
+    expect(first.snapshot.benchmarks).toHaveLength(14);
+    expect(first.snapshot.candidates).toHaveLength(10);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareCaptures.length).toBeGreaterThanOrEqual(1);
@@ -58,9 +58,12 @@ describe("read-only Studio snapshot", () => {
         status: "READY",
       },
     });
-    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers[0]).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes[0]).toMatchObject({ kind: "controller-code", researchLab: "robust-transfer-controller" });
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes[1]).toMatchObject({ kind: "rl-policy", researchLab: "sim-to-real-residual-policy" });
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((lane) => [lane.kind, lane.researchLab])).toEqual([
+      ["complete-design", "self-righting-waist-design"],
+      ["controller-code", "self-righting-rigid-controller"],
+      ["rl-policy", "self-righting-residual-policy"],
+    ]);
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
     const reviewedSession = first.snapshot.researchSessions.find((item) => item.id === "session-c773bff5c54a2cd7");
@@ -149,6 +152,27 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("headlessArgv");
     expect(html).toContain("'evidence','inspect'");
     expect(html).toContain("subject − baseline");
+  });
+
+  test("projects recovery identity, outcome direction, and frame safety evidence", async () => {
+    const result = await writeStudioSnapshot(project, {
+      run: "run-4131a68192c07c85",
+      compareRun: "run-28a9756c780c43a2",
+    });
+    expect(result.snapshot.selectedRun).toMatchObject({
+      subject: { assembly: "self-righting-rigid-3dof", base: "quadruped-3dof", controller: "rigid-self-right" },
+      metrics: { selfRightingTask: true, selfRightingSuccess: 0 },
+    });
+    expect(result.snapshot.comparisonRun).toMatchObject({
+      subject: { assembly: "self-righting-waist-3dof", base: "quadruped-waist-3dof", controller: "waist-self-right" },
+      metrics: { selfRightingTask: true, selfRightingSuccess: 0 },
+    });
+    const html = await readFile(result.indexPath, "utf8");
+    expect(html).toContain("Self-righting outcome deltas");
+    expect(html).toContain("Recovery target");
+    expect(html).toContain("Disallowed self-contact");
+    expect(html).toContain("recovery:side.run.metrics");
+    expect(html).toContain("Self-righting morphology comparison");
   });
 
   test("binds an exact Research Review to its immutable accepted and candidate Runs", async () => {

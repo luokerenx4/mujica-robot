@@ -192,7 +192,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const sourceFiles = [relative(project.rootDir, join(project.rootDir, "assemblies", `${assembly.id}.robot.json`)), relative(project.rootDir, join(base.rootDir, "robot.json")), relative(project.rootDir, baseModelPath), ...resolved.flatMap((item) => [relative(project.rootDir, join(item.rootDir, "component.json")), ...[item.manifest.fragment, item.manifest.mountFragment].filter((path): path is string => path !== undefined).map((path) => relative(project.rootDir, confined(item.rootDir, path)))])];
   const result: CompiledAssembly = {
     version: 1, id: assembly.id, name: assembly.name, projectId: project.manifest.id, rootDir: project.rootDir, artifactDir, modelPath,
-    assemblyHash, executionHash, modelHash, plantHash, baseHash: base.hash, catalogHash, morphology, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
+    assemblyHash, executionHash, modelHash, plantHash, baseId: base.manifest.id, baseHash: base.hash, catalogHash, morphology, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
     componentCost: resolved.reduce((sum, item) => sum + item.manifest.cost, 0), components: resolved.map((item) => item.compiled), observationContract, actionContract, sourceFiles,
   };
   await writeJson(join(artifactDir, "compiled-assembly.json"), { ...result, rootDir: undefined, artifactDir: undefined, modelPath: "model.xml" });
@@ -204,6 +204,7 @@ export async function compareAssemblies(projectDir: string, fromId: string, toId
   const a = new Map(from.components.map((item) => [item.instanceId, item])); const b = new Map(to.components.map((item) => [item.instanceId, item]));
   return {
     from, to,
+    base: { changed: from.baseId !== to.baseId || from.baseHash !== to.baseHash, from: { id: from.baseId, hash: from.baseHash }, to: { id: to.baseId, hash: to.baseHash } },
     components: { added: to.components.filter((item) => !a.has(item.instanceId)), removed: from.components.filter((item) => !b.has(item.instanceId)), changed: from.components.flatMap((item) => { const next = b.get(item.instanceId); return next && stableJson(item) !== stableJson(next) ? [{ from: item, to: next }] : []; }) },
     observations: contractDiff(from.observationContract.channels, to.observationContract.channels), actions: contractDiff(from.actionContract.channels, to.actionContract.channels),
     massDeltaKg: to.totalMassKg - from.totalMassKg, costDelta: to.componentCost - from.componentCost,

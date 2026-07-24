@@ -117,6 +117,7 @@ export interface CompiledAssembly {
   executionHash: string;
   modelHash: string;
   plantHash: string;
+  baseId: string;
   baseHash: string;
   catalogHash: string;
   morphology: RobotMorphology;
@@ -131,6 +132,7 @@ export interface CompiledAssembly {
 export interface AssemblyComparison {
   from: CompiledAssembly;
   to: CompiledAssembly;
+  base: { changed: boolean; from: { id: string; hash: string }; to: { id: string; hash: string } };
   components: { added: CompiledComponent[]; removed: CompiledComponent[]; changed: Array<{ from: CompiledComponent; to: CompiledComponent }> };
   observations: { added: ContractChannel[]; removed: ContractChannel[]; changed: Array<{ from: ContractChannel; to: ContractChannel }> };
   actions: { added: ContractChannel[]; removed: ContractChannel[]; changed: Array<{ from: ContractChannel; to: ContractChannel }> };

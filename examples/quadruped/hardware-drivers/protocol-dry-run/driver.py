@@ -135,6 +135,7 @@ def main() -> None:
         "device": {"vendor": target["device"]["vendor"], "model": target["device"]["model"], "serial": "simulated"},
         "observationContractHash": manifest["observationContractHash"],
         "actionContractHash": manifest["actionContractHash"],
+        "stateContractHash": manifest["stateContractHash"],
         "driverHash": driver_hash,
         "driverPackageHash": driver_package_hash,
         "startedAt": started_at,
