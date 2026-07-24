@@ -34,6 +34,8 @@ no-reset Missions.
   same locked Mission Suite instead of private capability tests.
 - [x] Studio exposes a complete-design Candidate's mass, Action, Observation,
   and cost burden beside its latest governed Mission evidence.
+- [x] Correct the post-recovery body/world-frame mismatch under the unchanged
+  Mission Suite and publish the kept Controller as a Robot Revision.
 - [ ] Improve degraded-impact recovery and signed post-recovery progress
   without weakening the Suite.
 - [ ] Replace synthetic plant ranges with calibrated/HIL evidence before
@@ -86,19 +88,39 @@ no-reset Missions.
   count and severity (`44 → 42`, `185.804 → 180.903`) but regressed isolated
   recovery safety; reversing the impulse worsened the Mission. Both attempts
   were reverted, so the partial signal cannot masquerade as a design win.
-- Work Order `development-work-order-0981e41eb1643ca7` now keeps morphology,
+- Work Order `development-work-order-0ee33d0b4224cd04` now keeps morphology,
   Controller code, and RL Policy as separate intervention surfaces under one
   Mission authority.
+- The continuous Mission revealed that a successful self-right followed by a
+  successful walking Skill can still fail the job: recovery changes heading,
+  while the legacy gait initially interpreted the next world-frame command as
+  body-forward. Isolated resettable tests erase this mismatch.
+- Six bounded handoff attempts were rejected before experiment
+  `001-950524569565` kept measured-heading-conditioned world-frame tracking.
+  It improved score `38.935033 → 39.119018` and normalized violation severity
+  `71.283 → 59.194` without increasing the 26 violations or regressing a gate.
+  The deployed result is Robot Revision `quadruped-r-40206836cd00`.
+- Three residual PPO Policies on the improved prior tested `0.02`, `0.01`, and
+  `0.017` action authority. The largest removed one aggregate violation but
+  exceeded the right-exact yaw gate by `0.021 rad/s`; the two safer Policies
+  did not lexicographically beat the program prior. All remain `REVERT`
+  evidence, so the selected robot has no learned residual pretending to be an
+  improvement.
+- Review `development-review-161b2ff0add84e0f` ranks
+  `impact-right-degraded` and `impact-left-degraded` first; exact recovery and
+  the atomic self-righting/handoff regressions remain passing.
 
 ## Next experiment
 
 Keep the Mission Suite frozen. Run bounded interventions without splitting the
 acceptance test:
 
-1. keep the new Mission progression and change reward/credit assignment so
-   residual authority during `redirect` produces positive signed progress;
-2. improve the Program recovery basin under randomized degraded Missions so
-   the learned actor receives downstream authority consistently;
+1. treat the measured-heading Controller as the new prior and improve the
+   Program recovery basin under randomized degraded Missions so downstream
+   phases become reachable consistently;
+2. only resume residual-Policy work after degraded cases expose useful
+   post-recovery actor data; do not spend more budget interpolating residual
+   scale around the already measured yaw boundary;
 3. for the design lane, change split-torso geometry/contact workspace together
    with leg/waist sequencing; do not accept another neutral-servo or sign-only
    comparison;

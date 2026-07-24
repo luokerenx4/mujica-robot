@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "id": "integrated-resilience-controller",
+  "name": "Integrated Mission behavior-supervisor research",
+  "program": "research/integrated-resilience-controller/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "controller",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "editable": {
+    "paths": [
+      "controllers/behavior-supervisor/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 480
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "robot-revision"
+}

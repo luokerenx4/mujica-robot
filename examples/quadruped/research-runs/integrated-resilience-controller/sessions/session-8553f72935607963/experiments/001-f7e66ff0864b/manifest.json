@@ -1,0 +1,53 @@
+{
+  "version": 4,
+  "id": "001-f7e66ff0864b",
+  "experimentHash": "f7e66ff0864b493a032609a99d7887422c4ea2ad5c72cb8795657e9d39b80f28",
+  "sequence": 1,
+  "sessionId": "session-8553f72935607963",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "fe878e36ce7cc15501a1a98369c24cd22010809a53675f4ce0203e8d4d6516be",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "proposal": {
+    "strategy": "post-recovery-world-frame-command",
+    "hypothesis": "The Mission command is authored in the world frame, but a newly reset locomotion child takes the legacy body-forward path until the first command transition. Enabling world-frame tracking only after recovery should preserve ordinary approach behavior while making resumed motion independent of the robot's changed heading.",
+    "expectedEffect": "Improve signed resume and redirect progress in exact Missions without changing recovery dynamics, pre-impact locomotion, or no-fall command regressions."
+  },
+  "policyId": null,
+  "score": 39.06054710952588,
+  "delta": 0.12551414495503366,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-exact: yaw-overshoot regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 27,
+    "previousViolationSeverity": 71.28320030421216,
+    "candidateViolationSeverity": 61.374177048311374,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "d7a11014a85bcbb8eac03e9d31a6e90c370e477db3d1dd541ab49c489b559d2b",
+    "acceptedRunId": "run-bddc07b879ffdfe9",
+    "candidateRunId": "run-83109ffbfcc7f6ac",
+    "caseId": "impact-right-exact"
+  },
+  "durationMs": 75104,
+  "completed": true
+}

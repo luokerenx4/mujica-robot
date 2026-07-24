@@ -1,0 +1,5 @@
+{
+  "strategy": "post-recovery-world-frame-with-bounded-yaw-authority",
+  "hypothesis": "Scalar damping changes did not remove the right-exact overshoot, indicating that world-frame planar correction and yaw leg differentials are mechanically coupled. Reducing post-recovery hip and abduction yaw authority together should limit contact-driven angular momentum without changing the command or recovery.",
+  "expectedEffect": "Retain world-frame signed progress while bringing right-exact yaw overshoot below 1.0 rad/s, keeping transitions settled, and preserving pre-impact, recovery, and no-fall regressions."
+}

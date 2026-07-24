@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-policy",
+    "labHash": "4f68aef28c30563c1a34697d089b1c2e8432a7eaa2bd95316a5e96b4b760ea1c",
+    "programHash": "ec2f0c90e5f8d4e94eccd1f238578a9174577015e2acef7cf806c11952ed45bb",
+    "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-4aa253e8cce2df4b",
+    "experimentId": "001-d5225a85d8e1",
+    "experimentHash": "d5225a85d8e1557030062992075b8d5129b828093b40906044dad891c544c94e"
+  },
+  "proposal": {
+    "strategy": "new-prior-anchored-micro-residual",
+    "hypothesis": "The promoted measured-heading Controller already improves the continuous Mission and changes the post-recovery data distribution. A ten-times smaller residual, stronger prior penalty, and conservative PPO update should learn only downstream corrections around that new prior instead of replaying the rejected high-authority policy behavior.",
+    "expectedEffect": "Improve signed post-recovery progress or transition quality above Robot Revision quadruped-r-40206836cd00 while preserving every complete-Mission and regression gate."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-exact: yaw-overshoot regressed from passing to failing",
+        "reference-controller: impact-right-exact: yaw-overshoot regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 25,
+      "previousViolationSeverity": 70.97541871272351,
+      "candidateViolationSeverity": 57.32652019394731,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "99739e94196f231c5f73127ae09a3b4f644fc5fd1c8dd7df2b79dc108ad22d21"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right",
+    "seed": 7202,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-exact: yaw-overshoot regressed from passing to failing",
+    "candidateScoreDelta": 0.8764286007908879,
+    "weightedScoreDelta": 0.8764286007908879
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-8dfe4c850ce1426b",
+    "runKey": "8dfe4c850ce1426b69bba465425f10b9a33b3d8c7c0555c76528f62e957b6223",
+    "resultHash": "6fee03abffbac1d26461cd22250780c1d009b6be813e68ccf42542adc2b15ca1",
+    "artifactHash": "91e3e3c36a00f8ba94d0fa6731c4db921a62f8ef41a83ee1ed19a7c699d07e18",
+    "manifestHash": "a285622355d5a64193085251d4cacc07250779ffa0268ef913397575aecf649a",
+    "metricsHash": "1dcf83a5284b270585e50dcedecdad5690c59a43e2c428b12dbb9d9df75f68ba",
+    "scoreHash": "530dadee01d5d0ba15400974707f608c2a209fa9511754f5aeb8e7f840b4fe2d",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "integrated-resilience-curriculum-policy",
+    "score": 99.54098887251581
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-3ff7ca37402f18c0",
+    "runKey": "3ff7ca37402f18c02f15005a948a8114a1bca06d95f457926a0c9aa2a7727ba1",
+    "resultHash": "20afc4f1e67d8057332ae5a2dbccbc70d0aa0e4b38de9f74edde60153b68edde",
+    "artifactHash": "5c03fcba911d1fc6071dc15413abdb87a4e7472e7a623e4c0969c855ea6d1792",
+    "manifestHash": "3cd3ea481772a6bab54e5cb65644c5c13d344349bb3ca1289644b21ad0fd8959",
+    "metricsHash": "feeacfd8fcd1bbbebda862673ddde92956fbb370272ba3ac2776ce4fc4502011",
+    "scoreHash": "463b82edf5f78b80cda01c167fa78b9846118c0519bd7c56bd19197255f58e5e",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "integrated-resilience-curriculum-policy",
+    "score": 100.4174174733067
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

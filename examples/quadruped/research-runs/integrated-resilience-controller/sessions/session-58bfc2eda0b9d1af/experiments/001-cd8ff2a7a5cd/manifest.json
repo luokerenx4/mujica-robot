@@ -1,0 +1,54 @@
+{
+  "version": 4,
+  "id": "001-cd8ff2a7a5cd",
+  "experimentHash": "cd8ff2a7a5cd77e22b78d7664d075d4fa9ecb9f476efca26ead1436315537940",
+  "sequence": 1,
+  "sessionId": "session-58bfc2eda0b9d1af",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "0a81cef278760b5e9f653cf732b34761c5be7fa62d84c12d9a62ee21376d329d",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "proposal": {
+    "strategy": "post-recovery-world-frame-with-yaw-damping",
+    "hypothesis": "World-frame tracking reduced aggregate Mission severity, but the right exact case crossed the yaw-overshoot gate by 0.069 rad/s when yaw command returned to zero. Retaining that coordinate fix with a post-recovery-only increase in measured yaw-rate damping should remove the sole regression.",
+    "expectedEffect": "Retain the world-frame score and severity improvement while bringing right-exact maximum yaw overshoot below 1.0 rad/s, without changing recovery dynamics, pre-impact locomotion, or no-fall regressions."
+  },
+  "policyId": null,
+  "score": 39.11036417565888,
+  "delta": 0.17533121108803584,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-exact: yaw-overshoot regressed from passing to failing",
+      "impact-right-exact: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 28,
+    "previousViolationSeverity": 71.28320030421216,
+    "candidateViolationSeverity": 61.27328818243726,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "70174bad5b76c681ece80ddc52f279ecdedc0ba2d868f8a077172b0bf18402cf",
+    "acceptedRunId": "run-bddc07b879ffdfe9",
+    "candidateRunId": "run-23c7f9bd53829108",
+    "caseId": "impact-right-exact"
+  },
+  "durationMs": 83728,
+  "completed": true
+}

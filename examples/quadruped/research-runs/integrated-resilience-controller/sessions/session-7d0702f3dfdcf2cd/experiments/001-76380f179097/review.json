@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-7d0702f3dfdcf2cd",
+    "experimentId": "001-76380f179097",
+    "experimentHash": "76380f1790976890f1bd1f49b8ee86987eeacc5e13b3080b2dafc4f8aa79c7b9"
+  },
+  "proposal": {
+    "strategy": "post-recovery-world-frame-with-bounded-yaw-authority",
+    "hypothesis": "Scalar damping changes did not remove the right-exact overshoot, indicating that world-frame planar correction and yaw leg differentials are mechanically coupled. Reducing post-recovery hip and abduction yaw authority together should limit contact-driven angular momentum without changing the command or recovery.",
+    "expectedEffect": "Retain world-frame signed progress while bringing right-exact yaw overshoot below 1.0 rad/s, keeping transitions settled, and preserving pre-impact, recovery, and no-fall regressions."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 27,
+      "previousViolationSeverity": 71.28320030421216,
+      "candidateViolationSeverity": 64.91886121421126,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "07e1165b300048a82bb61f21a78d9600e2e4b6f7f3a2465e63a0ee5a62c886e0"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: unsettled-yaw regressed from passing to failing",
+    "candidateScoreDelta": 0.2602685750367044,
+    "weightedScoreDelta": 0.2602685750367044
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-6ceff1df028f3244",
+    "runKey": "6ceff1df028f32449084b915743483efa70603f1966c16d8935a58bb4172f05b",
+    "resultHash": "e53cb1eb748579bb42ca755527c4aae5a935d0b26aa6697c3b90336dc0544f47",
+    "artifactHash": "5286e8057c3200fdb797b547f6707f5067633ea6c75fd5f5aa72062ac65f7ca2",
+    "manifestHash": "e6c8e444dd75caca3e067c8d153d92fca411dc96c484ce26ff375eafb9130576",
+    "metricsHash": "3fb19c597135f3873021cef5b338616947e973b6241090274d276ab32d65bd16",
+    "scoreHash": "cebf894f806c2a8077dbae37fc2f1f488e85f6da6a3aa45586f5d68adff931f7",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.47305707741964
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-33703d8577c9cf56",
+    "runKey": "33703d8577c9cf56fb0ad59187a0058ed9f5e19cb93e3f9146a4fada4581a98c",
+    "resultHash": "f767a9ef3cf2904309f234f91921a1ad4fd9344bf655fd9cffa3852c1b477fc5",
+    "artifactHash": "9d3506331edc89e5193e387d298ca56457c12d295fae4c4b8ee9c5a64ea5c396",
+    "manifestHash": "5587632c6d0a1e40e164a386099d4fba0c9db5b726c620ed17056b8ba33cf035",
+    "metricsHash": "991015500b5e47bd4b67819456e1279ae7c3a3af69704521e612e4d937856078",
+    "scoreHash": "a0f1339b83d0126f1b54f09863f0226ca64820ac4109cd70b6be7cf7be52cb9a",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.73332565245634
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

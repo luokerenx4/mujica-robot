@@ -1,0 +1,5 @@
+{
+  "strategy": "yaw-safe-new-prior-micro-residual",
+  "hypothesis": "The first new-prior Policy removed one Mission violation and improved score, but its 0.02 residual raised right-exact yaw overshoot only 0.021 rad/s above the locked limit. Halving authority and doubling the prior penalty should retain useful signed progress while staying inside the reference Controller's yaw envelope.",
+  "expectedEffect": "Keep right-exact yaw overshoot at or below 1.0 rad/s, preserve all reference gates, and retain a locked Mission improvement above Robot Revision quadruped-r-40206836cd00."
+}

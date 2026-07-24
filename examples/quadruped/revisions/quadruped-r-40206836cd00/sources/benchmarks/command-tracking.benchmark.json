@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "command-tracking",
+  "name": "Held-out planar command tracking",
+  "objective": "command-tracking",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "command-conditioned-spatial-gait"
+  },
+  "cases": [
+    { "id": "stop", "task": "stand", "scenario": "nominal", "seed": 1101, "weight": 1 },
+    { "id": "forward", "task": "forward-walk", "scenario": "nominal", "seed": 1102, "weight": 1 },
+    { "id": "reverse", "task": "reverse-walk", "scenario": "nominal", "seed": 1103, "weight": 1 },
+    { "id": "lateral", "task": "lateral-walk", "scenario": "nominal", "seed": 1104, "weight": 1.5 },
+    { "id": "yaw-left", "task": "yaw-left", "scenario": "nominal", "seed": 1105, "weight": 1.5 },
+    { "id": "delayed-forward", "task": "forward-walk", "scenario": "actuator-delay-three-step", "seed": 1106, "weight": 1.5 },
+    { "id": "disturbed-lateral", "task": "lateral-walk", "scenario": "delayed-lateral-push", "seed": 1107, "weight": 2 }
+  ]
+}

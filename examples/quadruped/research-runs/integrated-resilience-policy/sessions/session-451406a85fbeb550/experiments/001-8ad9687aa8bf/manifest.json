@@ -1,0 +1,54 @@
+{
+  "version": 4,
+  "id": "001-8ad9687aa8bf",
+  "experimentHash": "8ad9687aa8bf7b4fbffc706ae030f265aa549158d754d238c52f6f6dbd799458",
+  "sequence": 1,
+  "sessionId": "session-451406a85fbeb550",
+  "researchId": "integrated-resilience-policy",
+  "labHash": "4f68aef28c30563c1a34697d089b1c2e8432a7eaa2bd95316a5e96b4b760ea1c",
+  "programHash": "ec2f0c90e5f8d4e94eccd1f238578a9174577015e2acef7cf806c11952ed45bb",
+  "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "cf3bfa83d148435a5a326e69e4607d2cb8452f330041b32255a6b9313469dfed",
+  "researcherChangedPaths": [
+    "training/integrated-resilience-curriculum.training.json"
+  ],
+  "changedPaths": [
+    "controllers/integrated-resilience-curriculum-policy/controller.json",
+    "training/integrated-resilience-curriculum.training.json"
+  ],
+  "proposal": {
+    "strategy": "yaw-safe-new-prior-micro-residual",
+    "hypothesis": "The first new-prior Policy removed one Mission violation and improved score, but its 0.02 residual raised right-exact yaw overshoot only 0.021 rad/s above the locked limit. Halving authority and doubling the prior penalty should retain useful signed progress while staying inside the reference Controller's yaw envelope.",
+    "expectedEffect": "Keep right-exact yaw overshoot at or below 1.0 rad/s, preserve all reference gates, and retain a locked Mission improvement above Robot Revision quadruped-r-40206836cd00."
+  },
+  "policyId": "integrated-resilience-curriculum-f7053b98358c49a1",
+  "score": 38.99204743044305,
+  "delta": 0.12442243399880937,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reference-controller: no-lexicographic-improvement"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 26,
+    "previousViolationSeverity": 70.97541871272351,
+    "candidateViolationSeverity": 61.75641520084998,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "fef6ac1645153cfde1be883631b52af6e66ffafeb903ae28e71ff709274c37d3",
+    "acceptedRunId": "run-aa0fb8e8fabfac8f",
+    "candidateRunId": "run-702f97599fd2eb95",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 113109,
+  "completed": true
+}

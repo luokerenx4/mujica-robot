@@ -1,0 +1,1124 @@
+{
+  "runtimeVersion": "0.2.0",
+  "runtimeSourceHash": "86b6e226b36043e6ff09f02fb9ed6883fd43a20a0a6eb844da892b9889f9acdb",
+  "harnessSourceHash": "6fb542e44a74e34d692050c8fde8d332cd7237846bdfcf03dd8da70e48ff5747",
+  "harnessDependencyLockHash": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+  "projectDir": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-integrated-resilience-policy-fkAVpI/project",
+  "modelPath": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-integrated-resilience-policy-fkAVpI/project/.mujica/cache/assemblies/b3ebe11b4d05040e754b939c6a1fb00edbf210778da98521b5eae39ce08875ab/model.xml",
+  "compiled": {
+    "version": 1,
+    "id": "resilient-command-conditioned-history-3dof",
+    "assemblyHash": "b3ebe11b4d05040e754b939c6a1fb00edbf210778da98521b5eae39ce08875ab",
+    "executionHash": "720cfc5b72a9e357ccecb1dc577711e07fc3acb6aa409066e3d47ce45cc2be4d",
+    "modelHash": "ce6aff6ed1dd0bc68a9f7ed332fcfb9fda375e97815fecbc76feff7122149266",
+    "plantHash": "4505f5a4ac0516214fc5231e91a47bc83535306315e8446b9a49c5cef4bd84a4",
+    "baseId": "quadruped-resilient-3dof",
+    "baseHash": "842ee8566e5c7713921b614b6cd8f5601590e0172d8de0778a7e5c3f4d517197",
+    "catalogHash": "2813b875a973d02b70572b9e1c7735211bfa54d457bedbbaa9244f15d51a7cbc",
+    "morphology": {
+      "version": 1,
+      "project": "quadruped",
+      "class": "legged",
+      "baseBody": "torso",
+      "limbCount": 4,
+      "contactPoints": [
+        {
+          "id": "front-left",
+          "site": "foot-fl-site",
+          "sensor": "foot-force-fl"
+        },
+        {
+          "id": "front-right",
+          "site": "foot-fr-site",
+          "sensor": "foot-force-fr"
+        },
+        {
+          "id": "rear-left",
+          "site": "foot-rl-site",
+          "sensor": "foot-force-rl"
+        },
+        {
+          "id": "rear-right",
+          "site": "foot-rr-site",
+          "sensor": "foot-force-rr"
+        }
+      ]
+    },
+    "totalMassKg": 6.03,
+    "componentCost": 6,
+    "components": [
+      {
+        "instanceId": "body-imu",
+        "componentId": "body-imu",
+        "mount": "torso-sensor",
+        "config": {},
+        "hash": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+        "massKg": 0.03,
+        "cost": 1,
+        "physical": {
+          "centerOfMassM": [
+            0,
+            0,
+            0
+          ],
+          "inertiaDiagonalKgM2": [
+            1e-05,
+            1e-05,
+            1e-05
+          ]
+        },
+        "geometry": [],
+        "joints": [],
+        "actuators": [],
+        "sensors": [
+          {
+            "name": "body-gyro",
+            "kind": "gyro",
+            "source": "mjcf"
+          },
+          {
+            "name": "body-accelerometer",
+            "kind": "accelerometer",
+            "source": "mjcf"
+          }
+        ]
+      },
+      {
+        "instanceId": "actuator-history",
+        "componentId": "actuator-history",
+        "mount": "torso-sensor",
+        "config": {},
+        "hash": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+        "massKg": 0,
+        "cost": 1,
+        "physical": {
+          "centerOfMassM": [
+            0,
+            0,
+            0
+          ],
+          "inertiaDiagonalKgM2": [
+            0,
+            0,
+            0
+          ]
+        },
+        "geometry": [],
+        "joints": [],
+        "actuators": [],
+        "sensors": [
+          {
+            "name": "command-action-history",
+            "kind": "actuator-command-history",
+            "source": "runtime"
+          },
+          {
+            "name": "applied-action-history",
+            "kind": "actuator-applied-history",
+            "source": "runtime"
+          },
+          {
+            "name": "actuator-delay-steps",
+            "kind": "actuator-delay",
+            "source": "runtime"
+          }
+        ]
+      },
+      {
+        "instanceId": "motion-command-input",
+        "componentId": "motion-command-input",
+        "mount": "torso-sensor",
+        "config": {},
+        "hash": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+        "massKg": 0,
+        "cost": 0,
+        "physical": {
+          "centerOfMassM": [
+            0,
+            0,
+            0
+          ],
+          "inertiaDiagonalKgM2": [
+            0,
+            0,
+            0
+          ]
+        },
+        "geometry": [],
+        "joints": [],
+        "actuators": [],
+        "sensors": [
+          {
+            "name": "motion-command",
+            "kind": "task-command",
+            "source": "runtime"
+          }
+        ]
+      },
+      {
+        "instanceId": "foot-force-kit",
+        "componentId": "foot-force-sensor",
+        "mount": "foot-array",
+        "config": {},
+        "hash": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c",
+        "massKg": 0.08,
+        "cost": 4,
+        "physical": {
+          "centerOfMassM": [
+            0,
+            0,
+            0
+          ],
+          "inertiaDiagonalKgM2": [
+            2e-05,
+            2e-05,
+            2e-05
+          ]
+        },
+        "geometry": [],
+        "joints": [],
+        "actuators": [],
+        "sensors": [
+          {
+            "name": "foot-force-fl",
+            "kind": "touch",
+            "source": "mjcf"
+          },
+          {
+            "name": "foot-force-fr",
+            "kind": "touch",
+            "source": "mjcf"
+          },
+          {
+            "name": "foot-force-rl",
+            "kind": "touch",
+            "source": "mjcf"
+          },
+          {
+            "name": "foot-force-rr",
+            "kind": "touch",
+            "source": "mjcf"
+          }
+        ]
+      }
+    ],
+    "observationContract": {
+      "version": 1,
+      "assembly": "resilient-command-conditioned-history-3dof",
+      "channels": [
+        {
+          "name": "joint-position",
+          "kind": "joint-position",
+          "size": 12,
+          "source": "qpos:joints",
+          "unit": "rad"
+        },
+        {
+          "name": "joint-velocity",
+          "kind": "joint-velocity",
+          "size": 12,
+          "source": "qvel:joints",
+          "unit": "rad-s"
+        },
+        {
+          "name": "base-height",
+          "kind": "body-state",
+          "size": 1,
+          "source": "qpos:root-height",
+          "unit": "m"
+        },
+        {
+          "name": "base-orientation",
+          "kind": "body-state",
+          "size": 4,
+          "source": "qpos:root-quaternion",
+          "unit": "quaternion"
+        },
+        {
+          "name": "base-velocity",
+          "kind": "body-state",
+          "size": 6,
+          "source": "qvel:root",
+          "unit": "mixed"
+        },
+        {
+          "name": "imu-angular-velocity",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-gyro",
+          "unit": "rad-s"
+        },
+        {
+          "name": "imu-linear-acceleration",
+          "kind": "sensor",
+          "size": 3,
+          "source": "sensor:body-accelerometer",
+          "unit": "m-s2"
+        },
+        {
+          "name": "command-action-history",
+          "kind": "sensor",
+          "size": 48,
+          "source": "control:command-history-4",
+          "unit": "nm"
+        },
+        {
+          "name": "applied-action-history",
+          "kind": "sensor",
+          "size": 48,
+          "source": "control:applied-history-4",
+          "unit": "nm"
+        },
+        {
+          "name": "actuator-delay-steps",
+          "kind": "sensor",
+          "size": 1,
+          "source": "control:actuator-delay-steps",
+          "unit": "control-step"
+        },
+        {
+          "name": "motion-command",
+          "kind": "command",
+          "size": 3,
+          "source": "task:motion-command",
+          "unit": "m/s,m/s,rad/s"
+        },
+        {
+          "name": "foot-contact-force",
+          "kind": "sensor",
+          "size": 4,
+          "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+          "unit": "n"
+        }
+      ],
+      "size": 145
+    },
+    "actionContract": {
+      "version": 1,
+      "assembly": "resilient-command-conditioned-history-3dof",
+      "channels": [
+        {
+          "name": "joint-torque",
+          "kind": "actuator",
+          "size": 12,
+          "source": "actuator:all",
+          "unit": "nm",
+          "low": -8,
+          "high": 8
+        }
+      ],
+      "size": 12
+    },
+    "observationContractHash": "12ee6cc40b90ffdd4922dd3c4e08d19391dc181bc7bb7c1b4b4b730fcb442ab4",
+    "actionContractHash": "9d0672c81bd5d8ed1430c19fa6e8d3795955f5386cd6b24b83eb1dfb9174272a",
+    "actionLow": [
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8,
+      -8
+    ],
+    "actionHigh": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8
+    ],
+    "sensorChannelCount": 107
+  },
+  "training": {
+    "version": 3,
+    "id": "integrated-resilience-curriculum",
+    "name": "Continuous integrated-Mission residual PPO progression",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "trainer": "resilient-residual-ppo",
+    "priorController": "behavior-supervisor",
+    "totalSteps": 8192,
+    "rolloutSteps": 256,
+    "epochs": 4,
+    "minibatchSize": 64,
+    "learningRate": 0.0001,
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+    "clipRatio": 0.1,
+    "entropyCoefficient": 0,
+    "residualScale": 0.02,
+    "residualPenalty": 5,
+    "qualityReward": {
+      "jointAcceleration": 0,
+      "bodyAngularAcceleration": 0,
+      "actionSlew": 0,
+      "actuatorSaturation": 0,
+      "footSlip": 0,
+      "footImpact": 0
+    },
+    "missionReward": {
+      "commandProgress": 3,
+      "velocityTracking": 0.5,
+      "stopStability": 1
+    },
+    "mission": {
+      "task": "integrated-resilience-mission",
+      "scenarios": [
+        "mission-impact-left",
+        "mission-impact-right"
+      ]
+    },
+    "progression": [
+      {
+        "id": "recover-resume-and-redirect-exact",
+        "throughPhase": "redirect",
+        "untilStep": 2600,
+        "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+      },
+      {
+        "id": "complete-mission-exact",
+        "throughPhase": "stop",
+        "untilStep": 4400,
+        "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+      },
+      {
+        "id": "complete-mission-randomized",
+        "throughPhase": "stop",
+        "untilStep": 8192,
+        "domainProfile": "quadruped-resilient-mission-v1"
+      }
+    ],
+    "promotionBenchmark": "integrated-resilience-mission"
+  },
+  "trainer": {
+    "version": 1,
+    "id": "resilient-residual-ppo",
+    "name": "Post-recovery program-prior residual PPO",
+    "kind": "ppo",
+    "entry": "trainer.py",
+    "model": "model.py"
+  },
+  "trainerRoot": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-integrated-resilience-policy-fkAVpI/project/trainers/resilient-residual-ppo",
+  "trainerHash": "9670b7facf735bf5a492a375eca0693dc4b17d9e144ef7fb56096155c64dc0a9",
+  "priorController": {
+    "version": 1,
+    "id": "behavior-supervisor",
+    "name": "Hysteretic locomotion and self-righting supervisor",
+    "kind": "program",
+    "entry": "controller.py",
+    "interface": {
+      "requiredObservations": [
+        {
+          "name": "joint-position",
+          "size": 12
+        },
+        {
+          "name": "joint-velocity",
+          "size": 12
+        },
+        {
+          "name": "base-height",
+          "size": 1
+        },
+        {
+          "name": "base-velocity",
+          "size": 6
+        },
+        {
+          "name": "base-orientation",
+          "size": 4
+        },
+        {
+          "name": "imu-angular-velocity",
+          "size": 3
+        },
+        {
+          "name": "foot-contact-force",
+          "size": 4
+        },
+        {
+          "name": "actuator-delay-steps",
+          "size": 1
+        },
+        {
+          "name": "motion-command",
+          "size": 3
+        }
+      ],
+      "actionChannels": [
+        {
+          "name": "joint-torque",
+          "size": 12,
+          "low": -8,
+          "high": 8
+        }
+      ]
+    },
+    "config": {
+      "supervisor": {
+        "enterRecoveryTiltRad": 0.85,
+        "enterRecoveryLowHeightM": 0.2,
+        "enterRecoveryStreakSteps": 5,
+        "enterDynamicSideRecoveryUpComponent": 0.6,
+        "enterDynamicSideRecoveryMinimumTiltRad": 0.8,
+        "enterDynamicSideRecoveryMaximumHeightM": 0.5,
+        "enterDynamicSideRecoveryStreakSteps": 1,
+        "enterDynamicSagittalRecoveryUpComponent": 0.65,
+        "enterDynamicSagittalRecoveryMinimumTiltRad": 0.8,
+        "enterDynamicSagittalRecoveryMaximumHeightM": 0.35,
+        "enterDynamicSagittalRecoveryStreakSteps": 1,
+        "minimumRecoveryTargetSteps": 25,
+        "minimumDynamicRecoveryTargetSteps": 1,
+        "handoffBlendSeconds": 2,
+        "postRecoveryGaitByPose": {
+          "front": {
+            "hipAmplitude": 0.14,
+            "kneeAmplitude": 0.048
+          },
+          "back": {
+            "hipAmplitude": 0.14,
+            "kneeAmplitude": 0.048
+          },
+          "left": {
+            "hipAmplitude": 0.14,
+            "kneeAmplitude": 0.048
+          },
+          "right": {
+            "hipAmplitude": 0.14,
+            "kneeAmplitude": 0.048
+          }
+        },
+        "missionCommandDeadband": 0.02
+      },
+      "locomotion": {
+        "kpAbduction": 16.82265,
+        "kdAbduction": 3.27295,
+        "kpSagittal": 30.53877,
+        "kdSagittal": 2.16306,
+        "frequencyHz": 1.01295,
+        "nominalForwardSpeedMps": 0.25,
+        "nominalLateralSpeedMps": 0.12,
+        "nominalYawRateRadPerSec": 0.5,
+        "commandDeadband": 0.02,
+        "forceWorldFrameTracking": false,
+        "planarCommandRateLimitMps2": 100,
+        "yawCommandRateLimitRadPerSec2": 100,
+        "delayedCommandRateScale": 0.75,
+        "transitionDelayTwoPhaseLeadSeconds": 0.1,
+        "transitionDelayThreePhaseLeadSeconds": 0.125,
+        "delayedStopRateLimitMps2": 0.15,
+        "transitionForwardVelocityGain": 0.3,
+        "delayedTransitionForwardVelocityGain": 0.1,
+        "tractionRecoveryAssessmentSeconds": 1.5,
+        "tractionRecoveryProgressDeficitM": 0.18,
+        "tractionRecoveryHipScale": 2,
+        "tractionRecoverySevereBackwardPitchRad": 0.15,
+        "tractionRecoverySevereHipScale": 1.74,
+        "delayedTractionMinimumDelaySteps": 3,
+        "delayedTractionContactAssessmentSeconds": 0.1,
+        "delayedTractionInitialContactMeanN": 10,
+        "delayedTractionPostContactLossMeanN": 2,
+        "delayedTractionTransitionReleaseSeconds": 0.15,
+        "delayedTractionTransitionForwardVelocityGain": 0.3,
+        "delayedTractionBrakingForwardVelocityGain": 0.5,
+        "delayedTractionTransitionYawDampingGain": 0.1,
+        "delayedTractionRecoveryHipScale": 1.8,
+        "delayedTractionRecoveryRampSeconds": 0.05,
+        "startupRampSecondsByDelaySteps": [
+          0,
+          0,
+          0.8,
+          0
+        ],
+        "delayedTractionRecoveryPhaseLeadSeconds": 0,
+        "delayedTractionRecoveryFrequencyScale": 1,
+        "delayedTractionKpSagittalScale": 1,
+        "delayedTractionKdSagittalScale": 1.5,
+        "delayedTractionLateralVelocityGain": 0,
+        "delayedTractionLateralPositionGain": 0.049,
+        "transitionLateralVelocityGain": 0.3,
+        "transitionYawRateGain": -0.2,
+        "transitionYawDampingGain": 0.2,
+        "forwardVelocityGain": 0,
+        "lateralVelocityGain": 0,
+        "commandLateralVelocityGain": -0.1,
+        "crossTrackPositionGain": 0.6,
+        "crossTrackVelocityGain": 0.4,
+        "yawRateCommandGain": 0,
+        "reverseHipScale": 0.5,
+        "lateralAbductionAmplitude": 0.08,
+        "lateralCommandLean": 0.1,
+        "delayedLateralCommandLean": 0.05,
+        "yawAbductionDifferential": 0.12,
+        "yawAbductionBias": 0,
+        "yawHipDifferential": 1.3,
+        "yawPhaseDifferential": 0.3,
+        "negativeYawAbductionDifferential": 0.12,
+        "negativeYawAbductionBias": -0.02,
+        "negativeYawHipDifferential": -1.6,
+        "negativeYawPhaseDifferential": 0.3,
+        "phaseLeadByDelaySteps": [
+          0.12,
+          0.0075,
+          0.02,
+          0.225
+        ],
+        "disturbancePhaseLeadSeconds": 0.01,
+        "transitionDisturbancePhaseLeadSeconds": 0.1,
+        "disturbanceRollRateThreshold": 1,
+        "rollLateralVelocityGain": 0,
+        "lateralPositionGain": 0,
+        "maximumRollCorrection": 0.16,
+        "statePredictionSeconds": 0.01973,
+        "neutralAbduction": 0.19944,
+        "neutralHip": 0.3409,
+        "neutralKnee": -0.36902,
+        "hipAmplitude": 0.16,
+        "kneeAmplitude": 0.05614,
+        "frontRearPhase": 3.141592653589793,
+        "contactGain": 0.02,
+        "rollPositionGain": 0.31249,
+        "rollRateGain": 0.12693,
+        "pitchPositionGain": 0.22,
+        "pitchRateGain": 0.028,
+        "maximumPitchCorrection": 0.09
+      },
+      "recovery": {
+        "uprightTiltRad": 0.35,
+        "kpAbduction": 22,
+        "kdAbduction": 2.8,
+        "kdAbductionByPose": {
+          "front": 2.8,
+          "back": 2.8,
+          "left": 3.5,
+          "right": 3.5,
+          "upright": 2.8
+        },
+        "kpSagittal": 32,
+        "kdSagittal": 2.4,
+        "dynamicEntryAngularSpeedThresholdRadPerSec": 1.5,
+        "dynamicRiseKdSagittal": 4,
+        "dynamicHoldActionBlend": 0.2,
+        "impulseSeconds": 0.8,
+        "captureUntilSeconds": 1.2,
+        "riseSecondsByPose": {
+          "front": 3,
+          "back": 3,
+          "left": 2,
+          "right": 2
+        },
+        "retryAfterSeconds": 2.2,
+        "maximumRetryAngularSpeedRadPerSec": 2.5,
+        "maximumRecoveryRetries": 2,
+        "dynamicRetryImpulseSeconds": 0.3,
+        "dynamicRetryCaptureUntilSeconds": 0.55,
+        "dynamicRetryRiseSecondsByPose": {
+          "front": 0.3,
+          "back": 0.3,
+          "left": 0.3,
+          "right": 0.3
+        },
+        "feedbackByPose": {
+          "front": {
+            "rollGain": 0.4,
+            "rollRateGain": 0.05,
+            "pitchGain": 1.5,
+            "pitchRateGain": 0.15
+          },
+          "back": {
+            "rollGain": 0.2,
+            "rollRateGain": 0.05,
+            "pitchGain": 1.5,
+            "pitchRateGain": 0.15
+          },
+          "left": {
+            "rollGain": 1.25,
+            "rollRateGain": 0.1,
+            "pitchGain": 2,
+            "pitchRateGain": 0.1
+          },
+          "right": {
+            "rollGain": 1.25,
+            "rollRateGain": 0.1,
+            "pitchGain": 2,
+            "pitchRateGain": 0.1
+          }
+        },
+        "frontImpulseTarget": [
+          0.1859914657052404,
+          0.409714795313582,
+          -0.005086982089814617,
+          0.5554240793552805,
+          -0.41762646308804025,
+          -0.7877352540657173
+        ],
+        "frontCaptureTarget": [
+          0.019854144309887172,
+          0.9389589841248264,
+          -0.0021052268442697418,
+          0.38473868960542756,
+          0.5139114900711059,
+          -0.7627263374051683
+        ],
+        "backImpulseTarget": [
+          0.092,
+          0.495,
+          -2.185,
+          0.624,
+          -0.989,
+          -0.161
+        ],
+        "backCaptureTarget": [
+          0.02,
+          -0.06,
+          -1.812,
+          0.014,
+          -0.36,
+          -1.405
+        ],
+        "leftImpulseTarget": [
+          0.551,
+          -0.109,
+          -0.03,
+          0.406,
+          -0.982,
+          -0.322
+        ],
+        "leftCaptureTarget": [
+          0.52528,
+          0.26,
+          -1.27,
+          -0.47334,
+          -0.701,
+          -0.523
+        ],
+        "standTarget": [
+          0.2,
+          0.34,
+          -0.45,
+          0.2,
+          0.34,
+          -0.45
+        ],
+        "maximumAbsoluteAbductionTargetRad": 0.6,
+        "maximumAbsoluteAbductionTargetRadByPose": {
+          "front": 0.6,
+          "back": 0.6,
+          "left": 0.58,
+          "right": 0.58,
+          "upright": 0.6
+        },
+        "maximumAbsoluteHipTargetRad": 1.15,
+        "minimumKneeTargetRad": -2.1,
+        "maximumKneeTargetRad": 0.05,
+        "minimumRecoveryHeightM": 0.32,
+        "maximumRecoveryTiltRad": 0.35,
+        "maximumRecoveryLinearSpeedMps": 0.2,
+        "maximumRecoveryAngularSpeedRadPerSec": 0.5,
+        "contactThresholdNewton": 1,
+        "minimumSupportFeet": 2
+      }
+    }
+  },
+  "priorControllerRoot": "/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-integrated-resilience-policy-fkAVpI/project/controllers/behavior-supervisor",
+  "priorControllerHash": "1fd2d7da9fee0d7516c01e4f6c9f70dba5c589dd440ac84554bddbaf3ec1c2d3",
+  "domainProfile": null,
+  "domainProfileHash": null,
+  "domainProfileEvidenceHash": null,
+  "task": {
+    "version": 7,
+    "id": "integrated-resilience-mission",
+    "name": "Walk, absorb impact, recover, redirect, traverse, and stop",
+    "durationSeconds": 18,
+    "controlHz": 50,
+    "healthyHeight": [
+      0.05,
+      0.8
+    ],
+    "terminateOnFall": false,
+    "motionCommandSchedule": [
+      {
+        "atSeconds": 0,
+        "command": {
+          "frame": "world",
+          "linearVelocityMps": [
+            0.2,
+            0
+          ],
+          "yawRateRadPerSec": 0
+        }
+      },
+      {
+        "atSeconds": 8,
+        "command": {
+          "frame": "world",
+          "linearVelocityMps": [
+            0.2,
+            0
+          ],
+          "yawRateRadPerSec": 0
+        }
+      },
+      {
+        "atSeconds": 10,
+        "command": {
+          "frame": "world",
+          "linearVelocityMps": [
+            0.12,
+            0
+          ],
+          "yawRateRadPerSec": 0.25
+        }
+      },
+      {
+        "atSeconds": 13,
+        "command": {
+          "frame": "world",
+          "linearVelocityMps": [
+            0,
+            0.15
+          ],
+          "yawRateRadPerSec": 0
+        }
+      },
+      {
+        "atSeconds": 16,
+        "command": {
+          "frame": "world",
+          "linearVelocityMps": [
+            0,
+            0
+          ],
+          "yawRateRadPerSec": 0
+        }
+      }
+    ],
+    "missionPhases": [
+      {
+        "id": "approach",
+        "name": "Approach under forward command",
+        "atSeconds": 0,
+        "intent": "operate",
+        "requiredCapabilities": [
+          "walking",
+          "command-tracking"
+        ]
+      },
+      {
+        "id": "impact",
+        "name": "Bounded lateral impact while walking",
+        "atSeconds": 2.5,
+        "intent": "disturbance",
+        "requiredCapabilities": [
+          "impact-tolerance"
+        ]
+      },
+      {
+        "id": "recover",
+        "name": "Autonomous self-righting without reset",
+        "atSeconds": 2.66,
+        "intent": "recover",
+        "requiredCapabilities": [
+          "self-righting",
+          "behavior-supervision"
+        ]
+      },
+      {
+        "id": "resume",
+        "name": "Resume the pending forward mission",
+        "atSeconds": 8,
+        "intent": "resume",
+        "requiredCapabilities": [
+          "mission-resumption",
+          "command-tracking"
+        ]
+      },
+      {
+        "id": "redirect",
+        "name": "Track a combined forward and yaw command",
+        "atSeconds": 10,
+        "intent": "operate",
+        "requiredCapabilities": [
+          "yaw-tracking",
+          "command-transition"
+        ]
+      },
+      {
+        "id": "traverse",
+        "name": "Redirect into lateral traversal",
+        "atSeconds": 13,
+        "intent": "operate",
+        "requiredCapabilities": [
+          "lateral-tracking",
+          "command-transition"
+        ]
+      },
+      {
+        "id": "stop",
+        "name": "Brake and hold",
+        "atSeconds": 16,
+        "intent": "stop",
+        "requiredCapabilities": [
+          "controlled-stop"
+        ]
+      }
+    ],
+    "recoveryEvaluationStartSeconds": 2.7,
+    "mobilityMeasurementStartSeconds": 8,
+    "recoveryTarget": {
+      "minimumBaseHeightM": 0.32,
+      "maximumBodyTiltRad": 0.35,
+      "maximumLinearSpeedMps": 0.2,
+      "maximumAngularSpeedRadPerSec": 0.5,
+      "holdSeconds": 0.5
+    }
+  },
+  "scenarios": [
+    {
+      "version": 2,
+      "id": "mission-impact-left",
+      "name": "Mid-mission lateral impact from the robot's right",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0,
+      "externalPush": {
+        "timeSeconds": 2.5,
+        "durationSeconds": 0.16,
+        "forceNewton": 51,
+        "directionXY": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "version": 2,
+      "id": "mission-impact-right",
+      "name": "Mid-mission lateral impact from the robot's left",
+      "friction": 0.9,
+      "payloadKg": 0,
+      "observationNoiseStd": 0,
+      "actuatorDelaySteps": 0,
+      "initialJointPositionNoiseStd": 0,
+      "initialJointVelocityNoiseStd": 0,
+      "externalPush": {
+        "timeSeconds": 2.5,
+        "durationSeconds": 0.16,
+        "forceNewton": 51,
+        "directionXY": [
+          0,
+          -1
+        ]
+      }
+    }
+  ],
+  "curriculum": null,
+  "progression": [
+    {
+      "id": "recover-resume-and-redirect-exact",
+      "throughPhase": "redirect",
+      "untilStep": 2600,
+      "domainProfile": {
+        "version": 1,
+        "id": "quadruped-resilient-resume-curriculum-v1",
+        "name": "Post-recovery locomotion curriculum",
+        "provenance": {
+          "kind": "synthetic",
+          "evidence": null,
+          "notes": "Training-only stage-zero curriculum. It alternates the two locked impact directions on the exact recoverable plant so every successful episode can contribute post-recovery actor data. It makes no robustness claim; variation remains assigned to quadruped-resilient-mission-v1 and independent held-out Benchmarks."
+        },
+        "parameters": {
+          "bodyMassScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "jointDampingScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "actuatorStrengthScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "frictionScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "observationNoiseStd": {
+            "minimum": 0,
+            "maximum": 0
+          },
+          "actuatorDelayJitterSteps": {
+            "minimum": 0,
+            "maximum": 0
+          },
+          "pushTimeOffsetSeconds": {
+            "minimum": 0,
+            "maximum": 0
+          },
+          "pushForceScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "pushDirectionJitterRad": {
+            "minimum": 0,
+            "maximum": 0
+          }
+        }
+      },
+      "domainProfileHash": "3c16012f2e419f47241123df2a019eb585a3970e418a379d061b806ede486749",
+      "domainProfileEvidenceHash": null
+    },
+    {
+      "id": "complete-mission-exact",
+      "throughPhase": "stop",
+      "untilStep": 4400,
+      "domainProfile": {
+        "version": 1,
+        "id": "quadruped-resilient-resume-curriculum-v1",
+        "name": "Post-recovery locomotion curriculum",
+        "provenance": {
+          "kind": "synthetic",
+          "evidence": null,
+          "notes": "Training-only stage-zero curriculum. It alternates the two locked impact directions on the exact recoverable plant so every successful episode can contribute post-recovery actor data. It makes no robustness claim; variation remains assigned to quadruped-resilient-mission-v1 and independent held-out Benchmarks."
+        },
+        "parameters": {
+          "bodyMassScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "jointDampingScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "actuatorStrengthScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "frictionScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "observationNoiseStd": {
+            "minimum": 0,
+            "maximum": 0
+          },
+          "actuatorDelayJitterSteps": {
+            "minimum": 0,
+            "maximum": 0
+          },
+          "pushTimeOffsetSeconds": {
+            "minimum": 0,
+            "maximum": 0
+          },
+          "pushForceScale": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "pushDirectionJitterRad": {
+            "minimum": 0,
+            "maximum": 0
+          }
+        }
+      },
+      "domainProfileHash": "3c16012f2e419f47241123df2a019eb585a3970e418a379d061b806ede486749",
+      "domainProfileEvidenceHash": null
+    },
+    {
+      "id": "complete-mission-randomized",
+      "throughPhase": "stop",
+      "untilStep": 8192,
+      "domainProfile": {
+        "version": 1,
+        "id": "quadruped-resilient-mission-v1",
+        "name": "Synthetic continuous mission and impact envelope",
+        "provenance": {
+          "kind": "synthetic",
+          "evidence": null,
+          "notes": "Training-only engineering envelope. Impact time, magnitude, and planar direction vary continuously around two authored opposing base directions; plant ranges remain synthetic until replaced by HIL or real identification."
+        },
+        "parameters": {
+          "bodyMassScale": {
+            "minimum": 0.92,
+            "maximum": 1.08
+          },
+          "jointDampingScale": {
+            "minimum": 0.75,
+            "maximum": 1.25
+          },
+          "actuatorStrengthScale": {
+            "minimum": 0.9,
+            "maximum": 1.1
+          },
+          "frictionScale": {
+            "minimum": 0.8,
+            "maximum": 1.15
+          },
+          "observationNoiseStd": {
+            "minimum": 0,
+            "maximum": 0.002
+          },
+          "actuatorDelayJitterSteps": {
+            "minimum": 0,
+            "maximum": 1
+          },
+          "pushTimeOffsetSeconds": {
+            "minimum": -0.3,
+            "maximum": 0.3
+          },
+          "pushForceScale": {
+            "minimum": 0.75,
+            "maximum": 1.25
+          },
+          "pushDirectionJitterRad": {
+            "minimum": -0.35,
+            "maximum": 0.35
+          }
+        }
+      },
+      "domainProfileHash": "6a897a4e16f28a2c21046e86610a9ac564201710204cd776af682c5603ba9af8",
+      "domainProfileEvidenceHash": null
+    }
+  ],
+  "seed": 260726,
+  "dependencyLockHash": "31c72b7f3628fe95f426b475b75057c7c6c1ac169491ef97c28d85327ce18efd",
+  "sourceHashes": {
+    "runtime": "86b6e226b36043e6ff09f02fb9ed6883fd43a20a0a6eb844da892b9889f9acdb",
+    "harness": "6fb542e44a74e34d692050c8fde8d332cd7237846bdfcf03dd8da70e48ff5747",
+    "harnessDependencies": "8273f9b4d27526fa04f08bc17b23d11f30611c2f66a357aaca9b5e7f470a1598",
+    "trainer": "9670b7facf735bf5a492a375eca0693dc4b17d9e144ef7fb56096155c64dc0a9",
+    "priorController": "1fd2d7da9fee0d7516c01e4f6c9f70dba5c589dd440ac84554bddbaf3ec1c2d3",
+    "domainProfile": null,
+    "progressionDomainProfiles": [
+      {
+        "id": "recover-resume-and-redirect-exact",
+        "hash": "3c16012f2e419f47241123df2a019eb585a3970e418a379d061b806ede486749"
+      },
+      {
+        "id": "complete-mission-exact",
+        "hash": "3c16012f2e419f47241123df2a019eb585a3970e418a379d061b806ede486749"
+      },
+      {
+        "id": "complete-mission-randomized",
+        "hash": "6a897a4e16f28a2c21046e86610a9ac564201710204cd776af682c5603ba9af8"
+      }
+    ],
+    "assembly": "b3ebe11b4d05040e754b939c6a1fb00edbf210778da98521b5eae39ce08875ab",
+    "catalog": "2813b875a973d02b70572b9e1c7735211bfa54d457bedbbaa9244f15d51a7cbc",
+    "training": "e5476ffbcb57e2b976ce2974630963b4a82f250be76acfb98a4d18ab95dbbfd8"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "strategy": "post-recovery-world-frame-with-yaw-damping",
+  "hypothesis": "World-frame tracking reduced aggregate Mission severity, but the right exact case crossed the yaw-overshoot gate by 0.069 rad/s when yaw command returned to zero. Retaining that coordinate fix with a post-recovery-only increase in measured yaw-rate damping should remove the sole regression.",
+  "expectedEffect": "Retain the world-frame score and severity improvement while bringing right-exact maximum yaw overshoot below 1.0 rad/s, without changing recovery dynamics, pre-impact locomotion, or no-fall regressions."
+}

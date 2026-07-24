@@ -1,0 +1,51 @@
+{
+  "version": 4,
+  "id": "001-950524569565",
+  "experimentHash": "9505245695659e8ffd31c56a32b1c806959e9a0ce16454272f5f7e274cb84887",
+  "sequence": 1,
+  "sessionId": "session-2956f4d99b8ec1b2",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "3d511f4f98380587d707bd761a0f39e8876fb988d2529aa57c99316d6102d590",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "proposal": {
+    "strategy": "measured-heading-conditioned-yaw-authority",
+    "hypothesis": "The two exact recoveries reach the same pose state with opposite measured yaw signs. Full yaw authority keeps the negative-heading case settled, while 75 percent authority keeps the positive-heading case below the overshoot gate. Selecting that bounded authority from measured handoff yaw should combine both safe responses without Scenario knowledge.",
+    "expectedEffect": "Keep both exact Missions below yaw overshoot and settling gates while retaining the world-frame score/severity improvement and preserving pre-impact, recovery, and no-fall regressions."
+  },
+  "policyId": null,
+  "score": 39.119018079621355,
+  "delta": 0.18398511505051118,
+  "verdict": "KEEP",
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 26,
+    "previousViolationSeverity": 71.28320030421216,
+    "candidateViolationSeverity": 59.19363004535584,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": true,
+    "selectionReason": "lower-gate-violation-severity"
+  },
+  "revisionId": "quadruped-r-40206836cd00",
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "1836db2fdf3e86d8a32d88a8b46eb64dd7580de0104a469698903613d42040b5",
+    "acceptedRunId": "run-6ceff1df028f3244",
+    "candidateRunId": "run-8d1432a491384f78",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 75832,
+  "completed": true
+}

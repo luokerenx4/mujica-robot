@@ -1,0 +1,39 @@
+diff --git a/before/controllers/behavior-supervisor/controller.py b/after/controllers/behavior-supervisor/controller.py
+index f279917..bdb27b9 100644
+--- a/before/controllers/behavior-supervisor/controller.py
++++ b/after/controllers/behavior-supervisor/controller.py
+@@ -159,7 +159,7 @@ class BehaviorSupervisorController:
+                 self.switch("settling", time_seconds, "base-stand-qualified")
+                 child = {}
+         elif self.mode == "settling":
+-            recovery_action = self.recovery.act(observation, time_seconds)
++            recovery_action = self.recovery.stand_action(observation)
+             locomotion_action = self.locomotion.act(
+                 observation, max(0.0, time_seconds - self.locomotion_time_origin)
+             )
+diff --git a/before/controllers/behavior-supervisor/recovery.py b/after/controllers/behavior-supervisor/recovery.py
+index c4f4bdd..eac143e 100644
+--- a/before/controllers/behavior-supervisor/recovery.py
++++ b/after/controllers/behavior-supervisor/recovery.py
+@@ -244,6 +244,21 @@ class PhasedSelfRightController:
+         )
+         return target, abduction_damping, sagittal_damping
+ 
++    def stand_action(self, observation):
++        """Track the qualified standing pose without advancing recovery phases."""
++        q = np.asarray(observation["joint-position"], dtype=np.float64).reshape(4, 3)
++        qd = np.asarray(observation["joint-velocity"], dtype=np.float64).reshape(4, 3)
++        action = np.empty((4, 3), dtype=np.float64)
++        action[:, 0] = (
++            self.config["kpAbduction"] * (self.stand_target[:, 0] - q[:, 0])
++            - self.config["kdAbduction"] * qd[:, 0]
++        )
++        action[:, 1:] = (
++            self.config["kpSagittal"] * (self.stand_target[:, 1:] - q[:, 1:])
++            - self.config["kdSagittal"] * qd[:, 1:]
++        )
++        return np.clip(action.reshape(-1), -8.0, 8.0)
++
+     def act(self, observation, time_seconds: float):
+         q = np.asarray(observation["joint-position"], dtype=np.float64).reshape(4, 3)
+         qd = np.asarray(observation["joint-velocity"], dtype=np.float64).reshape(4, 3)

@@ -1,0 +1,321 @@
+{
+  "version": 1,
+  "id": "resilient-command-conditioned-history-3dof",
+  "name": "Resilience quadruped with extended hip travel, motion command, force, IMU, and actuator history",
+  "projectId": "quadruped",
+  "modelPath": "model.xml",
+  "assemblyHash": "b3ebe11b4d05040e754b939c6a1fb00edbf210778da98521b5eae39ce08875ab",
+  "executionHash": "720cfc5b72a9e357ccecb1dc577711e07fc3acb6aa409066e3d47ce45cc2be4d",
+  "modelHash": "ce6aff6ed1dd0bc68a9f7ed332fcfb9fda375e97815fecbc76feff7122149266",
+  "plantHash": "4505f5a4ac0516214fc5231e91a47bc83535306315e8446b9a49c5cef4bd84a4",
+  "baseId": "quadruped-resilient-3dof",
+  "baseHash": "842ee8566e5c7713921b614b6cd8f5601590e0172d8de0778a7e5c3f4d517197",
+  "catalogHash": "2813b875a973d02b70572b9e1c7735211bfa54d457bedbbaa9244f15d51a7cbc",
+  "morphology": {
+    "version": 1,
+    "project": "quadruped",
+    "class": "legged",
+    "baseBody": "torso",
+    "limbCount": 4,
+    "contactPoints": [
+      {
+        "id": "front-left",
+        "site": "foot-fl-site",
+        "sensor": "foot-force-fl"
+      },
+      {
+        "id": "front-right",
+        "site": "foot-fr-site",
+        "sensor": "foot-force-fr"
+      },
+      {
+        "id": "rear-left",
+        "site": "foot-rl-site",
+        "sensor": "foot-force-rl"
+      },
+      {
+        "id": "rear-right",
+        "site": "foot-rr-site",
+        "sensor": "foot-force-rr"
+      }
+    ]
+  },
+  "totalMassKg": 6.03,
+  "componentCost": 6,
+  "components": [
+    {
+      "instanceId": "body-imu",
+      "componentId": "body-imu",
+      "mount": "torso-sensor",
+      "config": {},
+      "hash": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+      "massKg": 0.03,
+      "cost": 1,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          0.00001,
+          0.00001,
+          0.00001
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "body-gyro",
+          "kind": "gyro",
+          "source": "mjcf"
+        },
+        {
+          "name": "body-accelerometer",
+          "kind": "accelerometer",
+          "source": "mjcf"
+        }
+      ]
+    },
+    {
+      "instanceId": "actuator-history",
+      "componentId": "actuator-history",
+      "mount": "torso-sensor",
+      "config": {},
+      "hash": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+      "massKg": 0,
+      "cost": 1,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          0,
+          0,
+          0
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "command-action-history",
+          "kind": "actuator-command-history",
+          "source": "runtime"
+        },
+        {
+          "name": "applied-action-history",
+          "kind": "actuator-applied-history",
+          "source": "runtime"
+        },
+        {
+          "name": "actuator-delay-steps",
+          "kind": "actuator-delay",
+          "source": "runtime"
+        }
+      ]
+    },
+    {
+      "instanceId": "motion-command-input",
+      "componentId": "motion-command-input",
+      "mount": "torso-sensor",
+      "config": {},
+      "hash": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+      "massKg": 0,
+      "cost": 0,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          0,
+          0,
+          0
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "motion-command",
+          "kind": "task-command",
+          "source": "runtime"
+        }
+      ]
+    },
+    {
+      "instanceId": "foot-force-kit",
+      "componentId": "foot-force-sensor",
+      "mount": "foot-array",
+      "config": {},
+      "hash": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c",
+      "massKg": 0.08,
+      "cost": 4,
+      "physical": {
+        "centerOfMassM": [
+          0,
+          0,
+          0
+        ],
+        "inertiaDiagonalKgM2": [
+          0.00002,
+          0.00002,
+          0.00002
+        ]
+      },
+      "geometry": [],
+      "joints": [],
+      "actuators": [],
+      "sensors": [
+        {
+          "name": "foot-force-fl",
+          "kind": "touch",
+          "source": "mjcf"
+        },
+        {
+          "name": "foot-force-fr",
+          "kind": "touch",
+          "source": "mjcf"
+        },
+        {
+          "name": "foot-force-rl",
+          "kind": "touch",
+          "source": "mjcf"
+        },
+        {
+          "name": "foot-force-rr",
+          "kind": "touch",
+          "source": "mjcf"
+        }
+      ]
+    }
+  ],
+  "observationContract": {
+    "version": 1,
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "channels": [
+      {
+        "name": "joint-position",
+        "kind": "joint-position",
+        "size": 12,
+        "source": "qpos:joints",
+        "unit": "rad"
+      },
+      {
+        "name": "joint-velocity",
+        "kind": "joint-velocity",
+        "size": 12,
+        "source": "qvel:joints",
+        "unit": "rad-s"
+      },
+      {
+        "name": "base-height",
+        "kind": "body-state",
+        "size": 1,
+        "source": "qpos:root-height",
+        "unit": "m"
+      },
+      {
+        "name": "base-orientation",
+        "kind": "body-state",
+        "size": 4,
+        "source": "qpos:root-quaternion",
+        "unit": "quaternion"
+      },
+      {
+        "name": "base-velocity",
+        "kind": "body-state",
+        "size": 6,
+        "source": "qvel:root",
+        "unit": "mixed"
+      },
+      {
+        "name": "imu-angular-velocity",
+        "kind": "sensor",
+        "size": 3,
+        "source": "sensor:body-gyro",
+        "unit": "rad-s"
+      },
+      {
+        "name": "imu-linear-acceleration",
+        "kind": "sensor",
+        "size": 3,
+        "source": "sensor:body-accelerometer",
+        "unit": "m-s2"
+      },
+      {
+        "name": "command-action-history",
+        "kind": "sensor",
+        "size": 48,
+        "source": "control:command-history-4",
+        "unit": "nm"
+      },
+      {
+        "name": "applied-action-history",
+        "kind": "sensor",
+        "size": 48,
+        "source": "control:applied-history-4",
+        "unit": "nm"
+      },
+      {
+        "name": "actuator-delay-steps",
+        "kind": "sensor",
+        "size": 1,
+        "source": "control:actuator-delay-steps",
+        "unit": "control-step"
+      },
+      {
+        "name": "motion-command",
+        "kind": "command",
+        "size": 3,
+        "source": "task:motion-command",
+        "unit": "m/s,m/s,rad/s"
+      },
+      {
+        "name": "foot-contact-force",
+        "kind": "sensor",
+        "size": 4,
+        "source": "sensor-list:foot-force-fl,foot-force-fr,foot-force-rl,foot-force-rr",
+        "unit": "n"
+      }
+    ],
+    "size": 145
+  },
+  "actionContract": {
+    "version": 1,
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "channels": [
+      {
+        "name": "joint-torque",
+        "kind": "actuator",
+        "size": 12,
+        "source": "actuator:all",
+        "unit": "nm",
+        "low": -8,
+        "high": 8
+      }
+    ],
+    "size": 12
+  },
+  "sourceFiles": [
+    "assemblies/resilient-command-conditioned-history-3dof.robot.json",
+    "robots/quadruped-resilient-3dof/robot.json",
+    "robots/quadruped-resilient-3dof/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/actuator-history/component.json",
+    "components/actuator-history/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml"
+  ]
+}

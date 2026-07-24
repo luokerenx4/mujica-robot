@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "command-transitions",
+  "name": "Safe command transitions and braking",
+  "weights": {
+    "survival": 30,
+    "velocityTracking": 20,
+    "forwardProgress": 10,
+    "upright": 15,
+    "lateralDrift": 5,
+    "transitionTracking": 30,
+    "energy": 0.005,
+    "smoothness": 0.001,
+    "componentMass": 0.2,
+    "sensorChannels": 0.01,
+    "trainingSteps": 0.0001
+  },
+  "transientMeasurement": {
+    "planarToleranceMps": 0.13,
+    "yawRateToleranceRadPerSec": 0.25,
+    "holdSeconds": 0.2
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0,
+    "maximumLateralDrift": 1,
+    "maximumPlanarVelocityTrackingError": 0.4,
+    "maximumYawRateTrackingError": 0.6,
+    "maximumTransitionTerminalPlanarTrackingError": 0.25,
+    "maximumTransitionTerminalYawRateTrackingError": 0.5,
+    "maximumPlanarSettlingTimeSeconds": 2.75,
+    "maximumPlanarBrakingSettlingTimeSeconds": 2,
+    "maximumYawRateSettlingTimeSeconds": 2,
+    "maximumPlanarOvershootMps": 0.5,
+    "maximumYawRateOvershootRadPerSec": 1,
+    "maximumUnsettledPlanarTransitions": 0,
+    "maximumUnsettledYawRateTransitions": 0,
+    "maximumRegression": 10
+  }
+}

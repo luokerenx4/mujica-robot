@@ -1,0 +1,5 @@
+{
+  "strategy": "post-recovery-world-frame-command",
+  "hypothesis": "The Mission command is authored in the world frame, but a newly reset locomotion child takes the legacy body-forward path until the first command transition. Enabling world-frame tracking only after recovery should preserve ordinary approach behavior while making resumed motion independent of the robot's changed heading.",
+  "expectedEffect": "Improve signed resume and redirect progress in exact Missions without changing recovery dynamics, pre-impact locomotion, or no-fall command regressions."
+}

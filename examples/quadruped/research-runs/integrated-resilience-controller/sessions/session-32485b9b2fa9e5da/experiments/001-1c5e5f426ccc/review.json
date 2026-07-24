@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-32485b9b2fa9e5da",
+    "experimentId": "001-1c5e5f426ccc",
+    "experimentHash": "1c5e5f426ccc8495ae7bb7f42dcabaf1e197fbb588b5359ccc46ec6d11b1dc56"
+  },
+  "proposal": {
+    "strategy": "post-recovery-world-frame-with-gentle-yaw-release",
+    "hypothesis": "Increasing post-recovery yaw damping from 0.2 to 0.3 amplified the contact-driven reversal and added an unsettled transition. Retaining world-frame tracking while reducing this gain to 0.1 should make the yaw-to-zero release less aggressive.",
+    "expectedEffect": "Retain the world-frame score and severity improvement while bringing right-exact maximum yaw overshoot below 1.0 rad/s and keeping every yaw transition settled, without changing recovery dynamics or no-fall regressions."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-exact: yaw-overshoot regressed from passing to failing",
+        "impact-right-exact: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 28,
+      "previousViolationSeverity": 71.28320030421216,
+      "candidateViolationSeverity": 64.68851415247,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "197e68f2b7cd998d910aa65e3d187216f9db5f9a675f1c18143f04f48c38988b"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right",
+    "seed": 7202,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-exact: yaw-overshoot regressed from passing to failing",
+    "candidateScoreDelta": -0.38799700401459347,
+    "weightedScoreDelta": -0.38799700401459347
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-bddc07b879ffdfe9",
+    "runKey": "bddc07b879ffdfe9d5be8b4839aecd19c4a10ef524802fc23839512a915c4d8c",
+    "resultHash": "b05d30b8795891726da016442ed11a36be1e07503a78dee2a55942e74e70791d",
+    "artifactHash": "0ad66542eb403c90613d68a44d0cd2923d4a736686d2c4b7d9faf68027660363",
+    "manifestHash": "db205de0418c380ce88664f004e1b2ff2ee6667357eb46a2cb4f57b3c6f4ec86",
+    "metricsHash": "22a62d52d0fb0589e1289831f8f6c8ac0084b0fc393f0a7df09cea7957e24bc4",
+    "scoreHash": "502fb40f90e23bf45dd5e0078c055968ba45241e52d88253b28ff6e3c66d2f42",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.61090660044154
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-f9af0947446ce6e2",
+    "runKey": "f9af0947446ce6e26719520ed4d6965e106bb43e9c589f49cd7907de3d08b3ac",
+    "resultHash": "fcb2e25a7980dfa804ddbef9de5658d523e9f0738c5c1ec4af9ee42ca77b427e",
+    "artifactHash": "debeb1100484eb659cca803d84a8349eb767bbfe7660b7b817ed1ad0af195a21",
+    "manifestHash": "eb47801d2f1bd8520b093e0604c681ed12700cc307d25be44d6077542187d55a",
+    "metricsHash": "081e67dd669bb7f43c07818d2ce040daba7e6458e14c75d11f465fef344a3a3a",
+    "scoreHash": "71aa7cd9dd952bc7a2a209286d2e65f88f646bd4e8d976a7f8959757ac3eafd4",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.22290959642694
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

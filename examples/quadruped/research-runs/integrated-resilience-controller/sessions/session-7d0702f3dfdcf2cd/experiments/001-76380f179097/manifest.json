@@ -1,0 +1,53 @@
+{
+  "version": 4,
+  "id": "001-76380f179097",
+  "experimentHash": "76380f1790976890f1bd1f49b8ee86987eeacc5e13b3080b2dafc4f8aa79c7b9",
+  "sequence": 1,
+  "sessionId": "session-7d0702f3dfdcf2cd",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "b33d1390744990e42546a32a4a9011a2b697a0c7997e9be8e0208a637f916ab8",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "proposal": {
+    "strategy": "post-recovery-world-frame-with-bounded-yaw-authority",
+    "hypothesis": "Scalar damping changes did not remove the right-exact overshoot, indicating that world-frame planar correction and yaw leg differentials are mechanically coupled. Reducing post-recovery hip and abduction yaw authority together should limit contact-driven angular momentum without changing the command or recovery.",
+    "expectedEffect": "Retain world-frame signed progress while bringing right-exact yaw overshoot below 1.0 rad/s, keeping transitions settled, and preserving pre-impact, recovery, and no-fall regressions."
+  },
+  "policyId": null,
+  "score": 38.98200779560462,
+  "delta": 0.046974831033779196,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 27,
+    "previousViolationSeverity": 71.28320030421216,
+    "candidateViolationSeverity": 64.91886121421126,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "4290e2366cc0d835505560502391d9be0c7381432d2ce1a3824fce5b59e0404c",
+    "acceptedRunId": "run-6ceff1df028f3244",
+    "candidateRunId": "run-33703d8577c9cf56",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 132338,
+  "completed": true
+}

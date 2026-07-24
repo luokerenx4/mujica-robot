@@ -1,0 +1,32 @@
+diff --git a/before/controllers/behavior-supervisor/controller.py b/after/controllers/behavior-supervisor/controller.py
+index f279917..e882e04 100644
+--- a/before/controllers/behavior-supervisor/controller.py
++++ b/after/controllers/behavior-supervisor/controller.py
+@@ -44,6 +44,7 @@ class BehaviorSupervisorController:
+         self.mission_command_started = False
+         self.locomotion_time_origin = 0.0
+         self.recovery_pose = None
++        self.handoff_recovery_action = None
+         self.last_telemetry = {
+             "mode": self.mode,
+             "phase": self.mode,
+@@ -153,13 +154,18 @@ class BehaviorSupervisorController:
+                 else self.config["minimumRecoveryTargetSteps"]
+             )
+             if child["targetStreakSteps"] >= required_target_steps:
++                self.handoff_recovery_action = np.asarray(action, dtype=np.float64).copy()
+                 gait = self.config["postRecoveryGaitByPose"][self.recovery_pose]
+                 self.locomotion.config["hipAmplitude"] = gait["hipAmplitude"]
+                 self.locomotion.config["kneeAmplitude"] = gait["kneeAmplitude"]
+                 self.switch("settling", time_seconds, "base-stand-qualified")
+                 child = {}
+         elif self.mode == "settling":
+-            recovery_action = self.recovery.act(observation, time_seconds)
++            recovery_action = (
++                self.handoff_recovery_action
++                if self.handoff_recovery_action is not None
++                else self.recovery.act(observation, time_seconds)
++            )
+             locomotion_action = self.locomotion.act(
+                 observation, max(0.0, time_seconds - self.locomotion_time_origin)
+             )

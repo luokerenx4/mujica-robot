@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "command-transitions",
+  "name": "Held-out command transitions and braking",
+  "objective": "command-transitions",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "command-tracking-gait"
+  },
+  "cases": [
+    { "id": "accelerate-stop", "task": "accelerate-stop", "scenario": "nominal", "seed": 1201, "weight": 1 },
+    { "id": "forward-reverse-stop", "task": "forward-reverse-stop", "scenario": "nominal", "seed": 1202, "weight": 1.5 },
+    { "id": "lateral-redirection", "task": "lateral-redirection", "scenario": "nominal", "seed": 1203, "weight": 1.5 },
+    { "id": "yaw-redirection", "task": "yaw-redirection", "scenario": "nominal", "seed": 1204, "weight": 1.5 },
+    { "id": "delayed-braking", "task": "forward-reverse-stop", "scenario": "actuator-delay-three-step", "seed": 1205, "weight": 1.5 },
+    { "id": "payload-lateral-redirection", "task": "lateral-redirection", "scenario": "payload-variation", "seed": 1206, "weight": 2 },
+    { "id": "severe-delayed-lateral-redirection", "task": "lateral-redirection", "scenario": "delayed-lateral-push", "seed": 1207, "weight": 0.5, "gating": false }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-8553f72935607963",
+    "experimentId": "001-f7e66ff0864b",
+    "experimentHash": "f7e66ff0864b493a032609a99d7887422c4ea2ad5c72cb8795657e9d39b80f28"
+  },
+  "proposal": {
+    "strategy": "post-recovery-world-frame-command",
+    "hypothesis": "The Mission command is authored in the world frame, but a newly reset locomotion child takes the legacy body-forward path until the first command transition. Enabling world-frame tracking only after recovery should preserve ordinary approach behavior while making resumed motion independent of the robot's changed heading.",
+    "expectedEffect": "Improve signed resume and redirect progress in exact Missions without changing recovery dynamics, pre-impact locomotion, or no-fall command regressions."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-exact: yaw-overshoot regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 27,
+      "previousViolationSeverity": 71.28320030421216,
+      "candidateViolationSeverity": 61.374177048311374,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "41fbbe52cf24df66d4b3a998b83f7bd7dd2f1f797acba58f178afbb5b196034f"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right",
+    "seed": 7202,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-exact: yaw-overshoot regressed from passing to failing",
+    "candidateScoreDelta": -0.3062531312834835,
+    "weightedScoreDelta": -0.3062531312834835
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-bddc07b879ffdfe9",
+    "runKey": "bddc07b879ffdfe9d5be8b4839aecd19c4a10ef524802fc23839512a915c4d8c",
+    "resultHash": "b05d30b8795891726da016442ed11a36be1e07503a78dee2a55942e74e70791d",
+    "artifactHash": "0ad66542eb403c90613d68a44d0cd2923d4a736686d2c4b7d9faf68027660363",
+    "manifestHash": "db205de0418c380ce88664f004e1b2ff2ee6667357eb46a2cb4f57b3c6f4ec86",
+    "metricsHash": "22a62d52d0fb0589e1289831f8f6c8ac0084b0fc393f0a7df09cea7957e24bc4",
+    "scoreHash": "502fb40f90e23bf45dd5e0078c055968ba45241e52d88253b28ff6e3c66d2f42",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.61090660044154
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-83109ffbfcc7f6ac",
+    "runKey": "83109ffbfcc7f6acd9910c2e44ff7fe912a30d1241802f3b6c27600431b53145",
+    "resultHash": "2490c5a56571dfcec163a476bc4e526d52a2aac92a06c116fb4ae8f874fc84f8",
+    "artifactHash": "9b345dfd11b6cf5be6fcd3ff02ed6e04a1173041a632177134de8ba2ccf1024d",
+    "manifestHash": "c45c9a8123cadbc693fd87ef0741c67cf2e3e91b5f48bb35e2854983354bba65",
+    "metricsHash": "f140b0ca7f17a67b0d5b3eff6f91224e6542693808cc71dea32b8978e5a08b0b",
+    "scoreHash": "b44db178d0e51b032f2a1f2ec62365090430772dbbb023805ae3362c93d73d68",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.30465346915805
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

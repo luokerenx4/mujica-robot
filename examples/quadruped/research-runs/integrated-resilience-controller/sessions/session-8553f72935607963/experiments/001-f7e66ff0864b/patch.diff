@@ -1,0 +1,30 @@
+diff --git a/before/controllers/behavior-supervisor/controller.py b/after/controllers/behavior-supervisor/controller.py
+index f279917..2d4ca81 100644
+--- a/before/controllers/behavior-supervisor/controller.py
++++ b/after/controllers/behavior-supervisor/controller.py
+@@ -27,11 +27,17 @@ class BehaviorSupervisorController:
+             "hipAmplitude": self.locomotion.config["hipAmplitude"],
+             "kneeAmplitude": self.locomotion.config["kneeAmplitude"],
+         }
++        self.base_force_world_frame_tracking = bool(
++            self.locomotion.config.get("forceWorldFrameTracking", False)
++        )
+         self.reset(0)
+ 
+     def reset(self, seed: int) -> None:
+         self.seed = seed
+         self.locomotion.config.update(self.base_locomotion_gait)
++        self.locomotion.config["forceWorldFrameTracking"] = (
++            self.base_force_world_frame_tracking
++        )
+         self.locomotion.reset(seed)
+         self.recovery.reset(seed)
+         self.mode = "uninitialized"
+@@ -117,6 +123,7 @@ class BehaviorSupervisorController:
+             self.handoff_streak = 0
+         elif mode == "settling":
+             self.handoff_streak = 0
++            self.locomotion.config["forceWorldFrameTracking"] = True
+             self.locomotion.reset(self.seed + self.transition_count)
+             self.locomotion_time_origin = time_seconds
+         elif mode == "locomotion":

@@ -1,0 +1,60 @@
+{
+  "version": 3,
+  "id": "integrated-resilience-curriculum",
+  "name": "Continuous integrated-Mission residual PPO progression",
+  "assembly": "resilient-command-conditioned-history-3dof",
+  "trainer": "resilient-residual-ppo",
+  "priorController": "behavior-supervisor",
+  "totalSteps": 8192,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0001,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.1,
+  "entropyCoefficient": 0,
+  "residualScale": 0.017,
+  "residualPenalty": 6,
+  "qualityReward": {
+    "jointAcceleration": 0,
+    "bodyAngularAcceleration": 0,
+    "actionSlew": 0,
+    "actuatorSaturation": 0,
+    "footSlip": 0,
+    "footImpact": 0
+  },
+  "missionReward": {
+    "commandProgress": 3,
+    "velocityTracking": 0.5,
+    "stopStability": 1
+  },
+  "mission": {
+    "task": "integrated-resilience-mission",
+    "scenarios": [
+      "mission-impact-left",
+      "mission-impact-right"
+    ]
+  },
+  "progression": [
+    {
+      "id": "recover-resume-and-redirect-exact",
+      "throughPhase": "redirect",
+      "untilStep": 2600,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+    },
+    {
+      "id": "complete-mission-exact",
+      "throughPhase": "stop",
+      "untilStep": 4400,
+      "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+    },
+    {
+      "id": "complete-mission-randomized",
+      "throughPhase": "stop",
+      "untilStep": 8192,
+      "domainProfile": "quadruped-resilient-mission-v1"
+    }
+  ],
+  "promotionBenchmark": "integrated-resilience-mission"
+}

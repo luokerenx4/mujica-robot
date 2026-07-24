@@ -1,0 +1,70 @@
+{
+  "version": 4,
+  "id": "001-a3c8c68e13a6",
+  "experimentHash": "a3c8c68e13a60d6ac3c4d9860e1096e5b9f308701bc99d81207a9063d610279a",
+  "sequence": 1,
+  "sessionId": "session-08d65a7ddd281561",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "eaeced612b8c6aa8e278376ce87e34fc3cfccfb5edf2259a558f11513401a760",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "standing-pd-recovery-handoff",
+    "hypothesis": "The exact Mission reaches a qualified stand, but the recovery child keeps advancing and reclassifies the pose during the cross-fade. Tracking the fixed standing target with live joint feedback should prevent a second recovery maneuver without freezing stale torques.",
+    "expectedEffect": "Keep exact Missions upright through settling, enter locomotion without a recovery pose change, improve post-recovery tracking, and preserve isolated self-righting and recovery-handoff gates."
+  },
+  "policyId": null,
+  "score": -18.840568406606046,
+  "delta": -57.77560137117689,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: unsettled-yaw regressed from passing to failing",
+      "impact-left-exact: self-righting regressed from passing to failing",
+      "impact-left-exact: stable-stand-time regressed from passing to failing",
+      "impact-left-exact: stable-standing-dwell regressed from passing to failing",
+      "impact-left-exact: score-regression regressed from passing to failing",
+      "impact-right-exact: unsettled-yaw regressed from passing to failing",
+      "impact-right-exact: self-righting regressed from passing to failing",
+      "impact-right-exact: stable-stand-time regressed from passing to failing",
+      "impact-right-exact: stable-standing-dwell regressed from passing to failing",
+      "impact-right-exact: score-regression regressed from passing to failing",
+      "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+      "recovery-handoff: left-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: left-forward: signed-forward-progress regressed from passing to failing",
+      "recovery-handoff: right-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: right-forward: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 32,
+    "previousViolationSeverity": 71.28320030421216,
+    "candidateViolationSeverity": 157.54232153448402,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "af24baaa1926cb92677fe611157ddd4cbff9cabd3738a651fda021f07e31e381",
+    "acceptedRunId": "run-6ceff1df028f3244",
+    "candidateRunId": "run-514bc95efd177c96",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 76966,
+  "completed": true
+}

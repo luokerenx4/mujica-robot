@@ -247,10 +247,53 @@ Mission. The next morphology experiment must jointly change geometry, contact
 workspace, and leg/waist sequencing rather than trying another isolated gain or
 sign.
 
-Development Work Order `development-work-order-0981e41eb1643ca7` now routes the
+Development Work Order `development-work-order-0ee33d0b4224cd04` now routes the
 same locked Mission blockers into three parallel bounded lanes:
 complete-design, Controller code, and RL Policy. None may promote from its
 local training or diagnostic score.
+
+## Recovery-to-locomotion control result
+
+The continuous Mission exposed a fault that the isolated recovery and
+locomotion Skills could not reveal. Every authored planar command is in the
+world frame, but the Program Controller resumed its legacy body-forward
+locomotion after recovery. Once an impact and self-righting maneuver changed
+heading, body-forward was no longer task-forward.
+
+Seven governed Controller experiments tested the handoff without changing the
+Task, Scenario, Objective, seeds, gates, or Benchmark:
+
+- holding the last recovery torque through handoff raised violations from
+  `26 → 46`; stale recovery torque is not a safe bridge;
+- replacing the dynamic recovery tail with immediate standing PD lost the
+  transient contact qualification needed to remain upright;
+- unconditional world-frame tracking corrected direction but caused a
+  mirrored exact-impact yaw regression;
+- gain-only yaw changes moved that regression between cases; and
+- measured-heading-conditioned handoff preserved the exact-case gates while
+  lowering normalized violation severity `71.283 → 59.194`.
+
+The kept experiment `001-950524569565` uses only the observed base quaternion:
+after qualified recovery it restores world-frame tracking and selects bounded
+yaw authority from the measured handoff heading. It does not branch on hidden
+Scenario or seed identity. The locked Suite score improved
+`38.935033 → 39.119018` with the same 26 violations and no gate regression,
+publishing Robot Revision `quadruped-r-40206836cd00`.
+
+Development Review `development-review-161b2ff0add84e0f` makes the remaining
+priority explicit: the two degraded-impact Cases are the top-ranked blockers,
+while exact recovery and the atomic self-righting/handoff witnesses remain
+passing.
+
+PPO was then rerun on this stronger program prior. Residual scales `0.02`,
+`0.01`, and `0.017` all reduced normalized violation severity, but none passed
+the lexicographic promotion boundary. The `0.02` Policy improved score and
+removed one aggregate violation, then exceeded the right-exact yaw gate by
+`0.021 rad/s`. The safer `0.01` and interpolated `0.017` Policies preserved
+the gates but did not beat the selected Controller. All three remain immutable
+`REVERT` evidence. The result is deliberately asymmetric: ML remains a valid
+intervention lane, but a learned layer is not promoted merely because it has
+lower training loss or a better non-authoritative aggregate.
 
 ## HCI
 

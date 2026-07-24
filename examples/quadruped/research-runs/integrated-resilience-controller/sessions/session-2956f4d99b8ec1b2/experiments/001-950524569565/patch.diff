@@ -1,0 +1,65 @@
+diff --git a/before/controllers/behavior-supervisor/controller.py b/after/controllers/behavior-supervisor/controller.py
+index f279917..44a8500 100644
+--- a/before/controllers/behavior-supervisor/controller.py
++++ b/after/controllers/behavior-supervisor/controller.py
+@@ -27,11 +27,28 @@ class BehaviorSupervisorController:
+             "hipAmplitude": self.locomotion.config["hipAmplitude"],
+             "kneeAmplitude": self.locomotion.config["kneeAmplitude"],
+         }
++        self.base_force_world_frame_tracking = bool(
++            self.locomotion.config.get("forceWorldFrameTracking", False)
++        )
++        self.base_post_recovery_yaw_gains = {
++            key: float(self.locomotion.config[key])
++            for key in (
++                "yawHipDifferential",
++                "negativeYawHipDifferential",
++                "yawAbductionDifferential",
++                "negativeYawAbductionDifferential",
++            )
++        }
+         self.reset(0)
+ 
+     def reset(self, seed: int) -> None:
+         self.seed = seed
+         self.locomotion.config.update(self.base_locomotion_gait)
++        self.locomotion.config["forceWorldFrameTracking"] = (
++            self.base_force_world_frame_tracking
++        )
++        self.locomotion.config.update(self.base_post_recovery_yaw_gains)
++        self.post_recovery_yaw_authority_scale = 1.0
+         self.locomotion.reset(seed)
+         self.recovery.reset(seed)
+         self.mode = "uninitialized"
+@@ -117,6 +134,11 @@ class BehaviorSupervisorController:
+             self.handoff_streak = 0
+         elif mode == "settling":
+             self.handoff_streak = 0
++            self.locomotion.config["forceWorldFrameTracking"] = True
++            for key, value in self.base_post_recovery_yaw_gains.items():
++                self.locomotion.config[key] = (
++                    self.post_recovery_yaw_authority_scale * value
++                )
+             self.locomotion.reset(self.seed + self.transition_count)
+             self.locomotion_time_origin = time_seconds
+         elif mode == "locomotion":
+@@ -153,6 +175,19 @@ class BehaviorSupervisorController:
+                 else self.config["minimumRecoveryTargetSteps"]
+             )
+             if child["targetStreakSteps"] >= required_target_steps:
++                quaternion = np.asarray(
++                    observation["base-orientation"], dtype=np.float64
++                )
++                w, x, y, z = quaternion
++                handoff_yaw = float(
++                    np.arctan2(
++                        2.0 * (w * z + x * y),
++                        1.0 - 2.0 * (y * y + z * z),
++                    )
++                )
++                self.post_recovery_yaw_authority_scale = (
++                    0.75 if handoff_yaw >= 0.0 else 1.0
++                )
+                 gait = self.config["postRecoveryGaitByPose"][self.recovery_pose]
+                 self.locomotion.config["hipAmplitude"] = gait["hipAmplitude"]
+                 self.locomotion.config["kneeAmplitude"] = gait["kneeAmplitude"]

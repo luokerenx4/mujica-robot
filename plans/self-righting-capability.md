@@ -93,6 +93,16 @@ Treat the waist as a testable design hypothesis. Promote it only if the rigid to
 - The next waist attempt must co-design split-torso geometry, contact
   workspace, and leg/waist sequencing. An isolated self-righting gain cannot
   justify a morphology that fails the continuous mission.
+- Continuous Mission testing found a post-recovery coordinate-frame defect:
+  the Task requested world-frame motion while the resumed gait initially used
+  body-forward tracking. Kept Controller experiment `001-950524569565` derives
+  the handoff heading from the observed quaternion, restores world-frame
+  tracking, and publishes Revision `quadruped-r-40206836cd00`. Suite score
+  improved `38.935033 → 39.119018` with no gate regression.
+- Three PPO micro-residuals on that stronger prior were rejected. One crossed
+  the right-exact yaw gate; two safer variants failed to beat the program
+  Controller. Degraded-impact recovery, rather than residual scale, remains
+  the next self-righting bottleneck.
 
 ## Progress log
 
@@ -109,5 +119,11 @@ Treat the waist as a testable design hypothesis. Promote it only if the rigid to
 - 2026-07-24: Re-opened the waist as a complete-robot hypothesis on the
   18-second Mission Suite. Research session `session-2c2867adccdca750`
   preserved two reverted source experiments, and current Work Order
-  `development-work-order-0981e41eb1643ca7` routes complete-design,
+  `development-work-order-0981e41eb1643ca7` routed complete-design,
   Controller-code, and RL-policy work under the same locked acceptance test.
+- 2026-07-24: Promoted measured-heading post-recovery handoff as Revision
+  `quadruped-r-40206836cd00`. Three subsequent residual PPO experiments were
+  preserved as negative evidence; none passed the unchanged Mission authority.
+- 2026-07-24: Published Review `development-review-161b2ff0add84e0f` and Work
+  Order `development-work-order-0ee33d0b4224cd04`; degraded left/right impact
+  recovery is now the highest-priority shared blocker.

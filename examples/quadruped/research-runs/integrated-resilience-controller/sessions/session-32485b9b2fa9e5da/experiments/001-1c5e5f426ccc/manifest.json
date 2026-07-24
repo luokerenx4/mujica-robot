@@ -1,0 +1,54 @@
+{
+  "version": 4,
+  "id": "001-1c5e5f426ccc",
+  "experimentHash": "1c5e5f426ccc8495ae7bb7f42dcabaf1e197fbb588b5359ccc46ec6d11b1dc56",
+  "sequence": 1,
+  "sessionId": "session-32485b9b2fa9e5da",
+  "researchId": "integrated-resilience-controller",
+  "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+  "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+  "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "44c160b1d6ecc360f600268d4a996651bdf94a49a33a4f1b6fee630b45fdf25e",
+  "researcherChangedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "changedPaths": [
+    "controllers/behavior-supervisor/controller.py"
+  ],
+  "proposal": {
+    "strategy": "post-recovery-world-frame-with-gentle-yaw-release",
+    "hypothesis": "Increasing post-recovery yaw damping from 0.2 to 0.3 amplified the contact-driven reversal and added an unsettled transition. Retaining world-frame tracking while reducing this gain to 0.1 should make the yaw-to-zero release less aggressive.",
+    "expectedEffect": "Retain the world-frame score and severity improvement while bringing right-exact maximum yaw overshoot below 1.0 rad/s and keeping every yaw transition settled, without changing recovery dynamics or no-fall regressions."
+  },
+  "policyId": null,
+  "score": 38.89572863733718,
+  "delta": -0.039304327233665504,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-exact: yaw-overshoot regressed from passing to failing",
+      "impact-right-exact: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 26,
+    "candidateViolationCount": 28,
+    "previousViolationSeverity": 71.28320030421216,
+    "candidateViolationSeverity": 64.68851415247,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "b981ba6f30687cdf3a903f0e03156697231dea9f570a4d6b17099f478d35e71a",
+    "acceptedRunId": "run-bddc07b879ffdfe9",
+    "candidateRunId": "run-f9af0947446ce6e2",
+    "caseId": "impact-right-exact"
+  },
+  "durationMs": 97621,
+  "completed": true
+}

@@ -178,6 +178,22 @@ This is preserved as negative ML evidence. The side-recovery trajectory has a na
 
 The four exact resting poses prove a bounded simulation capability, not arbitrary recovery. The next controller slice added a behavior supervisor and a separate fixed `recovery-handoff` Benchmark. One deployed Program Controller now detects a resting fall, runs the phased recovery, cross-fades through a bounded handoff, and resumes the pending world-frame command. All four exact-pose handoff cases pass with zero violations, while side-pose progress remains an explicitly weak capability floor. See [Locomotion and recovery behavior supervision](behavior-supervision.md).
 
+The complete no-reset Mission later revealed that “resume the command” also
+requires preserving its coordinate frame. Recovery can change robot heading;
+the previous gait initially treated a world-frame forward command as
+body-forward after handoff. Governed experiment `001-950524569565` restores
+world-frame tracking only after qualified recovery and bounds yaw authority
+from the measured quaternion heading. It improved the locked Suite from
+`38.935033` to `39.119018`, reduced normalized violation severity from
+`71.283` to `59.194`, preserved the same violation count and every gate, and
+published Revision `quadruped-r-40206836cd00`.
+
+Three PPO micro-residual experiments on this stronger prior did not promote.
+The most active residual improved aggregate evidence but crossed a mirrored
+exact-impact yaw gate; two safer variants stayed inside the gates but did not
+beat the Program Controller. These failures narrow the next target to the
+degraded-impact recovery basin rather than more residual-scale interpolation.
+
 A separate robustness suite must still vary initial pose, contact, friction, mass, and actuator response without changing either locked witness.
 
 Studio presents recovery outcome deltas separately from locomotion-quality burdens and exposes Controller phase, detected pose, supporting feet, target streak, target occupancy, stable dwell, time to stand, joint-limit margin, self-contact, and final pass/fail at the selected frame. The copied Agent context carries the same recovery evidence.

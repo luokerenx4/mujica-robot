@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-policy",
+    "labHash": "4f68aef28c30563c1a34697d089b1c2e8432a7eaa2bd95316a5e96b4b760ea1c",
+    "programHash": "ec2f0c90e5f8d4e94eccd1f238578a9174577015e2acef7cf806c11952ed45bb",
+    "benchmarkLockHash": "bb8ed5aea3ab0e4cfe47e0ec69f42f985f28b2c05daf5092cad0af4fd60fcf22",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-272c1b6e1a54241f",
+    "experimentId": "001-ca6e993ece3b",
+    "experimentHash": "ca6e993ece3b95f6c430d9a42062d6ae67b5f40d0652af507b0af6926408dea5"
+  },
+  "proposal": {
+    "strategy": "interpolated-safe-useful-micro-residual",
+    "hypothesis": "Residual 0.02 outperformed the new Controller but exceeded right-exact yaw by 0.021 rad/s; residual 0.01 preserved gates but fell below the Controller. Interpolating to 0.017 with proportional prior regularization should stay inside the measured yaw boundary while retaining enough downstream correction to beat the reference.",
+    "expectedEffect": "Keep right-exact yaw overshoot at or below 1.0 rad/s, preserve all reference gates, and score above Robot Revision quadruped-r-40206836cd00 on the same locked Mission Suite."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "reference-controller: no-lexicographic-improvement"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 26,
+      "previousViolationSeverity": 70.97541871272351,
+      "candidateViolationSeverity": 61.880516117503156,
+      "feasibilityImproved": false,
+      "severityImproved": true,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "cd7bd5ac6b11f4b4e67dc22f5ef74e4864dc49a7d3af3dbcdb2df3d9683fcc89"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": 0.8570695058560034,
+    "weightedScoreDelta": 0.8570695058560034
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-aa0fb8e8fabfac8f",
+    "runKey": "aa0fb8e8fabfac8f2601226f9a02f14462bf381729a6908d26e1d5f40d7081e7",
+    "resultHash": "0a07afb157fab60294701526a8ae970b14d31df130776ffe0478cbb36511542b",
+    "artifactHash": "30d1653c18128060da006b76b3ecaa62b4a534dcb3559993227b8d7ce6029e3f",
+    "manifestHash": "6a56b924d0d2a0a2eb9603f8625f772caa161a75963e6655f051e97b54d7cafe",
+    "metricsHash": "579e8b16f961afa3e1b1c036d9253938e8f4af000564092325d12b0f870077ab",
+    "scoreHash": "b31258f25702ba54e934756380f0daf8877780a9dbd790c3f9afc1c0b2d60b00",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "integrated-resilience-curriculum-policy",
+    "score": 99.43718293283895
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-9d051c7f78a824e4",
+    "runKey": "9d051c7f78a824e41ff38591da58ac5abe47a887090b13b57a839c2624bf9a86",
+    "resultHash": "4e8d52a66a80e99ddfcc463e79f349b2967abae1021f7fff40aafff88c240c70",
+    "artifactHash": "fd06e6b8057ea63423a0dab13fc31a52d5d079cbabf1d48b2c329fe323c88fce",
+    "manifestHash": "cbc5258c3365a40c793a63291596e5b2084d24fbebe1ba4af5519ac06986c1df",
+    "metricsHash": "1d2ad6cb0b24702e70114c94cf30cd7e0fa0afc4dcdc58b66ee066ce153061cd",
+    "scoreHash": "f9754458e396ba0ee4de3cd407188f77303634d286141f7f9d711efe5610e8ed",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "integrated-resilience-curriculum-policy",
+    "score": 100.29425243869495
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

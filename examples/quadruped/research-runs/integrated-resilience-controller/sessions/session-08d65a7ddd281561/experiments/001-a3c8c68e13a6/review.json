@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-08d65a7ddd281561",
+    "experimentId": "001-a3c8c68e13a6",
+    "experimentHash": "a3c8c68e13a60d6ac3c4d9860e1096e5b9f308701bc99d81207a9063d610279a"
+  },
+  "proposal": {
+    "strategy": "standing-pd-recovery-handoff",
+    "hypothesis": "The exact Mission reaches a qualified stand, but the recovery child keeps advancing and reclassifies the pose during the cross-fade. Tracking the fixed standing target with live joint feedback should prevent a second recovery maneuver without freezing stale torques.",
+    "expectedEffect": "Keep exact Missions upright through settling, enter locomotion without a recovery pose change, improve post-recovery tracking, and preserve isolated self-righting and recovery-handoff gates."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing",
+        "impact-left-exact: self-righting regressed from passing to failing",
+        "impact-left-exact: stable-stand-time regressed from passing to failing",
+        "impact-left-exact: stable-standing-dwell regressed from passing to failing",
+        "impact-left-exact: score-regression regressed from passing to failing",
+        "impact-right-exact: unsettled-yaw regressed from passing to failing",
+        "impact-right-exact: self-righting regressed from passing to failing",
+        "impact-right-exact: stable-stand-time regressed from passing to failing",
+        "impact-right-exact: stable-standing-dwell regressed from passing to failing",
+        "impact-right-exact: score-regression regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing",
+        "recovery-handoff: left-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: left-forward: signed-forward-progress regressed from passing to failing",
+        "recovery-handoff: right-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: right-forward: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 32,
+      "previousViolationSeverity": 71.28320030421216,
+      "candidateViolationSeverity": 157.54232153448402,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "16bdce6fbbf01003948e723223967d3da5a8a8e10f066bc2b55aedd6bce45055"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: unsettled-yaw regressed from passing to failing",
+    "candidateScoreDelta": -115.22015470561055,
+    "weightedScoreDelta": -115.22015470561055
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-6ceff1df028f3244",
+    "runKey": "6ceff1df028f32449084b915743483efa70603f1966c16d8935a58bb4172f05b",
+    "resultHash": "e53cb1eb748579bb42ca755527c4aae5a935d0b26aa6697c3b90336dc0544f47",
+    "artifactHash": "5286e8057c3200fdb797b547f6707f5067633ea6c75fd5f5aa72062ac65f7ca2",
+    "manifestHash": "e6c8e444dd75caca3e067c8d153d92fca411dc96c484ce26ff375eafb9130576",
+    "metricsHash": "3fb19c597135f3873021cef5b338616947e973b6241090274d276ab32d65bd16",
+    "scoreHash": "cebf894f806c2a8077dbae37fc2f1f488e85f6da6a3aa45586f5d68adff931f7",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.47305707741964
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-514bc95efd177c96",
+    "runKey": "514bc95efd177c96265e39f9aaa603e52657d45ee7c651b2cb8689eedabd2ef4",
+    "resultHash": "2daaaa543a3a487a916ae9866e3e65009bd25763d2e8fce4dfc116c872128f7a",
+    "artifactHash": "215305815fa215116f454e1968aabef963b4de966293592b58eb6355a7e59e5e",
+    "manifestHash": "690b01f36d9adb92845ef855f9184dc640ccdb53e29e043ae7f6d05827274720",
+    "metricsHash": "084f870859a76d2eef8d85601b0795bf7cf8ddaebf1398f168cd2cff8af602b3",
+    "scoreHash": "02429500ad632bf2efce71061f1bb7a97c7ef36fd55baf5e6c232fc22e50f87e",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": -15.747097628190915
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

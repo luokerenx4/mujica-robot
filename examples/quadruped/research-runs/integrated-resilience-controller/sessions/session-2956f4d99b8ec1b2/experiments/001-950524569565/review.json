@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-controller",
+    "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+    "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+    "benchmarkLockHash": "6b434079493726328b1877b8fa181f14b06f1a647a90cbb5fefec053c044933e",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-2956f4d99b8ec1b2",
+    "experimentId": "001-950524569565",
+    "experimentHash": "9505245695659e8ffd31c56a32b1c806959e9a0ce16454272f5f7e274cb84887"
+  },
+  "proposal": {
+    "strategy": "measured-heading-conditioned-yaw-authority",
+    "hypothesis": "The two exact recoveries reach the same pose state with opposite measured yaw signs. Full yaw authority keeps the negative-heading case settled, while 75 percent authority keeps the positive-heading case below the overshoot gate. Selecting that bounded authority from measured handoff yaw should combine both safe responses without Scenario knowledge.",
+    "expectedEffect": "Keep both exact Missions below yaw overshoot and settling gates while retaining the world-frame score/severity improvement and preserving pre-impact, recovery, and no-fall regressions."
+  },
+  "judge": {
+    "verdict": "KEEP",
+    "decision": {
+      "verdict": "KEEP",
+      "gateReasons": [],
+      "previousViolationCount": 26,
+      "candidateViolationCount": 26,
+      "previousViolationSeverity": 71.28320030421216,
+      "candidateViolationSeverity": 59.19363004535584,
+      "feasibilityImproved": false,
+      "severityImproved": true,
+      "scoreImproved": true,
+      "selectionReason": "lower-gate-violation-severity"
+    },
+    "decisionHash": "46a12e7bf0b826e8e02cdc0b409c1ce09b286458aa039ee97335f52653a679c7"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": 0.8083097111036182,
+    "weightedScoreDelta": 0.8083097111036182
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-6ceff1df028f3244",
+    "runKey": "6ceff1df028f32449084b915743483efa70603f1966c16d8935a58bb4172f05b",
+    "resultHash": "e53cb1eb748579bb42ca755527c4aae5a935d0b26aa6697c3b90336dc0544f47",
+    "artifactHash": "5286e8057c3200fdb797b547f6707f5067633ea6c75fd5f5aa72062ac65f7ca2",
+    "manifestHash": "e6c8e444dd75caca3e067c8d153d92fca411dc96c484ce26ff375eafb9130576",
+    "metricsHash": "3fb19c597135f3873021cef5b338616947e973b6241090274d276ab32d65bd16",
+    "scoreHash": "cebf894f806c2a8077dbae37fc2f1f488e85f6da6a3aa45586f5d68adff931f7",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 99.47305707741964
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-8d1432a491384f78",
+    "runKey": "8d1432a491384f78cd42ae364224d999666eb12f74612ccc2a46c6a548f44683",
+    "resultHash": "b1aa8a065635f9e905c4f259a750b75c53e2ee42bdf3a25681b164bab35a0421",
+    "artifactHash": "6ce0fe49f090e20bd3bf6ec4f7ee8aff842fbd89fdf5166bf880b8cf80f693f4",
+    "manifestHash": "2cbb6b5c92c316818662751abd338da4c71c47e5739651dadedf6434c4af45e8",
+    "metricsHash": "1629e1a0b6c23f446dd6d5d8eed3295dc2c14aff6689dc1fb9fe206ac99f6184",
+    "scoreHash": "ce89344a00f4ca2b6da751bc813c45a41a2d5f1fbd378d05561a0f97b0f980fe",
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor",
+    "score": 100.28136678852326
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}
