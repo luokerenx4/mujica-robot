@@ -455,11 +455,16 @@ describe("Robot Assembly compiler", () => {
         { id: "recovery-handoff-skill", role: "skill", weight: 0.35 },
         { id: "integrated-mission", role: "mission", weight: 0.65 },
       ],
+      missionReward: { commandProgress: 3, velocityTracking: 0.5, stopStability: 1 },
     });
     if (curriculum.version !== 2) throw new Error("Expected curriculum Training");
     expect(trainingSchema.safeParse({
       ...curriculum,
       curriculum: curriculum.curriculum.filter((entry) => entry.role === "skill"),
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      missionReward: { ...curriculum.missionReward, commandProgress: 21 },
     }).success).toBe(false);
   });
 

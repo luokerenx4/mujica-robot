@@ -426,6 +426,11 @@ const trainingOptimizationFields = {
     jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
     actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),
   }).strict().optional(),
+  missionReward: z.object({
+    commandProgress: z.number().finite().min(0).max(20),
+    velocityTracking: z.number().finite().min(0).max(20),
+    stopStability: z.number().finite().min(0).max(20),
+  }).strict().optional(),
 };
 
 export const trainingSchema = z.union([

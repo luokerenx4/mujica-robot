@@ -1229,7 +1229,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-ed27657ccf518e43",
+      "--bundle", "hardware-f526c1659c07ec18",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

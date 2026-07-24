@@ -11,7 +11,7 @@ import mujoco
 import numpy as np
 
 from .controllers import load_policy_controller, load_program_controller
-from .environment import RobotEnvironment, compile_motion_command_schedule
+from .environment import RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from .io import atomic_directory, hash_file, hash_json, sha256_bytes, write_json
 
 
@@ -172,18 +172,6 @@ def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str
         "maximumYawRateOvershootRadPerSec": max((item["yawRateOvershootRadPerSec"] for item in transitions), default=0.0),
         "unsettledPlanarTransitionCount": sum(not item["planarSettled"] for item in transitions), "unsettledYawRateTransitionCount": sum(not item["yawRateSettled"] for item in transitions),
     }
-
-
-def active_mission_phase(task: dict[str, Any], time_seconds: float) -> dict[str, Any] | None:
-    phases = task.get("missionPhases")
-    if not phases:
-        return None
-    active = phases[0]
-    for phase in phases[1:]:
-        if float(phase["atSeconds"]) > time_seconds + 1e-9:
-            break
-        active = phase
-    return active
 
 
 def mission_phase_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any]) -> dict[str, Any] | None:

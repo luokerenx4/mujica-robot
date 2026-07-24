@@ -22,6 +22,10 @@ no-reset Missions.
 - [x] Studio shows phase evidence, actual Controller modes, A/B replay, and
   Skill/Mission training coverage.
 - [x] One real curriculum Policy is judged by the locked Mission Suite.
+- [x] Training reward uses phase-local displacement references and applies
+  Mission shaping only under learned-actor authority.
+- [x] Frozen Policy evidence records per-phase progress, reward, and actor
+  authority for Studio and Agent inspection.
 - [ ] Improve degraded-impact recovery and signed post-recovery progress
   without weakening the Suite.
 - [ ] Replace synthetic plant ranges with calibrated/HIL evidence before
@@ -44,14 +48,31 @@ no-reset Missions.
 - Policy `integrated-resilience-curriculum-c811d76190c264d3` is preserved as a
   `REVERT` Candidate with delta `-0.075186`; training reward remains
   diagnostic-only.
+- The first continuous reward used episode-start lateral displacement even
+  after the Mission changed command direction. That made correct displacement
+  from an earlier phase become a penalty in a later phase. Task v7 now resets
+  this training-only reference at each named phase; atomic Tasks are unchanged.
+- Mission reward is ignored while the Program Controller has exclusive
+  authority. This prevents PPO from claiming credit for self-righting actions
+  it did not control.
+- Three 8,192-step seeds scored `38.893505`, `38.853113`, and `38.871558`
+  against baseline `38.935033`. The selected seed remains `REVERT` with delta
+  `-0.041528`.
+- A 32,768-step run scored `38.637973`; more samples did not repair degraded
+  recovery and incurred the locked training-budget cost.
+- In the selected seed, actor exposure was 11.1% in `resume`, 19.5% in
+  `redirect`, 12.5% in `traverse`, and 24.0% in `stop`. One alternate seed
+  received zero Mission-phase actor authority, showing that the next bottleneck
+  is handoff/data availability rather than PPO budget alone.
 
 ## Next experiment
 
 Keep the Mission Suite frozen. Change only the governed training surface:
 
-1. assign signed downstream progress credit after recovery completion;
-2. emphasize recovery-completion and handoff transitions without allowing the
-   residual to perturb impact entry or self-righting;
-3. report phase-conditioned returns and actor authority;
-4. reject the experiment unless degraded recovery gates improve and no exact
+1. change the recovery-to-policy handoff or curriculum so successful Mission
+   episodes supply substantially more post-recovery actor data;
+2. retain phase-conditioned reward and authority evidence;
+3. preserve impact entry and self-righting as Program-only authority until a
+   separate governed experiment explicitly changes that safety boundary;
+4. reject every experiment unless degraded recovery gates improve and no exact
    Mission gate regresses.

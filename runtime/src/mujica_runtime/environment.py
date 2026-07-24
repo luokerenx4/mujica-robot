@@ -38,6 +38,18 @@ def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]
     return schedule
 
 
+def active_mission_phase(task: dict[str, Any], time_seconds: float) -> dict[str, Any] | None:
+    phases = task.get("missionPhases")
+    if not phases:
+        return None
+    active = phases[0]
+    for phase in phases[1:]:
+        if float(phase["atSeconds"]) > time_seconds + 1e-9:
+            break
+        active = phase
+    return active
+
+
 class RobotEnvironment:
     def __init__(self, model_path: Path, compiled: dict[str, Any], task: dict[str, Any], scenario: dict[str, Any], seed: int, domain_sample: dict[str, Any] | None = None):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
@@ -139,6 +151,10 @@ class RobotEnvironment:
             self.data.qvel[6:] += self.rng.normal(0.0, joint_velocity_noise, size=self.model.nv - 6)
         mujoco.mj_forward(self.model, self.data)
         self.initial_xy = self.data.qpos[:2].copy()
+        self.previous_xy = self.initial_xy.copy()
+        self.phase_initial_xy = self.initial_xy.copy()
+        initial_phase = active_mission_phase(self.task, 0.0)
+        self.active_phase_id = str(initial_phase["id"]) if initial_phase is not None else None
         self.step_index = 0
         self.previous_action.fill(0)
         self.last_commanded_action.fill(0)
@@ -236,6 +252,12 @@ class RobotEnvironment:
     def step(self, action: np.ndarray) -> StepResult:
         command_step = self.step_index
         target = self.motion_command(command_step)
+        mission_phase = active_mission_phase(self.task, command_step * self.control_dt)
+        mission_phase_id = str(mission_phase["id"]) if mission_phase is not None else None
+        if mission_phase_id != self.active_phase_id:
+            self.phase_initial_xy = self.data.qpos[:2].copy()
+            self.active_phase_id = mission_phase_id
+        step_initial_xy = self.data.qpos[:2].copy()
         previous_joint_velocity = self.data.qvel[6:].copy()
         previous_body_angular_velocity = self.data.qvel[3:6].copy()
         previous_foot_positions = self.foot_positions_world()
@@ -274,16 +296,21 @@ class RobotEnvironment:
         yaw_rate_error = abs(float(measured_motion[2] - target[2]))
         velocity_error = float(np.linalg.norm(measured_motion - target))
         target_speed = float(np.linalg.norm(target[:2]))
+        step_displacement_xy = self.data.qpos[:2] - step_initial_xy
         if target_speed > 1e-9:
             direction = target[:2] / target_speed
             forward_velocity = float(np.dot(self.data.qvel[:2], direction))
             normalized_progress_rate = float(np.clip(forward_velocity / target_speed, -1.0, 1.5))
-            planar_displacement = self.data.qpos[:2] - self.initial_xy
+            reference_xy = self.phase_initial_xy if int(self.task["version"]) == 7 else self.initial_xy
+            planar_displacement = self.data.qpos[:2] - reference_xy
             lateral_displacement = float(np.linalg.norm(planar_displacement - np.dot(planar_displacement, direction) * direction))
+            commanded_progress_delta = float(np.dot(step_displacement_xy, direction))
         else:
             forward_velocity = 0.0
             normalized_progress_rate = 0.0
-            lateral_displacement = float(np.linalg.norm(self.data.qpos[:2] - self.initial_xy))
+            reference_xy = self.phase_initial_xy if int(self.task["version"]) == 7 else self.initial_xy
+            lateral_displacement = float(np.linalg.norm(self.data.qpos[:2] - reference_xy))
+            commanded_progress_delta = 0.0
         upright = float(1.0 - min(1.0, np.linalg.norm(self.data.qpos[4:6])))
         energy = float(np.sum(np.abs(applied * self.data.qvel[6:])))
         smoothness = float(np.mean(np.square(applied - self.previous_action)))
@@ -326,4 +353,13 @@ class RobotEnvironment:
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = self.step_index >= self.max_steps
         self.previous_action = applied.copy()
-        return StepResult(self.observation(), float(reward), terminated, truncated, {"height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error, "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(), "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement, "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing, "commandedAction": action.copy(), "appliedAction": applied.copy(), "motionQuality": quality})
+        self.previous_xy = self.data.qpos[:2].copy()
+        return StepResult(self.observation(), float(reward), terminated, truncated, {
+            "height": height, "healthy": healthy, "velocityError": velocity_error, "planarVelocityError": planar_velocity_error, "yawRateError": yaw_rate_error,
+            "commandStep": command_step, "motionCommand": target.copy(), "measuredMotion": measured_motion.copy(),
+            "missionPhase": mission_phase_id, "missionIntent": mission_phase.get("intent") if mission_phase is not None else None,
+            "stepDisplacementXY": step_displacement_xy.copy(), "commandedProgressDeltaM": commanded_progress_delta,
+            "normalizedProgressRate": normalized_progress_rate, "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement,
+            "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing,
+            "commandedAction": action.copy(), "appliedAction": applied.copy(), "motionQuality": quality,
+        })

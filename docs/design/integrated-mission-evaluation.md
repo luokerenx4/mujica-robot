@@ -73,6 +73,32 @@ The first curriculum used:
 Sampling weights are intent, not evidence. The frozen Policy records observed
 coverage. Studio shows both the requested roles and actual step exposure.
 
+### Phase-conditioned credit assignment
+
+Continuous Missions require phase-local reward geometry. For Task v7, the
+Runtime resets the lateral-displacement reference at each authored phase
+boundary. Otherwise displacement that was correct during `approach` becomes a
+false lateral-drift penalty when `traverse` changes the commanded direction.
+Legacy atomic Tasks retain their episode-start reference.
+
+Training may add a bounded `missionReward` with three explicit terms:
+
+- signed command-direction progress for active `operate` and `resume` phases;
+- velocity tracking for those commanded-motion phases;
+- zero-command stability during `stop`.
+
+The extra terms are applied only while the learned actor has non-zero
+authority. They do not reward the Policy for recovery work performed entirely
+by the Program Controller, and they do not change Benchmark scores or gates.
+The frozen Policy records, per Mission phase, step exposure, active-actor
+fraction, effective residual authority, signed progress, base reward, shaped
+reward, quality penalty, and final learning reward.
+
+Curriculum `weight` is the probability of selecting an entry when an episode
+starts. It is not a step quota: Skills and Missions have different durations,
+so actual step exposure can differ substantially. Frozen coverage is the
+evidence.
+
 ## First measured result
 
 Training `training-d153cd89a44e2381` produced Policy
@@ -98,13 +124,48 @@ ML experiment must improve the reward/credit assignment around recovery
 completion and downstream signed task progress, then win the same locked
 Mission Suite.
 
+The next implementation keeps that negative Policy and verdict immutable. It
+adds phase-local reward references and authority-gated Mission shaping, then
+trains new content-addressed Policies. No reward increase can promote a Policy:
+the unchanged Mission Suite remains the only promotion boundary.
+
+## Phase-conditioned experiment result
+
+Three 8,192-step seeds and one 32,768-step run were trained with identical
+reward weights. Their locked Mission-Suite scores were:
+
+| Policy | Seed / steps | Score |
+| --- | ---: | ---: |
+| `integrated-resilience-curriculum-08ecc97b4a83b22f` | 260726 / 8,192 | 38.893505 |
+| `integrated-resilience-curriculum-3b517fde5fe26c7b` | 260727 / 8,192 | 38.853113 |
+| `integrated-resilience-curriculum-2aae7945a770fa6d` | 260728 / 8,192 | 38.871558 |
+| `integrated-resilience-curriculum-0098773f246c8f49` | 260726 / 32,768 | 38.637973 |
+
+The best new Policy was still rejected against baseline `38.935033` with delta
+`-0.041528`. Exact cases self-right but retain negative signed Mission
+progress. Degraded cases still fail recovery and terminal posture. The longer
+run reduced the magnitude of exact-case backward progress but did not improve
+degraded recovery, and its larger frozen training budget incurred the locked
+complexity cost.
+
+The new diagnostics explain a second bottleneck: Policy authority is sparse
+and outcome-dependent. In the selected seed it was absent during approach and
+impact, effectively absent during recovery, and active on only 11.1% of
+`resume`, 19.5% of `redirect`, 12.5% of `traverse`, and 24.0% of `stop`
+samples. Another seed received no Mission-phase authority at all. Additional
+PPO steps alone therefore repeat mostly Program-only experience. The next
+experiment should change the handoff/data curriculum or the Controller
+boundary, not merely increase the budget or weaken the Judge.
+
 ## HCI
 
 Studio renders a `Continuous Mission · one Episode, no reset` panel above the
 synchronized A/B replay. A phase row seeks directly to its start time and shows
 expected task intent beside actual Controller modes. The Policy panel exposes
 Skill/Mission step counts, residual authority, domain coverage, lineage, and
-the bound Candidate.
+the bound Candidate. New Policies additionally expose per-phase signed
+progress, actor exposure, and base/shaped/learning reward so a human and Coding
+Agent can distinguish “not trained here” from “trained here and got worse.”
 
 `Copy Mission context for Agent` exports the frozen phase measurements and
 exact headless reproduction command. Its authority boundary is explicit:

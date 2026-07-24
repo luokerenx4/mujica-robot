@@ -81,10 +81,12 @@ async function policyArtifacts(projectRoot: string): Promise<Array<Record<string
         elapsedSeconds: trainingResult.elapsedSeconds,
         residualScale: training.residualScale ?? null,
         residualPenalty: training.residualPenalty ?? null,
+        missionReward: training.missionReward ?? null,
         domainProfileId: manifest.domainProfileId ?? domainProfile?.id ?? null,
         domainCoverage: coverage,
         variedDomainParameters,
         curriculumCoverage: metrics.curriculumCoverage ?? null,
+        missionPhaseCoverage: metrics.missionPhaseCoverage ?? null,
         activePolicyFraction: activeFractions.length ? {
           minimum: Math.min(...activeFractions),
           mean: activeFractions.reduce((sum, value) => sum + value, 0) / activeFractions.length,
@@ -790,6 +792,7 @@ function renderPolicyEvidence(){
   const authority=policy.authority?.residualGate;
   const varied=policy.training?.variedDomainParameters??[];
   const curriculum=Object.entries(policy.training?.curriculumCoverage??{});
+  const missionPhases=Object.values(policy.training?.missionPhaseCoverage??{});
   const skillExposure=curriculum.filter(([,item])=>item.role==='skill').reduce((sum,[,item])=>sum+Number(item.steps??0),0);
   const missionExposure=curriculum.filter(([,item])=>item.role==='mission').reduce((sum,[,item])=>sum+Number(item.steps??0),0);
   q('#policy-stats').innerHTML=[
@@ -806,6 +809,8 @@ function renderPolicyEvidence(){
     +' · mean residual gate '+(Number.isFinite(Number(policy.training?.meanResidualGateScale))?esc(Number(policy.training.meanResidualGateScale).toFixed(3)):'not gated')
     +'<br>domain <code>'+esc(policy.training?.domainProfileId??'none')+'</code> · '+(varied.length?'varied '+varied.map(esc).join(', '):'no sampled variation')
     +(curriculum.length?'<br>curriculum '+curriculum.map(([id,item])=>'<code>'+esc(id)+'</code> ['+esc(item.role)+'] '+esc(Number(item.steps??0).toLocaleString())+' steps · '+esc(item.episodesCompleted)+'/'+esc(item.episodesStarted)+' episodes completed').join('<br>'):'')
+    +(missionPhases.length?'<br><strong>Mission phase learning evidence</strong>'+missionPhases.map(item=>'<br><code>'+esc(item.phase)+'</code> ['+esc(item.intent)+'] '+esc(Number(item.steps??0).toLocaleString())+' steps · actor '+esc(Number((item.activePolicyFraction??0)*100).toFixed(1))+'% · signed progress '+esc(Number(item.commandedProgressM??0).toFixed(3))+' m · reward base/shaped/learned '+esc(Number(item.meanBaseReward??0).toFixed(3))+' / '+esc(Number(item.meanMissionReward??0).toFixed(3))+' / '+esc(Number(item.meanLearningReward??0).toFixed(3))).join(''):'')
+    +(policy.training?.missionReward?'<br>Mission reward weights <code>'+esc(JSON.stringify(policy.training.missionReward))+'</code>':'')
     +'<br>authority '+esc(policy.authority?.kind??'direct policy')+(authority?' · modes '+esc((authority.allowedModes??[]).join(', '))+' · requires '+esc(JSON.stringify(authority.requiredTelemetry??{}))+' · ramp '+esc(authority.rampSeconds??0)+'s':'')
     +'<br><span class="muted">model '+esc(policy.modelHash?.slice?.(0,12))+' · Runtime '+esc(policy.runtimeVersion)+' · MuJoCo '+esc(policy.mujocoVersion)+' · integrity '+esc(policy.integrity)+'</span>'
     +(candidates.length?'<br>locked Candidate '+candidates.map(candidate=>'<code>'+esc(candidate.id)+'</code>').join(', '):'<br><span class="bad">No Candidate definition binds this Policy to a locked Judge.</span>')

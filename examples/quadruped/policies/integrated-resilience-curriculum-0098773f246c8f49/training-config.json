@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "id": "integrated-resilience-curriculum",
+  "name": "Skill and full-Mission residual PPO curriculum",
+  "assembly": "resilient-command-conditioned-history-3dof",
+  "trainer": "resilient-residual-ppo",
+  "priorController": "behavior-supervisor",
+  "domainProfile": "quadruped-resilient-mission-v1",
+  "totalSteps": 32768,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0003,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0,
+  "residualScale": 0.2,
+  "residualPenalty": 0.01,
+  "qualityReward": {
+    "jointAcceleration": 0,
+    "bodyAngularAcceleration": 0,
+    "actionSlew": 0,
+    "actuatorSaturation": 0,
+    "footSlip": 0,
+    "footImpact": 0
+  },
+  "missionReward": {
+    "commandProgress": 3,
+    "velocityTracking": 0.5,
+    "stopStability": 1
+  },
+  "curriculum": [
+    {
+      "id": "recovery-handoff-skill",
+      "role": "skill",
+      "task": "recover-forward",
+      "scenarios": [
+        "fallen-front",
+        "fallen-back",
+        "fallen-left",
+        "fallen-right"
+      ],
+      "weight": 0.35
+    },
+    {
+      "id": "integrated-mission",
+      "role": "mission",
+      "task": "integrated-resilience-mission",
+      "scenarios": [
+        "mission-impact-left",
+        "mission-impact-right"
+      ],
+      "weight": 0.65
+    }
+  ],
+  "promotionBenchmark": "integrated-resilience-mission"
+}

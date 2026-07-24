@@ -83,6 +83,27 @@ def quality_reward_penalty(info: dict[str, Any], weights: dict[str, Any] | None)
     return float(sum(terms.values())), terms
 
 
+def mission_reward_bonus(
+    info: dict[str, Any],
+    weights: dict[str, Any] | None,
+    actor_authority: float,
+) -> tuple[float, dict[str, float]]:
+    terms = {"commandProgress": 0.0, "velocityTracking": 0.0, "stopStability": 0.0}
+    if not weights or info.get("missionPhase") is None or actor_authority <= 0.0:
+        return 0.0, terms
+    target = np.asarray(info.get("motionCommand", np.zeros(3)), dtype=np.float64)
+    target_speed = float(np.linalg.norm(target[:2]))
+    intent = info.get("missionIntent")
+    if target_speed > 1e-9 and intent not in ("disturbance", "recover", "stop"):
+        terms["commandProgress"] = float(weights.get("commandProgress", 0.0)) * float(info.get("normalizedProgressRate", 0.0))
+        velocity_error = float(info.get("velocityError", 0.0))
+        terms["velocityTracking"] = float(weights.get("velocityTracking", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
+    elif intent == "stop":
+        velocity_error = float(info.get("velocityError", 0.0))
+        terms["stopStability"] = float(weights.get("stopStability", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
+    return float(sum(terms.values())), terms
+
+
 def normalize_masked_advantages(
     advantages: np.ndarray, policy_masks: np.ndarray
 ) -> np.ndarray:
@@ -216,11 +237,13 @@ class PPOTrainer:
         total_steps = int(config["totalSteps"]); rollout_steps = int(config["rolloutSteps"])
         metrics: list[dict[str, Any]] = []
         completed_steps = 0; episode_reward = 0.0; completed_rewards: list[float] = []
+        mission_phase_samples: dict[str, dict[str, Any]] = {}
         lows = np.asarray(request["compiled"]["actionLow"], dtype=np.float32); highs = np.asarray(request["compiled"]["actionHigh"], dtype=np.float32)
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
+            batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
@@ -255,12 +278,43 @@ class PPOTrainer:
                 action = np.clip(transformed, lows, highs)
                 result = environment.step(action)
                 quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
-                learning_reward = result.reward - quality_penalty
+                actor_authority = float(batch_policy_masks[-1]) * float((action_transform or {}).get("residualScale", 1.0))
+                mission_bonus, mission_terms = mission_reward_bonus(result.info, config.get("missionReward"), actor_authority)
+                learning_reward = result.reward - quality_penalty + mission_bonus
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
                 batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(learning_reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
                 batch_base_rewards.append(result.reward); batch_quality_penalties.append(quality_penalty)
                 for name, value in quality_terms.items(): batch_quality_terms[name].append(value)
+                batch_mission_bonuses.append(mission_bonus)
+                for name, value in mission_terms.items(): batch_mission_terms[name].append(value)
+                phase_id = result.info.get("missionPhase")
+                if phase_id is not None:
+                    curriculum_id = str(domain_samples[-1]["curriculum"])
+                    phase_key = f"{curriculum_id}:{phase_id}"
+                    sample = mission_phase_samples.setdefault(phase_key, {
+                        "curriculum": curriculum_id,
+                        "role": domain_samples[-1]["role"],
+                        "task": domain_samples[-1]["task"],
+                        "phase": str(phase_id),
+                        "intent": result.info.get("missionIntent"),
+                        "steps": 0,
+                        "activePolicySteps": 0,
+                        "actorAuthoritySum": 0.0,
+                        "baseRewardSum": 0.0,
+                        "missionRewardSum": 0.0,
+                        "learningRewardSum": 0.0,
+                        "qualityPenaltySum": 0.0,
+                        "commandedProgressM": 0.0,
+                    })
+                    sample["steps"] += 1
+                    sample["activePolicySteps"] += int(actor_authority > 0.0)
+                    sample["actorAuthoritySum"] += actor_authority
+                    sample["baseRewardSum"] += float(result.reward)
+                    sample["missionRewardSum"] += mission_bonus
+                    sample["learningRewardSum"] += learning_reward
+                    sample["qualityPenaltySum"] += quality_penalty
+                    sample["commandedProgressM"] += float(result.info.get("commandedProgressDeltaM", 0.0))
                 observation_map = result.observation; observation = environment.vector(observation_map); completed_steps += 1
                 domain_samples[-1]["steps"] += 1
                 if done:
@@ -300,6 +354,8 @@ class PPOTrainer:
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
                 "meanBaseReward": float(np.mean(batch_base_rewards)), "meanQualityPenalty": float(np.mean(batch_quality_penalties)),
                 "meanQualityTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_quality_terms.items()},
+                "meanMissionReward": float(np.mean(batch_mission_bonuses)),
+                "meanMissionTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_mission_terms.items()},
                 "meanResidualGateScale": float(np.mean(batch_residual_gate_scales)) if batch_residual_gate_scales else None,
                 "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
                 "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
@@ -333,6 +389,25 @@ class PPOTrainer:
                     "steps": sum(int(sample["steps"]) for sample in domain_samples if sample["curriculum"] == entry["id"]),
                 }
                 for entry in curriculum
+            },
+            "missionPhaseCoverage": {
+                key: {
+                    "curriculum": sample["curriculum"],
+                    "role": sample["role"],
+                    "task": sample["task"],
+                    "phase": sample["phase"],
+                    "intent": sample["intent"],
+                    "steps": sample["steps"],
+                    "activePolicySteps": sample["activePolicySteps"],
+                    "activePolicyFraction": sample["activePolicySteps"] / sample["steps"],
+                    "meanActorAuthority": sample["actorAuthoritySum"] / sample["steps"],
+                    "meanBaseReward": sample["baseRewardSum"] / sample["steps"],
+                    "meanMissionReward": sample["missionRewardSum"] / sample["steps"],
+                    "meanLearningReward": sample["learningRewardSum"] / sample["steps"],
+                    "meanQualityPenalty": sample["qualityPenaltySum"] / sample["steps"],
+                    "commandedProgressM": sample["commandedProgressM"],
+                }
+                for key, sample in mission_phase_samples.items()
             },
         })
         return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}

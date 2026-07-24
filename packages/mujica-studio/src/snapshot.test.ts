@@ -134,6 +134,7 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("ML Policy evidence · training is not promotion");
     expect(html).toContain("mujica-policy-training-context");
     expect(html).toContain("active actor authority");
+    expect(html).toContain("Mission phase learning evidence");
     expect(html).toContain("promotion:'locked-judge-only'");
     expect(html).toContain("mujica-human-observation-draft");
     expect(html).toContain("mujica-research-brief-selector");

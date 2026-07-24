@@ -13,13 +13,13 @@ import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, transform_policy_action
-from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
+from mujica_runtime.environment import RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -1209,6 +1209,52 @@ class RuntimeContractTest(unittest.TestCase):
         result = environment.step(np.zeros(12))
         self.assertGreater(result.info["lateralDisplacement"], 0.09)
 
+    def test_integrated_mission_resets_lateral_reward_reference_at_each_phase(self):
+        model, compiled = compiled_assembly("force-sensing-3dof")
+        task = {
+            **json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text()),
+            "missionPhases": [
+                {"id": "first", "name": "First", "atSeconds": 0, "intent": "operate", "requiredCapabilities": ["walking"]},
+                {"id": "second", "name": "Second", "atSeconds": 0.02, "intent": "operate", "requiredCapabilities": ["walking"]},
+                {"id": "recover", "name": "Recover", "atSeconds": 0.04, "intent": "recover", "requiredCapabilities": ["self-righting"]},
+            ],
+            "motionCommandSchedule": [
+                {"atSeconds": 0, "command": {"frame": "world", "linearVelocityMps": [0.2, 0], "yawRateRadPerSec": 0}},
+                {"atSeconds": 0.02, "command": {"frame": "world", "linearVelocityMps": [0, 0.2], "yawRateRadPerSec": 0}},
+            ],
+            "durationSeconds": 0.06,
+        }
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 42); environment.reset()
+        environment.data.qpos[0] += 0.1
+        first = environment.step(np.zeros(12))
+        self.assertEqual(first.info["missionPhase"], "first")
+        environment.data.qpos[0] += 0.1
+        second = environment.step(np.zeros(12))
+        self.assertEqual(second.info["missionPhase"], "second")
+        self.assertLess(second.info["lateralDisplacement"], 0.02)
+        self.assertEqual(active_mission_phase(task, 0.02)["id"], "second")
+
+    def test_mission_reward_is_signed_and_requires_actor_authority(self):
+        info = {
+            "missionPhase": "traverse",
+            "missionIntent": "operate",
+            "motionCommand": np.asarray([0.0, 0.15, 0.0]),
+            "normalizedProgressRate": -0.5,
+            "velocityError": 0.2,
+        }
+        weights = {"commandProgress": 3.0, "velocityTracking": 0.5, "stopStability": 1.0}
+        self.assertEqual(mission_reward_bonus(info, weights, 0.0)[0], 0.0)
+        bonus, terms = mission_reward_bonus(info, weights, 0.1)
+        self.assertLess(bonus, 0.0)
+        self.assertEqual(terms["commandProgress"], -1.5)
+        stop_bonus, stop_terms = mission_reward_bonus({
+            **info, "missionPhase": "stop", "missionIntent": "stop",
+            "motionCommand": np.zeros(3), "velocityError": 0.0,
+        }, weights, 0.1)
+        self.assertEqual(stop_bonus, 1.0)
+        self.assertEqual(stop_terms["stopStability"], 1.0)
+
     def test_ppo_performs_a_real_small_training_run(self):
         model, compiled = compiled_assembly("baseline")
         request = {
@@ -1254,6 +1300,21 @@ class RuntimeContractTest(unittest.TestCase):
                 "yawRateRadPerSec": 0.0,
             },
         }
+        mission_task = {
+            **short_task,
+            "version": 7,
+            "id": "mission",
+            "durationSeconds": 0.06,
+            "motionCommandSchedule": [{
+                "atSeconds": 0,
+                "command": short_task["motionCommand"],
+            }],
+            "missionPhases": [
+                {"id": "approach", "name": "Approach", "atSeconds": 0, "intent": "operate", "requiredCapabilities": ["walking"]},
+                {"id": "recover", "name": "Recover", "atSeconds": 0.02, "intent": "recover", "requiredCapabilities": ["self-righting"]},
+                {"id": "stop", "name": "Stop", "atSeconds": 0.04, "intent": "stop", "requiredCapabilities": ["controlled-stop"]},
+            ],
+        }
         request = {
             "modelPath": str(model),
             "compiled": compiled,
@@ -1261,7 +1322,7 @@ class RuntimeContractTest(unittest.TestCase):
             "scenarios": [],
             "curriculum": [
                 {"id": "skill", "role": "skill", "weight": 0.5, "task": {**short_task, "id": "skill"}, "scenarios": [scenario]},
-                {"id": "mission", "role": "mission", "weight": 0.5, "task": {**short_task, "id": "mission"}, "scenarios": [scenario]},
+                {"id": "mission", "role": "mission", "weight": 0.5, "task": mission_task, "scenarios": [scenario]},
             ],
             "seed": 11,
             "training": {
@@ -1285,6 +1346,14 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertGreater(coverage["skill"]["episodesStarted"], 0)
             self.assertGreater(coverage["mission"]["episodesStarted"], 0)
             self.assertEqual({item["role"] for item in coverage.values()}, {"skill", "mission"})
+            self.assertEqual(
+                {item["phase"] for item in metrics["missionPhaseCoverage"].values()},
+                {"approach", "recover", "stop"},
+            )
+            self.assertEqual(
+                sum(item["steps"] for item in metrics["missionPhaseCoverage"].values()),
+                coverage["mission"]["steps"],
+            )
 
 
 if __name__ == "__main__":
