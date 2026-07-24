@@ -93,9 +93,21 @@ actually did. For example, a `resume` phase that still contains `recovery` or
 `settling` exposes a late handoff instead of silently shifting the requirement.
 
 Benchmark v2 names a `mission-suite`, its required capability union, and
-`resetPolicy: "between-cases"`. Each case is a complete Task v7 episode. The
+`resetPolicy: "between-cases"`. Each case is a complete Task v8 episode. The
 current locked Suite repeats the full Mission under exact left/right impacts
 and degraded left/right plant conditions.
+
+`Task`, `Scenario`, and `Case` have deliberately different meanings:
+
+- the Task owns the complete causal job and its success contract;
+- the Scenario owns external plant and disturbance conditions applied while
+  that job is running;
+- the Case freezes one Task + Scenario + seed witness for reproducibility.
+
+A Scenario is therefore not a walking, collision, or self-righting skill.
+Those behaviors are phases of the same Task. Multiple Cases provide
+stochastic coverage by repeating the complete job; they do not split the job
+into independently promotable episodes.
 
 ## Training contract
 

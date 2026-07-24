@@ -127,6 +127,7 @@ describe("read-only Studio snapshot", () => {
     });
     const html = await readFile(first.indexPath, "utf8");
     expect(html).toContain("Release authority · Causal Continuous Mission Case");
+    expect(html).toContain("Scenario means the plant and disturbances applied during this complete job");
     expect(html).toContain("Timed-out phases");
     expect(html).toContain("Runtime events");
     expect(html).toContain("Mission Suite");

@@ -1,6 +1,6 @@
 # Causal continuous Mission graph
 
-Status: active
+Status: completed
 
 ## Outcome
 
@@ -78,7 +78,7 @@ Out of scope:
 - [x] Migrate the quadruped north-star Mission and retrain/judge the current
   articulated development branch.
 - [x] Project causal phase evidence into Studio and CLI.
-- [ ] Validate, regenerate governed artifacts, commit, and push.
+- [x] Validate, regenerate governed artifacts, commit, and push.
 
 ## Decision rule
 
@@ -154,3 +154,11 @@ remain observable, while the Judge records the failed phase.
   Controller (`685` frames) with the rejected causal ML Policy (`928` frames);
   selecting that Policy also exposes the exact Mission-prefix training
   progression.
+- 2026-07-25: Re-ran the complete articulated Mission Suite after factorized
+  delay, friction, and payload probes. The exact Cases recover but retain
+  negative signed Mission progress; both degraded Cases time out during
+  recovery. A bounded one-step-delay compensation improved local posture but
+  still failed the complete degraded Mission, so it was rejected. Studio and
+  the design contract now state explicitly that Scenario selects plant and
+  disturbance conditions for a complete job; it does not define a separately
+  promotable skill.
