@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "recovery-handoff",
+  "name": "Frozen four-pose recovery-to-command handoff benchmark",
+  "objective": "recovery-handoff",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "bounded-traction-gait"
+  },
+  "cases": [
+    { "id": "front-forward", "task": "recover-forward", "scenario": "fallen-front", "seed": 6201, "weight": 1, "gating": true },
+    { "id": "back-forward", "task": "recover-forward", "scenario": "fallen-back", "seed": 6202, "weight": 1, "gating": true },
+    { "id": "left-forward", "task": "recover-forward", "scenario": "fallen-left", "seed": 6203, "weight": 1, "gating": true },
+    { "id": "right-forward", "task": "recover-forward", "scenario": "fallen-right", "seed": 6204, "weight": 1, "gating": true }
+  ]
+}

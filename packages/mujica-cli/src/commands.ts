@@ -36,8 +36,9 @@ export async function controllerIdentity(projectDir: string, id: string, overrid
   const definition = override ?? controller.definition;
   if (definition.id !== id || definition.kind !== controller.definition.kind) throw new Error(`Controller override must preserve id and kind for '${id}'`);
   if (definition.kind === "program") {
-    const entryHash = sha256(await readFile(confined(controller.rootDir, definition.entry)));
-    return { definition, rootDir: controller.rootDir, hash: hashJson({ definition, entryHash }), trainingSteps: 0 };
+    confined(controller.rootDir, definition.entry);
+    const packageHash = await hashDirectory(controller.rootDir);
+    return { definition, rootDir: controller.rootDir, hash: override ? hashJson({ packageHash, definition }) : packageHash, trainingSteps: 0 };
   }
   const policyDir = confined(resolve(projectDir), `policies/${definition.policy}`);
   if (!(await exists(join(policyDir, "manifest.json")))) throw new Error(`Frozen policy '${definition.policy}' does not exist`);

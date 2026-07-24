@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -23,12 +25,21 @@ class Controller(Protocol):
     # Policy adapters keep the same action ABI.
 
 
-def load_python_module(path: Path, name: str):
-    spec = importlib.util.spec_from_file_location(name, path)
+def load_python_module(path: Path, name: str, package_root: Path | None = None):
+    spec = importlib.util.spec_from_file_location(
+        name,
+        path,
+        submodule_search_locations=[str(package_root)] if package_root is not None else None,
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load Python module: {path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(name, None)
+        raise
     return module
 
 
@@ -36,7 +47,12 @@ def load_program_controller(root: Path, definition: dict[str, Any]) -> Controlle
     entry = (root / definition["entry"]).resolve()
     if root.resolve() not in entry.parents:
         raise RuntimeError("Controller entry escapes package")
-    module = load_python_module(entry, f"mujica_controller_{definition['id'].replace('-', '_')}")
+    package_key = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12]
+    module = load_python_module(
+        entry,
+        f"mujica_controller_{definition['id'].replace('-', '_')}_{package_key}",
+        root.resolve(),
+    )
     controller = module.create_controller(dict(definition.get("config", {})))
     if not hasattr(controller, "reset") or not hasattr(controller, "act"):
         raise RuntimeError("Program controller must provide reset(seed) and act(observation, time_seconds)")

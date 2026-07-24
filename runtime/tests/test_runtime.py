@@ -537,6 +537,23 @@ class RuntimeContractTest(unittest.TestCase):
         result = environment.step(np.zeros(environment.model.nu))
         self.assertFalse(result.terminated)
 
+    def test_scheduled_recovery_task_keeps_exact_post_recovery_command_boundary(self):
+        task = json.loads((PROJECT / "tasks" / "recover-forward.task.json").read_text())
+        schedule = compile_motion_command_schedule(task)
+        self.assertEqual([segment["atStep"] for segment in schedule], [0])
+        np.testing.assert_allclose(schedule[0]["command"], [0.2, 0.0, 0.0])
+        self.assertEqual(task["mobilityMeasurementStartSeconds"], 5)
+        metrics = motion_metrics(
+            np.array([0.4, 0.0, 0.4]),
+            np.array([0.8, 0.02, 0.4]),
+            0.5,
+            task,
+            4.0,
+            measurement_start_seconds=5.0,
+        )
+        self.assertAlmostEqual(metrics["targetDistance"], 0.8)
+        self.assertAlmostEqual(metrics["forwardProgress"], 0.5)
+
     def test_phased_self_right_controller_classifies_pose_and_exposes_phase_telemetry(self):
         root = PROJECT / "controllers" / "phased-self-right"
         definition = json.loads((root / "controller.json").read_text())
@@ -562,6 +579,61 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(read_controller_telemetry(controller)["phase"], "capture")
         controller.act(observation, 1.3)
         self.assertEqual(read_controller_telemetry(controller)["phase"], "rise")
+
+    def test_behavior_supervisor_distinguishes_gait_excursion_from_resting_fall(self):
+        root = PROJECT / "controllers" / "behavior-supervisor"
+        definition = json.loads((root / "controller.json").read_text())
+        controller = load_program_controller(root, definition)
+        observation = {
+            "joint-position": np.zeros(12),
+            "joint-velocity": np.zeros(12),
+            "base-height": np.array([0.44]),
+            "base-orientation": np.array([1.0, 0.0, 0.0, 0.0]),
+            "base-velocity": np.zeros(6),
+            "imu-angular-velocity": np.zeros(3),
+            "foot-contact-force": np.full(4, 5.0),
+            "actuator-delay-steps": np.zeros(1),
+            "motion-command": np.array([0.2, 0.0, 0.0]),
+        }
+        controller.reset(6201)
+        controller.act(observation, 0.0)
+        self.assertEqual(read_controller_telemetry(controller)["mode"], "locomotion")
+        dynamic_tilt = {**observation, "base-height": np.array([0.25]), "base-orientation": np.array([2 ** -0.5, 0.0, 2 ** -0.5, 0.0])}
+        for step in range(10):
+            controller.act(dynamic_tilt, (step + 1) * 0.02)
+        self.assertEqual(read_controller_telemetry(controller)["mode"], "locomotion")
+        controller.reset(6201)
+        resting_fall = {**dynamic_tilt, "base-height": np.array([0.18])}
+        controller.act(resting_fall, 0.0)
+        telemetry = read_controller_telemetry(controller)
+        self.assertEqual(telemetry["mode"], "recovery")
+        self.assertEqual(telemetry["phase"], "recovery.impulse")
+        controller.locomotion.config["hipAmplitude"] = 0.205
+        controller.locomotion.config["kneeAmplitude"] = 0.07
+        controller.reset(6202)
+        self.assertEqual(controller.locomotion.config["hipAmplitude"], definition["config"]["locomotion"]["hipAmplitude"])
+        self.assertEqual(controller.locomotion.config["kneeAmplitude"], definition["config"]["locomotion"]["kneeAmplitude"])
+
+    def test_program_controller_can_compose_package_local_modules(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "helper.py").write_text(
+                "import numpy as np\n"
+                "class Child:\n"
+                "    def reset(self, seed): self.seed = seed\n"
+                "    def act(self, observation, time_seconds): return np.asarray([self.seed + time_seconds])\n"
+            )
+            (root / "controller.py").write_text(
+                "from .helper import Child\n"
+                "def create_controller(config): return Child()\n"
+            )
+            controller = load_program_controller(root, {
+                "id": "composed",
+                "entry": "controller.py",
+                "config": {},
+            })
+            controller.reset(3)
+            np.testing.assert_allclose(controller.act({}, 0.5), [3.5])
 
     def test_self_righting_score_rewards_success_and_penalizes_slow_recovery(self):
         objective = {

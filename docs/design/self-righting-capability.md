@@ -130,6 +130,8 @@ This is preserved as negative ML evidence. The side-recovery trajectory has a na
 - residual authority alone is not a sufficient safety mechanism; and
 - future ML work must make phase/contact preservation and perturbed-pose validation explicit.
 
-The four exact resting poses prove a bounded simulation capability, not arbitrary recovery. Before the stage is operationally complete, a supervisor must switch safely between locomotion and recovery, and a separate robustness suite must vary initial pose, contact, friction, mass, and actuator response without changing the locked first witness.
+The four exact resting poses prove a bounded simulation capability, not arbitrary recovery. The next controller slice added a behavior supervisor and a separate fixed `recovery-handoff` Benchmark. One deployed Program Controller now detects a resting fall, runs the phased recovery, cross-fades through a bounded handoff, and resumes the pending world-frame command. All four exact-pose handoff cases pass with zero violations, while side-pose progress remains an explicitly weak capability floor. See [Locomotion and recovery behavior supervision](behavior-supervision.md).
+
+A separate robustness suite must still vary initial pose, contact, friction, mass, and actuator response without changing either locked witness.
 
 Studio presents recovery outcome deltas separately from locomotion-quality burdens and exposes Controller phase, detected pose, supporting feet, target streak, target occupancy, stable dwell, time to stand, joint-limit margin, self-contact, and final pass/fail at the selected frame. The copied Agent context carries the same recovery evidence.

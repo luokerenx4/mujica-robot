@@ -16,8 +16,8 @@ export async function loadController(projectDir: string, id: string): Promise<{ 
 export async function controllerSourceIdentity(projectDir: string, id: string): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string; trainingSteps: number }> {
   const controller = await loadController(projectDir, id);
   if (controller.definition.kind === "program") {
-    const entryHash = sha256(await readFile(confined(controller.rootDir, controller.definition.entry)));
-    return { ...controller, hash: hashJson({ definition: controller.definition, entryHash }), trainingSteps: 0 };
+    confined(controller.rootDir, controller.definition.entry);
+    return { ...controller, hash: await hashDirectory(controller.rootDir), trainingSteps: 0 };
   }
   const policyDir = confined(resolve(projectDir), `policies/${controller.definition.policy}`);
   const manifestPath = join(policyDir, "manifest.json");

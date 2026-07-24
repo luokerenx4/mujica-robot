@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "id": "quadruped-r-0a822c11bff6",
+  "parent": "quadruped-r-0bb926344064",
+  "candidateId": "behavior-supervisor",
+  "candidateHash": "eaad5c4a1ff819f0d7823a07f0e8683f6c1e696bb050bb0fd49233b94f85e123",
+  "benchmarkId": "recovery-handoff",
+  "benchmarkLockHash": "bdd9ba6970b85dff3e2a131d666565878e156a3f90dbfcf706d5eb20849e14f7",
+  "assembly": "command-conditioned-history-3dof",
+  "assemblyHash": "70a4b98624c0aa5b5ab763a81c9ca4caaa7383e2da8580e15b23e20205aa8cf3",
+  "componentHashes": {
+    "body-imu": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+    "actuator-history": "798ea14f24de0fbba6f6c5245d5758dfed216b703dacef72c4355ba57650e704",
+    "motion-command-input": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+    "foot-force-kit": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c"
+  },
+  "observationContractHash": "37b9663cd7106e269da55f0e7a2a5f8c4b4c68e3100cbb5544dbcbdcf36f5f38",
+  "actionContractHash": "130b3327995e6142afe6396b23fcaab97502e3feb265b44426d5c8ae0698e010",
+  "controller": "behavior-supervisor",
+  "controllerHash": "07be3429bbcf9030f82db8dfa0eaec3efda4cd5dc3795b3f3cc04452957e13f8",
+  "policyId": null,
+  "policyHash": null,
+  "verifiedChanges": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "aggregateScore": 105.16423119826098,
+  "scoreDelta": 113.06088439404657,
+  "exactChangedFiles": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/locomotion.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "sourceClosure": [
+    "assemblies/command-conditioned-history-3dof.robot.json",
+    "benchmarks/recovery-handoff.benchmark.json",
+    "benchmarks/recovery-handoff.lock.json",
+    "components/actuator-history/component.json",
+    "components/actuator-history/model.xml",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/locomotion.py",
+    "controllers/behavior-supervisor/recovery.py",
+    "objectives/recovery-handoff.objective.json",
+    "robots/quadruped-3dof/model.xml",
+    "robots/quadruped-3dof/robot.json",
+    "scenarios/fallen-back.scenario.json",
+    "scenarios/fallen-front.scenario.json",
+    "scenarios/fallen-left.scenario.json",
+    "scenarios/fallen-right.scenario.json",
+    "tasks/recover-forward.task.json"
+  ],
+  "appliedAt": "2026-07-24T06:53:03.192Z"
+}

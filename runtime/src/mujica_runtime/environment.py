@@ -25,7 +25,7 @@ def motion_command_vector(command: dict[str, Any]) -> np.ndarray:
 def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]]:
     if int(task["version"]) in (2, 4):
         return [{"atStep": 0, "atSeconds": 0.0, "command": motion_command_vector(task["motionCommand"])}]
-    if int(task["version"]) != 3:
+    if int(task["version"]) not in (3, 5):
         raise RuntimeError(f"Unsupported Task version '{task['version']}'")
     control_hz = float(task["controlHz"])
     schedule: list[dict[str, Any]] = []

@@ -160,10 +160,37 @@ const recoveryTaskSchema = z.object({
   }
 });
 
+const scheduledRecoveryTaskSchema = z.object({
+  version: z.literal(5), ...taskBase,
+  motionCommandSchedule: z.array(z.object({ atSeconds: z.number().finite().nonnegative(), command: motionCommandSchema }).strict()).min(1).max(16),
+  mobilityMeasurementStartSeconds: z.number().finite().nonnegative(),
+  recoveryTarget: z.object({
+    minimumBaseHeightM: z.number().finite().positive(),
+    maximumBodyTiltRad: z.number().finite().min(0).max(Math.PI),
+    maximumLinearSpeedMps: z.number().finite().nonnegative(),
+    maximumAngularSpeedRadPerSec: z.number().finite().nonnegative(),
+    holdSeconds: z.number().finite().positive(),
+  }).strict(),
+}).strict().superRefine((task, context) => {
+  const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
+  if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.mobilityMeasurementStartSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["mobilityMeasurementStartSeconds"], message: "must align to an integer control step" });
+  if (task.mobilityMeasurementStartSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["mobilityMeasurementStartSeconds"], message: "must start before the episode ends" });
+  if (!aligned(task.recoveryTarget.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryTarget.holdSeconds > task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must not exceed Task duration" });
+  task.motionCommandSchedule.forEach((segment, index) => {
+    if (index === 0 && segment.atSeconds !== 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "first segment must start at 0 seconds" });
+    if (index > 0 && segment.atSeconds <= task.motionCommandSchedule[index - 1]!.atSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment times must be strictly increasing" });
+    if (segment.atSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment must start before the episode ends" });
+    if (!aligned(segment.atSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "must align to an integer control step" });
+  });
+});
+
 export const taskSchema = z.union([
   z.object({ version: z.literal(2), ...taskBase, motionCommand: motionCommandSchema }).strict(),
   scheduledTaskSchema,
   recoveryTaskSchema,
+  scheduledRecoveryTaskSchema,
 ]);
 
 const initialBasePoseSchema = z.object({

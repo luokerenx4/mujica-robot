@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "id": "behavior-supervisor",
+  "name": "Promote autonomous locomotion and recovery supervision",
+  "kind": "development",
+  "benchmark": "recovery-handoff",
+  "baseRevision": "quadruped-r-0a822c11bff6",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "bounded-traction-gait"
+  },
+  "proposed": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "bounded-traction-gait",
+      "to": "behavior-supervisor",
+      "files": [
+        "controllers/behavior-supervisor/controller.json",
+        "controllers/behavior-supervisor/controller.py",
+        "controllers/behavior-supervisor/locomotion.py",
+        "controllers/behavior-supervisor/recovery.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/locomotion.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/recovery-handoff.benchmark.json",
+    "benchmarks/recovery-handoff.lock.json",
+    "objectives/recovery-handoff.objective.json",
+    "tasks/recover-forward.task.json",
+    "scenarios/fallen-front.scenario.json",
+    "scenarios/fallen-back.scenario.json",
+    "scenarios/fallen-left.scenario.json",
+    "scenarios/fallen-right.scenario.json"
+  ],
+  "hypothesis": "A debounced behavior supervisor with a bounded recovery-to-gait Action handoff can keep ordinary locomotion unchanged while autonomously recovering and resuming a pending mission command.",
+  "expectedEffect": "Pass all four locked recovery-to-command cases without regressing command tracking or command transitions, while retaining the selected rigid 12-actuator morphology."
+}

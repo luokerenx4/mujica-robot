@@ -75,10 +75,12 @@
         { "task": "self-right", "scenario": "fallen-front", "benchmark": "self-righting", "role": "release" },
         { "task": "self-right", "scenario": "fallen-back", "benchmark": "self-righting", "role": "release" },
         { "task": "self-right", "scenario": "fallen-left", "benchmark": "self-righting", "role": "release" },
-        { "task": "self-right", "scenario": "fallen-right", "benchmark": "self-righting", "role": "release" }
+        { "task": "self-right", "scenario": "fallen-right", "benchmark": "self-righting", "role": "release" },
+        { "task": "recover-forward", "scenario": "fallen-front", "benchmark": "recovery-handoff", "role": "release" }
       ],
       "exitCriteria": [
         "All four locked resting-pose cases reach and hold the shared stable-standing target.",
+        "One deployed Controller autonomously hands authority from recovery back to locomotion and satisfies the locked post-recovery command.",
         "Recovery respects joint-limit, collision, actuator, mass, cost, and Action-width gates.",
         "The selected morphology retains required locked locomotion regressions."
       ]

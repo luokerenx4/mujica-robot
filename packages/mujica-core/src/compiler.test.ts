@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -16,7 +16,8 @@ describe("Robot Assembly compiler", () => {
     expect(workOrder.review.id).toBe(reviewPointer.id);
     expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["controller-code", "rl-policy"]);
     expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["sim-to-real-audit", "sim-to-real-audit"]);
-    expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
+    expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
+    expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 
@@ -167,7 +168,7 @@ describe("Robot Assembly compiler", () => {
     const result = await validateProject(project);
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("command-conditioned-history-3dof");
-    expect(result.project.manifest.defaults.controller).toBe("bounded-traction-gait");
+    expect(result.project.manifest.defaults.controller).toBe("behavior-supervisor");
     expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
@@ -452,5 +453,49 @@ describe("Robot Assembly compiler", () => {
     expect(taskSchema.safeParse({ ...task, motionCommandSchedule: [{ ...task.motionCommandSchedule[0], atSeconds: 0.01 }] }).success).toBe(false);
     expect(taskSchema.safeParse({ ...task, motionCommandSchedule: [task.motionCommandSchedule[0], { ...task.motionCommandSchedule[1], atSeconds: 1.999 }] }).success).toBe(false);
     expect(taskSchema.safeParse({ ...task, motionCommandSchedule: Array.from({ length: 17 }, (_, index) => ({ atSeconds: index * 0.02, command: task.motionCommandSchedule[0]!.command })) }).success).toBe(false);
+  });
+
+  test("scheduled recovery Tasks lock recovery and post-recovery commands together", () => {
+    const task = {
+      version: 5, id: "recover-forward", name: "Recover then walk", durationSeconds: 8, controlHz: 50,
+      healthyHeight: [0.05, 0.8], terminateOnFall: false,
+      motionCommandSchedule: [
+        { atSeconds: 0, command: { frame: "world", linearVelocityMps: [0, 0], yawRateRadPerSec: 0 } },
+        { atSeconds: 5, command: { frame: "world", linearVelocityMps: [0.2, 0], yawRateRadPerSec: 0 } },
+      ],
+      mobilityMeasurementStartSeconds: 5,
+      recoveryTarget: {
+        minimumBaseHeightM: 0.32, maximumBodyTiltRad: 0.35,
+        maximumLinearSpeedMps: 0.2, maximumAngularSpeedRadPerSec: 0.5, holdSeconds: 0.5,
+      },
+    };
+    expect(taskSchema.safeParse(task).success).toBe(true);
+    expect(taskSchema.safeParse({ ...task, motionCommandSchedule: [{ ...task.motionCommandSchedule[0], atSeconds: 0.01 }] }).success).toBe(false);
+    expect(taskSchema.safeParse({ ...task, recoveryTarget: { ...task.recoveryTarget, holdSeconds: 0.51 } }).success).toBe(false);
+    expect(taskSchema.safeParse({ ...task, mobilityMeasurementStartSeconds: 5.01 }).success).toBe(false);
+  });
+
+  test("Program Controller identity covers local helper modules, not only the entry file", async () => {
+    const root = await mkdtemp(join(tmpdir(), "mujica-controller-identity-"));
+    try {
+      const controllerRoot = join(root, "controllers", "composed");
+      await mkdir(controllerRoot, { recursive: true });
+      await writeFile(join(controllerRoot, "controller.json"), `${JSON.stringify({
+        version: 1, id: "composed", name: "Composed", kind: "program", entry: "controller.py",
+        interface: {
+          requiredObservations: [{ name: "joint-position", size: 1 }],
+          actionChannels: [{ name: "joint-torque", size: 1, low: -1, high: 1 }],
+        },
+        config: {},
+      })}\n`);
+      await writeFile(join(controllerRoot, "controller.py"), "from .helper import VALUE\n");
+      await writeFile(join(controllerRoot, "helper.py"), "VALUE = 1\n");
+      const before = await controllerSourceIdentity(root, "composed");
+      await writeFile(join(controllerRoot, "helper.py"), "VALUE = 2\n");
+      const after = await controllerSourceIdentity(root, "composed");
+      expect(after.hash).not.toBe(before.hash);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

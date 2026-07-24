@@ -39,8 +39,8 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
-    expect(first.snapshot.benchmarks).toHaveLength(15);
-    expect(first.snapshot.candidates).toHaveLength(12);
+    expect(first.snapshot.benchmarks).toHaveLength(16);
+    expect(first.snapshot.candidates).toHaveLength(13);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareCaptures.length).toBeGreaterThanOrEqual(1);
@@ -55,10 +55,11 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("transition-controller-review");
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
-        status: "PARTIALLY_ROUTED",
+        status: "HUMAN_REVIEW_REQUIRED",
       },
     });
-    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
     expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((lane) => [lane.kind, lane.researchLab])).toContainEqual(
       ["controller-code", "robust-transfer-controller"],
     );
@@ -172,6 +173,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Self-righting outcome deltas");
     expect(html).toContain("Recovery target");
     expect(html).toContain("Controller phase");
+    expect(html).toContain("Controller mode");
+    expect(html).toContain("Mode transition");
+    expect(html).toContain("Mission command");
     expect(html).toContain("Detected fallen pose");
     expect(html).toContain("Support feet");
     expect(html).toContain("controllerTelemetry");

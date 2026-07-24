@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -79,13 +81,15 @@ def read_controller_telemetry(controller: Any) -> dict[str, Any] | None:
         raise RuntimeError("Controller telemetry() must return finite JSON data") from error
 
 
-def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
+def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float, measurement_start_seconds: float = 0.0) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
     schedule = compile_motion_command_schedule(task)
     target_displacement = np.zeros(2, dtype=np.float64)
     for index, segment in enumerate(schedule):
         end_seconds = float(schedule[index + 1]["atSeconds"]) if index + 1 < len(schedule) else float(task["durationSeconds"])
-        target_displacement += np.asarray(segment["command"][:2], dtype=np.float64) * (end_seconds - float(segment["atSeconds"]))
+        start_seconds = max(float(segment["atSeconds"]), measurement_start_seconds)
+        if end_seconds > start_seconds:
+            target_displacement += np.asarray(segment["command"][:2], dtype=np.float64) * (end_seconds - start_seconds)
     target_distance = float(np.linalg.norm(target_displacement))
     if target_distance > 1e-9:
         direction = target_displacement / target_distance
@@ -349,6 +353,8 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     initial_body_tilt = quaternion_body_tilt(environment.data.qpos[3:7])
     previous_position = initial_position.copy()
     distance_traveled = 0.0
+    mobility_initial_position: np.ndarray | None = None
+    mobility_started_at: float | None = None
     trajectory: list[dict[str, Any]] = []
     totals = {"velocityError": 0.0, "planarVelocityError": 0.0, "yawRateError": 0.0, "upright": 0.0, "energy": 0.0, "smoothness": 0.0}
     measured_motion_total = np.zeros(3, dtype=np.float64)
@@ -373,7 +379,16 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     fell = False
     previous_pushing = False
     previous_controller_phase: str | None = None
+    previous_controller_mode: str | None = None
     while True:
+        if (
+            int(request["task"]["version"]) == 5
+            and mobility_initial_position is None
+            and float(environment.data.time) + 1e-9
+            >= float(request["task"]["mobilityMeasurementStartSeconds"])
+        ):
+            mobility_initial_position = environment.data.qpos[:3].copy()
+            mobility_started_at = float(request["task"]["mobilityMeasurementStartSeconds"])
         action = controller.act({name: values.copy() for name, values in observation.items()}, float(environment.data.time))
         controller_telemetry = read_controller_telemetry(controller)
         controller_phase = (
@@ -381,6 +396,22 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
             if controller_telemetry is not None and controller_telemetry.get("phase") is not None
             else None
         )
+        controller_mode = (
+            str(controller_telemetry["mode"])
+            if controller_telemetry is not None and controller_telemetry.get("mode") is not None
+            else None
+        )
+        if controller_mode is not None and controller_mode != previous_controller_mode:
+            environment.events.append({
+                "type": "controller.mode-changed",
+                "time": float(environment.data.time),
+                "step": environment.step_index,
+                "from": previous_controller_mode,
+                "to": controller_mode,
+                "reason": controller_telemetry.get("transitionReason"),
+                "transitionCount": controller_telemetry.get("transitionCount"),
+            })
+            previous_controller_mode = controller_mode
         if controller_phase is not None and controller_phase != previous_controller_phase:
             environment.events.append({
                 "type": "controller.phase-changed",
@@ -476,8 +507,17 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
         **quality_metrics,
         **transition_metrics,
-        **motion_metrics(initial_position, environment.data.qpos[:3], distance_traveled, request["task"], float(environment.data.time)),
+        **motion_metrics(
+            mobility_initial_position if mobility_initial_position is not None else initial_position,
+            environment.data.qpos[:3],
+            distance_traveled,
+            request["task"],
+            float(environment.data.time) - float(mobility_started_at or 0.0),
+            float(mobility_started_at or 0.0),
+        ),
     }
+    metrics["episodeInitialBasePosition"] = initial_position.tolist()
+    metrics["mobilityMeasurementStartedAtSeconds"] = mobility_started_at
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})
     run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})
@@ -489,6 +529,15 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         existing = json.loads((target / "manifest.json").read_text())
         if existing["resultHash"] != result_hash: raise RuntimeError("Deterministic run key produced a different result")
         return {**output, "artifactPath": str(target), "cached": True}
+    if target.exists():
+        quarantine = target.with_name(
+            f".{target.name}.incomplete-{os.getpid()}-{time.time_ns()}"
+        )
+        try:
+            os.replace(target, quarantine)
+        except FileNotFoundError:
+            # A concurrent publisher already moved or completed it.
+            pass
 
     def writer(directory: Path) -> None:
         write_json(directory / "inputs" / "compiled-assembly.json", compiled)
@@ -506,5 +555,14 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "score.json", score)
         (directory / "report.md").write_text(f"# Mujica simulation run\n\n- Run: `{output['runId']}`\n- Score: `{score['total']:.6f}`\n- Survival: `{metrics['survivalRate']:.3f}`\n- Fell: `{metrics['fell']}`\n")
         write_json(directory / "manifest.json", {"version": 3, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "modelHash": compiled["modelHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
-    atomic_directory(target, writer)
+    try:
+        atomic_directory(target, writer)
+    except OSError:
+        # Another identical simulation may have won the atomic publish race.
+        # Reuse it only after verifying the complete immutable result.
+        if (target / "manifest.json").exists():
+            existing = json.loads((target / "manifest.json").read_text())
+            if existing["resultHash"] == result_hash:
+                return {**output, "artifactPath": str(target), "cached": True}
+        raise
     return {**output, "artifactPath": str(target), "cached": False}

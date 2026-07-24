@@ -825,10 +825,15 @@ function telemetry(side,row,target,health){
     label=!row?'—':recovery?(row.recoveryTargetSatisfied?'TARGET HOLD':side.run?.metrics?.selfRightingSuccess===1?'RECOVERED':'NOT RECOVERED'):(unhealthy?'UNHEALTHY':'HEALTHY');
     cells=[['Time',Number(row?.time??0).toFixed(3)+' s'],['Step',row?.step??'—'],['Pitch',Number(row?.pitchRad??0).toFixed(3)+' rad'],['Body tilt',Number(row?.bodyTiltRad??0).toFixed(3)+' rad'],['Command',vector(row?.motionCommand)],['Measured',vector(row?.measuredMotion)],['Action slew peak',peak(quality.actionSlewRatePerSec)?.toFixed(2)??'—'],['Joint jerk peak',peak(quality.jointJerkRadPerSec3)?.toFixed(2)??'—'],['Foot slip peak',peak(quality.footSlipSpeedMps)?.toFixed(3)??'—'],['Contact impact peak',peak(quality.footContactImpactNPerSec)?.toFixed(1)??'—']];
     if(recovery)cells.push(
+      ['Controller mode',row?.controllerTelemetry?.mode??'unreported'],
       ['Controller phase',row?.controllerPhase??row?.controllerTelemetry?.phase??'unreported'],
+      ['Mode transition',row?.controllerTelemetry?.transitionReason??'unreported'],
+      ['Transition count',Number.isFinite(Number(row?.controllerTelemetry?.transitionCount))?String(row.controllerTelemetry.transitionCount):'unreported'],
       ['Detected fallen pose',row?.controllerTelemetry?.fallenPose??'unreported'],
+      ['Recovery lineage pose',row?.controllerTelemetry?.recoveryPose??'unreported'],
       ['Support feet',Number.isFinite(Number(row?.controllerTelemetry?.supportFeet))?String(row.controllerTelemetry.supportFeet):'unreported'],
       ['Target streak',Number.isFinite(Number(row?.controllerTelemetry?.targetStreakSteps))?String(row.controllerTelemetry.targetStreakSteps)+' steps':'unreported'],
+      ['Mission command',row?.controllerTelemetry?.missionCommandStarted?'active':'withheld'],
       ['Recovery target',row?.recoveryTargetSatisfied?'inside · holding':'outside'],
       ['Stable dwell',Number(side.run?.metrics?.stableStandingDwellSeconds??0).toFixed(3)+' s'],
       ['Time to stable',side.run?.metrics?.selfRightingSuccess===1?Number(side.run.metrics.timeToStableStandSeconds).toFixed(3)+' s':'not reached'],

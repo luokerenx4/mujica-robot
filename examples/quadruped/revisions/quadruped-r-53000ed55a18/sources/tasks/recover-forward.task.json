@@ -1,0 +1,27 @@
+{
+  "version": 5,
+  "id": "recover-forward",
+  "name": "Recover from a resting fall and resume forward locomotion",
+  "durationSeconds": 9,
+  "controlHz": 50,
+  "healthyHeight": [0.05, 0.8],
+  "terminateOnFall": false,
+  "motionCommandSchedule": [
+    {
+      "atSeconds": 0,
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [0.2, 0],
+        "yawRateRadPerSec": 0
+      }
+    }
+  ],
+  "mobilityMeasurementStartSeconds": 5,
+  "recoveryTarget": {
+    "minimumBaseHeightM": 0.32,
+    "maximumBodyTiltRad": 0.35,
+    "maximumLinearSpeedMps": 0.2,
+    "maximumAngularSpeedRadPerSec": 0.5,
+    "holdSeconds": 0.5
+  }
+}

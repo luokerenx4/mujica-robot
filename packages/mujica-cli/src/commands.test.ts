@@ -162,8 +162,8 @@ describe("agent CLI contract", () => {
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "PARTIALLY_ROUTED",
-      subject: { assembly: "command-conditioned-history-3dof", controller: "bounded-traction-gait" },
+      status: "HUMAN_REVIEW_REQUIRED",
+      subject: { assembly: "command-conditioned-history-3dof", controller: "behavior-supervisor" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -171,7 +171,8 @@ describe("agent CLI contract", () => {
         northStarClaim: "new-development-review-required",
       },
     });
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting" && item.case === "front")).toBeDefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting")).toBeUndefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "heavy-weak")).toBeDefined();
     expect(data.workOrder.lanes).toHaveLength(2);
     expect(data.workOrder.lanes.map((lane: any) => [lane.kind, lane.researchLab])).toEqual([
       ["controller-code", "robust-transfer-controller"],

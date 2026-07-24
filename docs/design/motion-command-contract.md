@@ -42,6 +42,20 @@ At control step `n`, the pre-action Observation exposes the command active for t
 
 Task v2 remains the canonical constant-command form and is behaviorally unchanged. Runtime consumers resolve both versions through the same active-command operation; a one-segment v3 schedule is intentionally equivalent in control behavior but remains distinct authored source.
 
+## Recovery-to-mission decision
+
+Task version 5 combines the scheduled command contract with the Task v4
+stable-recovery target. It also requires a control-grid-aligned
+`mobilityMeasurementStartSeconds` before the episode end. The command may be
+active while the robot is fallen: a behavior supervisor must withhold
+locomotion authority, recover, and then resume the still-pending mission.
+
+Target displacement and signed progress are measured from the authored
+mobility boundary. They are not keyed to Controller mode telemetry, so a
+Controller cannot improve its Judge result by claiming a later handoff. The
+full episode still contributes recovery, survival, stability, energy, and
+motion-quality evidence.
+
 ## Evidence
 
 Every new trajectory row records both `motionCommand` and `measuredMotion` in the same order. Constant-command Run metrics record the command, mean measured motion, task-level planar/yaw error between those episode means, and mean instantaneous errors for gait diagnostics. Capability gates use the task-level errors: averaging instantaneous absolute error would incorrectly punish the deliberate within-stride velocity oscillation of a legged gait. Scheduled Tasks additionally record resolved segment boundaries and per-transition response metrics so stopping and settling cannot be hidden by an episode average. Terminal response is the mean of the final configured hold window. Settling is the earliest completed hold window whose windowed tracking error is within tolerance and for which every later complete window in that segment remains within tolerance; a temporary threshold crossing followed by divergence is not settlement.

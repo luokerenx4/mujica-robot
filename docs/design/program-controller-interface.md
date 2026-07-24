@@ -9,6 +9,13 @@ Every Program Controller manifest declares an executable `interface`:
 
 The interface is authored beside `entry` and `config`, participates in Controller identity, Benchmark locks, experiment identity, and Revision source closure, and is visible through `mujica controller list|inspect`.
 
+Program Controller identity covers the complete owning directory, not only
+`controller.json` and the entry file. Package-local Python modules may be
+imported relatively from the entry module; every helper participates in the
+same content address. This is required for composed Controllers such as the
+locomotion/recovery behavior supervisor and prevents an untracked helper edit
+from changing executable behavior under an unchanged identity.
+
 ## Compatibility
 
 Core checks compatibility before invoking the Python Runtime. A required Observation must exist exactly once with the declared size. Produced Action channels must have the same count, order, names, sizes, and bounds as the Assembly Action Contract. Extra Assembly Observations are allowed because Program Controllers commonly consume only a stable subset.

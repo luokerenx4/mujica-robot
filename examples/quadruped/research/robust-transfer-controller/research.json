@@ -6,16 +6,19 @@
   "benchmark": "sim-to-real-audit",
   "regressions": [
     "upright-locomotion",
-    "motion-quality"
+    "motion-quality",
+    "command-tracking",
+    "command-transitions",
+    "recovery-handoff"
   ],
   "execution": {
     "kind": "controller",
     "assembly": "command-conditioned-history-3dof",
-    "controller": "bounded-traction-gait"
+    "controller": "behavior-supervisor"
   },
   "editable": {
     "paths": [
-      "controllers/bounded-traction-gait/**"
+      "controllers/behavior-supervisor/**"
     ]
   },
   "budget": {

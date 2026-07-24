@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "recovery-handoff",
+  "name": "Self-righting followed by retained commanded mobility",
+  "weights": {
+    "survival": 10,
+    "velocityTracking": 4,
+    "forwardProgress": 15,
+    "upright": 2,
+    "lateralDrift": 1,
+    "transitionTracking": 1,
+    "energy": 0.002,
+    "smoothness": 0.001,
+    "componentMass": 0.5,
+    "sensorChannels": 0.02,
+    "trainingSteps": 0.00001,
+    "jointJerk": 0,
+    "bodyAngularJerk": 0,
+    "actionSlew": 0,
+    "actuatorSaturation": 0.5,
+    "footSlip": 0,
+    "footImpact": 0,
+    "selfRighting": 100,
+    "recoveryTime": 2,
+    "jointLimitMargin": 2
+  },
+  "gates": {
+    "minimumSurvivalRate": 1,
+    "minimumForwardProgress": 0.06,
+    "minimumSignedForwardProgress": 0.05,
+    "minimumSelfRightingSuccess": 1,
+    "maximumTimeToStableStandSeconds": 5,
+    "minimumStableStandingDwellSeconds": 0.5,
+    "maximumFinalBodyTiltRad": 0.5,
+    "minimumFinalBaseHeightM": 0.28,
+    "maximumLateralDrift": 0.5,
+    "minimumJointLimitMarginRad": 0.02,
+    "maximumPeakActuator": 8,
+    "maximumDisallowedCollisionSteps": 0,
+    "maximumRegression": 3
+  }
+}
