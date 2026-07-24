@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "resilient-command-conditioned-history-3dof",
+  "name": "Resilience quadruped with extended hip travel, motion command, force, IMU, and actuator history",
+  "base": "quadruped-resilient-3dof",
+  "components": [
+    {
+      "id": "body-imu",
+      "component": "body-imu",
+      "mount": "torso-sensor"
+    },
+    {
+      "id": "actuator-history",
+      "component": "actuator-history",
+      "mount": "torso-sensor"
+    },
+    {
+      "id": "motion-command-input",
+      "component": "motion-command-input",
+      "mount": "torso-sensor"
+    },
+    {
+      "id": "foot-force-kit",
+      "component": "foot-force-sensor",
+      "mount": "foot-array"
+    }
+  ]
+}

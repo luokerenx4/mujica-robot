@@ -21,7 +21,7 @@ isolated starting poses cannot represent.
 Task V6 combines:
 
 - a scheduled mission command that remains active for the whole episode;
-- a fixed `recoveryEvaluationStartSeconds`;
+- an authored `recoveryEvaluationStartSeconds` after the disturbance interval;
 - a later `mobilityMeasurementStartSeconds`, so progress is measured after the
   recovery budget rather than credited from the approach;
 - the same stable-stand target used by atomic self-righting.
@@ -59,13 +59,48 @@ Atomic command, traction, resting-pose self-righting, and recovery-handoff
 Benchmarks remain useful. They answer *where* a failure lives. The continuous
 mission answers whether the robot can complete the proposition.
 
-The first integrated baseline is intentionally failing. The rigid controller
-passes all four static resting-pose recovery cases, but fails both continuous
-impact missions. On the left case it is already outside the recovery target at
-2.50 s, the 100 N impact starts at 2.52 s, dynamic side-fall detection transfers
-authority at 2.86 s, and the robot never regains a stable stand. This is not a
-threshold problem: it demonstrates that the approach gait, impact basin, and
-recovery controller must be optimized together.
+The first integrated baseline failed despite passing all four static resting-pose
+recovery cases. A no-impact fourteen-second replay then exposed an earlier root
+cause: the open-loop forward gait accumulated sagittal momentum and fell after
+roughly 2.2 seconds, while the side-only dynamic detector left locomotion in
+control. Small pitch and pitch-rate feedback made the approach gait bounded, and
+the supervisor now detects both sagittal and lateral dynamic falls.
+
+The original 100 N for 160 ms authoring produced a 16 N·s impulse. It launched
+the roughly 6 kg robot with all feet airborne and roll rates above 6 rad/s, so
+joint actuation could not remove whole-body angular momentum before landing.
+That experiment is useful as an extreme failure probe, but it is outside the
+release controller's controllable impact basin. The gating scenarios use a
+mirrored 51 N impact: strong enough to leave the recovery target and force a
+real fall, but still physically recoverable.
+
+Dynamic recovery is not treated as a static pose lookup. It uses the measured
+entry angular speed, waits for a bounded momentum basin, reclassifies the pose
+after tumbling, runs a shortened retry sequence, and low-pass filters the
+standing action before a two-second locomotion handoff. The recovery clock
+starts at 2.70 seconds, after the authored impact ends at 2.66 seconds. The
+release mission uses an explicit `quadruped-resilient-3dof` Base variant with
+about 1.1 degrees more abduction and hip-pitch travel. Existing
+`quadruped-3dof` policies and evidence remain byte-compatible; the safety gate
+remains a 0.02 rad margin from the resilience variant's hard stops.
+
+The locked deterministic result now passes both complete missions with no gate
+violations:
+
+- aggregate score: `103.154322`;
+- recovery success: `2/2`;
+- time to stable stand: `5.48 s` in both directions;
+- maximum stable dwell: `1.98 s`;
+- post-recovery signed progress: `0.2011`;
+- final tilt: `0.0952 rad`;
+- minimum joint-limit margin: `0.0284 rad`;
+- disallowed self-contact: `0` steps.
+
+The atomic four-pose self-righting and four-pose recovery-handoff Benchmarks
+also pass. Command tracking still has pre-existing failures in the
+three-step-actuator-delay slices for both the embedded and standalone bounded
+traction controllers; this remains a separate latency-control work item rather
+than being hidden by the continuous mission result.
 
 ## Training distribution
 

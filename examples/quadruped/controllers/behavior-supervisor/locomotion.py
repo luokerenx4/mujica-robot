@@ -108,6 +108,7 @@ class BoundedTractionGaitController:
         if self.last_time is not None: self.lateral_position += lateral_velocity * max(0.0, time_seconds - self.last_time)
         self.last_time = time_seconds
         roll_rate = float(observation["imu-angular-velocity"][0])
+        pitch_rate = float(observation["imu-angular-velocity"][1])
         phase_lead = self.config["phaseLeadByDelaySteps"][delay]
         if delay > 0 and abs(roll_rate) > self.config["disturbanceRollRateThreshold"]: phase_lead = self.config["disturbancePhaseLeadSeconds"]
         phase = 2.0 * np.pi * self.config["frequencyHz"] * (time_seconds + phase_lead)
@@ -125,12 +126,26 @@ class BoundedTractionGaitController:
         offsets = np.array([0.0, 0.0, self.config["frontRearPhase"], self.config["frontRearPhase"]]); side = np.array([1.0, -1.0, 1.0, -1.0])
         prediction = self.config["statePredictionSeconds"]
         roll = quaternion_roll(observation["base-orientation"]) + prediction * roll_rate
+        pitch = (
+            quaternion_pitch(observation["base-orientation"])
+            + prediction * pitch_rate
+        )
         correction = np.clip(self.config["rollPositionGain"] * roll + self.config["rollRateGain"] * roll_rate + self.config["lateralVelocityGain"] * lateral_velocity + self.config["lateralPositionGain"] * self.lateral_position, -self.config["maximumRollCorrection"], self.config["maximumRollCorrection"])
+        pitch_correction = np.clip(
+            self.config["pitchPositionGain"] * pitch
+            + self.config["pitchRateGain"] * pitch_rate,
+            -self.config["maximumPitchCorrection"],
+            self.config["maximumPitchCorrection"],
+        )
         target = np.empty((4, 3))
         for leg in range(4):
             wave = np.sin(phase + offsets[leg])
             target[leg, 0] = side[leg] * self.config["neutralAbduction"] - correction
-            target[leg, 1] = self.config["neutralHip"] + gait_scale * self.config["hipAmplitude"] * wave
+            target[leg, 1] = (
+                self.config["neutralHip"]
+                + gait_scale * self.config["hipAmplitude"] * wave
+                + (1.0 if leg < 2 else -1.0) * pitch_correction
+            )
             target[leg, 2] = self.config["neutralKnee"] - gait_scale * self.config["kneeAmplitude"] * max(0.0, wave) - self.config["contactGain"] * contacts[leg]
         predicted_q = q + prediction * qd; action = np.empty((4, 3))
         action[:, 0] = self.config["kpAbduction"] * (target[:, 0] - predicted_q[:, 0]) - self.config["kdAbduction"] * qd[:, 0]

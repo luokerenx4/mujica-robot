@@ -398,7 +398,10 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(randomized.scenario["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
         self.assertAlmostEqual(randomized.scenario["observationNoiseStd"], float(scenario["observationNoiseStd"]) + 0.002)
         self.assertAlmostEqual(randomized.external_push["timeSeconds"], 2.65)
-        self.assertAlmostEqual(randomized.external_push["forceNewton"], 80.0)
+        self.assertAlmostEqual(
+            randomized.external_push["forceNewton"],
+            float(scenario["externalPush"]["forceNewton"]) * sample["pushForceScale"],
+        )
         np.testing.assert_allclose(randomized.external_push["directionXY"], [-1.0, 0.0], atol=1e-12)
         randomized.reset()
         self.assertEqual(randomized.events[0]["plant"]["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
@@ -678,16 +681,33 @@ class RuntimeContractTest(unittest.TestCase):
         controller.reset(6201)
         controller.act(observation, 0.0)
         self.assertEqual(read_controller_telemetry(controller)["mode"], "locomotion")
-        dynamic_tilt = {**observation, "base-height": np.array([0.25]), "base-orientation": np.array([2 ** -0.5, 0.0, 2 ** -0.5, 0.0])}
+        diagonal_tilt = {
+            **observation,
+            "base-height": np.array([0.25]),
+            "base-orientation": np.array(
+                [np.cos(0.45), np.sin(0.45) / np.sqrt(2), np.sin(0.45) / np.sqrt(2), 0.0]
+            ),
+        }
         for step in range(10):
-            controller.act(dynamic_tilt, (step + 1) * 0.02)
+            controller.act(diagonal_tilt, (step + 1) * 0.02)
         self.assertEqual(read_controller_telemetry(controller)["mode"], "locomotion")
         controller.reset(6201)
-        resting_fall = {**dynamic_tilt, "base-height": np.array([0.18])}
+        dynamic_sagittal_fall = {
+            **observation,
+            "base-height": np.array([0.25]),
+            "base-orientation": np.array([2 ** -0.5, 0.0, 2 ** -0.5, 0.0]),
+        }
+        controller.act(dynamic_sagittal_fall, 0.0)
+        telemetry = read_controller_telemetry(controller)
+        self.assertEqual(telemetry["mode"], "recovery")
+        self.assertEqual(telemetry["fallDetector"], "dynamic-sagittal-fall")
+        controller.reset(6201)
+        resting_fall = {**diagonal_tilt, "base-height": np.array([0.18])}
         controller.act(resting_fall, 0.0)
         telemetry = read_controller_telemetry(controller)
         self.assertEqual(telemetry["mode"], "recovery")
         self.assertEqual(telemetry["phase"], "recovery.impulse")
+        self.assertEqual(telemetry["fallDetector"], "resting-fall")
         controller.locomotion.config["hipAmplitude"] = 0.205
         controller.locomotion.config["kneeAmplitude"] = 0.07
         controller.reset(6202)

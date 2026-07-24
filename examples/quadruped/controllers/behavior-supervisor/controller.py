@@ -69,6 +69,21 @@ class BehaviorSupervisorController:
             >= self.config["enterDynamicSideRecoveryUpComponent"]
             and abs(body_up_y) >= abs(body_up_x)
         )
+        dynamic_sagittal_fall = (
+            tilt >= self.config["enterDynamicSagittalRecoveryMinimumTiltRad"]
+            and height <= self.config["enterDynamicSagittalRecoveryMaximumHeightM"]
+            and abs(body_up_x)
+            >= self.config["enterDynamicSagittalRecoveryUpComponent"]
+            and abs(body_up_x) > abs(body_up_y)
+        )
+        if dynamic_sagittal_fall:
+            return (
+                True,
+                tilt,
+                height,
+                "dynamic-sagittal-fall",
+                self.config["enterDynamicSagittalRecoveryStreakSteps"],
+            )
         if dynamic_side_fall:
             return (
                 True,
@@ -129,7 +144,12 @@ class BehaviorSupervisorController:
             action = self.recovery.act(observation, time_seconds)
             child = self.recovery.telemetry()
             self.recovery_pose = child.get("fallenPose")
-            if child["targetStreakSteps"] >= self.config["minimumRecoveryTargetSteps"]:
+            required_target_steps = (
+                self.config["minimumDynamicRecoveryTargetSteps"]
+                if child.get("dynamicRecovery", False)
+                else self.config["minimumRecoveryTargetSteps"]
+            )
+            if child["targetStreakSteps"] >= required_target_steps:
                 gait = self.config["postRecoveryGaitByPose"][self.recovery_pose]
                 self.locomotion.config["hipAmplitude"] = gait["hipAmplitude"]
                 self.locomotion.config["kneeAmplitude"] = gait["kneeAmplitude"]
@@ -207,6 +227,8 @@ class BehaviorSupervisorController:
                 "recoveryTargetSatisfied", False
             ),
             "targetStreakSteps": child.get("targetStreakSteps", 0),
+            "recoveryRetryCount": child.get("recoveryRetryCount", 0),
+            "dynamicRecovery": child.get("dynamicRecovery", False),
             "locomotionStrategy": locomotion_telemetry.get("locomotionStrategy"),
             "measuredDelaySteps": locomotion_telemetry.get("measuredDelaySteps"),
             "startupRampScale": locomotion_telemetry.get("startupRampScale"),

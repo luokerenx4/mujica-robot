@@ -55,24 +55,14 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("transition-controller-review");
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
-        status: "PARTIALLY_ROUTED",
+        status: "HUMAN_REVIEW_REQUIRED",
       },
     });
     expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
-    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(true);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(false);
     expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((lane) => [lane.kind, lane.researchLab])).toContainEqual(
-      ["controller-code", "resilient-mission-controller"],
-    );
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((lane) => [lane.kind, lane.researchLab])).toContainEqual(
-      ["rl-policy", "resilient-mission-policy"],
-    );
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((lane) => [lane.kind, lane.researchLab])).toContainEqual(
-      ["controller-code", "robust-transfer-controller"],
-    );
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((lane) => [lane.kind, lane.researchLab])).toContainEqual(
-      ["rl-policy", "sim-to-real-residual-policy"],
-    );
+    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes).toEqual([]);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces.some((item) => item.surface === "human-review")).toBe(true);
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
     const reviewedSession = first.snapshot.researchSessions.find((item) => item.id === "session-c773bff5c54a2cd7");

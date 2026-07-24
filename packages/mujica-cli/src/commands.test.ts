@@ -155,15 +155,15 @@ describe("agent CLI contract", () => {
     expect(JSON.parse(inspected.stdout).data.developmentReviews).toContain(data.id);
   }, 20_000);
 
-  test("routes exact Review blockers only to compatible governed development lanes", () => {
+  test("keeps numerically satisfied Review evidence below human acceptance", () => {
     const result = invoke(["project", "work", "examples/quadruped", "--json"]);
     expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout).data;
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "PARTIALLY_ROUTED",
-      subject: { assembly: "command-conditioned-history-3dof", controller: "behavior-supervisor" },
+      status: "HUMAN_REVIEW_REQUIRED",
+      subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "behavior-supervisor" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -172,22 +172,10 @@ describe("agent CLI contract", () => {
       },
     });
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting")).toBeUndefined();
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "resilient-mission" && item.case === "impact-left")).toBeDefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "resilient-mission")).toBeUndefined();
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "heavy-weak")).toBeDefined();
-    expect(data.workOrder.lanes).toHaveLength(4);
-    expect(data.workOrder.lanes.map((lane: any) => [lane.kind, lane.researchLab])).toEqual([
-      ["controller-code", "resilient-mission-controller"],
-      ["rl-policy", "resilient-mission-policy"],
-      ["controller-code", "robust-transfer-controller"],
-      ["rl-policy", "sim-to-real-residual-policy"],
-    ]);
-    expect(data.workOrder.lanes.map((lane: any) => lane.primaryBenchmark)).toEqual([
-      "resilient-mission",
-      "resilient-mission",
-      "sim-to-real-audit",
-      "sim-to-real-audit",
-    ]);
-    expect(data.workOrder.lanes.every((lane: any) => lane.runArgv.includes("<agent-command>"))).toBe(true);
+    expect(data.workOrder.lanes).toEqual([]);
+    expect(data.workOrder.uncoveredSurfaces.some((item: any) => item.surface === "human-review")).toBe(true);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
   }, 20_000);
@@ -1102,7 +1090,7 @@ describe("agent CLI contract", () => {
   test("Controller discovery exposes legal Assembly combinations", () => {
     const result = invoke(["controller", "inspect", "examples/quadruped", "--controller", "latency-aware-spatial-gait", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0); expect(envelope.data.definition.interface.requiredObservations.at(-1)).toEqual({ name: "actuator-delay-steps", size: 1 });
-    expect(envelope.data.compatibleAssemblies).toEqual(["command-conditioned-history-3dof", "force-sensing-history-3dof"]);
+    expect(envelope.data.compatibleAssemblies).toEqual(["command-conditioned-history-3dof", "force-sensing-history-3dof", "resilient-command-conditioned-history-3dof"]);
     expect(envelope.nextActions[0].argv.slice(0, 5)).toEqual(["simulate", resolve(root, "examples/quadruped"), "--assembly", "command-conditioned-history-3dof", "--controller"]);
     const ordinary = envelope.data.incompatibleAssemblies.find((item: any) => item.assembly === "force-sensing-3dof");
     expect(ordinary.issues).toEqual([{ code: "observation.missing", channel: "actuator-delay-steps", message: "Program Controller 'latency-aware-spatial-gait' requires Observation 'actuator-delay-steps' (size 1), but Assembly 'force-sensing-3dof' does not provide it" }]);
@@ -1212,8 +1200,8 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 12, 14]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);

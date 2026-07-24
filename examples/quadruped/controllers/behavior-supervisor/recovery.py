@@ -69,12 +69,18 @@ class PhasedSelfRightController:
         self.fallen_pose = None
         self.phase = "uninitialized"
         self.target_streak = 0
+        self.retry_count = 0
+        self.dynamic_entry = False
+        self.feedback_hold = False
+        self.previous_action = None
         self.last_telemetry = {
             "phase": self.phase,
             "fallenPose": None,
             "supportFeet": 0,
             "recoveryTargetSatisfied": False,
             "targetStreakSteps": 0,
+            "recoveryRetryCount": 0,
+            "dynamicRecovery": False,
         }
 
     def classify_pose(self, orientation: np.ndarray) -> str:
@@ -124,35 +130,81 @@ class PhasedSelfRightController:
         if self.started_at is None:
             self.started_at = time_seconds
             self.fallen_pose = self.classify_pose(orientation)
+            self.dynamic_entry = (
+                float(np.linalg.norm(velocity[3:6]))
+                >= self.config["dynamicEntryAngularSpeedThresholdRadPerSec"]
+            )
         pose = self.fallen_pose
         elapsed = max(0.0, time_seconds - self.started_at)
+        current_pose = self.classify_pose(orientation)
+        if (
+            self.dynamic_entry
+            and pose != "upright"
+            and current_pose not in ("upright", pose)
+            and elapsed >= self.config["retryAfterSeconds"]
+            and self.retry_count < self.config["maximumRecoveryRetries"]
+            and float(np.linalg.norm(velocity[3:6]))
+            <= self.config["maximumRetryAngularSpeedRadPerSec"]
+        ):
+            self.fallen_pose = current_pose
+            pose = current_pose
+            self.started_at = time_seconds
+            elapsed = 0.0
+            self.target_streak = 0
+            self.retry_count += 1
 
         target_satisfied = self.recovery_target_satisfied(observation, tilt)
         qualified = target_satisfied and support_feet >= self.config["minimumSupportFeet"]
         self.target_streak = self.target_streak + 1 if qualified else 0
+        if qualified and self.dynamic_entry and self.retry_count > 0:
+            self.feedback_hold = True
 
         if pose == "upright":
             self.phase = "stand"
             target = self.stand_target.copy()
         else:
             impulse, capture = self.targets_by_pose[pose]
-            if elapsed < self.config["impulseSeconds"]:
+            dynamic_retry = self.dynamic_entry and self.retry_count > 0
+            impulse_seconds = (
+                self.config["dynamicRetryImpulseSeconds"]
+                if dynamic_retry
+                else self.config["impulseSeconds"]
+            )
+            capture_until_seconds = (
+                self.config["dynamicRetryCaptureUntilSeconds"]
+                if dynamic_retry
+                else self.config["captureUntilSeconds"]
+            )
+            if elapsed < impulse_seconds:
                 self.phase = "impulse"
                 target = impulse.copy()
-            elif elapsed < self.config["captureUntilSeconds"]:
+            elif elapsed < capture_until_seconds:
                 self.phase = "capture"
                 target = capture.copy()
             else:
-                rise_seconds = float(self.config["riseSecondsByPose"][pose])
-                alpha = min(1.0, (elapsed - self.config["captureUntilSeconds"]) / rise_seconds)
+                rise_seconds = float(
+                    self.config["dynamicRetryRiseSecondsByPose"][pose]
+                    if dynamic_retry
+                    else self.config["riseSecondsByPose"][pose]
+                )
+                alpha = min(
+                    1.0,
+                    (elapsed - capture_until_seconds) / rise_seconds,
+                )
                 self.phase = (
                     "stand"
                     if alpha >= 1.0 and support_feet >= self.config["minimumSupportFeet"]
                     else "rise"
                 )
+                if dynamic_retry and self.phase == "stand":
+                    self.feedback_hold = True
                 target = (1.0 - alpha) * capture + alpha * self.stand_target
                 target = self.stabilized_target(
-                    target, roll, pitch, velocity[3:6], pose
+                    target,
+                    roll,
+                    pitch,
+                    velocity[3:6],
+                    pose,
                 )
 
         maximum_abduction = self.config[
@@ -179,11 +231,18 @@ class PhasedSelfRightController:
             "supportFeet": support_feet,
             "recoveryTargetSatisfied": target_satisfied,
             "targetStreakSteps": self.target_streak,
+            "recoveryRetryCount": self.retry_count,
+            "dynamicRecovery": self.dynamic_entry,
         }
         abduction_damping = (
             self.config["kdAbductionByPose"].get(pose, self.config["kdAbduction"])
         )
-        return target, abduction_damping, self.config["kdSagittal"]
+        sagittal_damping = (
+            self.config["dynamicRiseKdSagittal"]
+            if self.dynamic_entry
+            else self.config["kdSagittal"]
+        )
+        return target, abduction_damping, sagittal_damping
 
     def act(self, observation, time_seconds: float):
         q = np.asarray(observation["joint-position"], dtype=np.float64).reshape(4, 3)
@@ -200,7 +259,12 @@ class PhasedSelfRightController:
             self.config["kpSagittal"] * (target[:, 1:] - q[:, 1:])
             - sagittal_damping * qd[:, 1:]
         )
-        return np.clip(action.reshape(-1), -8.0, 8.0)
+        action = np.clip(action.reshape(-1), -8.0, 8.0)
+        if self.feedback_hold and self.previous_action is not None:
+            blend = self.config["dynamicHoldActionBlend"]
+            action = (1.0 - blend) * self.previous_action + blend * action
+        self.previous_action = action.copy()
+        return action
 
     def telemetry(self):
         return dict(self.last_telemetry)

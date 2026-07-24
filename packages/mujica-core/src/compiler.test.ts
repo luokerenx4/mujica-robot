@@ -12,18 +12,21 @@ describe("Robot Assembly compiler", () => {
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "resilient-mission", case: "impact-left" });
+    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
     expect(review.northStar).toMatchObject({
       stage: "continuous-resilience",
       benchmark: "resilient-mission",
       satisfied: false,
+      numericalSatisfied: true,
+      humanReviewStatus: "REQUIRED",
     });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["controller-code", "rl-policy", "controller-code", "rl-policy"]);
-    expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["resilient-mission", "resilient-mission", "sim-to-real-audit", "sim-to-real-audit"]);
+    expect(workOrder.status).toBe("HUMAN_REVIEW_REQUIRED");
+    expect(workOrder.lanes).toEqual([]);
     expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
-    expect(workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(true);
+    expect(workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(false);
     expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
+    expect(workOrder.uncoveredSurfaces.some((item) => item.surface === "human-review")).toBe(true);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 
@@ -173,9 +176,9 @@ describe("Robot Assembly compiler", () => {
   test("the complete example project resolves", async () => {
     const result = await validateProject(project);
     expect(result.project.manifest.id).toBe("quadruped");
-    expect(result.project.manifest.defaults.assembly).toBe("command-conditioned-history-3dof");
+    expect(result.project.manifest.defaults.assembly).toBe("resilient-command-conditioned-history-3dof");
     expect(result.project.manifest.defaults.controller).toBe("behavior-supervisor");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);
@@ -487,7 +490,7 @@ describe("Robot Assembly compiler", () => {
     const task = await loadTask(project, "resilient-forward-mission");
     expect(taskSchema.parse(task)).toMatchObject({
       version: 6,
-      recoveryEvaluationStartSeconds: 2.5,
+      recoveryEvaluationStartSeconds: 2.7,
       mobilityMeasurementStartSeconds: 8,
     });
     if (task.version !== 6) throw new Error("Expected continuous resilience Task");
@@ -497,13 +500,13 @@ describe("Robot Assembly compiler", () => {
     }).success).toBe(false);
     expect(taskSchema.safeParse({
       ...task,
-      recoveryEvaluationStartSeconds: 2.51,
+      recoveryEvaluationStartSeconds: 2.71,
     }).success).toBe(false);
 
     const scenario = JSON.parse(await readFile(join(project, "scenarios/mission-impact-left.scenario.json"), "utf8"));
     expect(scenarioSchema.parse(scenario)).toMatchObject({
       version: 2,
-      externalPush: { forceNewton: 100, directionXY: [0, 1] },
+      externalPush: { forceNewton: 51, directionXY: [0, 1] },
     });
     expect(scenarioSchema.safeParse({
       ...scenario,
