@@ -1,20 +1,25 @@
 # Continuous resilience residual Policy autoresearch
 
 Train a bounded residual Policy across the full fourteen-second
-`resilient-forward-mission`. Episodes continuously randomize plant dynamics and
-impact time, force, and direction around the two authored base Scenarios.
+`resilient-forward-mission`. Stage zero alternates the two authored impact
+directions on the exact recoverable plant so the Agent can first demonstrate
+useful post-recovery control. A separate wider Domain Profile retains plant,
+impact-time, force, and direction variation for the next robustness stage.
 
 The serialized `behavior-supervisor` is the reference Controller and retains
-exclusive authority during recovery and handoff. The Policy may improve only
-the pre-recovery locomotion/contact basin through its gated residual. Do not
+exclusive authority during approach, impact, recovery, and settling. The
+Policy may improve only locomotion after the supervisor reports
+`recoveryCompleted=true`; its authority ramps in over 0.75 seconds. Do not
 remove the residual gate, expose Scenario identity, or substitute training
 reward for locked evaluation.
 
-The first 8,192-step candidate improved joint-limit margin and aggregate score
-slightly but recovered in neither case. Prefer hypotheses that measurably alter
-the pre-impact body state or fall-entry momentum across the continuous Domain
-Profile. Keep exploration and residual authority small enough to preserve the
-program prior.
+The original 8,192-step candidate was bound to the obsolete 100 N mission and
+an older Assembly. Three candidates retrained on the recoverable mission with
+pre-impact residual authority all completed recovery, but tiny phase changes
+still caused slower recovery, joint-limit use, or self-contact. The learned
+lane therefore no longer edits the impact-entry basin. Prefer hypotheses that
+improve post-recovery command tracking and motion quality while preserving the
+program prior exactly through the stable-recovery witness.
 
 The locked `resilient-mission` Judge compares every frozen Policy against both
 the current learned candidate and the program reference, then runs static

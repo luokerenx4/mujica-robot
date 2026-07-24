@@ -1208,7 +1208,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.researchLabs).toBe(12);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
-    expect(envelope.data.definitions.domainProfiles).toBe(6);
+    expect(envelope.data.definitions.domainProfiles).toBe(7);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
     expect(envelope.data.definitions.driverPackages).toBe(1);

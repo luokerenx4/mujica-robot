@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "quadruped-resilient-resume-curriculum-v1",
+  "name": "Post-recovery locomotion curriculum",
+  "provenance": {
+    "kind": "synthetic",
+    "evidence": null,
+    "notes": "Training-only stage-zero curriculum. It alternates the two locked impact directions on the exact recoverable plant so every successful episode can contribute post-recovery actor data. It makes no robustness claim; variation remains assigned to quadruped-resilient-mission-v1 and independent held-out Benchmarks."
+  },
+  "parameters": {
+    "bodyMassScale": {
+      "minimum": 1,
+      "maximum": 1
+    },
+    "jointDampingScale": {
+      "minimum": 1,
+      "maximum": 1
+    },
+    "actuatorStrengthScale": {
+      "minimum": 1,
+      "maximum": 1
+    },
+    "frictionScale": {
+      "minimum": 1,
+      "maximum": 1
+    },
+    "observationNoiseStd": {
+      "minimum": 0,
+      "maximum": 0
+    },
+    "actuatorDelayJitterSteps": {
+      "minimum": 0,
+      "maximum": 0
+    },
+    "pushTimeOffsetSeconds": {
+      "minimum": 0,
+      "maximum": 0
+    },
+    "pushForceScale": {
+      "minimum": 1,
+      "maximum": 1
+    },
+    "pushDirectionJitterRad": {
+      "minimum": 0,
+      "maximum": 0
+    }
+  }
+}

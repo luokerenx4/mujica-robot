@@ -1,0 +1,34 @@
+{
+  "version": 6,
+  "id": "resilient-forward-mission",
+  "name": "Walk, absorb an impact, recover, and resume the same mission",
+  "durationSeconds": 14,
+  "controlHz": 50,
+  "healthyHeight": [
+    0.05,
+    0.8
+  ],
+  "terminateOnFall": false,
+  "motionCommandSchedule": [
+    {
+      "atSeconds": 0,
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0.2,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      }
+    }
+  ],
+  "recoveryEvaluationStartSeconds": 2.7,
+  "mobilityMeasurementStartSeconds": 8,
+  "recoveryTarget": {
+    "minimumBaseHeightM": 0.32,
+    "maximumBodyTiltRad": 0.35,
+    "maximumLinearSpeedMps": 0.2,
+    "maximumAngularSpeedRadPerSec": 0.5,
+    "holdSeconds": 0.5
+  }
+}

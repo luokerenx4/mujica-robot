@@ -83,6 +83,27 @@ def quality_reward_penalty(info: dict[str, Any], weights: dict[str, Any] | None)
     return float(sum(terms.values())), terms
 
 
+def normalize_masked_advantages(
+    advantages: np.ndarray, policy_masks: np.ndarray
+) -> np.ndarray:
+    normalized = np.zeros_like(advantages, dtype=np.float32)
+    active = policy_masks > 0.0
+    if not np.any(active):
+        return normalized
+    active_advantages = advantages[active]
+    normalized[active] = (
+        active_advantages - active_advantages.mean()
+    ) / (active_advantages.std() + 1e-8)
+    return normalized
+
+
+def masked_mean(values: torch.Tensor, masks: torch.Tensor) -> torch.Tensor:
+    denominator = masks.sum()
+    if float(denominator.detach().item()) <= 0.0:
+        return values.sum() * 0.0
+    return (values * masks).sum() / denominator
+
+
 class RunningNormalizer:
     def __init__(self, size: int):
         self.count = 1e-4
@@ -173,6 +194,7 @@ class PPOTrainer:
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
+            batch_policy_masks: list[float] = []
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
                 normalizer.update(observation); normalized = normalizer.normalize(observation)
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
@@ -194,11 +216,13 @@ class PPOTrainer:
                         * raw_action
                     )
                     batch_residual_gate_scales.append(residual_gate_scale)
+                    batch_policy_masks.append(residual_gate_scale)
                     batch_residual_l2.append(
                         float(np.linalg.norm(raw_action) / np.sqrt(raw_action.size))
                     )
                 else:
                     transformed = transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time))
+                    batch_policy_masks.append(1.0)
                 action = np.clip(transformed, lows, highs)
                 result = environment.step(action)
                 quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
@@ -227,19 +251,20 @@ class PPOTrainer:
                 last_advantage = delta + float(config["gamma"]) * float(config["gaeLambda"]) * next_nonterminal * last_advantage
                 advantages[index] = last_advantage
             returns = advantages + np.asarray(batch_values, dtype=np.float32)
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-            tensors = (torch.tensor(np.asarray(batch_obs)), torch.tensor(np.asarray(batch_actions)), torch.tensor(np.asarray(batch_log_probs)), torch.tensor(advantages), torch.tensor(returns))
+            policy_masks = np.asarray(batch_policy_masks, dtype=np.float32)
+            advantages = normalize_masked_advantages(advantages, policy_masks)
+            tensors = (torch.tensor(np.asarray(batch_obs)), torch.tensor(np.asarray(batch_actions)), torch.tensor(np.asarray(batch_log_probs)), torch.tensor(advantages), torch.tensor(returns), torch.tensor(policy_masks))
             losses: list[float] = []
             indices = np.arange(len(batch_rewards))
             for _ in range(int(config["epochs"])):
                 np.random.shuffle(indices)
                 for start in range(0, len(indices), int(config["minibatchSize"])):
                     selected = indices[start:start + int(config["minibatchSize"])]
-                    obs_t, action_t, old_log_t, advantage_t, return_t = (tensor[selected] for tensor in tensors)
-                    mean, value, log_std = network(obs_t); distribution = torch.distributions.Normal(mean, log_std.exp()); new_log = distribution.log_prob(action_t).sum(-1); entropy = distribution.entropy().sum(-1).mean()
+                    obs_t, action_t, old_log_t, advantage_t, return_t, policy_mask_t = (tensor[selected] for tensor in tensors)
+                    mean, value, log_std = network(obs_t); distribution = torch.distributions.Normal(mean, log_std.exp()); new_log = distribution.log_prob(action_t).sum(-1); entropy = masked_mean(distribution.entropy().sum(-1), policy_mask_t)
                     ratio = (new_log - old_log_t).exp(); clipped = torch.clamp(ratio, 1.0 - float(config["clipRatio"]), 1.0 + float(config["clipRatio"]))
-                    policy_loss = -torch.min(ratio * advantage_t, clipped * advantage_t).mean(); value_loss = 0.5 * torch.square(value - return_t).mean()
-                    residual_penalty = float(config.get("residualPenalty", 0.0)) * torch.square(mean).mean()
+                    policy_loss = -masked_mean(torch.min(ratio * advantage_t, clipped * advantage_t), policy_mask_t); value_loss = 0.5 * torch.square(value - return_t).mean()
+                    residual_penalty = float(config.get("residualPenalty", 0.0)) * masked_mean(torch.square(mean).mean(dim=-1), policy_mask_t)
                     loss = policy_loss + value_loss + residual_penalty - float(config["entropyCoefficient"]) * entropy
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
             metrics.append({
@@ -248,6 +273,7 @@ class PPOTrainer:
                 "meanQualityTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_quality_terms.items()},
                 "meanResidualGateScale": float(np.mean(batch_residual_gate_scales)) if batch_residual_gate_scales else None,
                 "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
+                "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
             })
 
         torch.save(network.state_dict(), output_dir / "model.pt")

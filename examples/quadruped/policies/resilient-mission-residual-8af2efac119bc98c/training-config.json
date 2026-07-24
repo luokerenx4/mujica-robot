@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "resilient-mission-residual",
+  "name": "Continuous mission residual PPO",
+  "assembly": "resilient-command-conditioned-history-3dof",
+  "trainer": "resilient-residual-ppo",
+  "task": "resilient-forward-mission",
+  "scenarios": [
+    "mission-impact-left",
+    "mission-impact-right"
+  ],
+  "priorController": "behavior-supervisor",
+  "domainProfile": "quadruped-resilient-resume-curriculum-v1",
+  "totalSteps": 8192,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0003,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0,
+  "residualScale": 0.2,
+  "residualPenalty": 0.01,
+  "qualityReward": {
+    "jointAcceleration": 0,
+    "bodyAngularAcceleration": 0,
+    "actionSlew": 0,
+    "actuatorSaturation": 0,
+    "footSlip": 0,
+    "footImpact": 0
+  }
+}

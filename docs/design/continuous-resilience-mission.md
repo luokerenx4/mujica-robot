@@ -113,11 +113,20 @@ sampling:
 - planar direction jitter;
 - mass, damping, actuator strength, friction, observation noise, and delay.
 
+The learned lane begins with
+`quadruped-resilient-resume-curriculum-v1`, a stage-zero curriculum on the exact
+recoverable plant while alternating the two impact directions. Its purpose is
+not to claim robustness; it separates learning resumed locomotion from the
+still-open problem of recovery under plant variation. The wider
+`quadruped-resilient-mission-v1` profile remains the next training stage, while
+fixed held-out Benchmarks remain the only promotion authority.
+
 `resilient-mission-residual` trains against the full fourteen-second Task.
-The residual Policy has authority only while the prior supervisor reports
-pre-recovery locomotion; deterministic code retains recovery and handoff
-authority. This first bounded ML lane can improve the approach gait and contact
-basin without being allowed to corrupt the proven recovery sequence.
+The deterministic supervisor owns approach, impact, recovery, and settling.
+The residual Policy receives authority only after the supervisor reports
+`recoveryCompleted=true`, and that authority ramps in over 0.75 seconds. This
+keeps the proven impact-entry and recovery sequence byte-identical while
+letting ML improve resumed locomotion.
 
 The first 8,192-step run (`training-35a1e28c2b8dd34a`) sampled eleven complete
 episodes plus one partial episode across the declared ranges. Its frozen Policy
@@ -126,6 +135,55 @@ from `-14.702985` to `-14.650032` and reduced violations from 16 to 14 by
 improving joint-limit margin. It still recovered in neither locked case and
 never reached `resume`, so it remains a failed candidate rather than a promoted
 controller.
+
+Retraining on the recoverable 51 N mission showed why this authority boundary
+is necessary. Residual scales of `0.02`, `0.002`, and `0.0002` all completed
+both recoveries, but even the smallest pre-impact correction changed the
+contact trajectory enough to miss recovery-time, joint-margin, or self-contact
+gates. Contact dynamics amplified tiny gait-phase changes; progressively
+shrinking the same unsafe authority was not a reliable solution. The dedicated
+`resilient-residual-ppo` Trainer therefore gates learning to locomotion after
+stable recovery instead of perturbing the validated recovery basin.
+
+Two implementation faults were exposed while making that boundary real:
+
+- PPO originally optimized sampled actions from the whole episode even when the
+  residual gate was zero. Actor advantage normalization, policy loss, entropy,
+  and residual penalty are now masked by the actual gate scale. The critic
+  still learns from the complete causal episode. Every training update records
+  `activePolicyFraction`, so an Agent can distinguish environment experience
+  from steps on which its Policy had authority.
+- `BehaviorSupervisorController` originally retained references into its
+  module-level JSON definition. The first completed recovery mutates the
+  locomotion gait for resume, so later training episodes in the same Python
+  process inherited that gait before the impact. Each Controller instance now
+  deep-copies its definition. On the exact curriculum, useful actor authority
+  rose from roughly `1.16%` under the contaminated episode sequence to
+  `26.67%`, consistent with the authored post-recovery portion of a complete
+  mission.
+
+The first honest stage-zero comparison trained three 8,192-step seeds after
+those fixes. Policy `resilient-mission-residual-8af2efac119bc98c`, produced by
+Training Run `training-f37e65dc28f9b018`, is the best of the three. It used
+active actor authority on `25.51%` of sampled steps and passed both locked
+left/right continuous missions with zero gate violations. It nevertheless
+scored `103.028253` against the deterministic supervisor's `103.154322`, a
+`-0.126070` aggregate delta after the declared training cost. The left-impact
+case lost `0.243530` score and the right-impact case lost `0.008609`.
+
+The Judge decision is therefore **REVERT**: the learned Policy is retained as
+inspectable evidence and a Studio comparison candidate, but it does not replace
+the deterministic Controller. This is a successful safety-partition experiment,
+not a locomotion-improvement claim. The next ML hypothesis must improve the
+post-recovery objective across seeds before it is exposed to the wider
+plant/impact variation profile.
+
+Atomic regression confirms the partition. Both the supervisor and learned
+Policy pass `self-righting` and `recovery-handoff` with zero violations. Both
+retain the same two pre-existing `command-tracking` and four
+`command-transitions` violations; the Policy's lower aggregate scores there are
+exactly its declared `0.8192` training-step cost, because the residual gate
+never opens in those Tasks.
 
 Training reward is never promotion evidence. The frozen Policy must pass the
 locked continuous mission and its atomic regression Benchmarks. The Domain

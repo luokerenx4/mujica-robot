@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -351,6 +351,20 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(penalty, 3.0)
         self.assertEqual(terms, {name: 0.5 for name in terms})
         self.assertEqual(quality_reward_penalty(info, None)[0], 0.0)
+
+    def test_residual_policy_updates_ignore_steps_without_action_authority(self):
+        advantages = np.asarray([100.0, 2.0, 4.0, -100.0], dtype=np.float32)
+        masks = np.asarray([0.0, 1.0, 1.0, 0.0], dtype=np.float32)
+        normalized = normalize_masked_advantages(advantages, masks)
+        np.testing.assert_allclose(normalized, [0.0, -1.0, 1.0, 0.0], atol=1e-6)
+        self.assertEqual(
+            float(masked_mean(torch.tensor([100.0, 2.0, 4.0]), torch.tensor([0.0, 1.0, 1.0]))),
+            3.0,
+        )
+        inactive = torch.tensor([1.0, 2.0], requires_grad=True)
+        inactive_mean = masked_mean(inactive, torch.zeros(2))
+        inactive_mean.backward()
+        np.testing.assert_allclose(inactive.grad.numpy(), [0.0, 0.0])
 
     def test_domain_profile_sampling_is_separate_reproducible_and_applied_to_mujoco(self):
         profile = {"parameters": {
@@ -713,6 +727,12 @@ class RuntimeContractTest(unittest.TestCase):
         controller.reset(6202)
         self.assertEqual(controller.locomotion.config["hipAmplitude"], definition["config"]["locomotion"]["hipAmplitude"])
         self.assertEqual(controller.locomotion.config["kneeAmplitude"], definition["config"]["locomotion"]["kneeAmplitude"])
+        controller.locomotion.config["hipAmplitude"] = 0.01
+        fresh = load_program_controller(root, definition)
+        self.assertEqual(
+            fresh.locomotion.config["hipAmplitude"],
+            definition["config"]["locomotion"]["hipAmplitude"],
+        )
 
     def test_program_controller_can_compose_package_local_modules(self):
         with tempfile.TemporaryDirectory() as temporary:
