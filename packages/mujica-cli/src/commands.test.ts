@@ -162,9 +162,8 @@ describe("agent CLI contract", () => {
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "READY",
-      subject: { assembly: "self-righting-rigid-3dof", controller: "rigid-self-right" },
-      uncoveredSurfaces: [],
+      status: "PARTIALLY_ROUTED",
+      subject: { assembly: "command-conditioned-history-3dof", controller: "bounded-traction-gait" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -173,13 +172,12 @@ describe("agent CLI contract", () => {
       },
     });
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting" && item.case === "front")).toBeDefined();
-    expect(data.workOrder.lanes).toHaveLength(3);
+    expect(data.workOrder.lanes).toHaveLength(2);
     expect(data.workOrder.lanes.map((lane: any) => [lane.kind, lane.researchLab])).toEqual([
-      ["complete-design", "self-righting-waist-design"],
-      ["controller-code", "self-righting-rigid-controller"],
-      ["rl-policy", "self-righting-residual-policy"],
+      ["controller-code", "robust-transfer-controller"],
+      ["rl-policy", "sim-to-real-residual-policy"],
     ]);
-    expect(data.workOrder.lanes.every((lane: any) => lane.primaryBenchmark === "self-righting")).toBe(true);
+    expect(data.workOrder.lanes.every((lane: any) => lane.primaryBenchmark === "sim-to-real-audit")).toBe(true);
     expect(data.workOrder.lanes.every((lane: any) => lane.runArgv.includes("<agent-command>"))).toBe(true);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
@@ -237,6 +235,7 @@ describe("agent CLI contract", () => {
     });
     expect(context.contextHash).toHaveLength(64);
     expect(context.baseline.artifactHashes.trajectory).toHaveLength(64);
+    expect(context.baseline.controller).toEqual({ phase: null, telemetry: null });
     expect(context.motionQualityDeltaSubjectMinusBaseline).toHaveProperty("meanJointJerkRadPerSec3");
 
     const captureId = "capture-91a394ba19589331";

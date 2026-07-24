@@ -1,0 +1,17 @@
+{
+  "kind": "mlp-actor-critic",
+  "observationSize": 48,
+  "actionSize": 12,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScale": 0.05,
+    "controllerId": "phased-self-right",
+    "controllerHash": "8383827f46e771c63e4ca113933fb04d4fb03a6a3eb6c0974442c65a6725c766"
+  }
+}

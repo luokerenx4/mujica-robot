@@ -85,6 +85,10 @@ async function runSide(projectRoot: string, runId: string, timeSeconds: number) 
     rowTimeSeconds,
     simulationStep: row.step ?? null,
     row,
+    controller: {
+      phase: row.controllerPhase ?? row.controllerTelemetry?.phase ?? null,
+      telemetry: row.controllerTelemetry ?? null,
+    },
     nearbyEvents,
     metrics,
     score,

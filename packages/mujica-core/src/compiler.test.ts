@@ -12,10 +12,11 @@ describe("Robot Assembly compiler", () => {
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "light-strong" });
+    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["complete-design", "controller-code", "rl-policy"]);
-    expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["self-righting", "self-righting", "self-righting"]);
+    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["controller-code", "rl-policy"]);
+    expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["sim-to-real-audit", "sim-to-real-audit"]);
+    expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 

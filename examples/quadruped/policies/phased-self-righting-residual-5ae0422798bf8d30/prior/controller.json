@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "id": "phased-self-right",
+  "name": "Contact-qualified phased self-righting controller",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      { "name": "joint-position", "size": 12 },
+      { "name": "joint-velocity", "size": 12 },
+      { "name": "base-height", "size": 1 },
+      { "name": "base-orientation", "size": 4 },
+      { "name": "base-velocity", "size": 6 },
+      { "name": "foot-contact-force", "size": 4 }
+    ],
+    "actionChannels": [
+      { "name": "joint-torque", "size": 12, "low": -8, "high": 8 }
+    ]
+  },
+  "config": {
+    "uprightTiltRad": 0.35,
+    "kpAbduction": 22,
+    "kdAbduction": 2.8,
+    "kdAbductionByPose": {
+      "front": 2.8,
+      "back": 2.8,
+      "left": 3.5,
+      "right": 3.5,
+      "upright": 2.8
+    },
+    "kpSagittal": 32,
+    "kdSagittal": 2.4,
+    "impulseSeconds": 0.8,
+    "captureUntilSeconds": 1.2,
+    "riseSecondsByPose": {
+      "front": 3,
+      "back": 3,
+      "left": 2,
+      "right": 2
+    },
+    "feedbackByPose": {
+      "front": {
+        "rollGain": 0.4,
+        "rollRateGain": 0.05,
+        "pitchGain": 1.5,
+        "pitchRateGain": 0.15
+      },
+      "back": {
+        "rollGain": 0.2,
+        "rollRateGain": 0.05,
+        "pitchGain": 1.5,
+        "pitchRateGain": 0.15
+      },
+      "left": {
+        "rollGain": 1.25,
+        "rollRateGain": 0.1,
+        "pitchGain": 2,
+        "pitchRateGain": 0.1
+      },
+      "right": {
+        "rollGain": 1.25,
+        "rollRateGain": 0.1,
+        "pitchGain": 2,
+        "pitchRateGain": 0.1
+      }
+    },
+    "frontImpulseTarget": [0.1859914657052404, 0.409714795313582, -0.005086982089814617, 0.5554240793552805, -0.41762646308804025, -0.7877352540657173],
+    "frontCaptureTarget": [0.019854144309887172, 0.9389589841248264, -0.0021052268442697418, 0.38473868960542756, 0.5139114900711059, -0.7627263374051683],
+    "backImpulseTarget": [0.092, 0.495, -2.185, 0.624, -0.989, -0.161],
+    "backCaptureTarget": [0.02, -0.06, -1.812, 0.014, -0.36, -1.405],
+    "leftImpulseTarget": [0.551, -0.109, -0.03, 0.406, -0.982, -0.322],
+    "leftCaptureTarget": [0.52528, 0.26, -1.27, -0.47334, -0.701, -0.523],
+    "standTarget": [0.2, 0.34, -0.45, 0.2, 0.34, -0.45],
+    "maximumAbsoluteAbductionTargetRad": 0.6,
+    "maximumAbsoluteAbductionTargetRadByPose": {
+      "front": 0.6,
+      "back": 0.6,
+      "left": 0.58,
+      "right": 0.58,
+      "upright": 0.6
+    },
+    "maximumAbsoluteHipTargetRad": 1.15,
+    "minimumKneeTargetRad": -2.1,
+    "maximumKneeTargetRad": 0.05,
+    "minimumRecoveryHeightM": 0.32,
+    "maximumRecoveryTiltRad": 0.35,
+    "maximumRecoveryLinearSpeedMps": 0.2,
+    "maximumRecoveryAngularSpeedRadPerSec": 0.5,
+    "contactThresholdNewton": 1,
+    "minimumSupportFeet": 2
+  }
+}

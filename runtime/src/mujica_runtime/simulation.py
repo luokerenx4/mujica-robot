@@ -66,6 +66,19 @@ def has_disallowed_self_contact(model: mujoco.MjModel, data: mujoco.MjData) -> b
     return False
 
 
+def read_controller_telemetry(controller: Any) -> dict[str, Any] | None:
+    provider = getattr(controller, "telemetry", None)
+    if provider is None:
+        return None
+    telemetry = provider()
+    if not isinstance(telemetry, dict):
+        raise RuntimeError("Controller telemetry() must return an object")
+    try:
+        return json.loads(json.dumps(telemetry, allow_nan=False))
+    except (TypeError, ValueError) as error:
+        raise RuntimeError("Controller telemetry() must return finite JSON data") from error
+
+
 def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, distance_traveled: float, task: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
     displacement = np.asarray(final_position, dtype=np.float64) - np.asarray(initial_position, dtype=np.float64)
     schedule = compile_motion_command_schedule(task)
@@ -359,8 +372,25 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     survived_steps = 0
     fell = False
     previous_pushing = False
+    previous_controller_phase: str | None = None
     while True:
         action = controller.act({name: values.copy() for name, values in observation.items()}, float(environment.data.time))
+        controller_telemetry = read_controller_telemetry(controller)
+        controller_phase = (
+            str(controller_telemetry["phase"])
+            if controller_telemetry is not None and controller_telemetry.get("phase") is not None
+            else None
+        )
+        if controller_phase is not None and controller_phase != previous_controller_phase:
+            environment.events.append({
+                "type": "controller.phase-changed",
+                "time": float(environment.data.time),
+                "step": environment.step_index,
+                "from": previous_controller_phase,
+                "to": controller_phase,
+                "telemetry": controller_telemetry,
+            })
+            previous_controller_phase = controller_phase
         result = environment.step(action)
         current_position = environment.data.qpos[:3].copy()
         distance_traveled += float(np.linalg.norm(current_position[:2] - previous_position[:2]))
@@ -417,7 +447,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                 recovery_entered_at = None
         foot_contact_force = result.observation.get("foot-contact-force")
         foot_positions_world = environment.foot_positions_world()
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "recoveryTargetSatisfied": recovery_target_satisfied, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "recoveryTargetSatisfied": recovery_target_satisfied, "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True

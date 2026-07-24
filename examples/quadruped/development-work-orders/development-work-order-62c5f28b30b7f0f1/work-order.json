@@ -1,0 +1,1157 @@
+{
+  "version": 1,
+  "kind": "mujica-development-work-order",
+  "project": "quadruped",
+  "charterHash": "c69e89d1c8279a85f4fd0ca6354cbb98bb0ab6263973205d36a9cd157f748d14",
+  "review": {
+    "id": "development-review-dd1cab03655d66c7",
+    "hash": "dd1cab03655d66c77c0fb71df0ac4680f01fbce6b23a471da29de7b2d98c9c0f"
+  },
+  "subject": {
+    "assembly": "self-righting-rigid-3dof",
+    "assemblyHash": "1d479e845ca54ac4a559b354bcaca01951d8db887ea4bd8008da79d9a0e74763",
+    "controller": "phased-self-right",
+    "controllerHash": "404ef3e82b4cbde1a69e80b1d1db2b81a764809608f0dbb606e7d8cf2b358468",
+    "controllerKind": "program"
+  },
+  "status": "HUMAN_REVIEW_REQUIRED",
+  "blockers": [
+    {
+      "rank": 1,
+      "benchmark": "sim-to-real-audit",
+      "case": "light-strong",
+      "severity": 39.202525061679864,
+      "violations": [
+        {
+          "id": "survival",
+          "metric": "survivalRate",
+          "comparator": ">=",
+          "value": 0.772,
+          "threshold": 0.8,
+          "margin": -0.028000000000000025,
+          "severity": 0.03500000000000003,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.2,
+          "margin": -0.2,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": -1.1435970688919466,
+          "threshold": 0.2,
+          "margin": -1.3435970688919465,
+          "severity": 6.717985344459732,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "backward-displacement",
+          "metric": "backwardDisplacement",
+          "comparator": "<=",
+          "value": 1.4294963361149333,
+          "threshold": 0.02,
+          "margin": -1.4094963361149333,
+          "severity": 14.094963361149333,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "backward-pitch",
+          "metric": "maximumBackwardPitchRad",
+          "comparator": "<=",
+          "value": 1.4661653394109766,
+          "threshold": 0.5,
+          "margin": -0.9661653394109766,
+          "severity": 1.9323306788219532,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "pitch-angle",
+          "metric": "maximumAbsolutePitchRad",
+          "comparator": "<=",
+          "value": 1.4661653394109766,
+          "threshold": 0.6,
+          "margin": -0.8661653394109766,
+          "severity": 1.7323306788219532,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "body-tilt",
+          "metric": "maximumBodyTiltRad",
+          "comparator": "<=",
+          "value": 2.690361344829516,
+          "threshold": 0.65,
+          "margin": -2.040361344829516,
+          "severity": 4.080722689659032,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "lateral-drift",
+          "metric": "lateralDrift",
+          "comparator": "<=",
+          "value": 1.6520155906378204,
+          "threshold": 0.25,
+          "margin": -1.4020155906378204,
+          "severity": 5.608062362551282,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-velocity-tracking",
+          "metric": "planarVelocityTrackingError",
+          "comparator": "<=",
+          "value": 0.7539399956766358,
+          "threshold": 0.22,
+          "margin": -0.5339399956766359,
+          "severity": 2.4269999803483446,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -25.741299658682472,
+          "threshold": -10,
+          "margin": -15.741299658682472,
+          "severity": 1.5741299658682473,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the fall event and pre-fall trajectory before changing task performance terms.",
+          "rationale": "The measured survival gate failed; stability is prerequisite evidence."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect signed pitch and yaw-invariant body tilt, then test bounded front/rear posture or foot-placement feedback before increasing gait authority.",
+          "rationale": "Backward pitch, body pitch angle/rate, or quaternion-derived torso tilt exceeded the locked stability envelope."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.",
+          "rationale": "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.",
+          "rationale": "The measured planar velocity error exceeded the locked command-tracking gate."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "heldout-light-strong",
+        "--objective",
+        "upright-locomotion",
+        "--seed",
+        "2712"
+      ]
+    },
+    {
+      "rank": 2,
+      "benchmark": "sim-to-real-audit",
+      "case": "heavy-weak",
+      "severity": 28.609243719492348,
+      "violations": [
+        {
+          "id": "survival",
+          "metric": "survivalRate",
+          "comparator": ">=",
+          "value": 0.492,
+          "threshold": 0.8,
+          "margin": -0.30800000000000005,
+          "severity": 0.38500000000000006,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.2,
+          "margin": -0.2,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": -0.871355494084589,
+          "threshold": 0.2,
+          "margin": -1.071355494084589,
+          "severity": 5.356777470422945,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "backward-displacement",
+          "metric": "backwardDisplacement",
+          "comparator": "<=",
+          "value": 1.0891943676057363,
+          "threshold": 0.02,
+          "margin": -1.0691943676057363,
+          "severity": 10.691943676057361,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "backward-pitch",
+          "metric": "maximumBackwardPitchRad",
+          "comparator": "<=",
+          "value": 1.5405308540079148,
+          "threshold": 0.5,
+          "margin": -1.0405308540079148,
+          "severity": 2.0810617080158296,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "pitch-angle",
+          "metric": "maximumAbsolutePitchRad",
+          "comparator": "<=",
+          "value": 1.5405308540079148,
+          "threshold": 0.6,
+          "margin": -0.9405308540079148,
+          "severity": 1.8810617080158296,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "body-tilt",
+          "metric": "maximumBodyTiltRad",
+          "comparator": "<=",
+          "value": 2.5699312997414094,
+          "threshold": 0.65,
+          "margin": -1.9199312997414095,
+          "severity": 3.839862599482819,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "lateral-drift",
+          "metric": "lateralDrift",
+          "comparator": "<=",
+          "value": 0.5234970350129277,
+          "threshold": 0.25,
+          "margin": -0.27349703501292766,
+          "severity": 1.0939881400517106,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-velocity-tracking",
+          "metric": "planarVelocityTrackingError",
+          "comparator": "<=",
+          "value": 0.7215006518380885,
+          "threshold": 0.22,
+          "margin": -0.5015006518380886,
+          "severity": 2.279548417445857,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the fall event and pre-fall trajectory before changing task performance terms.",
+          "rationale": "The measured survival gate failed; stability is prerequisite evidence."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect signed pitch and yaw-invariant body tilt, then test bounded front/rear posture or foot-placement feedback before increasing gait authority.",
+          "rationale": "Backward pitch, body pitch angle/rate, or quaternion-derived torso tilt exceeded the locked stability envelope."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.",
+          "rationale": "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.",
+          "rationale": "The measured planar velocity error exceeded the locked command-tracking gate."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "heldout-heavy-weak",
+        "--objective",
+        "upright-locomotion",
+        "--seed",
+        "2711"
+      ]
+    },
+    {
+      "rank": 3,
+      "benchmark": "command-tracking",
+      "case": "disturbed-lateral",
+      "severity": 4.989292750998917,
+      "violations": [
+        {
+          "id": "survival",
+          "metric": "survivalRate",
+          "comparator": ">=",
+          "value": 0.576,
+          "threshold": 0.8,
+          "margin": -0.2240000000000001,
+          "severity": 0.2800000000000001,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "lateral-drift",
+          "metric": "lateralDrift",
+          "comparator": "<=",
+          "value": 1.0771055963715546,
+          "threshold": 0.25,
+          "margin": -0.8271055963715546,
+          "severity": 3.3084223854862183,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-velocity-tracking",
+          "metric": "planarVelocityTrackingError",
+          "comparator": "<=",
+          "value": 0.5281914804127937,
+          "threshold": 0.22,
+          "margin": -0.30819148041279376,
+          "severity": 1.4008703655126988,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the fall event and pre-fall trajectory before changing task performance terms.",
+          "rationale": "The measured survival gate failed; stability is prerequisite evidence."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.",
+          "rationale": "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.",
+          "rationale": "The measured planar velocity error exceeded the locked command-tracking gate."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "lateral-walk",
+        "--scenario",
+        "delayed-lateral-push",
+        "--objective",
+        "command-tracking",
+        "--seed",
+        "1107"
+      ]
+    },
+    {
+      "rank": 4,
+      "benchmark": "command-transitions",
+      "case": "delayed-braking",
+      "severity": 2.740817984042523,
+      "violations": [
+        {
+          "id": "transition-terminal-planar",
+          "metric": "maximumTransitionTerminalPlanarTrackingError",
+          "comparator": "<=",
+          "value": 0.3464796098160465,
+          "threshold": 0.25,
+          "margin": -0.09647960981604647,
+          "severity": 0.3859184392641859,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-overshoot",
+          "metric": "maximumPlanarOvershootMps",
+          "comparator": "<=",
+          "value": 0.6774497723891686,
+          "threshold": 0.5,
+          "margin": -0.1774497723891686,
+          "severity": 0.3548995447783372,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 2,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-reverse-stop",
+        "--scenario",
+        "actuator-delay-three-step",
+        "--objective",
+        "command-transitions",
+        "--seed",
+        "1205"
+      ]
+    },
+    {
+      "rank": 5,
+      "benchmark": "spatial-robustness",
+      "case": "low-friction",
+      "severity": 1.8215489745669409,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -36.43097949133882,
+          "threshold": -20,
+          "margin": -16.430979491338817,
+          "severity": 0.8215489745669409,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "low-friction",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "404"
+      ]
+    },
+    {
+      "rank": 6,
+      "benchmark": "spatial-robustness",
+      "case": "nominal",
+      "severity": 1.681113138251512,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -33.62226276503024,
+          "threshold": -20,
+          "margin": -13.622262765030243,
+          "severity": 0.6811131382515121,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "101"
+      ]
+    },
+    {
+      "rank": 7,
+      "benchmark": "spatial-robustness",
+      "case": "reset-a",
+      "severity": 1.5926268346745378,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -31.852536693490755,
+          "threshold": -20,
+          "margin": -11.852536693490755,
+          "severity": 0.5926268346745378,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "reset-perturbation",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "202"
+      ]
+    },
+    {
+      "rank": 8,
+      "benchmark": "spatial-robustness",
+      "case": "reset-b",
+      "severity": 1.4071959491154118,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -28.143918982308236,
+          "threshold": -20,
+          "margin": -8.143918982308236,
+          "severity": 0.4071959491154118,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "reset-perturbation",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "303"
+      ]
+    },
+    {
+      "rank": 9,
+      "benchmark": "command-tracking",
+      "case": "forward",
+      "severity": 1.3550321861742574,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.2,
+          "margin": -0.2,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-velocity-tracking",
+          "metric": "planarVelocityTrackingError",
+          "comparator": "<=",
+          "value": 0.2981070809583366,
+          "threshold": 0.22,
+          "margin": -0.0781070809583366,
+          "severity": 0.35503218617425725,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.",
+          "rationale": "The measured planar velocity error exceeded the locked command-tracking gate."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "command-tracking",
+        "--seed",
+        "1102"
+      ]
+    },
+    {
+      "rank": 10,
+      "benchmark": "command-transitions",
+      "case": "accelerate-stop",
+      "severity": 1.3194846442703079,
+      "violations": [
+        {
+          "id": "transition-terminal-planar",
+          "metric": "maximumTransitionTerminalPlanarTrackingError",
+          "comparator": "<=",
+          "value": 0.3071438883403042,
+          "threshold": 0.25,
+          "margin": -0.057143888340304205,
+          "severity": 0.22857555336121682,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-settling-time",
+          "metric": "maximumPlanarSettlingTimeSeconds",
+          "comparator": "<=",
+          "value": 3,
+          "threshold": 2.75,
+          "margin": -0.25,
+          "severity": 0.09090909090909091,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 1,
+          "threshold": 0,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "accelerate-stop",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "command-transitions",
+        "--seed",
+        "1201"
+      ]
+    },
+    {
+      "rank": 11,
+      "benchmark": "spatial-robustness",
+      "case": "payload",
+      "severity": 1.1595746910077487,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -23.191493820154975,
+          "threshold": -20,
+          "margin": -3.1914938201549745,
+          "severity": 0.15957469100774874,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "payload-variation",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "505"
+      ]
+    },
+    {
+      "rank": 12,
+      "benchmark": "command-transitions",
+      "case": "yaw-redirection",
+      "severity": 1.000000000000005,
+      "violations": [
+        {
+          "id": "transition-terminal-yaw",
+          "metric": "maximumTransitionTerminalYawRateTrackingError",
+          "comparator": "<=",
+          "value": 0.5000000000000026,
+          "threshold": 0.5,
+          "margin": -2.55351295663786e-15,
+          "severity": 5.10702591327572e-15,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-yaw",
+          "metric": "unsettledYawRateTransitionCount",
+          "comparator": "<=",
+          "value": 1,
+          "threshold": 0,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect yaw response after the exact boundary and test bounded steering damping against current measured yaw rate.",
+          "rationale": "The measured yaw transient ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "yaw-redirection",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "command-transitions",
+        "--seed",
+        "1204"
+      ]
+    },
+    {
+      "rank": 13,
+      "benchmark": "command-transitions",
+      "case": "lateral-redirection",
+      "severity": 1,
+      "violations": [
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 1,
+          "threshold": 0,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "lateral-redirection",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "command-transitions",
+        "--seed",
+        "1203"
+      ]
+    },
+    {
+      "rank": 14,
+      "benchmark": "spatial-robustness",
+      "case": "strong-lateral-push",
+      "severity": 1,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "strong-lateral-push",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "707"
+      ]
+    },
+    {
+      "rank": 15,
+      "benchmark": "command-tracking",
+      "case": "lateral",
+      "severity": 0.9999999999999579,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 8.398469720508699e-15,
+          "threshold": 0.2,
+          "margin": -0.1999999999999916,
+          "severity": 0.9999999999999579,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "lateral-walk",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "command-tracking",
+        "--seed",
+        "1104"
+      ]
+    },
+    {
+      "rank": 16,
+      "benchmark": "command-tracking",
+      "case": "yaw-left",
+      "severity": 0.4285714285714296,
+      "violations": [
+        {
+          "id": "yaw-rate-tracking",
+          "metric": "yawRateTrackingError",
+          "comparator": "<=",
+          "value": 0.5000000000000003,
+          "threshold": 0.35,
+          "margin": -0.15000000000000036,
+          "severity": 0.4285714285714296,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Test a bounded left-right or front-rear steering differential against measured body yaw rate.",
+          "rationale": "The measured yaw-rate error exceeded the locked command-tracking gate."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "self-righting-rigid-3dof",
+        "--controller",
+        "phased-self-right",
+        "--task",
+        "yaw-left",
+        "--scenario",
+        "nominal",
+        "--objective",
+        "command-tracking",
+        "--seed",
+        "1105"
+      ]
+    }
+  ],
+  "lanes": [],
+  "uncoveredSurfaces": [
+    {
+      "surface": "controller",
+      "rationale": "The measured yaw-rate error exceeded the locked command-tracking gate."
+    },
+    {
+      "surface": "human-review",
+      "rationale": "Numerical gates pass; inspect the authoritative replay before accepting the capability claim."
+    }
+  ],
+  "authorityBoundary": {
+    "prioritization": "derived",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed",
+    "northStarClaim": "new-development-review-required"
+  }
+}

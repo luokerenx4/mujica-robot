@@ -17,7 +17,7 @@ from mujica_runtime.environment import RobotEnvironment, compile_motion_command_
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
-from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
@@ -536,6 +536,32 @@ class RuntimeContractTest(unittest.TestCase):
         environment.data.qpos[2] = 0.01
         result = environment.step(np.zeros(environment.model.nu))
         self.assertFalse(result.terminated)
+
+    def test_phased_self_right_controller_classifies_pose_and_exposes_phase_telemetry(self):
+        root = PROJECT / "controllers" / "phased-self-right"
+        definition = json.loads((root / "controller.json").read_text())
+        controller = load_program_controller(root, definition)
+        controller.reset(6101)
+        observation = {
+            "joint-position": np.zeros(12),
+            "joint-velocity": np.zeros(12),
+            "base-height": np.array([0.18]),
+            "base-orientation": np.array([2 ** -0.5, 0.0, 2 ** -0.5, 0.0]),
+            "base-velocity": np.zeros(6),
+            "foot-contact-force": np.array([5.0, 5.0, 0.0, 0.0]),
+        }
+        self.assertEqual(controller.act(observation, 0.0).shape, (12,))
+        self.assertEqual(read_controller_telemetry(controller), {
+            "phase": "impulse",
+            "fallenPose": "front",
+            "supportFeet": 2,
+            "recoveryTargetSatisfied": False,
+            "targetStreakSteps": 0,
+        })
+        controller.act(observation, 0.9)
+        self.assertEqual(read_controller_telemetry(controller)["phase"], "capture")
+        controller.act(observation, 1.3)
+        self.assertEqual(read_controller_telemetry(controller)["phase"], "rise")
 
     def test_self_righting_score_rewards_success_and_penalizes_slow_recovery(self):
         objective = {

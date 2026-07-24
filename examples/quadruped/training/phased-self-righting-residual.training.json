@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "id": "phased-self-righting-residual",
+  "name": "Phased self-righting residual PPO",
+  "assembly": "self-righting-rigid-3dof",
+  "trainer": "motion-quality-residual-ppo",
+  "priorController": "phased-self-right",
+  "task": "self-right",
+  "scenarios": [
+    "fallen-front",
+    "fallen-back",
+    "fallen-left",
+    "fallen-right"
+  ],
+  "totalSteps": 8192,
+  "rolloutSteps": 256,
+  "epochs": 4,
+  "minibatchSize": 64,
+  "learningRate": 0.0001,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0.0005,
+  "residualScale": 0.001,
+  "residualPenalty": 0.2,
+  "qualityReward": {
+    "jointAcceleration": 0.001,
+    "bodyAngularAcceleration": 0.002,
+    "actionSlew": 0.001,
+    "actuatorSaturation": 0.01,
+    "footSlip": 0,
+    "footImpact": 0
+  }
+}

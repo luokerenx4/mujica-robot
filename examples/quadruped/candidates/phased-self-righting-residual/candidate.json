@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "id": "phased-self-righting-residual",
+  "name": "Judge frozen residual PPO against the phased recovery prior",
+  "kind": "development",
+  "benchmark": "self-righting-residual-audit",
+  "baseRevision": "quadruped-r-0bb926344064",
+  "baseline": {
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "phased-self-right"
+  },
+  "proposed": {
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "trained-phased-self-right"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "phased-self-right",
+      "to": "trained-phased-self-right",
+      "files": [
+        "controllers/trained-phased-self-right/controller.json"
+      ]
+    },
+    "trainer": {
+      "from": null,
+      "to": "motion-quality-residual-ppo",
+      "files": [
+        "training/phased-self-righting-residual.training.json"
+      ]
+    },
+    "policy": {
+      "from": null,
+      "to": "phased-self-righting-residual-5ae0422798bf8d30"
+    }
+  },
+  "allowedChanges": [
+    "controllers/trained-phased-self-right/controller.json",
+    "training/phased-self-righting-residual.training.json"
+  ],
+  "fixedInputs": [
+    "benchmarks/self-righting-residual-audit.benchmark.json",
+    "benchmarks/self-righting-residual-audit.lock.json",
+    "objectives/self-righting.objective.json",
+    "tasks/self-right.task.json",
+    "scenarios/fallen-front.scenario.json",
+    "scenarios/fallen-back.scenario.json",
+    "scenarios/fallen-left.scenario.json",
+    "scenarios/fallen-right.scenario.json",
+    "controllers/phased-self-right/controller.json",
+    "controllers/phased-self-right/controller.py"
+  ],
+  "hypothesis": "A tightly authority-limited neural residual can improve motion quality without changing the reliable contact sequence produced by the phased prior.",
+  "expectedEffect": "Retain all four recovery and safety gates; reject the frozen policy if training reward hides any capability regression."
+}

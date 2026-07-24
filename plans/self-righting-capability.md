@@ -54,7 +54,8 @@ Out of scope:
 - [x] Add the smallest viable waist Assembly candidate without changing unrelated morphology.
 - [x] Lock one Benchmark shared by both candidates.
 - [x] Route remaining blockers to bounded controller-code, RL-policy, and complete-design Labs.
-- [ ] Compare, review, and either promote the waist or retain the rigid torso.
+- [x] Compare, review, and retain the rigid torso after the waist fails to justify its added mechanism.
+- [ ] Integrate recovery selection with the locomotion supervisor and add perturbed-pose robustness cases before calling the capability operationally complete.
 
 ## Decision rule
 
@@ -70,6 +71,11 @@ Treat the waist as a testable design hypothesis. Promote it only if the rigid to
 - The first 8,192-step residual PPO Policy scored `-16.214185` versus the original rigid Controller's `-16.148146` and failed all four cases. Training completion is not treated as capability.
 - A latched fall-axis Controller experiment was kept (`-16.148146` → `-15.752509`, gate violations `28` → `27`); simply reversing that axis was rejected. The next controller needs an explicit inverted/recovery contact phase rather than another sign or gain tweak.
 - The current Development Work Order routes the same blockers to complete-design, controller-code, and RL-policy lanes. All three retain the locked recovery Task, Scenarios, Objective, seeds, and Judge.
+- A body-up-vector classifier avoids Euler-angle ambiguity and selects one of four fallen poses. The selected rigid-torso Controller then executes `impulse → capture → rise → stand`, requiring contact support and a stable-target streak before handing off.
+- Candidate `phased-self-righting` passed all four locked cases and was kept as Robot Revision `quadruped-r-0bb926344064`. Its score improved from `-15.752509` to `90.306324`, removed all 27 baseline gate violations, and retained the existing rigid morphology and 12-channel Action ABI.
+- The waist hypothesis remains rejected: the rigid robot now demonstrates that an articulated torso is not necessary for the four authored resting poses.
+- A second 8,192-step PPO experiment with only `0.001` residual authority reported a high training reward but failed front, left, and right recovery under the frozen Judge. Candidate `phased-self-righting-residual` was explicitly `REVERT` with a `-79.037963` score delta and 20 named gate reasons. The deterministic phased Controller remains selected; the learned Policy is preserved as negative evidence.
+- The exact four poses are a first capability witness, not a robustness claim. Recovery arbitration from a walking Controller and bounded pose/contact variation remain open.
 
 ## Progress log
 
@@ -79,3 +85,5 @@ Treat the waist as a testable design hypothesis. Promote it only if the rigid to
 - 2026-07-24: Trained frozen Policy `self-righting-residual-69de67e6fc24d6b6` for 8,192 PPO steps. The locked evaluation regressed and preserved the failure as negative evidence.
 - 2026-07-24: Research session `session-f6f27d561cf0dff1` kept experiment `001-20c9db8b9b3c` and published Revision `quadruped-r-15b699d96b4e`; session `session-86d634e81120be65` rejected the follow-up sign inversion.
 - 2026-07-24: Published Development Review `development-review-6741f44ff25461e7` and Work Order `development-work-order-4316fbc2ee194b44`, routing three bounded intervention lanes without changing the requirement.
+- 2026-07-24: Added contact-qualified phase telemetry and promoted rigid-torso Candidate `phased-self-righting` as Revision `quadruped-r-0bb926344064`; front, back, left, and right all passed the locked recovery and safety gates.
+- 2026-07-24: Trained residual Policy `phased-self-righting-residual-5ae0422798bf8d30` from the successful prior. Strict replay rejected it despite strong training reward, establishing that phase/contact sequence preservation must be an explicit ML constraint.

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "id": "phased-self-righting",
+  "name": "Promote contact-qualified phased rigid-torso self-righting",
+  "kind": "development",
+  "benchmark": "self-righting",
+  "baseRevision": "quadruped-r-15b699d96b4e",
+  "baseline": {
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "rigid-self-right"
+  },
+  "proposed": {
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "phased-self-right"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "rigid-self-right",
+      "to": "phased-self-right",
+      "files": [
+        "controllers/phased-self-right/controller.json",
+        "controllers/phased-self-right/controller.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "controllers/phased-self-right/controller.json",
+    "controllers/phased-self-right/controller.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/self-righting.benchmark.json",
+    "benchmarks/self-righting.lock.json",
+    "objectives/self-righting.objective.json",
+    "tasks/self-right.task.json",
+    "scenarios/fallen-front.scenario.json",
+    "scenarios/fallen-back.scenario.json",
+    "scenarios/fallen-left.scenario.json",
+    "scenarios/fallen-right.scenario.json"
+  ],
+  "hypothesis": "A pose-classified impulse/capture/rise handoff can recover the rigid torso without the inverted basin, self-contact, or joint-limit violations seen in the cyclic baseline.",
+  "expectedEffect": "Pass all four locked self-righting cases while retaining the rigid morphology and the existing 12-channel Action ABI."
+}

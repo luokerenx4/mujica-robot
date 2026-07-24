@@ -87,12 +87,49 @@ The waist is a hypothesis. It is eligible for promotion only when:
 
 Until those conditions hold, Studio may show the articulated run as a design experiment but must not label it the selected robot.
 
-## First measured result
+## Contact-qualified phase controller
+
+The first successful rigid-torso Controller is deliberately small and observable. It classifies the initial fall from the body-up vector, not Euler roll/pitch, because the latter is ambiguous near the 90-degree resting poses. It then runs:
+
+1. `impulse`: create momentum in the selected recovery direction;
+2. `capture`: place the legs for useful ground contact instead of sweeping them in air;
+3. `rise`: use pose-specific orientation and rate feedback while preserving support; and
+4. `stand`: hold the ordinary standing target after stable-target qualification.
+
+Phase changes are evidence, not hidden Controller state. A Program Controller may expose a finite JSON telemetry map. Runtime records `controllerPhase` and `controllerTelemetry` on every trajectory row and emits `controller.phase-changed` events. The current telemetry includes the detected fallen pose, number of supporting feet, recovery-target state, and target-streak steps. Older Controllers remain compatible because telemetry is optional.
+
+Studio shows those fields next to the authoritative MuJoCo frame, and copied frame context includes the same Controller state. `mujica evidence inspect` returns it from the immutable trajectory for headless Agent diagnosis.
+
+## Measured selection result
 
 The first rigid and articulated baselines both failed all four fixed cases. Both reached the inverted resting basin instead of the stable-standing target. The two-axis waist slightly improved aggregate score but introduced more non-neighbor self-contact; it was therefore rejected as a Robot Revision.
 
 One controller-code experiment that latched the initial fall axis was kept because it removed one safety-gate failure and reduced the total violation count from 28 to 27. It still did not self-right. A follow-up that reversed the latched direction was rejected. The first 8,192-step residual PPO Policy also regressed.
 
-These results narrow the next hypothesis: recovery needs a contact-aware phase that explicitly handles the inverted basin, or a morphology whose reachable workspace can create useful ground reaction forces there. Merely adding two waist coordinates, completing RL training, or flipping a sign is not sufficient evidence.
+Those failures narrowed the hypothesis correctly. Candidate `phased-self-righting` added an explicit contact-aware phase sequence and passed all four fixed cases with the existing rigid torso:
 
-Studio presents recovery outcome deltas separately from locomotion-quality burdens and exposes target occupancy, stable dwell, time to stand, joint-limit margin, self-contact, and final pass/fail at the selected frame. The copied Agent context carries the same recovery evidence.
+- aggregate score `-15.752509 → 90.306324`;
+- gate violations `27 → 0`;
+- recovery times `3.68–4.32 s`;
+- final stable dwell `1.70–2.34 s`;
+- zero disallowed self-contact steps; and
+- positive joint-limit margins with the locked actuator ceiling.
+
+Judge selected `KEEP` and published Robot Revision `quadruped-r-0bb926344064`. Because the rigid morphology now satisfies the authored witness, the two-axis waist remains rejected: extra mass, Action width, collision geometry, and hardware complexity are not justified by this capability evidence.
+
+## RL residual result
+
+PPO was then placed on top of the successful program prior rather than asked to rediscover recovery. The first `0.05` residual-authority run and a second `0.001` run both completed 8,192 steps and reported strong episode reward. Frozen deterministic evaluation still failed three of four recovery cases in the tighter run: back recovery passed, front lost the stable target, and left/right fell into the inverted basin.
+
+The separate `self-righting-residual-audit` Benchmark uses the successful phased Controller as its baseline so the learned layer cannot claim progress merely by outperforming the original broken cyclic Controller. Candidate `phased-self-righting-residual` received `REVERT`: score delta `-79.037963`, three failed cases, and 20 explicit gate reasons.
+
+This is preserved as negative ML evidence. The side-recovery trajectory has a narrow contact-order basin; tiny continuous action changes can cross a discrete contact bifurcation. Therefore:
+
+- training reward cannot promote a recovery Policy;
+- the program prior remains selected;
+- residual authority alone is not a sufficient safety mechanism; and
+- future ML work must make phase/contact preservation and perturbed-pose validation explicit.
+
+The four exact resting poses prove a bounded simulation capability, not arbitrary recovery. Before the stage is operationally complete, a supervisor must switch safely between locomotion and recovery, and a separate robustness suite must vary initial pose, contact, friction, mass, and actuator response without changing the locked first witness.
+
+Studio presents recovery outcome deltas separately from locomotion-quality burdens and exposes Controller phase, detected pose, supporting feet, target streak, target occupancy, stable dwell, time to stand, joint-limit margin, self-contact, and final pass/fail at the selected frame. The copied Agent context carries the same recovery evidence.

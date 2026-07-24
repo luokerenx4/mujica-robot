@@ -18,6 +18,9 @@ POLICY_WARMUP_PASSES = 2
 class Controller(Protocol):
     def reset(self, seed: int) -> None: ...
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray: ...
+    # Program Controllers may also expose telemetry() -> dict[str, Any].
+    # The Runtime discovers it dynamically so existing Controllers and frozen
+    # Policy adapters keep the same action ABI.
 
 
 def load_python_module(path: Path, name: str):

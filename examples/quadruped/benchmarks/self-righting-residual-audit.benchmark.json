@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "self-righting-residual-audit",
+  "name": "Frozen residual-policy audit against phased self-righting",
+  "objective": "self-righting",
+  "baseline": {
+    "assembly": "self-righting-rigid-3dof",
+    "controller": "phased-self-right"
+  },
+  "cases": [
+    {
+      "id": "front",
+      "task": "self-right",
+      "scenario": "fallen-front",
+      "seed": 6101,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "back",
+      "task": "self-right",
+      "scenario": "fallen-back",
+      "seed": 6102,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "left",
+      "task": "self-right",
+      "scenario": "fallen-left",
+      "seed": 6103,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "right",
+      "task": "self-right",
+      "scenario": "fallen-right",
+      "seed": 6104,
+      "weight": 1,
+      "gating": true
+    }
+  ]
+}

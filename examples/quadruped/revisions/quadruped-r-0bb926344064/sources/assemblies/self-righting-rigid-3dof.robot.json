@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "self-righting-rigid-3dof",
+  "name": "Rigid spatial quadruped recovery candidate",
+  "base": "quadruped-3dof",
+  "components": [
+    { "id": "body-imu", "component": "body-imu", "mount": "torso-sensor" },
+    { "id": "motion-command-input", "component": "motion-command-input", "mount": "torso-sensor" },
+    { "id": "foot-force-kit", "component": "foot-force-sensor", "mount": "foot-array" }
+  ]
+}
