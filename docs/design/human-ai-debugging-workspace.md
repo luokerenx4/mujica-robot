@@ -90,6 +90,32 @@ draft source. A completed episode is renderable only when it recorded verified
 `qpos` and remains bound to its exact frozen Bundle; transcript-only state is
 never promoted into an invented pose.
 
+## Frozen Policy evidence
+
+Training reward is diagnostic evidence, not promotion evidence. Studio projects
+each frozen Policy together with the Training Run, seed, step budget, completed
+episodes, exact Domain Profile coverage, and actual actor-authority exposure.
+For a residual Policy, actor authority is the fraction of experience in which
+the learned residual could affect the applied Action; whole-episode critic
+experience must not be mistaken for whole-episode control authority.
+
+The projection verifies the Policy directory id, model hash, Action and
+Observation contract hashes, completed Training Run, and Training result before
+showing it. Historical source-hash formats remain visible as
+`LEGACY-SOURCE-HASH`; a broken model, contract, or Training lineage fails
+closed. Exact-plant training is named explicitly rather than implied to provide
+domain robustness.
+
+A frozen Policy is `UNREVIEWED` until a Candidate binds it to a locked Judge,
+`CANDIDATE` while that comparison exists without promotion, and `PROMOTED` only
+when an immutable Policy Revision selects it. The copied
+`mujica-policy-training-context` carries the exact retraining and Candidate
+commands and preserves three distinct authorities:
+
+- training reward is diagnostic-only;
+- the locked Candidate Judge alone may decide promotion;
+- visual inspection may produce a hypothesis, never a KEEP claim.
+
 ## Snapshot identity
 
 The Studio snapshot includes the offline renderer source hash. A UI-code change

@@ -19,6 +19,86 @@ async function artifactManifests(root: string): Promise<unknown[]> {
   return values;
 }
 
+async function policyArtifacts(projectRoot: string): Promise<Array<Record<string, any>>> {
+  const root = join(projectRoot, "policies");
+  if (!(await exists(root))) return [];
+  const entries = await readdir(root, { withFileTypes: true });
+  const values: Array<Record<string, any>> = [];
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    const directory = join(root, entry.name);
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    const read = async (name: string) => JSON.parse(await readFile(join(directory, name), "utf8"));
+    const manifest = await read("manifest.json");
+    const architecture = await read("architecture.json");
+    const training = await read("training-config.json");
+    const metrics = await read("training-metrics.json");
+    const actionContract = await read("action-contract.json");
+    const observationContract = await read("observation-contract.json");
+    const modelHash = sha256(await readFile(join(directory, "model.pt")));
+    const trainingRunRoot = join(projectRoot, "training-runs", String(manifest.createdByTrainingRun));
+    const trainingRun = await readFile(join(trainingRunRoot, "manifest.json"), "utf8").then(JSON.parse);
+    const trainingResult = await readFile(join(trainingRunRoot, "result.json"), "utf8").then(JSON.parse);
+    const trainedPolicyId = manifest.derivedFromPolicy ?? manifest.id;
+    const domainProfilePath = join(directory, "domain-profile.json");
+    const domainProfile = await exists(domainProfilePath) ? JSON.parse(await readFile(domainProfilePath, "utf8")) : null;
+    if (
+      entry.name !== manifest.id
+      || manifest.modelHash !== modelHash
+      || manifest.actionContractHash !== hashJson(actionContract)
+      || manifest.observationContractHash !== hashJson(observationContract)
+      || trainingRun.id !== manifest.createdByTrainingRun
+      || trainingRun.policyId !== trainedPolicyId
+      || trainingRun.completed !== true
+      || trainingResult.policyId !== trainedPolicyId
+      || trainingResult.modelHash !== manifest.modelHash
+    ) throw new Error(`Policy '${entry.name}' failed immutable training lineage verification`);
+    const sourceIdentityIssues = [
+      ...(manifest.trainingHash !== hashJson(training) ? ["training-config-hash"] : []),
+      ...(domainProfile && (
+        manifest.domainProfileHash !== domainProfile.hash
+        || domainProfile.hash !== hashJson({ definition: domainProfile.definition, evidenceHash: domainProfile.evidenceHash })
+      ) ? ["domain-profile-hash"] : []),
+    ];
+    const updates = Array.isArray(metrics.updates) ? metrics.updates : [];
+    const activeFractions: number[] = updates.map((item: any) => Number(item.activePolicyFraction)).filter(Number.isFinite);
+    const gateScales: number[] = updates.map((item: any) => Number(item.meanResidualGateScale)).filter(Number.isFinite);
+    const coverage = metrics.domainCoverage ?? {};
+    const variedDomainParameters = Object.entries(coverage)
+      .filter(([, bounds]: [string, any]) => Number(bounds?.minimum) !== Number(bounds?.maximum))
+      .map(([name]) => name);
+    values.push({
+      ...manifest,
+      integrity: sourceIdentityIssues.length ? "LEGACY-SOURCE-HASH" : "VERIFIED",
+      sourceIdentityIssues,
+      training: {
+        id: training.id,
+        runId: trainingRun.id,
+        seed: manifest.seed,
+        budget: manifest.budget,
+        totalSteps: metrics.totalSteps,
+        episodes: metrics.episodes,
+        finalMeanEpisodeReward: metrics.finalMeanEpisodeReward,
+        elapsedSeconds: trainingResult.elapsedSeconds,
+        residualScale: training.residualScale ?? null,
+        residualPenalty: training.residualPenalty ?? null,
+        domainProfileId: manifest.domainProfileId ?? domainProfile?.id ?? null,
+        domainCoverage: coverage,
+        variedDomainParameters,
+        activePolicyFraction: activeFractions.length ? {
+          minimum: Math.min(...activeFractions),
+          mean: activeFractions.reduce((sum, value) => sum + value, 0) / activeFractions.length,
+          maximum: Math.max(...activeFractions),
+        } : null,
+        meanResidualGateScale: gateScales.length
+          ? gateScales.reduce((sum, value) => sum + value, 0) / gateScales.length
+          : null,
+      },
+      authority: architecture.actionTransform ?? null,
+    });
+  }
+  return values;
+}
+
 export async function currentDevelopmentReview(projectDirectory: string): Promise<{ manifest: Record<string, any>; review: DevelopmentReview } | null> {
   const root = join(projectDirectory, "development-reviews");
   const currentPath = join(root, "current.json");
@@ -208,6 +288,7 @@ async function selectedRun(root: string, requested?: string, selectDefault = tru
         base: compiledAssembly?.baseId ?? null,
         controller: controller?.id ?? null,
         controllerKind: controller?.kind ?? null,
+        policy: controller?.kind === "policy" ? controller.policy ?? null : null,
       },
       events: await sampledNdjson(join(directory, "events.ndjson"), 5_000), trajectory: await sampledNdjson(join(directory, "trajectory.ndjson"), 2_000),
     },
@@ -580,7 +661,7 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
     selectedHardwareReplay: selectedCaptureInput ? { ...selectedCaptureInput.replay.manifest, frameBase: "hardware-replay/frames" } : null,
     selectedTwinAudit,
     selectedTwinReplay: options.twinAudit ? { ...options.twinAudit.predictionReplay.manifest, frameBase: "twin-replay/frames" } : null,
-    policies: await artifactManifests(join(project.rootDir, "policies")),
+    policies: await policyArtifacts(project.rootDir),
     trainingRuns: await artifactManifests(join(project.rootDir, "training-runs")),
     hardwareBundles: await artifactManifests(join(project.rootDir, "hardware-bundles")),
     hardwareVerifications: await artifactManifests(join(project.rootDir, "hardware-verifications")),
@@ -610,6 +691,7 @@ function studioHtml(snapshot: Awaited<ReturnType<typeof buildStudioSnapshot>>): 
 <main><section class="panel wide" id="development-charter"><h2>Development Charter · ${htmlEscape(snapshot.charter.title)}</h2><div>${htmlEscape(snapshot.charter.proposition)}</div><div class="controls"><span class="tag">${htmlEscape(snapshot.charter.morphology.class)} · ${snapshot.charter.morphology.limbCount} limbs</span>${charterStages}</div><div class="source-chip"><strong>North star</strong><br>${htmlEscape(snapshot.charter.northStar.statement)}<br><span class="muted">${htmlEscape(snapshot.charter.northStar.stage)} · ${htmlEscape(snapshot.charter.northStar.benchmark)}</span></div><div class="muted">This project may optimize only against explicit capability stages and scenario witnesses. Inspect <code>${htmlEscape(snapshot.project.charter)}</code> for ODD, exclusions, exit criteria, and non-goals.</div></section>
 <section class="panel wide" id="development-review"><h2>Executable Development Review</h2><div class="stats" id="development-review-stats"></div><div class="split"><div><h3>Compiled design envelope</h3><div id="development-review-constraints"></div></div><div><h3>Observed capability stages</h3><div id="development-review-stages"></div></div></div><div class="source-chip" id="development-review-next"></div><div class="controls"><button id="copy-development-review">Copy Review context for Agent</button></div><div class="muted" id="development-review-status">Review evidence is immutable; Studio cannot accept a capability or edit source.</div></section>
 <section class="panel wide" id="development-work-order"><h2>Review-guided Development Work Order</h2><div class="stats" id="development-work-order-stats"></div><div class="split"><div><h3>Ranked locked blockers</h3><div class="list" id="development-work-order-blockers"></div></div><div><h3>Eligible governed lanes</h3><div class="list" id="development-work-order-lanes"></div></div></div><div class="source-chip" id="development-work-order-uncovered"></div><div class="controls"><button id="copy-development-work-order">Copy Work Order for Agent</button></div><div class="muted" id="development-work-order-status">Work Orders prioritize source-governed experiments; the locked Judge still decides KEEP or REVERT.</div></section>
+<section class="panel wide" id="policy-evidence"><h2>ML Policy evidence · training is not promotion</h2><div class="muted">Inspect the frozen training identity, actual action-authority exposure, and domain coverage before looking at reward. A Candidate or Research Judge still decides KEEP/REVERT.</div><div class="split"><div><label class="field">Policy<select id="policy-select"></select></label><div class="stats" id="policy-stats"></div></div><div><h3>Selected Policy</h3><div class="source-chip" id="policy-detail"></div><div class="controls"><button id="copy-policy-context">Copy Policy context for Agent</button></div><div class="muted" id="policy-context-status">The copied context includes exact retraining and locked Candidate commands.</div></div></div></section>
 <section class="panel wide" id="research-cockpit" hidden><h2>Training Cockpit · Research Timeline</h2><div class="muted">Choose an iteration by outcome and training meaning. Reviewed iterations load synchronized accepted ↔ candidate MuJoCo evidence; legacy iterations remain metrics-only.</div><div class="stats" id="research-progress-stats"></div><div class="timeline-layout"><div><div class="timeline-filters"><label class="field">Session<select id="timeline-session"></select></label><label class="field">Outcome<select id="timeline-outcome"><option value="ALL">All outcomes</option><option>KEEP</option><option>REVERT</option><option>CRASH</option></select></label><label class="field">Sort<select id="timeline-sort"><option value="chronological">Chronological</option><option value="latest">Latest first</option><option value="score">Best score Δ</option><option value="violations">Fewest violations</option></select></label></div><div class="timeline-list" id="timeline-list"></div></div><div><h3>Selected iteration</h3><div class="source-chip timeline-detail" id="timeline-detail"></div><div class="muted" id="timeline-guidance">Selection changes only this read-only evidence view.</div></div></div></section>
 <section class="panel wide" id="artifact-stats"><div class="stats" id="stats"></div></section>
 <section class="panel wide"><h2>Attention queue</h2><div class="muted" id="attention-guidance">Measured failures first, then human hypotheses. Click a Run event to seek; click a Capture to bind an observation draft to its exact protocol event.</div><div class="list" id="attention"></div></section>
@@ -686,6 +768,59 @@ const B=T
   : {run:S.comparisonRun,hardware:null,twin:null,replay:S.comparisonReplay};
 const selectedReview=activeTimelineEntry?.review??S.selectedResearchReview?.review??null;
 const researchReviewEntries=S.researchSessions.flatMap(session=>session.experiments.map(experiment=>({session,experiment,review:experiment.visualReview}))).filter(item=>item.review);
+const policySelect=q('#policy-select');
+const focusedPolicyId=B.run?.subject?.policy??A.run?.subject?.policy??null;
+const policyRows=S.policies.slice().sort((a,b)=>(a.id===focusedPolicyId?-1:b.id===focusedPolicyId?1:String(a.training?.id??'').localeCompare(String(b.training?.id??''))||Number(a.seed??0)-Number(b.seed??0)||String(a.id).localeCompare(String(b.id))));
+policySelect.innerHTML=policyRows.map(policy=>'<option value="'+esc(policy.id)+'" '+(policy.id===focusedPolicyId?'selected':'')+'>'+esc(policy.training?.id)+' · seed '+esc(policy.seed)+' · '+esc(policy.id)+'</option>').join('');
+policySelect.disabled=!policyRows.length;
+let selectedPolicyContext=null;
+function renderPolicyEvidence(){
+  const policy=policyRows.find(item=>item.id===policySelect.value)??policyRows[0]??null;
+  if(!policy){q('#policy-stats').innerHTML='<div class="stat"><strong>NONE</strong>Policy</div>';q('#policy-detail').textContent='No frozen Policy artifacts.';q('#copy-policy-context').disabled=true;return}
+  const candidates=S.candidates.filter(candidate=>candidate.changes?.policy?.to===policy.id);
+  const revisions=S.policyRevisions.filter(revision=>revision.policyId===policy.id);
+  const status=revisions.length?'PROMOTED':candidates.length?'CANDIDATE':'UNREVIEWED';
+  const active=policy.training?.activePolicyFraction;
+  const authority=policy.authority?.residualGate;
+  const varied=policy.training?.variedDomainParameters??[];
+  q('#policy-stats').innerHTML=[
+    ['Status',status],
+    ['Budget',Number(policy.training?.budget??0).toLocaleString()+' steps'],
+    ['Episodes',policy.training?.episodes??'—'],
+    ['Actor authority',active?Number(active.mean*100).toFixed(1)+'%':'full/undeclared'],
+    ['Domain variation',varied.length?varied.length+' dimensions':'exact plant'],
+  ].map(x=>'<div class="stat"><strong class="'+(x[1]==='UNREVIEWED'?'bad':'')+'">'+esc(x[1])+'</strong>'+esc(x[0])+'</div>').join('');
+  q('#policy-detail').innerHTML='<span class="tag '+(status==='PROMOTED'?'verdict-KEEP':status==='CANDIDATE'?'verdict-REVERT':'severity-blocking')+'">'+status+'</span> <code>'+esc(policy.id)+'</code>'
+    +'<br>Training <code>'+esc(policy.training?.runId)+'</code> · config <code>'+esc(policy.training?.id)+'</code> · seed '+esc(policy.seed)
+    +'<br>active actor authority '+(active?esc(Number(active.minimum*100).toFixed(1))+'–'+esc(Number(active.maximum*100).toFixed(1))+'%, mean '+esc(Number(active.mean*100).toFixed(1))+'%':'not recorded')
+    +' · mean residual gate '+(Number.isFinite(Number(policy.training?.meanResidualGateScale))?esc(Number(policy.training.meanResidualGateScale).toFixed(3)):'not gated')
+    +'<br>domain <code>'+esc(policy.training?.domainProfileId??'none')+'</code> · '+(varied.length?'varied '+varied.map(esc).join(', '):'no sampled variation')
+    +'<br>authority '+esc(policy.authority?.kind??'direct policy')+(authority?' · modes '+esc((authority.allowedModes??[]).join(', '))+' · requires '+esc(JSON.stringify(authority.requiredTelemetry??{}))+' · ramp '+esc(authority.rampSeconds??0)+'s':'')
+    +'<br><span class="muted">model '+esc(policy.modelHash?.slice?.(0,12))+' · Runtime '+esc(policy.runtimeVersion)+' · MuJoCo '+esc(policy.mujocoVersion)+' · integrity '+esc(policy.integrity)+'</span>'
+    +(candidates.length?'<br>locked Candidate '+candidates.map(candidate=>'<code>'+esc(candidate.id)+'</code>').join(', '):'<br><span class="bad">No Candidate definition binds this Policy to a locked Judge.</span>')
+    +(revisions.length?'<br>Policy Revision '+revisions.map(revision=>'<code>'+esc(revision.id)+'</code>').join(', '):'');
+  selectedPolicyContext={
+    kind:'mujica-policy-training-context',
+    authority:'immutable-training-evidence',
+    policy:{
+      id:policy.id,
+      modelHash:policy.modelHash,
+      runtimeVersion:policy.runtimeVersion,
+      mujocoVersion:policy.mujocoVersion,
+      training:policy.training,
+      authority:policy.authority,
+      integrity:policy.integrity,
+    },
+    promotion:{status,policyRevisionIds:revisions.map(revision=>revision.id),candidateIds:candidates.map(candidate=>candidate.id)},
+    headlessArgv:{
+      retrain:['train','.', '--training',policy.training.id,'--seed',String(policy.seed)],
+      judge:candidates[0]?['candidate','.', '--candidate',candidates[0].id]:null,
+    },
+    authorityBoundary:{trainingReward:'diagnostic-only',promotion:'locked-judge-only',visualInput:'hypothesis-only'},
+  };
+  q('#copy-policy-context').disabled=false;
+}
+policySelect.onchange=renderPolicyEvidence;renderPolicyEvidence();
 if(RT){
   q('#research-cockpit').hidden=false;
   q('#artifact-stats').hidden=true;
@@ -866,6 +1001,7 @@ function observationSource(){if(selectedCapture)return{kind:'hardware-capture-ev
 function updateObservationSource(){const source=observationSource();q('#observation-source').innerHTML=source.kind==='run-frame'?'Run frame · <code>'+esc(source.runId)+'</code> at '+Number(source.timeSeconds).toFixed(3)+'s'+(source.comparisonRunId?' compared with <code>'+esc(source.comparisonRunId)+'</code>':''):source.kind==='digital-twin-audit-transition'?'Twin audit · <code>'+esc(source.auditId)+'</code> · transition '+source.transitionIndex:source.kind==='hardware-capture-frame'?'Device telemetry frame · <code>'+esc(source.captureId)+'</code> / <code>'+esc(source.episodeId)+'</code> at '+Number(source.timeSeconds).toFixed(3)+'s':'Hardware Capture · <code>'+esc(source.captureId)+'</code> · transcript event '+source.eventIndex}
 function observationDraft(){const summary=q('#observation-summary').value.trim();if(!summary)throw new Error('Summary is required.');const details=q('#observation-details').value.trim(),next=q('#observation-next').value.trim();return{version:1,kind:'mujica-human-observation-draft',source:observationSource(),assessment:{category:q('#observation-category').value,severity:q('#observation-severity').value,confidence:q('#observation-confidence').value,summary,...(details?{details}:{}),...(next?{suggestedNextAction:next}:{})}}}
 async function copyText(text){try{await navigator.clipboard.writeText(text)}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove()}}
+q('#copy-policy-context').onclick=async()=>{if(!selectedPolicyContext)return;await copyText(JSON.stringify(selectedPolicyContext,null,2));q('#policy-context-status').textContent=selectedPolicyContext.headlessArgv.judge?'Copied frozen training identity plus exact retrain and locked Candidate commands.':'Copied frozen training identity; define a Candidate before making a promotion claim.'};
 q('#copy-development-review').onclick=async()=>{if(!DR||!DRM)return;const handoff={kind:'mujica-development-review-context',authority:'derived-requirement-evidence',review:{id:DRM.id,reviewHash:DRM.reviewHash,status:DR.summary.status},subject:DR.subject,northStar:DR.northStar,worstCase:DR.summary.worstCase,interventionSurfaces:DR.summary.interventionSurfaces,headlessArgv:['project','review','.', '--assembly',DR.subject.assembly,'--controller',DR.subject.controller],authorityBoundary:{charter:'human-owned-requirement',numericalVerdict:'locked-benchmarks',visualInput:'hypothesis-only'}};await copyText(JSON.stringify(handoff,null,2));q('#development-review-status').textContent='Copied exact Review identity, worst case, eligible surfaces, and reproduction command.'};
 q('#copy-development-work-order').onclick=async()=>{if(!DW||!DWM)return;await copyText(JSON.stringify({kind:'mujica-development-work-order-context',workOrder:{id:DWM.id,workOrderHash:DWM.workOrderHash,status:DW.status},review:DW.review,subject:DW.subject,blockers:DW.blockers,lanes:DW.lanes,uncoveredSurfaces:DW.uncoveredSurfaces,authorityBoundary:DW.authorityBoundary},null,2));q('#development-work-order-status').textContent='Copied exact blockers, governed source closures, budgets, and headless commands.'};
 document.querySelectorAll('.copy-work-lane').forEach(node=>node.onclick=async()=>{const lane=DW?.lanes?.[Number(node.dataset.lane)];if(!lane)return;const shell=value=>"'"+String(value).replaceAll("'","'\\\\''")+"'";await copyText('mujica '+lane.runArgv.map(shell).join(' '));q('#development-work-order-status').textContent='Copied '+lane.kind+' command for '+lane.researchLab+'. Replace only <agent-command>; Lab and Judge constraints remain fixed.'});

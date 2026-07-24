@@ -40,7 +40,7 @@ describe("read-only Studio snapshot", () => {
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
     expect(first.snapshot.benchmarks).toHaveLength(18);
-    expect(first.snapshot.candidates).toHaveLength(13);
+    expect(first.snapshot.candidates).toHaveLength(14);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareCaptures.length).toBeGreaterThanOrEqual(1);
@@ -53,6 +53,30 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.researchBriefs).toEqual(second.snapshot.researchBriefs);
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("transition-controller-review");
+    expect(first.snapshot.policies.find((item) => item.id === "resilient-mission-residual-8af2efac119bc98c")).toMatchObject({
+      integrity: "VERIFIED",
+      training: {
+        id: "resilient-mission-residual",
+        runId: "training-f37e65dc28f9b018",
+        seed: 260725,
+        budget: 8192,
+        totalSteps: 8192,
+        episodes: 11,
+        domainProfileId: "quadruped-resilient-resume-curriculum-v1",
+        variedDomainParameters: [],
+        activePolicyFraction: {
+          mean: 0.255126953125,
+        },
+      },
+      authority: {
+        kind: "program-controller-residual",
+        residualGate: {
+          allowedModes: ["locomotion"],
+          requiredTelemetry: { recoveryCompleted: true },
+          rampSeconds: 0.75,
+        },
+      },
+    });
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
         status: "HUMAN_REVIEW_REQUIRED",
@@ -88,6 +112,10 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Human observation → Agent hypothesis");
     expect(html).toContain("Human hypothesis → governed Research Brief");
     expect(html).toContain("Research Review provenance");
+    expect(html).toContain("ML Policy evidence · training is not promotion");
+    expect(html).toContain("mujica-policy-training-context");
+    expect(html).toContain("active actor authority");
+    expect(html).toContain("promotion:'locked-judge-only'");
     expect(html).toContain("mujica-human-observation-draft");
     expect(html).toContain("mujica-research-brief-selector");
     expect(html).toContain("mujica-research-review-selector");

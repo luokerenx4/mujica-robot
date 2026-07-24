@@ -42,6 +42,10 @@ from verified immutable Run replays into a deterministic offline snapshot.
 - [x] Metrics-only legacy iterations are explicit and disabled for replay.
 - [x] Snapshot and CLI tests cover timeline integrity and selection.
 - [x] Browser validation confirms selection, playback, and Agent context.
+- [x] Frozen Policy inspection exposes verified Training lineage, real
+      actor-authority exposure, Domain coverage, Candidate/Revision status, and
+      exact headless retrain/Judge commands without treating reward as
+      promotion evidence.
 
 ## Delivered slice
 
@@ -51,6 +55,11 @@ from verified immutable Run replays into a deterministic offline snapshot.
   over one synchronized 6.5-second simulation clock.
 - Browser checks covered progress rendering, KEEP filtering, and playback from
   frame 1 through frame 37.
+- The Policy panel auto-focuses the Policy used by the selected comparison Run.
+  `resilient-mission-residual-8af2efac119bc98c` is shown as a verified
+  Candidate trained for 8,192 steps over 11 episodes with 25.5% mean actor
+  authority and exact-plant Domain coverage. Its locked Candidate verdict is
+  REVERT despite zero safety-gate violations.
 - The CLI source change refreshed all 13 Benchmark locks and published current
   Bundle/verification pairs `hardware-6059e16c3caf1e67` /
   `verification-41ad520caee2945c` and `hardware-2883d6f82926d3fc` /

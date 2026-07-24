@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "id": "resilient-mission-residual",
+  "name": "Judge post-recovery residual PPO against the deterministic supervisor",
+  "kind": "development",
+  "benchmark": "resilient-mission",
+  "baseRevision": "quadruped-r-53000ed55a18",
+  "baseline": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "proposed": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "resilient-mission-residual-gait"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "behavior-supervisor",
+      "to": "resilient-mission-residual-gait",
+      "files": [
+        "controllers/resilient-mission-residual-gait/controller.json"
+      ]
+    },
+    "trainer": {
+      "from": null,
+      "to": "resilient-residual-ppo",
+      "files": [
+        "trainers/resilient-residual-ppo/trainer.json",
+        "trainers/resilient-residual-ppo/trainer.py",
+        "trainers/resilient-residual-ppo/model.py",
+        "training/resilient-mission-residual.training.json"
+      ]
+    },
+    "policy": {
+      "from": null,
+      "to": "resilient-mission-residual-8af2efac119bc98c"
+    }
+  },
+  "allowedChanges": [
+    "controllers/resilient-mission-residual-gait/controller.json",
+    "domain-profiles/quadruped-resilient-resume-curriculum-v1.domain.json",
+    "trainers/resilient-residual-ppo/trainer.json",
+    "trainers/resilient-residual-ppo/trainer.py",
+    "trainers/resilient-residual-ppo/model.py",
+    "training/resilient-mission-residual.training.json"
+  ],
+  "fixedInputs": [
+    "assemblies/resilient-command-conditioned-history-3dof.robot.json",
+    "benchmarks/resilient-mission.benchmark.json",
+    "benchmarks/resilient-mission.lock.json",
+    "objectives/resilient-mission.objective.json",
+    "tasks/resilient-forward-mission.task.json",
+    "scenarios/mission-impact-left.scenario.json",
+    "scenarios/mission-impact-right.scenario.json",
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/locomotion.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "hypothesis": "A post-recovery-only neural residual can improve resumed locomotion without changing the validated approach, impact-entry, or self-righting trajectory.",
+  "expectedEffect": "Pass both continuous missions and all recovery safety gates, then promote only if the locked score exceeds the deterministic supervisor after training cost."
+}
