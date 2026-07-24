@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "id": "articulated-brace-locomotion-policy",
+  "name": "Articulated complete-Mission locomotion residual Policy research",
+  "program": "research/articulated-brace-locomotion-policy/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting-morphology-v2",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions",
+    "spatial-robustness"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "articulated-brace-locomotion",
+    "controller": "articulated-brace-locomotion-policy",
+    "referenceController": "articulated-behavior-supervisor",
+    "seed": 260728
+  },
+  "editable": {
+    "paths": [
+      "trainers/articulated-brace-locomotion-residual-ppo/**",
+      "training/articulated-brace-locomotion.training.json",
+      "controllers/articulated-brace-locomotion-policy/controller.json",
+      "domain-profiles/quadruped-resilient-mission-v1.domain.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 1200,
+    "maximumTrainingSteps": 32768
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

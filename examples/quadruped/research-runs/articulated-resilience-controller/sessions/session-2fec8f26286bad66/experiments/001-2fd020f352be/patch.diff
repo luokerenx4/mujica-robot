@@ -1,0 +1,70 @@
+diff --git a/before/controllers/articulated-behavior-supervisor/locomotion.py b/after/controllers/articulated-behavior-supervisor/locomotion.py
+index f669c24..52a60b7 100644
+--- a/before/controllers/articulated-behavior-supervisor/locomotion.py
++++ b/after/controllers/articulated-behavior-supervisor/locomotion.py
+@@ -52,6 +52,7 @@ class BoundedTractionGaitController:
+         self.traction_probe_started_at = None
+         self.traction_transition_started_at = None
+         self.traction_control_blend = 0.0
++        self.longitudinal_phase_direction = 1.0
+         self.command_restart_count = 0
+         self.last_telemetry = {
+             "locomotionStrategy": "uninitialized",
+@@ -60,6 +61,7 @@ class BoundedTractionGaitController:
+             "startupRampActive": False,
+             "tractionRecovery": False,
+             "tractionControlBlend": 0.0,
++            "longitudinalPhaseDirection": 1.0,
+             "commandMode": None,
+             "commandProgressM": 0.0,
+             "measuredProgressM": 0.0,
+@@ -108,6 +110,7 @@ class BoundedTractionGaitController:
+             self.traction_classification_complete = False
+             self.traction_recovery = False
+             self.traction_recovery_severe = False
++            self.longitudinal_phase_direction = 1.0
+             self.traction_recovery_started_at = None
+             if np.linalg.norm(raw) > self.config["commandDeadband"]: self.motion_mode = "longitudinal" if abs(raw[1]) <= self.config["commandDeadband"] and abs(raw[2]) <= self.config["commandDeadband"] else "spatial"
+         dt = max(0.0, time_seconds - float(self.filter_last_time))
+@@ -136,7 +139,7 @@ class BoundedTractionGaitController:
+         pitch_rate = float(observation["imu-angular-velocity"][1])
+         phase_lead = self.config["phaseLeadByDelaySteps"][delay]
+         if delay > 0 and abs(roll_rate) > self.config["disturbanceRollRateThreshold"]: phase_lead = self.config["disturbancePhaseLeadSeconds"]
+-        phase = 2.0 * np.pi * self.config["frequencyHz"] * (time_seconds + phase_lead)
++        phase = self.longitudinal_phase_direction * 2.0 * np.pi * self.config["frequencyHz"] * (time_seconds + phase_lead)
+         ramp_seconds = float(self.config["startupRampSecondsByDelaySteps"][delay])
+         if ramp_seconds <= 0.0:
+             gait_scale = 1.0
+@@ -182,6 +185,7 @@ class BoundedTractionGaitController:
+             "startupRampActive": gait_scale < 1.0,
+             "tractionRecovery": self.traction_recovery,
+             "tractionControlBlend": self.traction_control_blend,
++            "longitudinalPhaseDirection": self.longitudinal_phase_direction,
+             "commandMode": self.motion_mode,
+             "commandProgressM": self.traction_command_progress,
+             "measuredProgressM": self.traction_measured_progress,
+@@ -204,12 +208,15 @@ class BoundedTractionGaitController:
+             self.traction_elapsed += traction_dt
+             self.traction_command_progress += float(raw_command[0]) * traction_dt
+             self.traction_measured_progress += float(base_velocity[0]) * traction_dt
++            deficit = self.traction_command_progress - self.traction_measured_progress
+             if delay == 0:
+-                deficit = self.traction_command_progress - self.traction_measured_progress
+                 if self.traction_elapsed <= self.config["tractionRecoveryAssessmentSeconds"] and deficit > self.config["tractionRecoveryProgressDeficitM"]:
+                     if not self.traction_recovery:
+                         self.traction_recovery_started_at = time_seconds
+                     self.traction_recovery = True
++            elif 0 < delay < self.config["delayedTractionMinimumDelaySteps"]:
++                if self.traction_elapsed <= self.config["tractionRecoveryAssessmentSeconds"] and deficit > self.config["tractionRecoveryProgressDeficitM"]:
++                    self.longitudinal_phase_direction = -1.0
+             elif delay >= self.config["delayedTractionMinimumDelaySteps"] and self.traction_elapsed <= self.config["delayedTractionContactAssessmentSeconds"] + 1e-9:
+                 mean_contact = float(np.mean(observation["foot-contact-force"]))
+                 if not self.traction_initial_contact_seen:
+@@ -346,6 +353,7 @@ class BoundedTractionGaitController:
+             "startupRampActive": False,
+             "tractionRecovery": self.traction_recovery,
+             "tractionControlBlend": self.traction_control_blend,
++            "longitudinalPhaseDirection": self.longitudinal_phase_direction,
+             "commandMode": self.motion_mode,
+             "commandProgressM": self.traction_command_progress,
+             "measuredProgressM": self.traction_measured_progress,

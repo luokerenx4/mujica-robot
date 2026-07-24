@@ -1,0 +1,102 @@
+diff --git a/before/controllers/articulated-brace-locomotion-policy/controller.json b/after/controllers/articulated-brace-locomotion-policy/controller.json
+index bf2c75e..bdd2407 100644
+--- a/before/controllers/articulated-brace-locomotion-policy/controller.json
++++ b/after/controllers/articulated-brace-locomotion-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "articulated-brace-locomotion-policy",
+   "name": "Frozen articulated-brace locomotion residual Policy",
+   "kind": "policy",
+-  "policy": "articulated-brace-locomotion-62104cabfbc91e7a",
++  "policy": "articulated-brace-locomotion-dfe5734ba3ae7956",
+   "deterministic": true
+ }
+diff --git a/before/trainers/articulated-brace-locomotion-residual-ppo/trainer.py b/after/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
+index b73b0e3..f19e2ea 100644
+--- a/before/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
++++ b/after/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
+@@ -8,26 +8,26 @@ def create_trainer():
+         action_transform={
+             "kind": "program-controller-residual",
+             "residualScaleByAction": [
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.1,
+-                0.1,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.45,
++                0.05,
++                0.05,
+             ],
+             "residualGate": {
+                 "kind": "prior-telemetry-mode",
+                 "allowedModes": ["locomotion"],
+                 "minimumTelemetry": {
+-                    "modeDwellSeconds": 0.2,
++                    "modeDwellSeconds": 0.1,
+                 },
+                 "maximumTelemetry": {
+                     "bodyTiltRad": 0.8,
+diff --git a/before/training/articulated-brace-locomotion.training.json b/after/training/articulated-brace-locomotion.training.json
+index aa09a44..4c2c411 100644
+--- a/before/training/articulated-brace-locomotion.training.json
++++ b/after/training/articulated-brace-locomotion.training.json
+@@ -18,18 +18,18 @@
+     {
+       "id": "exact-complete-missions",
+       "throughPhase": "stop",
+-      "untilStep": 4096,
++      "untilStep": 8192,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "randomized-complete-missions",
+       "throughPhase": "stop",
+-      "untilStep": 8192,
++      "untilStep": 16384,
+       "domainProfile": "quadruped-resilient-mission-v1"
+     }
+   ],
+   "promotionBenchmark": "integrated-resilience-mission",
+-  "totalSteps": 8192,
++  "totalSteps": 16384,
+   "rolloutSteps": 256,
+   "epochs": 4,
+   "minibatchSize": 64,
+@@ -38,7 +38,7 @@
+   "gaeLambda": 0.97,
+   "clipRatio": 0.12,
+   "entropyCoefficient": 0.0002,
+-  "residualPenalty": 0.1,
++  "residualPenalty": 0.2,
+   "qualityReward": {
+     "jointAcceleration": 0.0001,
+     "bodyAngularAcceleration": 0.0002,
+@@ -48,7 +48,7 @@
+     "footImpact": 0
+   },
+   "missionReward": {
+-    "commandProgress": 5,
++    "commandProgress": 8,
+     "velocityTracking": 1,
+     "stopStability": 2,
+     "recoverySuccess": 100,

@@ -412,7 +412,13 @@ export async function projectWorkCommand(input: string, options: { project?: str
       followupController = lab.execution.controller;
     } else {
       const candidate = await loadCandidate(project.rootDir, lab.execution.candidate);
-      compatible = candidate.baseline.assembly === review.subject.assembly && candidate.baseline.controller === review.subject.controller;
+      compatible = (
+        candidate.baseline.assembly === review.subject.assembly
+        && candidate.baseline.controller === review.subject.controller
+      ) || (
+        candidate.proposed.assembly === review.subject.assembly
+        && candidate.proposed.controller === review.subject.controller
+      );
       subject = { assembly: candidate.proposed.assembly, controller: candidate.proposed.controller, candidate: candidate.id };
       followupController = candidate.proposed.controller;
     }

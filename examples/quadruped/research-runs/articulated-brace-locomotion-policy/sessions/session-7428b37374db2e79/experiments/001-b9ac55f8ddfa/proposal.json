@@ -1,0 +1,5 @@
+{
+  "strategy": "early-delay-locomotion-residual-with-signed-progress-credit",
+  "hypothesis": "The first complete-Mission Policy had actor authority on 92% of exact approach steps but still accumulated negative commanded progress, while randomized approach authority fell to 80%. Doubling complete-Mission experience, increasing signed progress credit, shortening only the locomotion gate dwell, and shifting bounded authority from the waist to the legs should let PPO learn the left/right correction that a binary Program fallback could not express.",
+  "expectedEffect": "Improve delay-one approach and downstream signed Mission progress in both degraded directions while the Program remains sole owner of recovery and all self-righting, collision, joint-limit, and command gates remain passing relative to the reference Controller."
+}

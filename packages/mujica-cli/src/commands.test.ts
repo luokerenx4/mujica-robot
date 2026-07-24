@@ -182,7 +182,7 @@ describe("agent CLI contract", () => {
       kind: "mujica-development-work-order",
       project: "quadruped",
       status: "READY",
-      subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "behavior-supervisor" },
+      subject: { assembly: "resilient-command-conditioned-waist-3dof", controller: "articulated-behavior-supervisor" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -190,14 +190,14 @@ describe("agent CLI contract", () => {
         northStarClaim: "new-development-review-required",
       },
     });
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting")).toBeUndefined();
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "integrated-resilience-mission" && item.case === "impact-right-degraded")).toBeDefined();
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "heavy-weak")).toBeDefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting" && item.case === "back")).toBeDefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "integrated-resilience-mission" && item.case === "impact-left-degraded")).toBeDefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "light-strong")).toBeDefined();
     expect(data.workOrder.lanes.map((item: any) => item.researchLab)).toEqual([
       "integrated-resilience-waist-design",
-      "integrated-resilience-controller",
-      "integrated-recovery-hybrid-policy",
-      "integrated-resilience-policy",
+      "articulated-resilience-controller",
+      "articulated-brace-locomotion-policy",
+      "articulated-inverted-escape-policy",
     ]);
     expect(data.workOrder.uncoveredSurfaces).toEqual([]);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
@@ -1230,7 +1230,7 @@ describe("agent CLI contract", () => {
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.researchLabs).toBe(17);
+    expect(envelope.data.definitions.researchLabs).toBe(19);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
     expect(envelope.data.definitions.domainProfiles).toBe(7);
     expect(envelope.data.definitions.calibrations).toBe(2);

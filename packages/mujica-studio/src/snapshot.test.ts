@@ -102,14 +102,14 @@ describe("read-only Studio snapshot", () => {
         status: "READY",
       },
     });
-    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
     expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
     expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
     expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((item) => item.researchLab)).toEqual([
       "integrated-resilience-waist-design",
-      "integrated-resilience-controller",
-      "integrated-recovery-hybrid-policy",
-      "integrated-resilience-policy",
+      "articulated-resilience-controller",
+      "articulated-brace-locomotion-policy",
+      "articulated-inverted-escape-policy",
     ]);
     expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces).toEqual([]);
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");

@@ -12,7 +12,11 @@ describe("Robot Assembly compiler", () => {
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "integrated-resilience-mission", case: "impact-right-degraded" });
+    expect(review.subject).toMatchObject({
+      assembly: "resilient-command-conditioned-waist-3dof",
+      controller: "articulated-behavior-supervisor",
+    });
+    expect(review.summary.worstCase).toMatchObject({ benchmark: "integrated-resilience-mission", case: "impact-left-degraded" });
     expect(review.northStar).toMatchObject({
       stage: "continuous-resilience",
       benchmark: "integrated-resilience-mission",
@@ -24,11 +28,11 @@ describe("Robot Assembly compiler", () => {
     expect(workOrder.status).toBe("READY");
     expect(workOrder.lanes.map((item) => item.researchLab)).toEqual([
       "integrated-resilience-waist-design",
-      "integrated-resilience-controller",
-      "integrated-recovery-hybrid-policy",
-      "integrated-resilience-policy",
+      "articulated-resilience-controller",
+      "articulated-brace-locomotion-policy",
+      "articulated-inverted-escape-policy",
     ]);
-    expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
+    expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
     expect(workOrder.uncoveredSurfaces).toEqual([]);

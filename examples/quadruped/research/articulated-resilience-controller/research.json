@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "id": "articulated-resilience-controller",
+  "name": "Articulated complete-Mission delay and handoff Controller research",
+  "program": "research/articulated-resilience-controller/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting-morphology-v2",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions",
+    "spatial-robustness"
+  ],
+  "execution": {
+    "kind": "controller",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor"
+  },
+  "editable": {
+    "paths": [
+      "controllers/articulated-behavior-supervisor/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 900
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "robot-revision"
+}

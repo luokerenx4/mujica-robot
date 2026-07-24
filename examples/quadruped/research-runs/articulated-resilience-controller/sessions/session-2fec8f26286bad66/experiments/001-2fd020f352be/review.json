@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-resilience-controller",
+    "labHash": "de67668d34e1a30edaeffd0a7d3e6114e1eef93f680ca6702f98670b52635280",
+    "programHash": "5c7bc6b8b1ecaf3790598c371c410e1c04db6664e1772b1e7ff8d55a864ded4e",
+    "benchmarkLockHash": "c6c1660e04f4ce2fb536b0127afad5fcbf1f3eef11c56bff51fcd0416d1b25fc",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-2fec8f26286bad66",
+    "experimentId": "001-2fd020f352be",
+    "experimentHash": "2fd020f352be634c42952e7513b706058385072d99f319a2a9dc6705c7fbd02f"
+  },
+  "proposal": {
+    "strategy": "measured-low-delay-phase-direction-fallback",
+    "hypothesis": "The degraded Mission moves backward before impact because delay-one falls between the zero-delay progress classifier and the three-step contact-loss classifier. Latching a reversed longitudinal gait direction only after an observable early progress deficit should recover approach direction without applying the unsafe 1.8 sagittal traction scale or reading Scenario identity.",
+    "expectedEffect": "Improve signed approach and complete-Mission progress in both degraded impact Cases, preserve exact delay-zero Missions, and introduce no collision, joint-limit, command, or atomic recovery regression."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing"
+      ],
+      "previousViolationCount": 42,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 85.78602050689881,
+      "candidateViolationSeverity": 96.93006048624191,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "dd9a7a96451f70653d2dd46842ed941a61153692ee3d2bffe5912a1e614d9126"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left-degraded",
+    "seed": 7203,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-degraded: backward-displacement regressed from passing to failing",
+    "candidateScoreDelta": 119.53411290191734,
+    "weightedScoreDelta": 119.53411290191734
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-b8453e908261b405",
+    "runKey": "b8453e908261b4059e4460a42f2a3687be5a355810b8f65bb573b2af18bc7fa7",
+    "resultHash": "5be634f80f6e42848f093a978cc57b7a5adfd970568ce1cad4defa5a3704a3b4",
+    "artifactHash": "06df23811e97b44586e6b415778f06c7ac28a2fdacd473ce554b13571e3e4a76",
+    "manifestHash": "5cc78352ea759b3105a517b3ddd5ce0cc0d9224d291e395c0cd3aaae3bc24a87",
+    "metricsHash": "ecd49b337d89c002826b75cb68536548364ce3a5fd87489dffe7cc13a263e51e",
+    "scoreHash": "19584954be5ef77a4bc8b1ee59e252a6563593c217360ffb7428b1ec4d038319",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -25.021343429279153
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-17c49c94969580fb",
+    "runKey": "17c49c94969580fb5c95a1df0739b5808fbaf03e56185a59a17be61792e998b0",
+    "resultHash": "a04012bb776e38e06159f520d1761cfd5a8f18ac102dbf684669d7c7d6577060",
+    "artifactHash": "6d20404e49d3195f158d79af057e63a5111bd5cb676db98e0617d58af313874f",
+    "manifestHash": "bff5dd1efb5311ddb372f4209877cc72b691a8056fa2ad75fd74082fdb9e26e4",
+    "metricsHash": "315f42854e5ea08a64a97fb3401e6274281cc94f8daf40e07044f64d092a9472",
+    "scoreHash": "5031d13e7879fd0836d65e5aff3fa1c0621d9cf2188c03fbbb045b4ad3d76e22",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 94.51276947263818
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

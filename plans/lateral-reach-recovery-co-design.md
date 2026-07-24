@@ -74,7 +74,7 @@ Out of scope:
 - [x] Freeze the viable, still non-promoted brace morphology for controller/RL
   work.
 - [x] Train and judge a bounded locomotion residual on the frozen brace plant.
-- [ ] Publish current Review, Work Order, Studio evidence, and remote commit.
+- [x] Publish current Review, Work Order, Studio evidence, and remote commit.
 
 ## Decision rule
 
@@ -130,3 +130,6 @@ passes the same Mission and regression contract.
   `articulated-brace-locomotion-62104cabfbc91e7a`. It improved over the rigid
   baseline but scored below the deterministic articulated Controller and
   failed degraded recovery, so it was not promoted.
+- 2026-07-25: Published the articulated branch as the current Development
+  Review subject. Its READY Work Order now routes complete-design, Controller,
+  and two RL lanes against the same no-reset Mission authority.
