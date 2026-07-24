@@ -16,6 +16,8 @@ const triedStrategies = new Set(
 const strategies = [
   "early-delay-locomotion-residual-with-signed-progress-credit",
   "post-recovery-durable-handoff-suffix-residual",
+  "relapse-credited-contact-action-history-suffix",
+  "self-right-confirmed-relapse-credited-history-suffix",
 ];
 const strategy = strategies.find((candidate) => !triedStrategies.has(candidate));
 if (!strategy) {
@@ -44,7 +46,11 @@ if (!trainer.includes(scaleFrom)) {
   throw new Error("Accepted Trainer no longer contains the expected per-actuator residual authority");
 }
 
-if (strategy === "post-recovery-durable-handoff-suffix-residual") {
+if (
+  strategy === "post-recovery-durable-handoff-suffix-residual" ||
+  strategy === "relapse-credited-contact-action-history-suffix" ||
+  strategy === "self-right-confirmed-relapse-credited-history-suffix"
+) {
   training.totalSteps = 32768;
   training.progression[0].untilStep = 16384;
   training.progression[1].untilStep = 32768;
@@ -56,6 +62,10 @@ if (strategy === "post-recovery-durable-handoff-suffix-residual") {
     velocityTracking: 1,
     stopStability: 8,
     recoverySuccess: 150,
+    ...(strategy === "relapse-credited-contact-action-history-suffix" ||
+    strategy === "self-right-confirmed-relapse-credited-history-suffix"
+      ? { recoveryRelapsePenalty: 300 }
+      : {}),
     phaseTimeoutPenalty: 250,
     timeoutFreeCompletion: 150,
   };
@@ -82,6 +92,33 @@ if (strategy === "post-recovery-durable-handoff-suffix-residual") {
     '                "rampSeconds": 0.2,\n',
     '                "rampSeconds": 0.3,\n',
   );
+  if (
+    strategy === "relapse-credited-contact-action-history-suffix" ||
+    strategy === "self-right-confirmed-relapse-credited-history-suffix"
+  ) {
+    training.assembly = "resilient-command-conditioned-waist-history-3dof";
+    trainer = trainer.replace(
+      "        initial_log_std=-3.0,\n",
+      "        initial_log_std=-3.0,\n" +
+        "        history_encoder={\n" +
+        '            "channels": [\n' +
+        '                {"channel": "command-action-history", "steps": 4, "size": 14},\n' +
+        '                {"channel": "applied-action-history", "steps": 4, "size": 14},\n' +
+        '                {"channel": "foot-contact-history", "steps": 4, "size": 4},\n' +
+        "            ],\n" +
+        '            "recurrentSize": 32,\n' +
+        "        },\n",
+    );
+    if (strategy === "self-right-confirmed-relapse-credited-history-suffix") {
+      trainer = trainer.replace(
+        '                "allowedModes": ["settling", "locomotion"],\n',
+        '                "allowedModes": ["settling", "locomotion"],\n' +
+          '                "requiredTelemetry": {\n' +
+          '                    "recoveryCompleted": True,\n' +
+          "                },\n",
+      );
+    }
+  }
 } else {
   training.totalSteps = 16384;
   training.progression[0].untilStep = 8192;
@@ -108,11 +145,19 @@ process.stdout.write(
   JSON.stringify({
     strategy,
     hypothesis:
-      strategy === "post-recovery-durable-handoff-suffix-residual"
+      strategy === "self-right-confirmed-relapse-credited-history-suffix"
+        ? "The first relapse-credited history Policy reduced primary violations but exposed a causal reward loophole: both degraded Cases reported zero relapses only because the residual became active after the Mission recovery timeout and prevented the Program from reaching its later stable self-right event. Require observable Program telemetry recoveryCompleted=true before the unchanged settling/locomotion gate can grant any residual authority. This narrows rather than widens Policy authority, makes self-righting a prerequisite, and ensures the relapse penalty can only be optimized after a real recovery."
+        : strategy === "relapse-credited-contact-action-history-suffix"
+        ? "The previous complete-Mission suffix received no direct learning signal when the Judge later emitted a sustained recovery relapse, and its feed-forward observation could not distinguish identical instantaneous poses reached through stable support versus growing action-delay/contact oscillation. Give PPO the Judge's exact one-shot relapse penalty plus a bounded four-frame GRU over commanded actions, applied actions, and foot contact forces. Keep the same Program telemetry gate, actuator authority, complete-Mission curriculum, and frozen four-Case Judge."
+        : strategy === "post-recovery-durable-handoff-suffix-residual"
         ? "The complete-Mission trace localizes the new failure after a successful self-right: the fixed handoff reaches high locomotion authority, then the robot relapses during traverse or stop. A residual gated by observable Program transitionCount and limited to settling/locomotion can learn the causal post-recovery suffix while remaining exactly zero during approach, impact, recovery, and static exact Cases. Full stop-completion and recovery credit makes durable behavior—not first self-right—the optimized return."
         : "The first complete-Mission Policy had actor authority on 92% of exact approach steps but still accumulated negative commanded progress, while randomized approach authority fell to 80%. Doubling complete-Mission experience, increasing signed progress credit, shortening only the locomotion gate dwell, and shifting bounded authority from the waist to the legs should let PPO learn the left/right correction that a binary Program fallback could not express.",
     expectedEffect:
-      strategy === "post-recovery-durable-handoff-suffix-residual"
+      strategy === "self-right-confirmed-relapse-credited-history-suffix"
+        ? "Preserve the Program's degraded-right self-righting result, then reduce its two post-recovery relapse episodes without changing approach, impact, recovery, exact Cases, or static regressions."
+        : strategy === "relapse-credited-contact-action-history-suffix"
+        ? "Reduce relapse episodes without expanding learned authority into approach, impact, or recovery; preserve exact-Case gates and downstream signed progress while the locked complete Mission decides promotion."
+        : strategy === "post-recovery-durable-handoff-suffix-residual"
         ? "Reduce recovery relapse and restore final height/tilt in both degraded complete Cases without changing exact approach, impact, self-righting, or Program recovery authority; the unchanged locked Mission and regression gates decide promotion."
         : "Improve delay-one approach and downstream signed Mission progress in both degraded directions while the Program remains sole owner of recovery and all self-righting, collision, joint-limit, and command gates remain passing relative to the reference Controller.",
   }),

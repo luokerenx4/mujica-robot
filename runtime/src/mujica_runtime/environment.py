@@ -52,6 +52,77 @@ def active_mission_phase(task: dict[str, Any], time_seconds: float) -> dict[str,
     return active
 
 
+class RecoveryRelapseTracker:
+    """Online form of the Task recovery-relapse contract used by training and judging."""
+
+    def __init__(self, task: dict[str, Any]):
+        self.contract = task.get("recoveryRelapse")
+        self.hold_steps = (
+            max(1, round(float(self.contract["holdSeconds"]) * float(task["controlHz"])))
+            if self.contract is not None
+            else 0
+        )
+        self.reset()
+
+    def reset(self) -> None:
+        self.self_righted_at: float | None = None
+        self.entered_at: float | None = None
+        self.breach_steps = 0
+        self.latched = False
+        self.breaches: set[str] = set()
+        self.count = 0
+
+    def mark_self_righted(self, time_seconds: float) -> None:
+        if self.self_righted_at is None:
+            self.self_righted_at = float(time_seconds)
+
+    def observe(
+        self,
+        time_seconds: float,
+        height: float,
+        body_tilt: float,
+        mission_stage: str | None = None,
+    ) -> dict[str, Any] | None:
+        if (
+            self.contract is None
+            or self.self_righted_at is None
+            or float(time_seconds) <= self.self_righted_at + 1e-9
+        ):
+            return None
+        current_breaches = {
+            *({"base-height"} if height < float(self.contract["minimumBaseHeightM"]) else set()),
+            *({"body-tilt"} if body_tilt > float(self.contract["maximumBodyTiltRad"]) else set()),
+        }
+        if not current_breaches:
+            self.entered_at = None
+            self.breach_steps = 0
+            self.latched = False
+            self.breaches.clear()
+            return None
+        if self.latched:
+            return None
+        if self.breach_steps == 0:
+            self.entered_at = float(time_seconds)
+        self.breach_steps += 1
+        self.breaches.update(current_breaches)
+        if self.breach_steps < self.hold_steps:
+            return None
+        self.latched = True
+        self.count += 1
+        return {
+            "type": "robot.recovery-relapsed",
+            "time": float(time_seconds),
+            "enteredAt": self.entered_at,
+            "stableRecoveryAt": self.self_righted_at,
+            "timeSinceSelfRightSeconds": float(time_seconds) - self.self_righted_at,
+            "height": float(height),
+            "bodyTiltRad": float(body_tilt),
+            "missionStage": mission_stage,
+            "breaches": sorted(self.breaches),
+            "failureEnvelope": self.contract,
+        }
+
+
 class RobotEnvironment:
     def __init__(
         self,
@@ -117,6 +188,7 @@ class RobotEnvironment:
                 "directionXY": direction.tolist(),
             }
         self.rng = np.random.default_rng(seed)
+        self.sensor_history_rng = np.random.default_rng(seed + 30_000_000)
         self.seed = seed
         self.control_dt = 1.0 / float(task["controlHz"])
         self.physics_steps = max(1, round(self.control_dt / self.model.opt.timestep))
@@ -151,7 +223,12 @@ class RobotEnvironment:
         self.last_applied_action = np.zeros(self.model.nu, dtype=np.float64)
         self.command_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
+        self.sensor_histories: dict[str, deque[np.ndarray]] = {}
         self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(self.scenario["actuatorDelaySteps"]) + 1)], maxlen=int(self.scenario["actuatorDelaySteps"]) + 1)
+        self.recovery_relapse_tracker = RecoveryRelapseTracker(task)
+        self.recovery_evaluation_active = False
+        self.recovery_triggered = False
+        self.recovery_stable_steps = 0
         self.events: list[dict[str, Any]] = []
         self._configure_scenario()
 
@@ -202,7 +279,20 @@ class RobotEnvironment:
         self.last_applied_action.fill(0)
         self.command_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
         self.applied_history = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(4)], maxlen=4)
+        self.sensor_histories = {}
+        for channel in self.compiled["observationContract"]["channels"]:
+            source = str(channel["source"])
+            if source.startswith("sensor-list-history-4:"):
+                current = self._sensor_history_sample(source.split(":", 1)[1])
+                self.sensor_histories[source] = deque(
+                    [current.copy() for _ in range(4)],
+                    maxlen=4,
+                )
         self.delay = deque([np.zeros(self.model.nu, dtype=np.float64) for _ in range(int(self.scenario["actuatorDelaySteps"]) + 1)], maxlen=int(self.scenario["actuatorDelaySteps"]) + 1)
+        self.recovery_relapse_tracker.reset()
+        self.recovery_evaluation_active = False
+        self.recovery_triggered = False
+        self.recovery_stable_steps = 0
         initial_command = self.motion_command(0)
         self.events = [{
             "type": "episode.reset", "time": 0.0, "seed": self.seed, "scenario": self.scenario["id"], "motionCommand": initial_command.tolist(),
@@ -266,6 +356,59 @@ class RobotEnvironment:
             and body_tilt <= float(target["maximumBodyTiltRad"])
             and float(np.linalg.norm(self.data.qvel[:3])) <= float(target["maximumLinearSpeedMps"])
             and float(np.linalg.norm(self.data.qvel[3:6])) <= float(target["maximumAngularSpeedRadPerSec"])
+        )
+
+    def body_tilt(self) -> float:
+        quaternion = np.asarray(self.data.qpos[3:7], dtype=np.float64)
+        _, x, y, _ = quaternion
+        return float(np.arccos(np.clip(1.0 - 2.0 * (x * x + y * y), -1.0, 1.0)))
+
+    def _sensor_list_values(self, sensor_names: str) -> np.ndarray:
+        values: list[np.ndarray] = []
+        for sensor_name in sensor_names.split(","):
+            sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, sensor_name)
+            if sensor_id < 0:
+                raise RuntimeError(f"Observation references unknown sensor '{sensor_name}'")
+            start = self.model.sensor_adr[sensor_id]
+            size = self.model.sensor_dim[sensor_id]
+            values.append(self.data.sensordata[start:start + size])
+        return np.concatenate(values).astype(np.float64, copy=True)
+
+    def _sensor_history_sample(self, sensor_names: str) -> np.ndarray:
+        value = self._sensor_list_values(sensor_names)
+        noise = float(self.scenario["observationNoiseStd"])
+        if noise:
+            value += self.sensor_history_rng.normal(0.0, noise, size=value.shape)
+        return value
+
+    def _advance_recovery_monitor(
+        self,
+        mission_phase: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        target = self.task.get("recoveryTarget")
+        if target is None:
+            return None
+        if mission_phase is not None and mission_phase.get("intent") == "recover":
+            self.recovery_evaluation_active = True
+        if not self.recovery_evaluation_active:
+            return None
+        satisfied = self.recovery_target_satisfied()
+        if not satisfied:
+            self.recovery_triggered = True
+            self.recovery_stable_steps = 0
+        elif self.recovery_triggered and self.recovery_relapse_tracker.self_righted_at is None:
+            self.recovery_stable_steps += 1
+            required_steps = max(
+                1,
+                round(float(target["holdSeconds"]) / self.control_dt),
+            )
+            if self.recovery_stable_steps >= required_steps:
+                self.recovery_relapse_tracker.mark_self_righted(float(self.data.time))
+        return self.recovery_relapse_tracker.observe(
+            float(self.data.time),
+            float(self.data.qpos[2]),
+            self.body_tilt(),
+            str(mission_phase["id"]) if mission_phase is not None else None,
         )
 
     def _advance_causal_mission(self, pushing: bool) -> dict[str, Any] | None:
@@ -372,9 +515,11 @@ class RobotEnvironment:
             elif source == "qvel:root": value = self.data.qvel[:6]
             elif source == "control:last-commanded": value = self.last_commanded_action
             elif source == "control:last-applied": value = self.last_applied_action
-            elif source == "control:command-history-4": value = np.concatenate(tuple(self.command_history))
-            elif source == "control:applied-history-4": value = np.concatenate(tuple(self.applied_history))
+            elif source in ("control:command-history-4", "control:command-history-4-stable"): value = np.concatenate(tuple(self.command_history))
+            elif source in ("control:applied-history-4", "control:applied-history-4-stable"): value = np.concatenate(tuple(self.applied_history))
             elif source == "control:actuator-delay-steps": value = np.array([float(self.scenario["actuatorDelaySteps"])])
+            elif source.startswith("sensor-list-history-4:"):
+                value = np.concatenate(tuple(self.sensor_histories[source]))
             elif source == "task:motion-command":
                 value = self.motion_command()
             elif source.startswith("sensor:"):
@@ -395,7 +540,12 @@ class RobotEnvironment:
             value = np.asarray(value, dtype=np.float64).reshape(-1)
             if value.size != int(channel["size"]): raise RuntimeError(f"Observation '{channel['name']}' expected {channel['size']} values, got {value.size}")
             noise = float(self.scenario["observationNoiseStd"])
-            if noise and channel["kind"] != "command": value = value + self.rng.normal(0.0, noise, size=value.shape)
+            stable_history = (
+                source in ("control:command-history-4-stable", "control:applied-history-4-stable")
+                or source.startswith("sensor-list-history-4:")
+            )
+            if noise and channel["kind"] != "command" and not stable_history:
+                value = value + self.rng.normal(0.0, noise, size=value.shape)
             result[channel["name"]] = value.copy()
         return result
 
@@ -464,6 +614,8 @@ class RobotEnvironment:
                 )
         for _ in range(self.physics_steps): mujoco.mj_step(self.model, self.data)
         self.step_index += 1
+        for source, history in self.sensor_histories.items():
+            history.append(self._sensor_history_sample(source.split(":", 1)[1]))
         height = float(self.data.qpos[2])
         healthy_min, healthy_max = self.task["healthyHeight"]
         healthy = float(healthy_min) <= height <= float(healthy_max)
@@ -526,6 +678,7 @@ class RobotEnvironment:
             reward = 4.0 * world_up_alignment + 2.0 * height_progress - 0.002 * energy - 0.001 * smoothness
         else:
             reward = (1.0 if healthy else -1.0) + 1.5 * velocity_reward + 0.75 * normalized_progress_rate + upright - 2.0 * lateral_displacement - 0.002 * energy - 0.001 * smoothness
+        recovery_relapse_event = self._advance_recovery_monitor(mission_phase)
         mission_transition = self._advance_causal_mission(pushing)
         terminated = bool(self.task["terminateOnFall"] and not healthy)
         truncated = bool(
@@ -547,6 +700,10 @@ class RobotEnvironment:
             "missionCompleted": self.mission_completed,
             "missionPhaseTimeoutCount": self.mission_phase_timeout_count,
             "recoveryTargetSatisfied": self.recovery_target_satisfied(),
+            "recoverySelfRightedAtSeconds": self.recovery_relapse_tracker.self_righted_at,
+            "recoveryRelapseEntered": recovery_relapse_event is not None,
+            "recoveryRelapseCount": self.recovery_relapse_tracker.count,
+            "recoveryRelapseEvent": recovery_relapse_event,
             "stepDisplacementXY": step_displacement_xy.copy(), "commandedProgressDeltaM": commanded_progress_delta,
             "normalizedProgressRate": normalized_progress_rate, "forwardVelocity": forward_velocity, "lateralDisplacement": lateral_displacement,
             "upright": upright, "energy": energy, "smoothness": smoothness, "pushing": pushing,

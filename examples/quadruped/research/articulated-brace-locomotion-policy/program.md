@@ -37,6 +37,20 @@ Program recovery. Prefer changing one of:
 - bounded reward weight for signed command progress, stop stability, successful
   recovery, phase timeout, and timeout-free completion.
 
+Completed experiments established two additional constraints. A Policy with
+direct relapse credit may not avoid that penalty by preventing stable
+self-righting, and Program telemetry `recoveryCompleted` is not equivalent to
+the Task's authoritative stable-recovery dwell. A future Lab must use a
+declared Runtime latch with the same height, yaw-invariant tilt, speed, and
+hold semantics as the Task/Judge before learned suffix authority can start.
+Do not substitute another Controller-private boolean or a tuned wall-clock
+dwell.
+
+Bounded action/contact history must use the sibling history Assembly. Its
+independent seeded history-noise stream may not advance or change any existing
+real-time observation. This ABI composition invariant is covered by Runtime
+tests and is part of the experiment contract.
+
 Do not increase PPO steps without changing the measured authority or credit
 assignment bottleneck. Training reward is evidence about learning, never
 promotion authority.

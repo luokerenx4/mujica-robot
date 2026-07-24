@@ -528,3 +528,51 @@ The next learned candidate should add recurrent contact/action history and a
 direct causal relapse credit path. It must retain zero authority during
 approach, impact, and Program recovery, and it must still be judged on the
 same four complete no-reset Cases.
+
+## Online relapse credit and bounded history result
+
+Training and judging now share one `RecoveryRelapseTracker`. The Runtime arms
+it from the first Task `recover` phase, records the first stable self-right
+even when that phase has already timed out, and emits a one-step
+`recoveryRelapseEntered` signal only after the Task's physical height/tilt
+failure envelope has remained breached for its declared dwell. Training v3
+accepts `missionReward.recoveryRelapsePenalty`; the sparse penalty is delayed
+credit, so it does not grant action authority at the failure step. The existing
+residual mask still decides which earlier Policy actions receive PPO updates.
+
+The articulated history Assembly is a new sibling,
+`resilient-command-conditioned-waist-history-3dof`. It leaves the accepted
+53-value Assembly immutable and adds a bounded four-frame sequence:
+
+- 14 commanded actuator values;
+- 14 applied actuator values after delay; and
+- four foot-contact forces.
+
+A multi-channel GRU consumes those three sequences and removes them from the
+instantaneous MLP input. Old two-channel history Policy architectures remain
+loadable.
+
+Sessions `session-477fd558fc2f3980` and `session-08401dde948f1149` tested the
+new state/credit contract for `32,768` complete-Mission steps. Both candidates
+improved over the previous Policy head but were reverted:
+
+- direct relapse credit plus history improved score `34.4350 → 40.8961` and
+  violations `48 → 45`, but both degraded Cases avoided relapse credit by
+  failing to complete stable self-righting;
+- additionally requiring Program telemetry `recoveryCompleted=true` improved
+  score `34.4350 → 40.7389` and violations `48 → 47`, but that Program flag
+  precedes the Task's required `0.5 s` stable-recovery dwell and still allowed
+  the residual to prevent the authoritative self-right event.
+
+The comparison also found an Observation-ABI defect: adding unused noisy
+history channels advanced the shared sensor-noise RNG and changed later
+real-time foot-force observations. History channels now use an independent,
+seeded noise stream; a locked test proves every pre-existing noisy observation
+is byte-equivalent with and without the sibling history component under the
+same seed and actions. The two experiments remain valid negative Harness
+evidence, but they are not treated as a clean verdict on recurrent state.
+
+The next learned lane must gate on a declared Runtime recovery-stable latch
+whose semantics are identical to the Task/Judge dwell, not on an earlier
+Controller-private completion flag. That is a state/authority contract change,
+not another scalar threshold sweep.

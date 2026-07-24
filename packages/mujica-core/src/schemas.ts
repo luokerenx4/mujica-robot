@@ -534,6 +534,7 @@ const trainingOptimizationFields = {
     velocityTracking: z.number().finite().min(0).max(20),
     stopStability: z.number().finite().min(0).max(20),
     recoverySuccess: z.number().finite().min(0).max(500).optional(),
+    recoveryRelapsePenalty: z.number().finite().min(0).max(500).optional(),
     phaseTimeoutPenalty: z.number().finite().min(0).max(500).optional(),
     timeoutFreeCompletion: z.number().finite().min(0).max(500).optional(),
   }).strict().optional(),

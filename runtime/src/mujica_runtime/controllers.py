@@ -78,15 +78,36 @@ class PolicyNetwork(torch.nn.Module):
 
 
 class HistoryPolicyNetwork(torch.nn.Module):
-    def __init__(self, observation_size: int, action_size: int, hidden_sizes: list[int], history: dict[str, int]):
+    def __init__(self, observation_size: int, action_size: int, hidden_sizes: list[int], history: dict[str, Any]):
         super().__init__()
-        steps = int(history["steps"]); history_action_size = int(history["actionSize"])
-        self.command_start = int(history["commandStart"]); self.applied_start = int(history["appliedStart"])
-        self.steps = steps; self.history_action_size = history_action_size
-        occupied = set(range(self.command_start, self.command_start + steps * history_action_size)) | set(range(self.applied_start, self.applied_start + steps * history_action_size))
+        if "channels" in history:
+            self.history_channels = [
+                (int(channel["start"]), int(channel["steps"]), int(channel["size"]))
+                for channel in history["channels"]
+            ]
+        else:
+            steps = int(history["steps"])
+            history_action_size = int(history["actionSize"])
+            self.history_channels = [
+                (int(history["commandStart"]), steps, history_action_size),
+                (int(history["appliedStart"]), steps, history_action_size),
+            ]
+        history_steps = {steps for _, steps, _ in self.history_channels}
+        if len(history_steps) != 1:
+            raise RuntimeError("History encoder channels must use one shared bounded window")
+        self.steps = next(iter(history_steps))
+        occupied = {
+            index
+            for start, steps, size in self.history_channels
+            for index in range(start, start + steps * size)
+        }
         self.register_buffer("current_indices", torch.tensor([index for index in range(observation_size) if index not in occupied], dtype=torch.long), persistent=False)
         recurrent_size = int(history["recurrentSize"])
-        self.history_encoder = torch.nn.GRU(2 * history_action_size, recurrent_size, batch_first=True)
+        self.history_encoder = torch.nn.GRU(
+            sum(size for _, _, size in self.history_channels),
+            recurrent_size,
+            batch_first=True,
+        )
         layers: list[torch.nn.Module] = []; size = len(self.current_indices) + recurrent_size
         for hidden in hidden_sizes:
             layers.extend([torch.nn.Linear(size, hidden), torch.nn.Tanh()]); size = hidden
@@ -95,9 +116,14 @@ class HistoryPolicyNetwork(torch.nn.Module):
         self.log_std = torch.nn.Parameter(torch.full((action_size,), -0.5))
 
     def forward(self, observation: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        command = observation[..., self.command_start:self.command_start + self.steps * self.history_action_size].reshape(*observation.shape[:-1], self.steps, self.history_action_size)
-        applied = observation[..., self.applied_start:self.applied_start + self.steps * self.history_action_size].reshape(*observation.shape[:-1], self.steps, self.history_action_size)
-        sequence = torch.cat([command, applied], dim=-1)
+        sequence = torch.cat([
+            observation[..., start:start + steps * size].reshape(
+                *observation.shape[:-1],
+                steps,
+                size,
+            )
+            for start, steps, size in self.history_channels
+        ], dim=-1)
         _, hidden = self.history_encoder(sequence)
         current = observation.index_select(-1, self.current_indices)
         latent = self.body(torch.cat([current, hidden[-1]], dim=-1))

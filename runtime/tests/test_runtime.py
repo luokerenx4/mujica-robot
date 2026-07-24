@@ -13,7 +13,7 @@ import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
-from mujica_runtime.environment import RobotEnvironment, active_mission_phase, compile_motion_command_schedule
+from mujica_runtime.environment import RecoveryRelapseTracker, RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
@@ -275,6 +275,25 @@ class RuntimeContractTest(unittest.TestCase):
         first = network(observation); second = network(observation)
         self.assertEqual(first[0].shape, (1, 12)); self.assertEqual(first[1].shape, (1,)); self.assertEqual(first[2].shape, (1, 12))
         torch.testing.assert_close(first[0], second[0]); torch.testing.assert_close(first[1], second[1])
+
+        multi_channel = {
+            "kind": "history-gru-actor-critic",
+            "observationSize": 157,
+            "actionSize": 14,
+            "hiddenSizes": [16],
+            "history": {
+                "channels": [
+                    {"start": 29, "steps": 4, "size": 14},
+                    {"start": 85, "steps": 4, "size": 14},
+                    {"start": 141, "steps": 4, "size": 4},
+                ],
+                "recurrentSize": 8,
+            },
+        }
+        recurrent = create_policy_network(multi_channel)
+        recurrent_output = recurrent(torch.linspace(-1, 1, 157).unsqueeze(0))
+        self.assertEqual(recurrent_output[0].shape, (1, 14))
+
     def test_training_residual_scale_is_frozen_into_the_effective_transform(self):
         base = {
             "kind": "spatial-gait-residual",
@@ -899,6 +918,30 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(events[1]["breaches"], ["base-height"])
         self.assertEqual(events[1]["missionStage"], "redirect")
 
+    def test_online_recovery_relapse_tracker_matches_judge_event_semantics(self):
+        task = {
+            "controlHz": 50,
+            "recoveryRelapse": {
+                "minimumBaseHeightM": 0.24,
+                "maximumBodyTiltRad": 0.7,
+                "holdSeconds": 0.1,
+            },
+        }
+        tracker = RecoveryRelapseTracker(task)
+        tracker.mark_self_righted(1.0)
+        for index in range(4):
+            self.assertIsNone(tracker.observe(1.02 + 0.02 * index, 0.3, 0.8, "resume"))
+        self.assertIsNone(tracker.observe(1.10, 0.3, 0.1, "resume"))
+        event = None
+        for index in range(5):
+            event = tracker.observe(1.12 + 0.02 * index, 0.3, 0.8, "resume")
+        self.assertIsNotNone(event)
+        self.assertEqual(event["type"], "robot.recovery-relapsed")
+        self.assertAlmostEqual(event["enteredAt"], 1.12)
+        self.assertAlmostEqual(event["time"], 1.20)
+        self.assertEqual(event["breaches"], ["body-tilt"])
+        self.assertEqual(tracker.count, 1)
+
     def test_causal_mission_advances_from_disturbance_and_robot_state(self):
         model, compiled = compiled_assembly("force-sensing-3dof")
         command = {
@@ -1330,6 +1373,42 @@ class RuntimeContractTest(unittest.TestCase):
         second = first * 2; observation = environment.step(second).observation
         np.testing.assert_allclose(observation["command-action-history"][-24:], np.concatenate([first, second]))
 
+    def test_articulated_history_covers_all_actions_and_bounded_foot_contacts(self):
+        model, compiled = compiled_assembly("resilient-command-conditioned-waist-history-3dof")
+        task = json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "mission-impact-left.scenario.json").read_text())
+        environment = RobotEnvironment(model, compiled, task, scenario, 42)
+        observation = environment.reset()
+        self.assertEqual(observation["command-action-history"].shape, (56,))
+        self.assertEqual(observation["applied-action-history"].shape, (56,))
+        self.assertEqual(observation["foot-contact-history"].shape, (16,))
+        command = np.linspace(-0.5, 0.5, 14)
+        observation = environment.step(command).observation
+        np.testing.assert_allclose(observation["command-action-history"][-14:], command)
+        np.testing.assert_allclose(
+            observation["foot-contact-history"][-4:],
+            observation["foot-contact-force"],
+        )
+
+    def test_added_stable_history_does_not_shift_existing_noisy_observations(self):
+        plain_model, plain_compiled = compiled_assembly("resilient-command-conditioned-waist-3dof")
+        history_model, history_compiled = compiled_assembly("resilient-command-conditioned-waist-history-3dof")
+        task = json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "mission-impact-left-degraded.scenario.json").read_text())
+        plain = RobotEnvironment(plain_model, plain_compiled, task, scenario, 7203)
+        history = RobotEnvironment(history_model, history_compiled, task, scenario, 7203)
+        plain_observation = plain.reset()
+        history_observation = history.reset()
+        shared_channels = set(plain_observation).intersection(history_observation)
+        for name in shared_channels:
+            np.testing.assert_allclose(plain_observation[name], history_observation[name])
+        for step in range(3):
+            action = np.linspace(-0.2, 0.2, 14) * (step + 1)
+            plain_observation = plain.step(action).observation
+            history_observation = history.step(action).observation
+            for name in shared_channels:
+                np.testing.assert_allclose(plain_observation[name], history_observation[name])
+
     def test_host_rejects_wrong_action_shape(self):
         model, compiled = compiled_assembly("baseline")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
@@ -1584,6 +1663,7 @@ class RuntimeContractTest(unittest.TestCase):
         causal_weights = {
             **weights,
             "recoverySuccess": 100.0,
+            "recoveryRelapsePenalty": 300.0,
             "phaseTimeoutPenalty": 200.0,
             "timeoutFreeCompletion": 100.0,
         }
@@ -1598,6 +1678,12 @@ class RuntimeContractTest(unittest.TestCase):
         }, causal_weights, 0.0)
         self.assertEqual(timeout_bonus, -200.0)
         self.assertEqual(timeout_terms["phaseTimeoutPenalty"], -200.0)
+        relapse_bonus, relapse_terms = mission_reward_bonus({
+            **info,
+            "recoveryRelapseEntered": True,
+        }, causal_weights, 0.0)
+        self.assertEqual(relapse_bonus, -300.0)
+        self.assertEqual(relapse_terms["recoveryRelapsePenalty"], -300.0)
         completed_bonus, completed_terms = mission_reward_bonus({
             **info,
             "missionCompleted": True,

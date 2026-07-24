@@ -11,7 +11,7 @@ import mujoco
 import numpy as np
 
 from .controllers import load_policy_controller, load_program_controller
-from .environment import RobotEnvironment, active_mission_phase, compile_motion_command_schedule
+from .environment import RecoveryRelapseTracker, RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from .io import atomic_directory, hash_file, hash_json, sha256_bytes, write_json
 
 
@@ -273,51 +273,20 @@ def recovery_relapse_events(
     task: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Find sustained physical failures after the first stable self-righting event."""
-    contract = task.get("recoveryRelapse")
-    if contract is None or self_righted_at is None:
+    tracker = RecoveryRelapseTracker(task)
+    if tracker.contract is None or self_righted_at is None:
         return []
-    hold_steps = max(1, round(float(contract["holdSeconds"]) * float(task["controlHz"])))
-    entered_at: float | None = None
-    breach_steps = 0
-    latched = False
-    breaches: set[str] = set()
+    tracker.mark_self_righted(self_righted_at)
     events: list[dict[str, Any]] = []
     for row in trajectory:
-        row_time = float(row["time"])
-        if row_time <= float(self_righted_at) + 1e-9:
-            continue
-        height = float(row["qpos"][2])
-        body_tilt = float(row["bodyTiltRad"])
-        current_breaches = {
-            *({"base-height"} if height < float(contract["minimumBaseHeightM"]) else set()),
-            *({"body-tilt"} if body_tilt > float(contract["maximumBodyTiltRad"]) else set()),
-        }
-        if not current_breaches:
-            entered_at = None
-            breach_steps = 0
-            latched = False
-            breaches.clear()
-            continue
-        if latched:
-            continue
-        if breach_steps == 0:
-            entered_at = row_time
-        breach_steps += 1
-        breaches.update(current_breaches)
-        if breach_steps >= hold_steps:
-            events.append({
-                "type": "robot.recovery-relapsed",
-                "time": row_time,
-                "enteredAt": entered_at,
-                "stableRecoveryAt": float(self_righted_at),
-                "timeSinceSelfRightSeconds": row_time - float(self_righted_at),
-                "height": height,
-                "bodyTiltRad": body_tilt,
-                "missionStage": row.get("missionStage"),
-                "breaches": sorted(breaches),
-                "failureEnvelope": contract,
-            })
-            latched = True
+        event = tracker.observe(
+            float(row["time"]),
+            float(row["qpos"][2]),
+            float(row["bodyTiltRad"]),
+            row.get("missionStage"),
+        )
+        if event is not None:
+            events.append(event)
     return events
 
 

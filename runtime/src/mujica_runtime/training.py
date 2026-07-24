@@ -93,6 +93,7 @@ def mission_reward_bonus(
         "velocityTracking": 0.0,
         "stopStability": 0.0,
         "recoverySuccess": 0.0,
+        "recoveryRelapsePenalty": 0.0,
         "phaseTimeoutPenalty": 0.0,
         "timeoutFreeCompletion": 0.0,
     }
@@ -109,6 +110,8 @@ def mission_reward_bonus(
         elif intent == "stop":
             velocity_error = float(info.get("velocityError", 0.0))
             terms["stopStability"] = float(weights.get("stopStability", 0.0)) * float(np.exp(-10.0 * velocity_error * velocity_error))
+    if info.get("recoveryRelapseEntered") is True:
+        terms["recoveryRelapsePenalty"] = -float(weights.get("recoveryRelapsePenalty", 0.0))
     transition = info.get("missionTransition")
     if isinstance(transition, dict):
         if transition.get("condition") == "recovery-stable" and transition.get("conditionMet") is True:
@@ -426,13 +429,26 @@ class PPOTrainer:
             for channel in request["compiled"]["observationContract"]["channels"]:
                 offsets[channel["name"]] = offset; offset += int(channel["size"])
             architecture["kind"] = "history-gru-actor-critic"
-            architecture["history"] = {
-                "commandStart": offsets[str(self.history_encoder["commandChannel"])],
-                "appliedStart": offsets[str(self.history_encoder["appliedChannel"])],
-                "steps": int(self.history_encoder["steps"]),
-                "actionSize": action_size,
-                "recurrentSize": int(self.history_encoder["recurrentSize"]),
-            }
+            if "channels" in self.history_encoder:
+                architecture["history"] = {
+                    "channels": [
+                        {
+                            "start": offsets[str(channel["channel"])],
+                            "steps": int(channel["steps"]),
+                            "size": int(channel["size"]),
+                        }
+                        for channel in self.history_encoder["channels"]
+                    ],
+                    "recurrentSize": int(self.history_encoder["recurrentSize"]),
+                }
+            else:
+                architecture["history"] = {
+                    "commandStart": offsets[str(self.history_encoder["commandChannel"])],
+                    "appliedStart": offsets[str(self.history_encoder["appliedChannel"])],
+                    "steps": int(self.history_encoder["steps"]),
+                    "actionSize": action_size,
+                    "recurrentSize": int(self.history_encoder["recurrentSize"]),
+                }
         network = create_policy_network(architecture)
         if self.action_transform:
             torch.nn.init.zeros_(network.actor.weight); torch.nn.init.zeros_(network.actor.bias)
@@ -448,7 +464,7 @@ class PPOTrainer:
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
-            batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability", "recoverySuccess", "phaseTimeoutPenalty", "timeoutFreeCompletion")}
+            batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability", "recoverySuccess", "recoveryRelapsePenalty", "phaseTimeoutPenalty", "timeoutFreeCompletion")}
             batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []

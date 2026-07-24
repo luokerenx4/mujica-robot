@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-brace-locomotion-policy",
+    "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+    "programHash": "f0d505ff3f3129566184e56f177bc7b7ed3ce4a1954dafac2f28a86fda18f42c",
+    "benchmarkLockHash": "008ea4ff5db8e1dee6700c74fcf4a67b178f104c6a162e07829202f1bfe6f29c",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-477fd558fc2f3980",
+    "experimentId": "001-8598c2f79cb3",
+    "experimentHash": "8598c2f79cb3c43c9db1a1471bd13136c29360b071434f63fc79bf01850c96e2"
+  },
+  "proposal": {
+    "strategy": "relapse-credited-contact-action-history-suffix",
+    "hypothesis": "The previous complete-Mission suffix received no direct learning signal when the Judge later emitted a sustained recovery relapse, and its feed-forward observation could not distinguish identical instantaneous poses reached through stable support versus growing action-delay/contact oscillation. Give PPO the Judge's exact one-shot relapse penalty plus a bounded four-frame GRU over commanded actions, applied actions, and foot contact forces. Keep the same Program telemetry gate, actuator authority, complete-Mission curriculum, and frozen four-Case Judge.",
+    "expectedEffect": "Reduce relapse episodes without expanding learned authority into approach, impact, or recovery; preserve exact-Case gates and downstream signed progress while the locked complete Mission decides promotion."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "spatial-robustness: payload: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 48,
+      "candidateViolationCount": 45,
+      "previousViolationSeverity": 114.37104112101008,
+      "candidateViolationSeverity": 97.5243123284634,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "e22371e3a055569194d9eb8dd883d0abb8e2fdfed5690c685cfba65e6893f8bc"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: backward-displacement regressed from passing to failing",
+    "candidateScoreDelta": 7.455744902603314,
+    "weightedScoreDelta": 7.455744902603314
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-7c81078be9322f65",
+    "runKey": "7c81078be9322f65933107b97ef6caa7fb3b6af6a02fa3eb2a5c3f98f65c1026",
+    "resultHash": "8cbfc40dca48be7cad21afa6de7e7f3a81f78e87142666a1e7c69191212dc2e1",
+    "artifactHash": "32861e14e0a77f77454ecc5c1233d9f6cad87e209583abc9b3b5ac67c5f0be7f",
+    "manifestHash": "160c5867966768d721f785712719194cba4a35a85d652ba9a531feb08477b850",
+    "metricsHash": "cb0cea3f11fa8fc142174d2e8c978a03b0c9db24ae32fee33327195cff4969af",
+    "scoreHash": "b6ff406668e05416baf1c9cb29ad593ca8612c1a63ddf8a4b996b50c057a8060",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-brace-locomotion-policy",
+    "score": 101.63855201912246
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-1bfd86ed9fc371e9",
+    "runKey": "1bfd86ed9fc371e9c32a8b74ddab9381051c55ff33239678d79a278a5d49b085",
+    "resultHash": "056faf928986d4d3becc8304fecbb14cf2471923af8aa79401d5e9ca903c9bc3",
+    "artifactHash": "7fdd53b0258e76674b0742ceb2bb2514aa89e8606090190c0f14367a065c008d",
+    "manifestHash": "0e4a87b81b69d8a25af8cb71852472378c6ee104301c1c61c9fbd9b2db4786a8",
+    "metricsHash": "3a8ea68bb06882fb04ebbe06437da3e8df810bc81d61eb924d96f052a75f44e9",
+    "scoreHash": "7d78479fcff58ded1839115ed71dca6394f2ef3665aa9a198ecb8c698062d6a4",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-brace-locomotion-policy",
+    "score": 109.09429692172577
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

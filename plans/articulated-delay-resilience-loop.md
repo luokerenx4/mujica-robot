@@ -194,5 +194,11 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
 - [x] Test one closed-loop Program handoff and one bounded learned post-recovery
   suffix against the strengthened complete-Mission Judge; preserve both as
   immutable `REVERT` evidence.
-- [ ] Add causal relapse credit and recurrent contact/action history to the
+- [x] Add causal relapse credit and recurrent contact/action history to the
   learned suffix without expanding its Program-telemetry authority boundary.
+- [x] Preserve two reverted complete-Mission experiments that exposed
+  no-self-right reward avoidance and a noisy Observation-ABI composition bug.
+- [x] Isolate bounded history noise so adding an unused history component
+  cannot perturb any existing noisy observation under the same seed/actions.
+- [ ] Expose the Task/Judge recovery-stable dwell as a declared Runtime state
+  and gate learned suffix authority on that latch before rerunning RL.
