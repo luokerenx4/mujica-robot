@@ -13,7 +13,7 @@ import mujoco
 import numpy as np
 import torch
 
-from .controllers import Controller, PolicyNetwork, create_policy_network, load_program_controller, load_python_module, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
+from .controllers import Controller, PolicyNetwork, advance_program_residual_gate_scale, create_policy_network, load_program_controller, load_python_module, program_residual_scale_vector, transform_policy_action
 from .environment import RobotEnvironment
 from .io import atomic_directory, hardware_info, hash_file, hash_json, write_json
 
@@ -423,6 +423,7 @@ class PPOTrainer:
             and action_transform.get("kind") == "program-controller-residual"
             else None
         )
+        residual_gate_scale_state = 0.0
         architecture: dict[str, Any] = {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal"}
         if self.history_encoder:
             offsets: dict[str, int] = {}; offset = 0
@@ -486,9 +487,14 @@ class PPOTrainer:
                         provided = telemetry_provider()
                         if isinstance(provided, dict):
                             prior_telemetry = provided
-                    residual_gate_scale = program_residual_gate_scale(
-                        action_transform, program_prior
+                    residual_gate_scale, _ = advance_program_residual_gate_scale(
+                        action_transform,
+                        program_prior,
+                        observation_map,
+                        residual_gate_scale_state,
+                        environment.control_dt,
                     )
+                    residual_gate_scale_state = residual_gate_scale
                     transformed = (
                         prior_action
                         + residual_gate_scale
@@ -573,6 +579,7 @@ class PPOTrainer:
                     if completed_steps < total_steps:
                         environment = make_environment()
                         if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + episode_index)
+                        residual_gate_scale_state = 0.0
                         observation_map = environment.reset(); observation = environment.vector(observation_map)
             with torch.no_grad():
                 normalized = normalizer.normalize(observation); _, next_value, _ = network(torch.from_numpy(normalized).unsqueeze(0)); bootstrap = float(next_value.item())

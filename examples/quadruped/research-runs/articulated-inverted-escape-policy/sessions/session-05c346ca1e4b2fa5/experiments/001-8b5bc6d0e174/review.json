@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "b2108f2ba62feedf4f9cf0f419116c9dc51f4f29aaf4a834e4af2b6c6b5c1887",
+    "benchmarkLockHash": "9c5292480847bc13491260161bf1d1a54c51c795c1241c75d2d4f7708479567c",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-05c346ca1e4b2fa5",
+    "experimentId": "001-8b5bc6d0e174",
+    "experimentHash": "8b5bc6d0e17468f3760551ab44733f9516064788df396ed835822fcfc5b977c5"
+  },
+  "proposal": {
+    "strategy": "task-target-closed-loop-history-recovery",
+    "hypothesis": "The first-recovery Program flag is an early private threshold and cannot distinguish a transient upright sample from the Task's physical recovery dwell. Give the delay-one recovery residual bounded commanded/applied/contact history, but remove its authority whenever the Task target is currently satisfied and permanently after the Runtime stable latch. This creates a closed loop: PPO can correct delayed recovery while outside the target, the Program alone owns every dwell sample, and later post-latch falls cannot reactivate the recovery Policy.",
+    "expectedEffect": "Complete the Task's 0.5 second stable-recovery dwell before its six-second timeout in both degraded directions, preserve exact and static recovery, and keep Policy authority at zero during every stable-dwell sample and all post-latch Mission phases."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 117.00017306164116,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "b95ca737f4abba35739cea17a69e333411a663660e9be5e805e296587893b3c4"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: self-righting regressed from passing to failing",
+    "candidateScoreDelta": -80.959894156432,
+    "weightedScoreDelta": -80.959894156432
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-e018a8225a36f7f0",
+    "runKey": "e018a8225a36f7f001e2e9ecdcab43c1c007a1b32c0b6c69296783b0a93b941e",
+    "resultHash": "b034b9a2ee33ba999792511e8c14dc29ca0fbbbdb84c1814c4eebc0c6e75a465",
+    "artifactHash": "433efe45126f154fad37d7a6cfc91451092a9d1486b8aa4d7194be7938bee65a",
+    "manifestHash": "b85b6b150215d5e47320e8a706efe1df615a05898af4e54b88592d55518541d6",
+    "metricsHash": "b4c3217f17b0193374f1d6ce12f2c91eddb25e08112b2414c1de881553d33e4a",
+    "scoreHash": "0d346c861fef2156fcf6ad66a202b5a2f7ac14922e371f1e4d1ad09a6269e6d3",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 52.090808559699596
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-dc49f40b3661db63",
+    "runKey": "dc49f40b3661db638162317f76f861d00e3054181f22f02b2d24c0b84c4fb32c",
+    "resultHash": "c884ba55a5f178e308a04fff2186992834752f968212769e72abc767c6832b3f",
+    "artifactHash": "be99001ae07f2158e2b983f9bf25b8b29d588a15c6ca97df0c9d0390f831c489",
+    "manifestHash": "a4de00be4e6e38ca7bfe646df9513dcee971dbd681192da063810fe9b5525dee",
+    "metricsHash": "f41b19e177f35a52f50990c581343ec2e069ebb18ee683586a3ac81a187251e6",
+    "scoreHash": "7ef7d805af5d3a3ee43c0bb55b2512abedeada4d21d268a8c6e94025872f420b",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -28.869085596732404
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-brace-locomotion-policy",
+    "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+    "programHash": "1bbcc67ce74764f8dd86f9eecf544ec5ac79b000253326ba5d80e221df894a69",
+    "benchmarkLockHash": "9c5292480847bc13491260161bf1d1a54c51c795c1241c75d2d4f7708479567c",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-d29504dd2bf322d6",
+    "experimentId": "001-bc94cee6f89f",
+    "experimentHash": "bc94cee6f89f91ed489770b48491391798220da0686b02f34521030f4159fbc9"
+  },
+  "proposal": {
+    "strategy": "runtime-stable-latched-relapse-credited-history-suffix",
+    "hypothesis": "The prior candidate failed because Program telemetry recoveryCompleted became true before the Task's authoritative 0.5 second physical recovery dwell. Expose the Task-derived recovery-target hold progress and a one-way Runtime recovery-stable latch through the Assembly Observation ABI, and require that exact latch before any learned residual authority. Preserve the same history encoder, reward, authority magnitudes, complete-Mission curriculum, and frozen Judge so this experiment changes the causal handoff boundary rather than inventing another private threshold.",
+    "expectedEffect": "Keep learned authority exactly zero through approach, impact, recovery, and any recovery timeout; grant it only on the control step after the Task has physically latched stable recovery, then reduce post-recovery relapse without regressing exact or degraded self-righting gates."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: transition-terminal-yaw regressed from passing to failing",
+        "impact-right-degraded: recovery-relapse regressed from passing to failing",
+        "reference-controller: no-lexicographic-improvement",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "spatial-robustness: payload: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 48,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 114.37104112101008,
+      "candidateViolationSeverity": 87.78602050689881,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "52928849c201af82ae17bc761333fc38a78f29c5dd2822f00d24aeaa4567c21c"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: backward-displacement regressed from passing to failing",
+    "candidateScoreDelta": 7.455744902603314,
+    "weightedScoreDelta": 7.455744902603314
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-cd3bca83479ba687",
+    "runKey": "cd3bca83479ba6877e69d84d305a139a3f1cfa02e3b8b6986bd11335859eab4f",
+    "resultHash": "fd8ec6d08e0bf33bc7e5c6393e5cfa6238cc3be20f82df4e2872def4f034d68c",
+    "artifactHash": "a6ebe2a1719df0b27db5c0428bdd6ea191495eb02852356e280614882da21a33",
+    "manifestHash": "433031d564443af244bb32e419dc164267fda989610deac431ffe55efa3be93b",
+    "metricsHash": "cb0cea3f11fa8fc142174d2e8c978a03b0c9db24ae32fee33327195cff4969af",
+    "scoreHash": "b6ff406668e05416baf1c9cb29ad593ca8612c1a63ddf8a4b996b50c057a8060",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-brace-locomotion-policy",
+    "score": 101.63855201912246
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-2be3545129adbc7b",
+    "runKey": "2be3545129adbc7b2c86f8e200c72bec5b1c466af3915754f7e38fc7b37cf954",
+    "resultHash": "31c58be2a9b0e1880e033d7509d9d27e53b5ad6a5bad20f3a791a5ca1f6178ae",
+    "artifactHash": "bf6e69eb4c41b2e329131d96a3f141351110d59fc39a38e168fc3dc260ddea62",
+    "manifestHash": "e221a71edc604fe00ed328de1c71924fadf62eb1ff80ea7e3932e3252b54c18f",
+    "metricsHash": "3a8ea68bb06882fb04ebbe06437da3e8df810bc81d61eb924d96f052a75f44e9",
+    "scoreHash": "7d78479fcff58ded1839115ed71dca6394f2ef3665aa9a198ecb8c698062d6a4",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-brace-locomotion-policy",
+    "score": 109.09429692172577
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

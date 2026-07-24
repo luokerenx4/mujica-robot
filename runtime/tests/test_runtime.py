@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
-from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
+from mujica_runtime.controllers import POLICY_WARMUP_PASSES, advance_program_residual_gate_scale, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
 from mujica_runtime.environment import RecoveryRelapseTracker, RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
@@ -457,6 +457,158 @@ class RuntimeContractTest(unittest.TestCase):
             ),
             0.0,
         )
+
+    def test_program_residual_gate_accepts_only_declared_telemetry_phases(self):
+        class Prior:
+            def __init__(self, phase):
+                self.phase = phase
+
+            def telemetry(self):
+                return {"mode": "recovery", "phase": self.phase}
+
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["recovery"],
+                "allowedTelemetry": {
+                    "phase": ["recovery.impulse", "recovery.capture"],
+                },
+            }
+        }
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform, Prior("recovery.impulse")
+            ),
+            1.0,
+        )
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform, Prior("recovery.capture")
+            ),
+            1.0,
+        )
+        self.assertEqual(
+            program_residual_gate_scale(transform, Prior("recovery.rise")),
+            0.0,
+        )
+        self.assertEqual(
+            program_residual_gate_scale(
+                {
+                    "residualGate": {
+                        **transform["residualGate"],
+                        "allowedTelemetry": {"phase": []},
+                    }
+                },
+                Prior("recovery.impulse"),
+            ),
+            0.0,
+        )
+
+    def test_program_residual_gate_requires_scalar_runtime_observation(self):
+        class Prior:
+            def telemetry(self):
+                return {"mode": "locomotion", "modeDwellSeconds": 1.0}
+
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["locomotion"],
+                "requiredObservation": {"recovery-stable-latched": 1.0},
+            }
+        }
+        self.assertEqual(program_residual_gate_scale(transform, Prior()), 0.0)
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(),
+                {"recovery-stable-latched": np.asarray([0.0])},
+            ),
+            0.0,
+        )
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(),
+                {"recovery-stable-latched": np.asarray([1.0])},
+            ),
+            1.0,
+        )
+        for unsafe in (
+            {"recovery-stable-latched": np.asarray([1.0, 1.0])},
+            {"recovery-stable-latched": np.asarray([float("nan")])},
+            {"other": np.asarray([1.0])},
+        ):
+            self.assertEqual(
+                program_residual_gate_scale(transform, Prior(), unsafe),
+                0.0,
+            )
+
+    def test_program_residual_gate_ramps_each_entry_and_exits_immediately(self):
+        class Prior:
+            def __init__(self):
+                self.value = {"mode": "recovery"}
+
+            def telemetry(self):
+                return self.value
+
+        prior = Prior()
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["recovery"],
+                "requiredObservation": {"outside-target": 1.0},
+                "entryRampSeconds": 0.4,
+            }
+        }
+        scale, target = advance_program_residual_gate_scale(
+            transform,
+            prior,
+            {"outside-target": np.asarray([1.0])},
+            0.0,
+            0.02,
+        )
+        self.assertAlmostEqual(scale, 0.05)
+        self.assertEqual(target, 1.0)
+        scale, target = advance_program_residual_gate_scale(
+            transform,
+            prior,
+            {"outside-target": np.asarray([0.0])},
+            scale,
+            0.02,
+        )
+        self.assertEqual(scale, 0.0)
+        self.assertEqual(target, 0.0)
+        scale, _ = advance_program_residual_gate_scale(
+            transform,
+            prior,
+            {"outside-target": np.asarray([1.0])},
+            scale,
+            0.02,
+        )
+        self.assertAlmostEqual(scale, 0.05)
+        prior.value = {"mode": "locomotion"}
+        scale, target = advance_program_residual_gate_scale(
+            transform,
+            prior,
+            {"outside-target": np.asarray([1.0])},
+            scale,
+            0.02,
+        )
+        self.assertEqual(scale, 0.0)
+        self.assertEqual(target, 0.0)
+        with self.assertRaisesRegex(RuntimeError, "entryRampSeconds"):
+            advance_program_residual_gate_scale(
+                {
+                    "residualGate": {
+                        **transform["residualGate"],
+                        "entryRampSeconds": -0.1,
+                    }
+                },
+                prior,
+                {"outside-target": np.asarray([1.0])},
+                0.0,
+                0.02,
+            )
 
     def test_quality_reward_is_explicit_normalized_and_neutral_when_omitted(self):
         info = {"motionQuality": {
@@ -994,6 +1146,21 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual([item["cause"] for item in transitions[:3]], ["external-push-start", "external-push-end", "recovery-stable"])
         self.assertTrue(all(not item["timedOut"] for item in transitions))
         self.assertTrue(environment.mission_completed)
+        self.assertTrue(environment.recovery_stable_latched)
+        self.assertAlmostEqual(
+            environment.recovery_stable_at_seconds
+            - environment.recovery_stable_since_seconds,
+            0.02,
+        )
+        stable_event = next(
+            event
+            for event in environment.events
+            if event["type"] == "robot.recovery-stable-latched"
+        )
+        self.assertEqual(stable_event["source"], "task-recovery-target")
+        self.assertAlmostEqual(stable_event["requiredDwellSeconds"], 0.04)
+        self.assertTrue(result.info["recoveryStableLatched"])
+        self.assertEqual(result.info["recoveryStableProgress"], 1.0)
         approach_event = next(event for event in environment.events if event.get("from") == "approach")
         self.assertAlmostEqual(approach_event["time"], 0.06)
 
@@ -1016,6 +1183,75 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(transition["from"], "approach")
         self.assertEqual(transition["cause"], "timeout")
         self.assertTrue(transition["timedOut"])
+
+        state_model, state_compiled = compiled_assembly(
+            "resilient-command-conditioned-waist-history-3dof"
+        )
+        noisy_scenario = {**scenario, "observationNoiseStd": 0.5}
+        state_environment = RobotEnvironment(
+            state_model, state_compiled, task, noisy_scenario, 42
+        )
+        state_observation = state_environment.reset()
+        self.assertEqual(
+            state_observation["recovery-stable-latched"].tolist(),
+            [0.0],
+        )
+        self.assertEqual(
+            state_observation["recovery-stable-progress"].tolist(),
+            [0.0],
+        )
+        self.assertEqual(
+            state_observation["recovery-deadline-expired"].tolist(),
+            [0.0],
+        )
+        while True:
+            state_result = state_environment.step(
+                np.zeros(state_environment.model.nu)
+            )
+            if state_result.terminated or state_result.truncated:
+                break
+        self.assertEqual(
+            state_result.observation["recovery-stable-latched"].tolist(),
+            [1.0],
+        )
+        self.assertEqual(
+            state_result.observation["recovery-stable-progress"].tolist(),
+            [1.0],
+        )
+        self.assertEqual(
+            state_result.observation["recovery-deadline-expired"].tolist(),
+            [0.0],
+        )
+
+        timeout_task = {
+            **task,
+            "recoveryTarget": {
+                **task["recoveryTarget"],
+                "minimumBaseHeightM": 10.0,
+            },
+        }
+        timeout_environment = RobotEnvironment(
+            state_model, state_compiled, timeout_task, noisy_scenario, 42
+        )
+        timeout_environment.reset()
+        while True:
+            timeout_result = timeout_environment.step(
+                np.zeros(timeout_environment.model.nu)
+            )
+            if timeout_result.terminated or timeout_result.truncated:
+                break
+        self.assertFalse(timeout_result.info["recoveryStableLatched"])
+        self.assertTrue(timeout_result.info["recoveryDeadlineExpired"])
+        self.assertEqual(
+            timeout_result.observation["recovery-deadline-expired"].tolist(),
+            [1.0],
+        )
+        deadline_event = next(
+            event
+            for event in timeout_environment.events
+            if event["type"] == "robot.recovery-deadline-expired"
+        )
+        self.assertEqual(deadline_event["source"], "task-mission-exit")
 
     def test_phased_self_right_controller_classifies_pose_and_exposes_phase_telemetry(self):
         root = PROJECT / "controllers" / "phased-self-right"

@@ -1,0 +1,65 @@
+{
+  "version": 4,
+  "id": "001-bc94cee6f89f",
+  "experimentHash": "bc94cee6f89f91ed489770b48491391798220da0686b02f34521030f4159fbc9",
+  "sequence": 1,
+  "sessionId": "session-d29504dd2bf322d6",
+  "researchId": "articulated-brace-locomotion-policy",
+  "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+  "programHash": "1bbcc67ce74764f8dd86f9eecf544ec5ac79b000253326ba5d80e221df894a69",
+  "benchmarkLockHash": "9c5292480847bc13491260161bf1d1a54c51c795c1241c75d2d4f7708479567c",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "a7ffecae226695d3f44144545bcb73311f4092913623c2b2760b1dca7bd3aa2f",
+  "historyHash": "70685d18d81e3b8c8eb26c10f3c0bf3ac4086dd54735c46744d68f4e519b151a",
+  "historyCount": 4,
+  "researcherChangedPaths": [
+    "trainers/articulated-brace-locomotion-residual-ppo/trainer.py",
+    "training/articulated-brace-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-brace-locomotion-policy/controller.json",
+    "trainers/articulated-brace-locomotion-residual-ppo/trainer.py",
+    "training/articulated-brace-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "runtime-stable-latched-relapse-credited-history-suffix",
+    "hypothesis": "The prior candidate failed because Program telemetry recoveryCompleted became true before the Task's authoritative 0.5 second physical recovery dwell. Expose the Task-derived recovery-target hold progress and a one-way Runtime recovery-stable latch through the Assembly Observation ABI, and require that exact latch before any learned residual authority. Preserve the same history encoder, reward, authority magnitudes, complete-Mission curriculum, and frozen Judge so this experiment changes the causal handoff boundary rather than inventing another private threshold.",
+    "expectedEffect": "Keep learned authority exactly zero through approach, impact, recovery, and any recovery timeout; grant it only on the control step after the Task has physically latched stable recovery, then reduce post-recovery relapse without regressing exact or degraded self-righting gates."
+  },
+  "policyId": "articulated-brace-locomotion-912fab748ec0f53f",
+  "score": 59.834644667070506,
+  "delta": 25.399684783989088,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: transition-terminal-yaw regressed from passing to failing",
+      "impact-right-degraded: recovery-relapse regressed from passing to failing",
+      "reference-controller: no-lexicographic-improvement",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+      "spatial-robustness: payload: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 48,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 114.37104112101008,
+    "candidateViolationSeverity": 87.78602050689881,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "1e9fcf3fc563ddb4b21fa4e21aa198a91e8b4a45f0cb70c6204cb6233b41583c",
+    "acceptedRunId": "run-cd3bca83479ba687",
+    "candidateRunId": "run-2be3545129adbc7b",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 149670,
+  "completed": true
+}

@@ -247,6 +247,11 @@ describe("read-only Studio snapshot", () => {
     const html = await readFile(result.indexPath, "utf8");
     expect(html).toContain("Self-righting outcome deltas");
     expect(html).toContain("Recovery target");
+    expect(html).toContain("Runtime stable dwell");
+    expect(html).toContain("Runtime stable latch");
+    expect(html).toContain("Runtime recovery deadline");
+    expect(html).toContain("Program recovery flag");
+    expect(html).toContain("recoveryStableLatched");
     expect(html).toContain("Controller phase");
     expect(html).toContain("Controller mode");
     expect(html).toContain("Mission stage");

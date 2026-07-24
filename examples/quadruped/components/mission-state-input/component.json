@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "mission-state-input",
+  "name": "Task-authoritative recovery state input",
+  "type": "mission-state-input",
+  "fragment": "model.xml",
+  "compatibleMounts": ["sensor-bus"],
+  "providesMounts": [],
+  "observations": [
+    { "name": "recovery-target-satisfied", "kind": "runtime-state", "size": 1, "source": "task:recovery-target-satisfied", "unit": "boolean" },
+    { "name": "recovery-stable-progress", "kind": "runtime-state", "size": 1, "source": "task:recovery-stable-progress", "unit": "ratio" },
+    { "name": "recovery-stable-latched", "kind": "runtime-state", "size": 1, "source": "task:recovery-stable-latched", "unit": "boolean" },
+    { "name": "recovery-deadline-expired", "kind": "runtime-state", "size": 1, "source": "task:recovery-deadline-expired", "unit": "boolean" }
+  ],
+  "actions": [],
+  "dependencies": [],
+  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "physical": { "centerOfMassM": [0, 0, 0], "inertiaDiagonalKgM2": [0, 0, 0] },
+  "geometry": [],
+  "joints": [],
+  "actuators": [],
+  "sensors": [
+    { "name": "recovery-target-satisfied", "kind": "task-recovery-target", "source": "runtime" },
+    { "name": "recovery-stable-progress", "kind": "task-recovery-dwell", "source": "runtime" },
+    { "name": "recovery-stable-latched", "kind": "task-recovery-latch", "source": "runtime" },
+    { "name": "recovery-deadline-expired", "kind": "task-recovery-deadline", "source": "runtime" }
+  ],
+  "massKg": 0,
+  "cost": 0,
+  "license": "Apache-2.0",
+  "attribution": "Runtime-provided state derived exclusively from the active Task recovery contract"
+}

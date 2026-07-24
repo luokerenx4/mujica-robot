@@ -16,7 +16,7 @@ complete-Mission experience must remain present.
 The Program prior owns fall detection, recovery sequencing, inverted brace,
 handoff, and safe behavior outside the residual gate. Learned authority must:
 
-- derive only from declared observations and Program telemetry;
+- derive only from declared Runtime-state observations and Program telemetry;
 - never use Scenario id, seed, Mission phase id, timeout budget, or future
   commands;
 - fail closed to zero for missing/non-finite telemetry;
@@ -37,14 +37,16 @@ Program recovery. Prefer changing one of:
 - bounded reward weight for signed command progress, stop stability, successful
   recovery, phase timeout, and timeout-free completion.
 
-Completed experiments established two additional constraints. A Policy with
+Completed experiments established three additional constraints. A Policy with
 direct relapse credit may not avoid that penalty by preventing stable
 self-righting, and Program telemetry `recoveryCompleted` is not equivalent to
-the Task's authoritative stable-recovery dwell. A future Lab must use a
-declared Runtime latch with the same height, yaw-invariant tilt, speed, and
-hold semantics as the Task/Judge before learned suffix authority can start.
-Do not substitute another Controller-private boolean or a tuned wall-clock
-dwell.
+the Task's authoritative stable-recovery dwell. The history Assembly now
+provides a declared `recovery-stable-latched` Runtime state with the same
+height, yaw-invariant tilt, speed, and hold semantics as the Task/Judge.
+Learned suffix authority must require that latch. A Task recovery timeout is
+separately and irreversibly exposed as `recovery-deadline-expired`; late
+self-righting must not rewrite the timed-out Mission result. Do not substitute
+another Controller-private boolean or a tuned wall-clock dwell.
 
 Bounded action/contact history must use the sibling history Assembly. Its
 independent seeded history-noise stream may not advance or change any existing

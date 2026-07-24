@@ -1,0 +1,146 @@
+diff --git a/before/controllers/articulated-brace-locomotion-policy/controller.json b/after/controllers/articulated-brace-locomotion-policy/controller.json
+index bf2c75e..6c6cb36 100644
+--- a/before/controllers/articulated-brace-locomotion-policy/controller.json
++++ b/after/controllers/articulated-brace-locomotion-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "articulated-brace-locomotion-policy",
+   "name": "Frozen articulated-brace locomotion residual Policy",
+   "kind": "policy",
+-  "policy": "articulated-brace-locomotion-62104cabfbc91e7a",
++  "policy": "articulated-brace-locomotion-912fab748ec0f53f",
+   "deterministic": true
+ }
+diff --git a/before/trainers/articulated-brace-locomotion-residual-ppo/trainer.py b/after/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
+index b73b0e3..6350145 100644
+--- a/before/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
++++ b/after/trainers/articulated-brace-locomotion-residual-ppo/trainer.py
+@@ -5,34 +5,45 @@ def create_trainer():
+     return PPOTrainer(
+         hidden_sizes=[64, 64],
+         initial_log_std=-3.0,
++        history_encoder={
++            "channels": [
++                {"channel": "command-action-history", "steps": 4, "size": 14},
++                {"channel": "applied-action-history", "steps": 4, "size": 14},
++                {"channel": "foot-contact-history", "steps": 4, "size": 4},
++            ],
++            "recurrentSize": 32,
++        },
+         action_transform={
+             "kind": "program-controller-residual",
+             "residualScaleByAction": [
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.3,
+-                0.1,
+-                0.1,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.20,
++                0.50,
++                0.50,
+             ],
+             "residualGate": {
+                 "kind": "prior-telemetry-mode",
+-                "allowedModes": ["locomotion"],
++                "allowedModes": ["settling", "locomotion"],
++                "requiredObservation": {
++                    "recovery-stable-latched": 1.0,
++                },
+                 "minimumTelemetry": {
+-                    "modeDwellSeconds": 0.2,
++                    "transitionCount": 3,
+                 },
+                 "maximumTelemetry": {
+-                    "bodyTiltRad": 0.8,
++                    "bodyTiltRad": 0.7,
+                 },
+-                "rampSeconds": 0.2,
++                "rampSeconds": 0.3,
+             },
+         },
+     )
+diff --git a/before/training/articulated-brace-locomotion.training.json b/after/training/articulated-brace-locomotion.training.json
+index aa09a44..1b66dfb 100644
+--- a/before/training/articulated-brace-locomotion.training.json
++++ b/after/training/articulated-brace-locomotion.training.json
+@@ -2,7 +2,7 @@
+   "version": 3,
+   "id": "articulated-brace-locomotion",
+   "name": "Continuous-Mission articulated-brace locomotion residual",
+-  "assembly": "resilient-command-conditioned-waist-3dof",
++  "assembly": "resilient-command-conditioned-waist-history-3dof",
+   "trainer": "articulated-brace-locomotion-residual-ppo",
+   "priorController": "articulated-behavior-supervisor",
+   "mission": {
+@@ -18,27 +18,27 @@
+     {
+       "id": "exact-complete-missions",
+       "throughPhase": "stop",
+-      "untilStep": 4096,
++      "untilStep": 16384,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "randomized-complete-missions",
+       "throughPhase": "stop",
+-      "untilStep": 8192,
++      "untilStep": 32768,
+       "domainProfile": "quadruped-resilient-mission-v1"
+     }
+   ],
+   "promotionBenchmark": "integrated-resilience-mission",
+-  "totalSteps": 8192,
++  "totalSteps": 32768,
+   "rolloutSteps": 256,
+   "epochs": 4,
+   "minibatchSize": 64,
+-  "learningRate": 0.0001,
++  "learningRate": 0.00005,
+   "gamma": 0.995,
+   "gaeLambda": 0.97,
+   "clipRatio": 0.12,
+-  "entropyCoefficient": 0.0002,
+-  "residualPenalty": 0.1,
++  "entropyCoefficient": 0.0005,
++  "residualPenalty": 0.2,
+   "qualityReward": {
+     "jointAcceleration": 0.0001,
+     "bodyAngularAcceleration": 0.0002,
+@@ -48,12 +48,13 @@
+     "footImpact": 0
+   },
+   "missionReward": {
+-    "commandProgress": 5,
++    "commandProgress": 4,
+     "velocityTracking": 1,
+-    "stopStability": 2,
+-    "recoverySuccess": 100,
+-    "phaseTimeoutPenalty": 200,
+-    "timeoutFreeCompletion": 100
++    "stopStability": 8,
++    "recoverySuccess": 150,
++    "recoveryRelapsePenalty": 300,
++    "phaseTimeoutPenalty": 250,
++    "timeoutFreeCompletion": 150
+   },
+   "recoveryReward": {
+     "upright": 2,

@@ -5,7 +5,7 @@ const relativeFileSchema = z.string().min(1).refine((value) => !value.startsWith
 
 const channelSchema = z.object({
   name: idSchema,
-  kind: z.enum(["joint-position", "joint-velocity", "body-state", "sensor", "command", "actuator"]),
+  kind: z.enum(["joint-position", "joint-velocity", "body-state", "sensor", "command", "runtime-state", "actuator"]),
   size: z.number().int().positive(),
   source: z.string().min(1),
   unit: z.string().min(1),

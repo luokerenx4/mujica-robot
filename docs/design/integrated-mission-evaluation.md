@@ -576,3 +576,57 @@ The next learned lane must gate on a declared Runtime recovery-stable latch
 whose semantics are identical to the Task/Judge dwell, not on an earlier
 Controller-private completion flag. That is a state/authority contract change,
 not another scalar threshold sweep.
+
+## Task-authoritative recovery state and authority experiments
+
+The Runtime now exposes the recovery contract through an explicit zero-mass
+`mission-state-input` Component. Its Observation channels are typed
+`runtime-state`, receive no synthetic sensor noise, and are derived only from
+the active Task:
+
+- `recovery-target-satisfied` is the instantaneous height, yaw-invariant tilt,
+  linear-speed, and angular-speed predicate;
+- `recovery-stable-progress` is the uninterrupted dwell fraction;
+- `recovery-stable-latched` becomes one only when the full dwell completes
+  before the causal recovery exit; and
+- `recovery-deadline-expired` becomes one when that exit times out.
+
+Success and deadline are separate, irreversible facts. A late self-right may
+still be recorded for physical diagnosis and relapse tracking, but it cannot
+rewrite the timed-out Mission transition or create a successful Runtime latch.
+
+Program-residual gates may require scalar Runtime observations, restrict
+enumerated Program telemetry such as recovery sub-phases, and declare
+`entryRampSeconds`. Gate entry rises at a bounded rate in both Training and
+frozen-Policy inference; any missing state, envelope exit, or disallowed mode
+still drops authority to zero immediately. Studio shows instantaneous target,
+dwell progress, success latch, deadline latch, gate target, and applied gate
+scale on the synchronized A/B clock.
+
+Four governed experiments tested the resulting boundary:
+
+- `session-d29504dd2bf322d6` required the success latch for the learned
+  post-recovery suffix. Score improved `34.4350 → 59.8346` and violations
+  `48 → 43`, but the Candidate was behaviorally the Program fallback in the
+  degraded Cases: both had already timed out, so the learned suffix correctly
+  received no authority. It did not lexicographically beat the reference.
+- `session-05c346ca1e4b2fa5` trained a history-aware recovery residual that
+  released authority inside the physical target. A stateless `0.3 rad` gate
+  chattered between zero and full authority and the Policy drove
+  degraded-right from a recoverable rise back into inversion. Score fell
+  `62.7223 → 40.0909`; verdict `REVERT`.
+- `session-0ad2f2c3b560afab` restricted ML to Program impulse/capture and
+  ramped each entry over `0.4 s`. It restored degraded-right self-righting,
+  improved violations `43 → 41` and severity `87.786 → 84.010`, and moved the
+  first relapse later. The recovery phase had already timed out, however, so
+  no success latch existed; ML reactivated on a later fall and regressed final
+  height. Verdict `REVERT`.
+- `session-199eb99ac9e80c72` added the deadline latch but also changed the
+  Policy input ABI and therefore retrained the network. Its regression
+  (`62.7223 → 40.1174`) cannot isolate the gate effect. Verdict `REVERT`.
+
+The last result establishes a Harness requirement: authority changes need a
+frozen-weight counterfactual lane. Mujica must be able to preserve model
+weights, normalizer, plant, Task, Scenario, and seed while changing only a
+typed, auditable gate. Retraining after an ABI change answers a different
+question and must not be presented as causal evidence about the gate.

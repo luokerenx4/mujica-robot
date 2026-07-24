@@ -212,6 +212,14 @@ describe("Robot Assembly compiler", () => {
     expect(commanded?.observationContract.channels.at(-1)).toMatchObject({ name: "foot-contact-force", size: 4 });
     expect(commanded?.observationContract.channels.find((channel) => channel.name === "motion-command")).toMatchObject({ kind: "command", size: 3, source: "task:motion-command" });
     expect(commanded?.observationContract.size).toBe(145);
+    const missionState = result.assemblies.find((item) => item.id === "resilient-command-conditioned-waist-history-3dof");
+    expect(missionState?.observationContract.channels.filter((channel) => channel.kind === "runtime-state")).toEqual([
+      expect.objectContaining({ name: "recovery-target-satisfied", size: 1, source: "task:recovery-target-satisfied" }),
+      expect.objectContaining({ name: "recovery-stable-progress", size: 1, source: "task:recovery-stable-progress" }),
+      expect.objectContaining({ name: "recovery-stable-latched", size: 1, source: "task:recovery-stable-latched" }),
+      expect.objectContaining({ name: "recovery-deadline-expired", size: 1, source: "task:recovery-deadline-expired" }),
+    ]);
+    expect(missionState?.observationContract.size).toBe(185);
   });
 
   test("Domain Profiles are bounded provenance-carrying Training inputs", async () => {

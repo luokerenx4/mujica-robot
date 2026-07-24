@@ -212,6 +212,11 @@ class RobotEnvironment:
         self.mission_completed = False
         self.mission_prefix_completed = False
         self.mission_recovery_stable_steps = 0
+        self.recovery_stable_latched = False
+        self.recovery_stable_at_seconds: float | None = None
+        self.recovery_stable_since_seconds: float | None = None
+        self.recovery_deadline_expired_latched = False
+        self.recovery_deadline_expired_at_seconds: float | None = None
         self.mission_phase_timeout_count = 0
         self.push_started = False
         if int(task["version"]) == 8 and episode_end_phase is not None:
@@ -270,6 +275,11 @@ class RobotEnvironment:
         self.mission_completed = False
         self.mission_prefix_completed = False
         self.mission_recovery_stable_steps = 0
+        self.recovery_stable_latched = False
+        self.recovery_stable_at_seconds = None
+        self.recovery_stable_since_seconds = None
+        self.recovery_deadline_expired_latched = False
+        self.recovery_deadline_expired_at_seconds = None
         self.mission_phase_timeout_count = 0
         self.push_started = False
         initial_phase = self.mission_phase()
@@ -358,6 +368,21 @@ class RobotEnvironment:
             and float(np.linalg.norm(self.data.qvel[3:6])) <= float(target["maximumAngularSpeedRadPerSec"])
         )
 
+    def recovery_stable_progress(self) -> float:
+        """Task-authored stable-recovery dwell, normalized and latched at success."""
+        if self.recovery_stable_latched:
+            return 1.0
+        target = self.task.get("recoveryTarget")
+        if target is None or int(self.task.get("version", 0)) != 8:
+            return 0.0
+        required_steps = max(
+            1,
+            round(float(target["holdSeconds"]) / self.control_dt),
+        )
+        return float(
+            np.clip(self.mission_recovery_stable_steps / required_steps, 0.0, 1.0)
+        )
+
     def body_tilt(self) -> float:
         quaternion = np.asarray(self.data.qpos[3:7], dtype=np.float64)
         _, x, y, _ = quaternion
@@ -441,6 +466,22 @@ class RobotEnvironment:
                     round(float(self.task["recoveryTarget"]["holdSeconds"]) / self.control_dt),
                 )
                 condition_met = self.mission_recovery_stable_steps >= required_steps
+                if condition_met and not self.recovery_stable_latched:
+                    self.recovery_stable_latched = True
+                    self.recovery_stable_at_seconds = float(self.data.time)
+                    self.recovery_stable_since_seconds = float(
+                        self.data.time - (required_steps - 1) * self.control_dt
+                    )
+                    self.events.append({
+                        "type": "robot.recovery-stable-latched",
+                        "time": self.recovery_stable_at_seconds,
+                        "step": self.step_index,
+                        "stableSince": self.recovery_stable_since_seconds,
+                        "requiredDwellSeconds": float(
+                            self.task["recoveryTarget"]["holdSeconds"]
+                        ),
+                        "source": "task-recovery-target",
+                    })
             else:
                 raise RuntimeError(f"Unsupported Mission exit '{exit_contract['kind']}'")
         timed_out = bool(
@@ -452,6 +493,20 @@ class RobotEnvironment:
             return None
         if timed_out:
             self.mission_phase_timeout_count += 1
+            if (
+                phase.get("intent") == "recover"
+                and not self.recovery_deadline_expired_latched
+            ):
+                self.recovery_deadline_expired_latched = True
+                self.recovery_deadline_expired_at_seconds = float(self.data.time)
+                self.events.append({
+                    "type": "robot.recovery-deadline-expired",
+                    "time": self.recovery_deadline_expired_at_seconds,
+                    "step": self.step_index,
+                    "phase": phase["id"],
+                    "timeoutSeconds": timeout_seconds,
+                    "source": "task-mission-exit",
+                })
         transition = {
             "from": phase["id"],
             "condition": exit_contract["kind"],
@@ -522,6 +577,14 @@ class RobotEnvironment:
                 value = np.concatenate(tuple(self.sensor_histories[source]))
             elif source == "task:motion-command":
                 value = self.motion_command()
+            elif source == "task:recovery-target-satisfied":
+                value = np.array([float(self.recovery_target_satisfied())])
+            elif source == "task:recovery-stable-progress":
+                value = np.array([self.recovery_stable_progress()])
+            elif source == "task:recovery-stable-latched":
+                value = np.array([float(self.recovery_stable_latched)])
+            elif source == "task:recovery-deadline-expired":
+                value = np.array([float(self.recovery_deadline_expired_latched)])
             elif source.startswith("sensor:"):
                 sensor_name = source.split(":", 1)[1]
                 sensor_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, sensor_name)
@@ -544,7 +607,7 @@ class RobotEnvironment:
                 source in ("control:command-history-4-stable", "control:applied-history-4-stable")
                 or source.startswith("sensor-list-history-4:")
             )
-            if noise and channel["kind"] != "command" and not stable_history:
+            if noise and channel["kind"] not in ("command", "runtime-state") and not stable_history:
                 value = value + self.rng.normal(0.0, noise, size=value.shape)
             result[channel["name"]] = value.copy()
         return result
@@ -700,6 +763,12 @@ class RobotEnvironment:
             "missionCompleted": self.mission_completed,
             "missionPhaseTimeoutCount": self.mission_phase_timeout_count,
             "recoveryTargetSatisfied": self.recovery_target_satisfied(),
+            "recoveryStableProgress": self.recovery_stable_progress(),
+            "recoveryStableLatched": self.recovery_stable_latched,
+            "recoveryStableAtSeconds": self.recovery_stable_at_seconds,
+            "recoveryStableSinceSeconds": self.recovery_stable_since_seconds,
+            "recoveryDeadlineExpired": self.recovery_deadline_expired_latched,
+            "recoveryDeadlineExpiredAtSeconds": self.recovery_deadline_expired_at_seconds,
             "recoverySelfRightedAtSeconds": self.recovery_relapse_tracker.self_righted_at,
             "recoveryRelapseEntered": recovery_relapse_event is not None,
             "recoveryRelapseCount": self.recovery_relapse_tracker.count,

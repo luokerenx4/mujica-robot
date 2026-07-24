@@ -1,0 +1,198 @@
+[
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-brace-locomotion-policy",
+    "sessionId": "session-7428b37374db2e79",
+    "experimentId": "001-b9ac55f8ddfa",
+    "sequence": 1,
+    "startedAt": "2026-07-24T20:25:12.566Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+    "programHash": "a078965885faca3af11f0ee36807da0d33da42c23f57bfe30fbc0f298b9c49d5",
+    "benchmarkLockHash": "c6c1660e04f4ce2fb536b0127afad5fcbf1f3eef11c56bff51fcd0416d1b25fc",
+    "proposal": {
+      "strategy": "early-delay-locomotion-residual-with-signed-progress-credit",
+      "hypothesis": "The first complete-Mission Policy had actor authority on 92% of exact approach steps but still accumulated negative commanded progress, while randomized approach authority fell to 80%. Doubling complete-Mission experience, increasing signed progress credit, shortening only the locomotion gate dwell, and shifting bounded authority from the waist to the legs should let PPO learn the left/right correction that a binary Program fallback could not express.",
+      "expectedEffect": "Improve delay-one approach and downstream signed Mission progress in both degraded directions while the Program remains sole owner of recovery and all self-righting, collision, joint-limit, and command gates remain passing relative to the reference Controller."
+    },
+    "policyId": "articulated-brace-locomotion-dfe5734ba3ae7956",
+    "score": 34.9387527087242,
+    "delta": 0.5037928256427833,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-right-exact: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-right-exact: stable-stand-time regressed from passing to failing",
+        "reference-controller: impact-right-exact: mission-phase-timeouts regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "command-tracking: delayed-forward: survival regressed from passing to failing",
+        "command-tracking: delayed-forward: forward-progress regressed from passing to failing",
+        "command-tracking: delayed-forward: lateral-drift regressed from passing to failing",
+        "command-tracking: delayed-forward: planar-velocity-tracking regressed from passing to failing",
+        "command-transitions: accelerate-stop: planar-settling-time regressed from passing to failing",
+        "command-transitions: accelerate-stop: unsettled-planar regressed from passing to failing",
+        "spatial-robustness: low-friction: lateral-drift regressed from passing to failing",
+        "spatial-robustness: payload: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 48,
+      "candidateViolationCount": 40,
+      "previousViolationSeverity": 114.37104112101008,
+      "candidateViolationSeverity": 104.07741715800698
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-brace-locomotion-policy",
+    "sessionId": "session-62b5a1eab9d3d22e",
+    "experimentId": "001-9d235d259169",
+    "sequence": 1,
+    "startedAt": "2026-07-24T22:07:50.962Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+    "programHash": "f0d505ff3f3129566184e56f177bc7b7ed3ce4a1954dafac2f28a86fda18f42c",
+    "benchmarkLockHash": "795f5482764611e528a483f87758df1dec704a24619ac63a32a5869ed23a19a8",
+    "proposal": {
+      "strategy": "post-recovery-durable-handoff-suffix-residual",
+      "hypothesis": "The complete-Mission trace localizes the new failure after a successful self-right: the fixed handoff reaches high locomotion authority, then the robot relapses during traverse or stop. A residual gated by observable Program transitionCount and limited to settling/locomotion can learn the causal post-recovery suffix while remaining exactly zero during approach, impact, recovery, and static exact Cases. Full stop-completion and recovery credit makes durable behavior—not first self-right—the optimized return.",
+      "expectedEffect": "Reduce recovery relapse and restore final height/tilt in both degraded complete Cases without changing exact approach, impact, self-righting, or Program recovery authority; the unchanged locked Mission and regression gates decide promotion."
+    },
+    "policyId": "articulated-brace-locomotion-49d0068604af7ffb",
+    "score": 57.44218274412115,
+    "delta": 23.00722286103973,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: transition-terminal-yaw regressed from passing to failing",
+        "impact-right-degraded: recovery-relapse regressed from passing to failing",
+        "reference-controller: no-lexicographic-improvement"
+      ],
+      "previousViolationCount": 48,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 114.37104112101008,
+      "candidateViolationSeverity": 89.30612267090838
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-brace-locomotion-policy",
+    "sessionId": "session-477fd558fc2f3980",
+    "experimentId": "001-8598c2f79cb3",
+    "sequence": 1,
+    "startedAt": "2026-07-24T22:41:04.370Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+    "programHash": "f0d505ff3f3129566184e56f177bc7b7ed3ce4a1954dafac2f28a86fda18f42c",
+    "benchmarkLockHash": "008ea4ff5db8e1dee6700c74fcf4a67b178f104c6a162e07829202f1bfe6f29c",
+    "proposal": {
+      "strategy": "relapse-credited-contact-action-history-suffix",
+      "hypothesis": "The previous complete-Mission suffix received no direct learning signal when the Judge later emitted a sustained recovery relapse, and its feed-forward observation could not distinguish identical instantaneous poses reached through stable support versus growing action-delay/contact oscillation. Give PPO the Judge's exact one-shot relapse penalty plus a bounded four-frame GRU over commanded actions, applied actions, and foot contact forces. Keep the same Program telemetry gate, actuator authority, complete-Mission curriculum, and frozen four-Case Judge.",
+      "expectedEffect": "Reduce relapse episodes without expanding learned authority into approach, impact, or recovery; preserve exact-Case gates and downstream signed progress while the locked complete Mission decides promotion."
+    },
+    "policyId": "articulated-brace-locomotion-8758bcb47d3aabc7",
+    "score": 40.896053769715884,
+    "delta": 6.461093886634465,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "spatial-robustness: payload: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 48,
+      "candidateViolationCount": 45,
+      "previousViolationSeverity": 114.37104112101008,
+      "candidateViolationSeverity": 97.5243123284634
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-brace-locomotion-policy",
+    "sessionId": "session-08401dde948f1149",
+    "experimentId": "001-88809aa9f951",
+    "sequence": 1,
+    "startedAt": "2026-07-24T22:45:36.298Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "183ea378d6503600e4d6cc30ebc074455bf0bb43d4ae38525e67e63d19385360",
+    "programHash": "f0d505ff3f3129566184e56f177bc7b7ed3ce4a1954dafac2f28a86fda18f42c",
+    "benchmarkLockHash": "008ea4ff5db8e1dee6700c74fcf4a67b178f104c6a162e07829202f1bfe6f29c",
+    "proposal": {
+      "strategy": "self-right-confirmed-relapse-credited-history-suffix",
+      "hypothesis": "The first relapse-credited history Policy reduced primary violations but exposed a causal reward loophole: both degraded Cases reported zero relapses only because the residual became active after the Mission recovery timeout and prevented the Program from reaching its later stable self-right event. Require observable Program telemetry recoveryCompleted=true before the unchanged settling/locomotion gate can grant any residual authority. This narrows rather than widens Policy authority, makes self-righting a prerequisite, and ensures the relapse penalty can only be optimized after a real recovery.",
+      "expectedEffect": "Preserve the Program's degraded-right self-righting result, then reduce its two post-recovery relapse episodes without changing approach, impact, recovery, exact Cases, or static regressions."
+    },
+    "policyId": "articulated-brace-locomotion-1d176127fcc4aff0",
+    "score": 40.73889942112668,
+    "delta": 6.303939538045263,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "spatial-robustness: payload: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 48,
+      "candidateViolationCount": 47,
+      "previousViolationSeverity": 114.37104112101008,
+      "candidateViolationSeverity": 106.46617942123558
+    },
+    "revisionId": null,
+    "error": null
+  }
+]

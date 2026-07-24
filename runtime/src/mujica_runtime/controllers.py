@@ -196,6 +196,7 @@ def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.nd
 def program_residual_gate_scale(
     transform: dict[str, Any],
     program_prior: Controller,
+    observation: dict[str, np.ndarray] | None = None,
 ) -> float:
     """Fail closed when a learned residual is outside its declared safe envelope."""
     gate = transform.get("residualGate")
@@ -216,6 +217,32 @@ def program_residual_gate_scale(
         return 0.0
     for field, expected in gate.get("requiredTelemetry", {}).items():
         if telemetry.get(field) != expected:
+            return 0.0
+    allowed_telemetry = gate.get("allowedTelemetry", {})
+    if not isinstance(allowed_telemetry, dict):
+        return 0.0
+    for field, allowed in allowed_telemetry.items():
+        if (
+            not isinstance(allowed, list)
+            or not allowed
+            or telemetry.get(field) not in allowed
+        ):
+            return 0.0
+    for channel, expected in gate.get("requiredObservation", {}).items():
+        if (
+            observation is None
+            or channel not in observation
+            or isinstance(expected, bool)
+            or not isinstance(expected, (int, float))
+            or not np.isfinite(float(expected))
+        ):
+            return 0.0
+        value = np.asarray(observation[channel]).reshape(-1)
+        if (
+            value.size != 1
+            or not np.isfinite(float(value[0]))
+            or float(value[0]) != float(expected)
+        ):
             return 0.0
     for bounds_key, compare in (
         ("minimumTelemetry", lambda value, bound: value >= bound),
@@ -279,6 +306,33 @@ def program_residual_scale_vector(
     return scale.astype(np.float64)
 
 
+def advance_program_residual_gate_scale(
+    transform: dict[str, Any],
+    program_prior: Controller,
+    observation: dict[str, np.ndarray] | None,
+    previous_scale: float,
+    elapsed_seconds: float,
+) -> tuple[float, float]:
+    """Rise smoothly on gate entry while every unsafe exit still fails closed."""
+    target = program_residual_gate_scale(transform, program_prior, observation)
+    gate = transform.get("residualGate") or {}
+    entry_ramp_seconds = float(gate.get("entryRampSeconds", 0.0))
+    if not np.isfinite(entry_ramp_seconds) or entry_ramp_seconds < 0.0:
+        raise RuntimeError(
+            "Program residual entryRampSeconds must be finite and nonnegative"
+        )
+    if target <= previous_scale or entry_ramp_seconds <= 0.0:
+        return target, target
+    if not np.isfinite(elapsed_seconds) or elapsed_seconds < 0.0:
+        return 0.0, target
+    scale = min(
+        target,
+        max(0.0, float(previous_scale))
+        + float(elapsed_seconds) / entry_ramp_seconds,
+    )
+    return float(scale), target
+
+
 @dataclass
 class FrozenPolicyController:
     network: PolicyNetwork
@@ -292,11 +346,15 @@ class FrozenPolicyController:
     program_prior: Controller | None = None
     warmup_passes: int = 0
     last_residual_gate_scale: float = 0.0
+    residual_gate_target_scale: float = 0.0
+    last_action_time_seconds: float | None = None
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
         if self.program_prior is not None: self.program_prior.reset(seed)
         self.last_residual_gate_scale = 0.0
+        self.residual_gate_target_scale = 0.0
+        self.last_action_time_seconds = None
 
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
         vector = np.concatenate([observation[channel["name"]] for channel in self.observation_channels]).astype(np.float32)
@@ -310,9 +368,20 @@ class FrozenPolicyController:
         if self.action_transform and self.action_transform.get("kind") == "program-controller-residual":
             if self.program_prior is None: raise RuntimeError("Frozen Policy is missing its serialized program prior")
             prior_action = self.program_prior.act(observation, time_seconds)
-            self.last_residual_gate_scale = program_residual_gate_scale(
+            elapsed_seconds = (
+                0.0
+                if self.last_action_time_seconds is None
+                else max(0.0, time_seconds - self.last_action_time_seconds)
+            )
+            (
+                self.last_residual_gate_scale,
+                self.residual_gate_target_scale,
+            ) = advance_program_residual_gate_scale(
                 self.action_transform,
                 self.program_prior,
+                observation,
+                self.last_residual_gate_scale,
+                elapsed_seconds,
             )
             action = (
                 prior_action
@@ -325,7 +394,9 @@ class FrozenPolicyController:
             )
         else:
             self.last_residual_gate_scale = 1.0
+            self.residual_gate_target_scale = 1.0
             action = transform_policy_action(raw_action.numpy(), observation, self.action_transform, time_seconds)
+        self.last_action_time_seconds = time_seconds
         return np.clip(action, self.action_low, self.action_high)
 
     def telemetry(self) -> dict[str, Any]:
@@ -337,6 +408,7 @@ class FrozenPolicyController:
                 if isinstance(prior_telemetry, dict):
                     telemetry.update(prior_telemetry)
         telemetry["policyResidualGateScale"] = self.last_residual_gate_scale
+        telemetry["policyResidualGateTargetScale"] = self.residual_gate_target_scale
         return telemetry
 
 

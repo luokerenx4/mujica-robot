@@ -1,0 +1,61 @@
+{
+  "version": 4,
+  "id": "001-d7e269584c91",
+  "experimentHash": "d7e269584c9116800249c2b24db0bed41ffe4a498a95595b21f4b55efc8a03a5",
+  "sequence": 1,
+  "sessionId": "session-0ad2f2c3b560afab",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "b2108f2ba62feedf4f9cf0f419116c9dc51f4f29aaf4a834e4af2b6c6b5c1887",
+  "benchmarkLockHash": "95b29bf2c265b71653c45ea0a9656614953ac6b4e9dbaba8420a9afd3ac4e030",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "5cac4b7823aeb696f25689a11084102da41402b1aaf508719f0b5889b0f12d5e",
+  "historyHash": "b0732a07c0c372bf110dd2a3cfc427405a9f167987b8938965f7de85f14d11c9",
+  "historyCount": 6,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "phase-bounded-ramped-history-recovery",
+    "hypothesis": "The prior closed-loop Policy did not fail at the Task dwell boundary; it re-entered with full authority during Program rise/stand as tilt oscillated around the 0.3 rad gate, then drove the degraded-right robot from 0.34 metres and moderate tilt into inversion. Preserve the same Task-state boundary, history, reward, and torque envelope, but restrict learned authority to the Program's observable impulse/capture phases and ramp every gate entry over 0.4 seconds. Unsafe exits remain immediate, so the deterministic Program exclusively owns rise, stand, and stable dwell.",
+    "expectedEffect": "Retain any learned impact-momentum correction before recovery.rise, eliminate gate flapping and all learned action during rise/stand, and restore the Program's degraded-right self-righting result without changing exact Cases."
+  },
+  "policyId": "articulated-inverted-escape-75783f7b74fa5459",
+  "score": 59.92824863979775,
+  "delta": -2.7940760272727587,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 41,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 84.00973312514287,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "fcba95ac489fc4f813f78192e069e81e18291cbc953b0f509282af0210b8a1c1",
+    "acceptedRunId": "run-c4b09532ad785f1e",
+    "candidateRunId": "run-8de3e8ef1d6ef152",
+    "caseId": "impact-right-degraded"
+  },
+  "durationMs": 162811,
+  "completed": true
+}

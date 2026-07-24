@@ -1,4 +1,11 @@
-export type ChannelKind = "joint-position" | "joint-velocity" | "body-state" | "sensor" | "actuator";
+export type ChannelKind =
+  | "joint-position"
+  | "joint-velocity"
+  | "body-state"
+  | "sensor"
+  | "command"
+  | "runtime-state"
+  | "actuator";
 
 export interface ContractChannel {
   name: string;

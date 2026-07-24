@@ -1,0 +1,69 @@
+{
+  "kind": "history-gru-actor-critic",
+  "observationSize": 184,
+  "actionSize": 14,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "history": {
+    "channels": [
+      {
+        "start": 45,
+        "steps": 4,
+        "size": 14
+      },
+      {
+        "start": 101,
+        "steps": 4,
+        "size": 14
+      },
+      {
+        "start": 157,
+        "steps": 4,
+        "size": 4
+      }
+    ],
+    "recurrentSize": 32
+  },
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScaleByAction": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.5,
+      0.5
+    ],
+    "residualGate": {
+      "kind": "prior-telemetry-mode",
+      "allowedModes": [
+        "settling",
+        "locomotion"
+      ],
+      "requiredObservation": {
+        "recovery-stable-latched": 1.0
+      },
+      "minimumTelemetry": {
+        "transitionCount": 3
+      },
+      "maximumTelemetry": {
+        "bodyTiltRad": 0.7
+      },
+      "rampSeconds": 0.3
+    },
+    "controllerId": "articulated-behavior-supervisor",
+    "controllerHash": "1cdf82ebc082d9252c6494bb73e037d18cc407eb18c541f49cf77fdc7f426b39"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "strategy": "deadline-closed-phase-bounded-history-recovery",
+  "hypothesis": "The phase-bounded ramped Policy restored degraded-right self-righting and improved the Mission violation tier, but the Task recovery phase had already timed out before self-righting. Because no success latch can exist after that failed transition, the Policy reactivated on later falls and ended below the final-height gate. Preserve the learned initial impulse/capture correction, and additionally require the Task-derived recovery-deadline-expired latch to remain false. This closes authority permanently at the six-second recovery timeout even when the Program later enters recovery again.",
+  "expectedEffect": "Keep the first recovery correction unchanged until the Task deadline, guarantee zero learned authority afterward, retain degraded-right self-righting, and restore terminal height by leaving every post-timeout recovery to the Program."
+}

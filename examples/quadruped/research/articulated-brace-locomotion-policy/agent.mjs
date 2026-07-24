@@ -14,6 +14,7 @@ const triedStrategies = new Set(
     .filter((value) => typeof value === "string"),
 );
 const strategies = [
+  "runtime-stable-latched-relapse-credited-history-suffix",
   "early-delay-locomotion-residual-with-signed-progress-credit",
   "post-recovery-durable-handoff-suffix-residual",
   "relapse-credited-contact-action-history-suffix",
@@ -47,6 +48,7 @@ if (!trainer.includes(scaleFrom)) {
 }
 
 if (
+  strategy === "runtime-stable-latched-relapse-credited-history-suffix" ||
   strategy === "post-recovery-durable-handoff-suffix-residual" ||
   strategy === "relapse-credited-contact-action-history-suffix" ||
   strategy === "self-right-confirmed-relapse-credited-history-suffix"
@@ -62,7 +64,8 @@ if (
     velocityTracking: 1,
     stopStability: 8,
     recoverySuccess: 150,
-    ...(strategy === "relapse-credited-contact-action-history-suffix" ||
+    ...(strategy === "runtime-stable-latched-relapse-credited-history-suffix" ||
+    strategy === "relapse-credited-contact-action-history-suffix" ||
     strategy === "self-right-confirmed-relapse-credited-history-suffix"
       ? { recoveryRelapsePenalty: 300 }
       : {}),
@@ -93,6 +96,7 @@ if (
     '                "rampSeconds": 0.3,\n',
   );
   if (
+    strategy === "runtime-stable-latched-relapse-credited-history-suffix" ||
     strategy === "relapse-credited-contact-action-history-suffix" ||
     strategy === "self-right-confirmed-relapse-credited-history-suffix"
   ) {
@@ -109,7 +113,19 @@ if (
         '            "recurrentSize": 32,\n' +
         "        },\n",
     );
-    if (strategy === "self-right-confirmed-relapse-credited-history-suffix") {
+    if (
+      strategy === "runtime-stable-latched-relapse-credited-history-suffix"
+    ) {
+      trainer = trainer.replace(
+        '                "allowedModes": ["settling", "locomotion"],\n',
+        '                "allowedModes": ["settling", "locomotion"],\n' +
+          '                "requiredObservation": {\n' +
+          '                    "recovery-stable-latched": 1.0,\n' +
+          "                },\n",
+      );
+    } else if (
+      strategy === "self-right-confirmed-relapse-credited-history-suffix"
+    ) {
       trainer = trainer.replace(
         '                "allowedModes": ["settling", "locomotion"],\n',
         '                "allowedModes": ["settling", "locomotion"],\n' +
@@ -145,7 +161,10 @@ process.stdout.write(
   JSON.stringify({
     strategy,
     hypothesis:
-      strategy === "self-right-confirmed-relapse-credited-history-suffix"
+      strategy ===
+      "runtime-stable-latched-relapse-credited-history-suffix"
+        ? "The prior candidate failed because Program telemetry recoveryCompleted became true before the Task's authoritative 0.5 second physical recovery dwell. Expose the Task-derived recovery-target hold progress and a one-way Runtime recovery-stable latch through the Assembly Observation ABI, and require that exact latch before any learned residual authority. Preserve the same history encoder, reward, authority magnitudes, complete-Mission curriculum, and frozen Judge so this experiment changes the causal handoff boundary rather than inventing another private threshold."
+        : strategy === "self-right-confirmed-relapse-credited-history-suffix"
         ? "The first relapse-credited history Policy reduced primary violations but exposed a causal reward loophole: both degraded Cases reported zero relapses only because the residual became active after the Mission recovery timeout and prevented the Program from reaching its later stable self-right event. Require observable Program telemetry recoveryCompleted=true before the unchanged settling/locomotion gate can grant any residual authority. This narrows rather than widens Policy authority, makes self-righting a prerequisite, and ensures the relapse penalty can only be optimized after a real recovery."
         : strategy === "relapse-credited-contact-action-history-suffix"
         ? "The previous complete-Mission suffix received no direct learning signal when the Judge later emitted a sustained recovery relapse, and its feed-forward observation could not distinguish identical instantaneous poses reached through stable support versus growing action-delay/contact oscillation. Give PPO the Judge's exact one-shot relapse penalty plus a bounded four-frame GRU over commanded actions, applied actions, and foot contact forces. Keep the same Program telemetry gate, actuator authority, complete-Mission curriculum, and frozen four-Case Judge."
@@ -153,7 +172,10 @@ process.stdout.write(
         ? "The complete-Mission trace localizes the new failure after a successful self-right: the fixed handoff reaches high locomotion authority, then the robot relapses during traverse or stop. A residual gated by observable Program transitionCount and limited to settling/locomotion can learn the causal post-recovery suffix while remaining exactly zero during approach, impact, recovery, and static exact Cases. Full stop-completion and recovery credit makes durable behavior—not first self-right—the optimized return."
         : "The first complete-Mission Policy had actor authority on 92% of exact approach steps but still accumulated negative commanded progress, while randomized approach authority fell to 80%. Doubling complete-Mission experience, increasing signed progress credit, shortening only the locomotion gate dwell, and shifting bounded authority from the waist to the legs should let PPO learn the left/right correction that a binary Program fallback could not express.",
     expectedEffect:
-      strategy === "self-right-confirmed-relapse-credited-history-suffix"
+      strategy ===
+      "runtime-stable-latched-relapse-credited-history-suffix"
+        ? "Keep learned authority exactly zero through approach, impact, recovery, and any recovery timeout; grant it only on the control step after the Task has physically latched stable recovery, then reduce post-recovery relapse without regressing exact or degraded self-righting gates."
+        : strategy === "self-right-confirmed-relapse-credited-history-suffix"
         ? "Preserve the Program's degraded-right self-righting result, then reduce its two post-recovery relapse episodes without changing approach, impact, recovery, exact Cases, or static regressions."
         : strategy === "relapse-credited-contact-action-history-suffix"
         ? "Reduce relapse episodes without expanding learned authority into approach, impact, or recovery; preserve exact-Case gates and downstream signed progress while the locked complete Mission decides promotion."

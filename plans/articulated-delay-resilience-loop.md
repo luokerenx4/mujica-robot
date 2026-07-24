@@ -200,5 +200,12 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
   no-self-right reward avoidance and a noisy Observation-ABI composition bug.
 - [x] Isolate bounded history noise so adding an unused history component
   cannot perturb any existing noisy observation under the same seed/actions.
-- [ ] Expose the Task/Judge recovery-stable dwell as a declared Runtime state
-  and gate learned suffix authority on that latch before rerunning RL.
+- [x] Expose Task/Judge target, stable dwell, success, and deadline as declared
+  Runtime state and gate learned authority on those facts.
+- [x] Make residual authority fail closed on disallowed Program sub-phases,
+  rise smoothly on every entry, and exit immediately in Training and frozen
+  inference.
+- [x] Preserve four reverted Mission experiments that separate Program
+  fallback, target-boundary failure, gate chatter, and deadline reactivation.
+- [ ] Add a frozen-weight authority counterfactual lane so a gate-only change
+  can be judged without retraining a different Policy.

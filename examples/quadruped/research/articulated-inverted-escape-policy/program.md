@@ -74,6 +74,26 @@ completed a recovery, every later fall and the remainder of the Mission are
 Program-only. Do not use Mission stage or Scenario identity to create this
 boundary.
 
+Later experiments proved that Controller-private completion is still too
+early and that a stateless numeric gate can chatter. Recovery Policy authority
+must now use the Task-derived Runtime state carried by the mission-state
+Component:
+
+- `recovery-target-satisfied=0` while ML acts, so Program alone owns every
+  stable-dwell sample;
+- `recovery-stable-latched=0`, so a physically completed recovery permanently
+  closes this Policy;
+- `recovery-deadline-expired=0`, so a timed-out recovery cannot reactivate
+  later in the failed Mission;
+- `allowedTelemetry.phase` may restrict authority to Program impulse/capture;
+  and
+- `entryRampSeconds` limits every authority rise while any envelope exit still
+  fails closed immediately.
+
+Do not infer a gate improvement from a separately retrained network. A clean
+authority counterfactual must hold frozen Policy weights, normalization, plant,
+Task, Scenario, and seed constant while changing only the declared gate.
+
 Edit the isolated workspace directly, then print exactly one proposal object:
 
 ```json

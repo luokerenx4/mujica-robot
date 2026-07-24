@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "b2108f2ba62feedf4f9cf0f419116c9dc51f4f29aaf4a834e4af2b6c6b5c1887",
+    "benchmarkLockHash": "95b29bf2c265b71653c45ea0a9656614953ac6b4e9dbaba8420a9afd3ac4e030",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-0ad2f2c3b560afab",
+    "experimentId": "001-d7e269584c91",
+    "experimentHash": "d7e269584c9116800249c2b24db0bed41ffe4a498a95595b21f4b55efc8a03a5"
+  },
+  "proposal": {
+    "strategy": "phase-bounded-ramped-history-recovery",
+    "hypothesis": "The prior closed-loop Policy did not fail at the Task dwell boundary; it re-entered with full authority during Program rise/stand as tilt oscillated around the 0.3 rad gate, then drove the degraded-right robot from 0.34 metres and moderate tilt into inversion. Preserve the same Task-state boundary, history, reward, and torque envelope, but restrict learned authority to the Program's observable impulse/capture phases and ramp every gate entry over 0.4 seconds. Unsafe exits remain immediate, so the deterministic Program exclusively owns rise, stand, and stable dwell.",
+    "expectedEffect": "Retain any learned impact-momentum correction before recovery.rise, eliminate gate flapping and all learned action during rise/stand, and restore the Program's degraded-right self-righting result without changing exact Cases."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 84.00973312514287,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "b9e056ce0c02829f827341a425a052f0665eee79787c5f24ea2fc2850770d3f6"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: final-base-height regressed from passing to failing",
+    "candidateScoreDelta": -3.5041466053902823,
+    "weightedScoreDelta": -3.5041466053902823
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-c4b09532ad785f1e",
+    "runKey": "c4b09532ad785f1eab44ad548bcb63b5404495a9500d88225d47cb0511e4bf25",
+    "resultHash": "be5ebd368cb8a59d6a496aa4352f65acc871318eac8a9247d457e5c8d924fae8",
+    "artifactHash": "4d483604d10d8519d882aabfa61907328033589713574597c1b934c4c3e73161",
+    "manifestHash": "f63d5f8721899cad948c4610685308d816d9abcf7c2c6fe63d05d1dd9e2217d3",
+    "metricsHash": "b4c3217f17b0193374f1d6ce12f2c91eddb25e08112b2414c1de881553d33e4a",
+    "scoreHash": "0d346c861fef2156fcf6ad66a202b5a2f7ac14922e371f1e4d1ad09a6269e6d3",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 52.090808559699596
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-8de3e8ef1d6ef152",
+    "runKey": "8de3e8ef1d6ef1527ceacc589945cc7488b0ec4eac81ae972cfb69be90af27ee",
+    "resultHash": "3c24f0071630ee1242f980f5603c220b6230834d58745141265772863caf6485",
+    "artifactHash": "56d72cc3087ea4cb0109e231270ce070e81dccb9b678dbca1a59c0ce56a1183a",
+    "manifestHash": "97173e9fcf5a61148a17d6ace42926c5383b67b50e7837674058581c8109069a",
+    "metricsHash": "a48363cc86e0dfc0e22e82a1eb6e287fe5c7c2935221f30b2458fc616fbf454a",
+    "scoreHash": "5691fe4b804e3b978d4775f12c76499c4d3ad22ba1db9b0d1b2ba3608528cca0",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": 48.586661954309314
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}
