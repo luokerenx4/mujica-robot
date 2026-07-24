@@ -1,16 +1,32 @@
-import { access, lstat, readdir } from "node:fs/promises";
+import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
 import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, developmentCharterSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DevelopmentCharter, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
-import { confined, hashJson, readJson, stableJson } from "./utils";
+import { confined, hashDirectory, hashJson, readJson, sha256, stableJson } from "./utils";
 import { loadProject } from "./workspace";
 
 export async function loadController(projectDir: string, id: string): Promise<{ definition: ControllerDefinition; rootDir: string }> {
   const rootDir = confined(resolve(projectDir), `controllers/${id}`); const definition = await readJson(join(rootDir, "controller.json"), controllerSchema) as ControllerDefinition;
   if (definition.id !== id) throw new Error(`Controller id '${definition.id}' must match directory '${id}'`);
   return { definition, rootDir };
+}
+
+export async function controllerSourceIdentity(projectDir: string, id: string): Promise<{ definition: ControllerDefinition; rootDir: string; hash: string; trainingSteps: number }> {
+  const controller = await loadController(projectDir, id);
+  if (controller.definition.kind === "program") {
+    const entryHash = sha256(await readFile(confined(controller.rootDir, controller.definition.entry)));
+    return { ...controller, hash: hashJson({ definition: controller.definition, entryHash }), trainingSteps: 0 };
+  }
+  const policyDir = confined(resolve(projectDir), `policies/${controller.definition.policy}`);
+  const manifestPath = join(policyDir, "manifest.json");
+  const manifestStat = await lstat(manifestPath);
+  if (!manifestStat.isFile() || manifestStat.isSymbolicLink()) throw new Error(`Frozen policy '${controller.definition.policy}' manifest must be a regular file`);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trainingSteps = Number(manifest.budget);
+  if (!Number.isFinite(trainingSteps) || trainingSteps < 0) throw new Error(`Policy '${controller.definition.policy}' has an invalid training budget`);
+  return { ...controller, hash: await hashDirectory(policyDir), trainingSteps };
 }
 
 export interface ControllerInterfaceIssue {

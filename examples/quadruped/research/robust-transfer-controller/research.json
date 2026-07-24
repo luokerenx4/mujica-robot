@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "id": "robust-transfer-controller",
+  "name": "Held-out plant robust-transfer Controller research",
+  "program": "research/robust-transfer-controller/program.md",
+  "benchmark": "sim-to-real-audit",
+  "regressions": [
+    "upright-locomotion",
+    "motion-quality"
+  ],
+  "execution": {
+    "kind": "controller",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "bounded-traction-gait"
+  },
+  "editable": {
+    "paths": [
+      "controllers/bounded-traction-gait/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 2,
+    "maxWallClockSeconds": 240
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "robot-revision"
+}

@@ -18,12 +18,19 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-| — | No active capability slice. | 2026-07-24 |
+| — | — | — |
+
+## Candidate plans
+
+| Plan | Outcome | Updated |
+| --- | --- | --- |
+| [Self-righting capability and morphology study](plans/self-righting-capability.md) | Prove recovery from front, back, and side resting poses, comparing the current rigid body with an articulated torso before adding a waist to the robot design. | 2026-07-24 |
 
 ## Completed plans
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Review-guided Development Work Orders](plans/review-guided-development-work-orders.md) | Turned the current executable Development Review into exact controller-code and RL-policy work that an Agent ran and the locked Judge rejected without changing authority. | 2026-07-24 |
 | [Executable Development Review](plans/executable-development-review.md) | Joined each robot requirement to compiled design constraints, locked capability evidence, north-star status, and the next governed intervention. | 2026-07-24 |
 | [Project-first Workspace](plans/project-first-workspace.md) | Made an independently chartered six-legged robot a first-class Workspace project that can be created, selected, simulated, and opened from Studio. | 2026-07-24 |
 | [Frozen Hardware State ABI](plans/frozen-hardware-state-abi.md) | Froze named state coordinates from MuJoCo through Driver, Capture, Audit, CLI, and Studio. | 2026-07-24 |

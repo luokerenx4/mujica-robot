@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "sim-to-real-residual-policy",
+    "labHash": "0e8a84d2dad11b528ab39b0795904ed2c62754fc91ffe9ef9895a2e972c547a8",
+    "programHash": "6a67865863d5fccfdf1717a39878353243f0bea4692b928c90b7fbf2ee1bd5b9",
+    "benchmarkLockHash": "02a8ac3d2ae60a9b20ac4da2c511a962b18d1f206a3ec44b645731142b238771",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-5a27d00447e9ff7a",
+    "experimentId": "001-c7756c629625",
+    "experimentHash": "c7756c62962507dfa7ab1d535b2a99e9c67ad5aaf5fc4d90cdfca0c6982e7f69"
+  },
+  "proposal": {
+    "strategy": "reference-anchored-residual",
+    "hypothesis": "A much smaller residual around the reviewed bounded Controller should retain its held-out plant behavior while PPO learns only corrections that survive the strong residual penalty.",
+    "expectedEffect": "Move the learned Policy toward the bounded Controller on heavy-weak and light-strong, improve over the current frozen Policy, and avoid upright-locomotion or motion-quality gate regressions."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "reference-controller: no-lexicographic-improvement"
+      ],
+      "previousViolationCount": 14,
+      "candidateViolationCount": 13,
+      "previousViolationSeverity": 39.4797924446294,
+      "candidateViolationSeverity": 36.26169635766525,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "c04dbe4530363c987cec9fcbb19acf7028b4159cb2741451b146b16bb678ea83"
+  },
+  "selectedCase": {
+    "benchmark": "sim-to-real-audit",
+    "id": "light-strong",
+    "task": "forward-walk",
+    "scenario": "heldout-light-strong",
+    "seed": 2712,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": 2.7154875822589233,
+    "weightedScoreDelta": 2.7154875822589233
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-b9ad09f59a059aae",
+    "runKey": "b9ad09f59a059aaea8ee1a0c93baf3d88f9d5478f703829174083cd96ebeae4a",
+    "resultHash": "f7c7654af59a2a2af163a5690a2a3eaa3621290d3c33e4c6aba3c359682c1e85",
+    "artifactHash": "7e828590a79aaae33a951b7ee0b41ee4ea4b3bd3cc124ca8493112dccd82ae29",
+    "manifestHash": "f7d4a47df780dbf1edef86e302464df66e8311f50c24623c68b975bdb8399eba",
+    "metricsHash": "0b094ad91699cf84d0d31132d6010888cfec1177ab8509f6bd9fa2619a716c04",
+    "scoreHash": "d14be40387aad1344f13831b4f43bda961e2df2054114677492b0078e1cd43d1",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "sim-to-real-residual-gait",
+    "score": 55.88903886189785
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-a9bade5fbf90a642",
+    "runKey": "a9bade5fbf90a642d67e5c5a002af558a0d3df05284a3253aa4d0970f1883f97",
+    "resultHash": "38076e6e55fd23a31460216241e06cf9340215c4440ed0a57431c03c0efa65f9",
+    "artifactHash": "1db9c3a5ff039bf67c893761c35189c6706f064a84e2b68630b205c8112f8514",
+    "manifestHash": "e4625e41db122d4ccf2ef3332c7f5c6581120bb1b6e296d95d6280cab6bc0ab5",
+    "metricsHash": "5ffd72375a35c055670a3b7473581b992a2fb5f2391edecd14c8d3980402dbeb",
+    "scoreHash": "a5777e77d5075e7ec14f21e92fd017be34dd0d259649af157c7ea00975923d39",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "sim-to-real-residual-gait",
+    "score": 58.604526444156775
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

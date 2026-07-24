@@ -1,0 +1,69 @@
+{
+  "version": 4,
+  "id": "001-f4cbb1255fa6",
+  "experimentHash": "f4cbb1255fa6cbe320c5dea23ffa328f9ba9406eefbb986ea6c338bc3bd48efa",
+  "sequence": 1,
+  "sessionId": "session-517c89bdaa5dc63b",
+  "researchId": "robust-transfer-controller",
+  "labHash": "fcb1a7ec53f7d584e063a5fc6455cc206ca86797caac4fe8805d8d470317dcaa",
+  "programHash": "9309ca1738b62a404315b1b10f801cb821e407cfbc7d1cccaf105e50b9dcc7f7",
+  "benchmarkLockHash": "02a8ac3d2ae60a9b20ac4da2c511a962b18d1f206a3ec44b645731142b238771",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "d42a9b59656bd6f741960914a8c61638685acb7e9a5493185d387cb9e4236971",
+  "researcherChangedPaths": [
+    "controllers/bounded-traction-gait/controller.json"
+  ],
+  "changedPaths": [
+    "controllers/bounded-traction-gait/controller.json"
+  ],
+  "proposal": {
+    "strategy": "early-gentle-recovery",
+    "hypothesis": "The heavy weak plant needs traction-loss detection before backward momentum grows, but lower ordinary and severe hip authority should avoid the pitch and saturation divergence caused by the existing late aggressive recovery.",
+    "expectedEffect": "Reduce heavy-weak backward displacement, pitch, tilt, saturation, and fall risk without regressing light-strong, upright locomotion, or motion quality."
+  },
+  "policyId": null,
+  "score": 44.386449863173105,
+  "delta": 0,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "upright-locomotion: forward: forward-progress regressed from passing to failing",
+      "upright-locomotion: forward: signed-forward-progress regressed from passing to failing",
+      "upright-locomotion: forward: planar-velocity-tracking regressed from passing to failing",
+      "upright-locomotion: reset-b: forward-progress regressed from passing to failing",
+      "upright-locomotion: reset-b: signed-forward-progress regressed from passing to failing",
+      "upright-locomotion: payload: survival regressed from passing to failing",
+      "upright-locomotion: strong-lateral-push: survival regressed from passing to failing",
+      "upright-locomotion: extreme-traction: forward-progress regressed from passing to failing",
+      "upright-locomotion: extreme-traction: signed-forward-progress regressed from passing to failing",
+      "upright-locomotion: extreme-traction: planar-velocity-tracking regressed from passing to failing",
+      "upright-locomotion: extreme-traction: score-regression regressed from passing to failing",
+      "upright-locomotion: extreme-traction-reset: forward-progress regressed from passing to failing",
+      "upright-locomotion: extreme-traction-reset: signed-forward-progress regressed from passing to failing",
+      "upright-locomotion: extreme-traction-reset: planar-velocity-tracking regressed from passing to failing",
+      "upright-locomotion: extreme-traction-reset: score-regression regressed from passing to failing",
+      "motion-quality: nominal-forward: forward-progress regressed from passing to failing",
+      "motion-quality: nominal-forward: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 13,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 34.8713801306978,
+    "candidateViolationSeverity": 34.8713801306978,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "bc5d21c64494f8a7a041c47c5eacf2b8c147871a8144cb7ae37b5dda6329b227",
+    "acceptedRunId": "run-f6fe912852380e42",
+    "candidateRunId": "run-7eac42bd3037a1a3",
+    "caseId": "heavy-weak"
+  },
+  "durationMs": 42142,
+  "completed": true
+}

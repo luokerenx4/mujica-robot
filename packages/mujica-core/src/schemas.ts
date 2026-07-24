@@ -529,6 +529,169 @@ export const researchLabProposalSchema = z.object({
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/, "must be a lowercase SHA-256 digest");
 
+const developmentGateSchema = z.object({
+  id: z.string().min(1),
+  metric: z.string().min(1),
+  comparator: z.string().min(1),
+  value: z.number().finite(),
+  threshold: z.number().finite(),
+  margin: z.number().finite(),
+  severity: z.number().finite().nonnegative(),
+  enforced: z.boolean(),
+  passed: z.boolean(),
+}).passthrough();
+
+const developmentHypothesisSchema = z.object({
+  kind: z.literal("hypothesis"),
+  surface: z.enum(["controller", "assembly", "training"]),
+  description: z.string().min(1),
+  rationale: z.string().min(1),
+}).strict();
+
+const developmentBenchmarkCaseSchema = z.object({
+  id: idSchema,
+  task: idSchema,
+  scenario: idSchema,
+  seed: z.number().int(),
+  gating: z.boolean(),
+  score: z.number().finite(),
+  scoreDelta: z.number().finite(),
+  resultHash: sha256Schema,
+  metrics: z.record(z.unknown()),
+  gates: z.array(developmentGateSchema),
+  violations: z.array(developmentGateSchema),
+  violationSeverity: z.number().finite().nonnegative(),
+  findings: z.array(z.record(z.unknown())),
+  hypotheses: z.array(developmentHypothesisSchema),
+  reproduceArgv: z.array(z.string()).min(1),
+}).strict();
+
+export const developmentReviewSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("mujica-development-review"),
+  project: idSchema,
+  charterHash: sha256Schema,
+  morphologyHash: sha256Schema,
+  subject: z.object({
+    assembly: idSchema,
+    assemblyHash: sha256Schema,
+    controller: idSchema,
+    controllerHash: sha256Schema,
+    controllerKind: z.enum(["program", "policy"]),
+  }).strict(),
+  design: z.object({
+    subject: z.object({
+      totalMassKg: z.number().finite().nonnegative(),
+      componentCost: z.number().finite().nonnegative(),
+      actionSize: z.number().int().positive(),
+      observationSize: z.number().int().positive(),
+      contactPointCount: z.number().int().nonnegative(),
+    }).strict(),
+    constraints: z.array(z.object({
+      id: idSchema,
+      label: z.string().min(1),
+      comparator: z.enum(["<=", "=="]),
+      value: z.number().finite(),
+      threshold: z.number().finite(),
+      unit: z.string().min(1),
+      margin: z.number().finite(),
+      passed: z.boolean(),
+    }).strict()),
+  }).strict(),
+  benchmarks: z.array(z.object({
+    id: idSchema,
+    lockHash: sha256Schema,
+    objective: idSchema,
+    subject: z.object({ assembly: idSchema, controller: idSchema }).strict(),
+    baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(),
+    aggregateScore: z.number().finite(),
+    aggregateDelta: z.number().finite(),
+    status: z.enum(["PASS", "FAIL"]),
+    violationCount: z.number().int().nonnegative(),
+    violations: z.array(z.record(z.unknown())),
+    worstCase: idSchema.nullable(),
+    cases: z.array(developmentBenchmarkCaseSchema),
+  }).strict()),
+  stages: z.array(z.object({
+    id: idSchema,
+    name: z.string().min(1),
+    authoredStatus: z.enum(["planned", "active", "accepted"]),
+    observedStatus: z.enum(["PASS", "FAIL"]),
+    benchmarks: z.array(z.object({ id: idSchema, status: z.enum(["PASS", "FAIL"]), lockHash: sha256Schema, violationCount: z.number().int().nonnegative() }).strict()),
+    witnesses: z.array(z.object({ task: idSchema, scenario: idSchema, benchmark: idSchema, role: z.enum(["development", "regression", "release"]), cases: z.array(idSchema), passed: z.boolean() }).strict()),
+    exitCriteria: z.array(z.string().min(1)),
+  }).strict()),
+  northStar: z.object({
+    statement: z.string().min(1),
+    stage: idSchema,
+    benchmark: idSchema,
+    requireHumanReview: z.boolean(),
+    satisfied: z.boolean(),
+    numericalSatisfied: z.boolean(),
+    humanReviewStatus: z.enum(["REQUIRED", "NOT_REQUIRED"]),
+    designPassed: z.boolean(),
+    stageStatus: z.enum(["PASS", "FAIL"]),
+    benchmarkStatus: z.enum(["PASS", "FAIL"]),
+  }).strict(),
+  summary: z.object({
+    status: z.enum(["NORTH_STAR_SATISFIED", "HUMAN_REVIEW_REQUIRED", "DEVELOPMENT_REQUIRED"]),
+    designPassed: z.boolean(),
+    passedStages: z.number().int().nonnegative(),
+    totalStages: z.number().int().positive(),
+    violationCount: z.number().int().nonnegative(),
+    worstCase: z.object({ benchmark: idSchema, case: idSchema, severity: z.number().finite().nonnegative() }).strict().nullable(),
+    interventionSurfaces: z.array(z.object({
+      surface: z.enum(["design", "controller", "assembly", "training", "human-review"]),
+      rationale: z.string().min(1),
+    }).strict()),
+  }).strict(),
+}).strict();
+
+export const developmentWorkOrderSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("mujica-development-work-order"),
+  project: idSchema,
+  charterHash: sha256Schema,
+  review: z.object({ id: z.string().regex(/^development-review-[a-f0-9]{16}$/), hash: sha256Schema }).strict(),
+  subject: developmentReviewSchema.shape.subject,
+  status: z.enum(["READY", "PARTIALLY_ROUTED", "NO_ELIGIBLE_LANES", "HUMAN_REVIEW_REQUIRED", "NORTH_STAR_SATISFIED"]),
+  blockers: z.array(z.object({
+    rank: z.number().int().positive(),
+    benchmark: idSchema,
+    case: idSchema,
+    severity: z.number().finite().nonnegative(),
+    violations: z.array(developmentGateSchema),
+    hypotheses: z.array(developmentHypothesisSchema),
+    reproduceArgv: z.array(z.string()).min(1),
+  }).strict()),
+  lanes: z.array(z.object({
+    id: idSchema,
+    kind: z.enum(["controller-code", "rl-policy", "complete-design"]),
+    researchLab: idSchema,
+    labHash: sha256Schema,
+    programHash: sha256Schema,
+    primaryBenchmark: idSchema,
+    blockerCases: z.array(idSchema).min(1),
+    regressions: z.array(idSchema),
+    subject: z.object({ assembly: idSchema, controller: idSchema, training: idSchema.optional(), candidate: idSchema.optional() }).strict(),
+    editablePaths: z.array(z.string().min(1)).min(1),
+    budget: z.object({ maxExperiments: z.number().int().positive(), maxWallClockSeconds: z.number().int().positive(), maximumTrainingSteps: z.number().int().positive().optional() }).strict(),
+    promotion: z.enum(["evidence-only", "policy-revision", "robot-revision"]),
+    runArgv: z.array(z.string()).min(1),
+    reviewArgv: z.array(z.string()).min(1),
+  }).strict()),
+  uncoveredSurfaces: z.array(z.object({
+    surface: z.enum(["design", "controller", "assembly", "training", "human-review"]),
+    rationale: z.string().min(1),
+  }).strict()),
+  authorityBoundary: z.object({
+    prioritization: z.literal("derived"),
+    experimentDecision: z.literal("locked-judge"),
+    sourcePromotion: z.literal("verdict-governed"),
+    northStarClaim: z.literal("new-development-review-required"),
+  }).strict(),
+}).strict();
+
 export const humanObservationSourceSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("run-frame"),
@@ -723,6 +886,8 @@ export type ResearchProposal = z.output<typeof researchProposalSchema>;
 export type TrainingResearchDefinition = z.output<typeof trainingResearchSchema>;
 export type ResearchLabDefinition = z.output<typeof researchLabSchema>;
 export type ResearchLabProposal = z.output<typeof researchLabProposalSchema>;
+export type DevelopmentReview = z.output<typeof developmentReviewSchema>;
+export type DevelopmentWorkOrder = z.output<typeof developmentWorkOrderSchema>;
 export type HumanObservationDraft = z.output<typeof humanObservationDraftSchema>;
 export type ResearchBrief = z.output<typeof researchBriefSchema>;
 export type ResearchReview = z.output<typeof researchReviewSchema>;

@@ -53,6 +53,14 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.researchBriefs).toEqual(second.snapshot.researchBriefs);
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("transition-controller-review");
+    expect(first.snapshot.developmentWorkOrder).toMatchObject({
+      workOrder: {
+        status: "READY",
+      },
+    });
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers[0]).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
+    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes[0]).toMatchObject({ kind: "controller-code", researchLab: "robust-transfer-controller" });
+    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes[1]).toMatchObject({ kind: "rl-policy", researchLab: "sim-to-real-residual-policy" });
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
     const reviewedSession = first.snapshot.researchSessions.find((item) => item.id === "session-c773bff5c54a2cd7");
@@ -71,6 +79,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Authoritative MuJoCo replay comparison");
     expect(html).toContain("Top-down path");
     expect(html).toContain("Research Lab ledger");
+    expect(html).toContain("Review-guided Development Work Order");
+    expect(html).toContain("Copy run command");
+    expect(html).toContain("mujica-development-work-order-context");
     expect(html).toContain("Attention queue");
     expect(html).toContain("Human observation → Agent hypothesis");
     expect(html).toContain("Human hypothesis → governed Research Brief");

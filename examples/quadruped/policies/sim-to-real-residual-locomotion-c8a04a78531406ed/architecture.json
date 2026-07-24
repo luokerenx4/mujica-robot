@@ -1,0 +1,17 @@
+{
+  "kind": "mlp-actor-critic",
+  "observationSize": 145,
+  "actionSize": 12,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScale": 0.0005,
+    "controllerId": "bounded-traction-gait",
+    "controllerHash": "b8261c3876ccfefe8302c150c0b1e52ff399a980a1993476ff3a788c8fe486b8"
+  }
+}

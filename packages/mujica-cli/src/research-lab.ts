@@ -596,14 +596,25 @@ async function currentPrimary(project: ProjectContext, lab: ResearchLabDefinitio
   };
 }
 
+async function assertStagedBenchmarkInputsUnedited(originalProject: ProjectContext, stagedProject: ProjectContext, benchmark: BenchmarkDefinition): Promise<void> {
+  const stagedBenchmark = await loadBenchmark(stagedProject.rootDir, benchmark.id);
+  const [originalLock, stagedLock] = await Promise.all([
+    readFile(confined(originalProject.rootDir, `benchmarks/${benchmark.id}.lock.json`), "utf8").then(JSON.parse),
+    readFile(confined(stagedProject.rootDir, `benchmarks/${benchmark.id}.lock.json`), "utf8").then(JSON.parse),
+  ]);
+  if (hashJson(stagedBenchmark) !== hashJson(benchmark) || hashJson(stagedLock) !== hashJson(originalLock)) {
+    throw new Error(`Researcher changed locked Benchmark '${benchmark.id}' or its lock artifact`);
+  }
+}
+
 async function evaluateRegressions(options: {
   originalProject: ProjectContext; stagedProject: ProjectContext; lab: ResearchLabDefinition; previousSubject: { assembly: string; controller: string }; candidateSubject: { assembly: string; controller: string }; referenceSubject?: { assembly: string; controller: string }; deadlineMs: number;
 }): Promise<{ results: any[]; gateReasons: string[] }> {
   const results: any[] = []; const gateReasons: string[] = [];
   for (const id of options.lab.regressions) {
     const originalBenchmark = await loadBenchmark(options.originalProject.rootDir, id); const stagedBenchmark = await loadBenchmark(options.stagedProject.rootDir, id);
-    const originalLock = await requireBenchmarkLock(options.originalProject, originalBenchmark); const stagedLock = await requireBenchmarkLock(options.stagedProject, stagedBenchmark);
-    if (originalLock.lockHash !== stagedLock.lockHash) throw new Error(`Regression Benchmark '${id}' lock differs in the staged project`);
+    const originalLock = await requireBenchmarkLock(options.originalProject, originalBenchmark);
+    await assertStagedBenchmarkInputsUnedited(options.originalProject, options.stagedProject, originalBenchmark);
     const objective = await loadObjective(options.originalProject.rootDir, originalBenchmark.objective);
     const baseline = await evaluatePair(options.originalProject, originalBenchmark, originalBenchmark.baseline.assembly, originalBenchmark.baseline.controller, undefined, options.deadlineMs);
     const previous = await evaluatePair(options.originalProject, originalBenchmark, options.previousSubject.assembly, options.previousSubject.controller, undefined, options.deadlineMs);
@@ -909,8 +920,8 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       const afterGuard = await snapshotFiles(workspace, false); researcherChangedPaths = changedPaths(beforeGuard, afterGuard);
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
       assertResearchLabEditableChanges(lab, researcherChangedPaths);
-      const stagedProject = await loadProject(workspace); const stagedBenchmark = await loadBenchmark(workspace, lab.benchmark); const stagedLock = await requireBenchmarkLock(stagedProject, stagedBenchmark);
-      if (stagedLock.lockHash !== lock.lockHash) throw new Error("Primary Benchmark lock differs in the staged project");
+      const stagedProject = await loadProject(workspace); const stagedBenchmark = await loadBenchmark(workspace, lab.benchmark);
+      await assertStagedBenchmarkInputsUnedited(project, stagedProject, benchmark);
       let candidateSubject: { assembly: string; controller: string };
       if (lab.execution.kind === "controller") {
         const loaded = await loadController(workspace, lab.execution.controller); if (loaded.definition.kind !== "program") throw new Error("Controller Lab target is no longer a program Controller");

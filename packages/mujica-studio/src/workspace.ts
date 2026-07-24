@@ -2,7 +2,7 @@ import { cp, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicDirectory, hashJson, listWorkspaceProjects, loadDevelopmentCharter, loadWorkspace, sha256, writeJson } from "@mujica/core";
 import { writeStudioSnapshot } from "./snapshot";
-import { currentDevelopmentReview } from "./snapshot";
+import { currentDevelopmentReview, currentDevelopmentWorkOrder } from "./snapshot";
 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
@@ -56,6 +56,7 @@ export async function buildWorkspaceStudioSnapshot(workspaceDirectory: string) {
   for (const project of await listWorkspaceProjects(workspace.rootDir)) {
     const charter = await loadDevelopmentCharter(project.rootDir);
     const developmentReview = await currentDevelopmentReview(project.rootDir);
+    const developmentWorkOrder = await currentDevelopmentWorkOrder(project.rootDir, developmentReview);
     const visualStudio = await existingVisualStudio(project.rootDir);
     const generatedStudio = !visualStudio && await hasCompletedRun(project.rootDir) ? await writeStudioSnapshot(project.rootDir) : null;
     const studio = visualStudio ?? (generatedStudio ? { id: generatedStudio.id, path: generatedStudio.path } : null);
@@ -75,6 +76,12 @@ export async function buildWorkspaceStudioSnapshot(workspaceDirectory: string) {
         designPassed: developmentReview.review.summary.designPassed,
         passedStages: developmentReview.review.summary.passedStages,
         totalStages: developmentReview.review.summary.totalStages,
+      } : null,
+      developmentWorkOrder: developmentWorkOrder ? {
+        id: developmentWorkOrder.manifest.id,
+        status: developmentWorkOrder.workOrder.status,
+        blockers: developmentWorkOrder.workOrder.blockers.length,
+        lanes: developmentWorkOrder.workOrder.lanes.length,
       } : null,
       studio: studio ? { id: studio.id, sourcePath: studio.path, relativeIndex: `projects/${project.manifest.id}/index.html?v=${studio.id}` } : null,
     });
@@ -118,7 +125,7 @@ function workspaceHtml(snapshot: Awaited<ReturnType<typeof buildWorkspaceStudioS
 <script>
 const S=${data},q=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const shell=v=>"'" + String(v).replaceAll("'","'\\\\''") + "'";
-function projectCard(project){const stages=project.capabilityStages.map(stage=>'<span class="tag '+esc(stage.status)+'">'+esc(stage.id)+' · '+esc(stage.status)+'</span>').join(''),review=project.developmentReview?'<span class="tag '+(project.developmentReview.status==='NORTH_STAR_SATISFIED'?'active':'')+'">'+esc(project.developmentReview.status)+' · '+esc(project.developmentReview.passedStages)+'/'+esc(project.developmentReview.totalStages)+' stages</span>':'<span class="tag">NO REVIEW</span>';return '<button class="card" data-project="'+esc(project.id)+'"><h3>'+(project.isDefault?'★ ':'')+esc(project.name)+'</h3><p>'+esc(project.proposition)+'</p><div class="tags"><span class="tag">'+esc(project.morphology.class)+' · '+esc(project.morphology.limbCount)+' limbs</span>'+review+stages+'</div></button>'}
+function projectCard(project){const stages=project.capabilityStages.map(stage=>'<span class="tag '+esc(stage.status)+'">'+esc(stage.id)+' · '+esc(stage.status)+'</span>').join(''),review=project.developmentReview?'<span class="tag '+(project.developmentReview.status==='NORTH_STAR_SATISFIED'?'active':'')+'">'+esc(project.developmentReview.status)+' · '+esc(project.developmentReview.passedStages)+'/'+esc(project.developmentReview.totalStages)+' stages</span>':'<span class="tag">NO REVIEW</span>',work=project.developmentWorkOrder?'<span class="tag">'+esc(project.developmentWorkOrder.status)+' · '+esc(project.developmentWorkOrder.blockers)+' blockers / '+esc(project.developmentWorkOrder.lanes)+' lanes</span>':'<span class="tag">NO WORK ORDER</span>';return '<button class="card" data-project="'+esc(project.id)+'"><h3>'+(project.isDefault?'★ ':'')+esc(project.name)+'</h3><p>'+esc(project.proposition)+'</p><div class="tags"><span class="tag">'+esc(project.morphology.class)+' · '+esc(project.morphology.limbCount)+' limbs</span>'+review+work+stages+'</div></button>'}
 q('#projects').innerHTML=S.projects.map(projectCard).join('')||'<p class="muted">No projects yet.</p>';
 function openProject(id){const project=S.projects.find(item=>item.id===id);document.querySelectorAll('[data-project]').forEach(node=>node.classList.toggle('active',node.dataset.project===id));if(project.studio){q('#viewer').innerHTML='<iframe title="'+esc(project.name)+' Studio" src="'+esc(project.studio.relativeIndex)+'"></iframe>'}else{const d=project.defaults,argv=['simulate',S.workspaceRoot,'--project',project.id,'--assembly',d.assembly,'--controller',d.controller,'--task',d.task,'--scenario',d.scenario],command='mujica '+argv.map(shell).join(' ');q('#viewer').innerHTML='<div class="empty"><h2>'+esc(project.name)+'</h2><p>'+esc(project.proposition)+'</p><p class="muted">No completed Simulation Run exists yet.</p><div class="command">'+esc(command)+'</div></div>'}}
 document.querySelectorAll('[data-project]').forEach(node=>node.onclick=()=>openProject(node.dataset.project));

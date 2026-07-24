@@ -3,18 +3,28 @@ import { join, resolve } from "node:path";
 import {
   atomicDirectory,
   compileAssembly,
+  confined,
+  developmentReviewSchema,
+  developmentWorkOrderSchema,
   hashJson,
   idSchema,
+  listResearchLabIds,
   listWorkspaceProjects,
   loadBenchmark,
+  loadCandidate,
   loadDevelopmentCharter,
   loadObjective,
   loadProject,
+  loadResearchLab,
+  loadTraining,
   loadWorkspace,
   resolveProjectDirectory,
+  sha256,
   validateProject,
   validateProjectDefinitions,
   writeJson,
+  type DevelopmentReview,
+  type DevelopmentWorkOrder,
 } from "@mujica/core";
 import { success } from "./contract";
 import { writeWorkspaceStudioSnapshot } from "@mujica/studio";
@@ -224,7 +234,7 @@ export async function projectReviewCommand(input: string, options: { project?: s
     ...[...new Map(worstCases.flatMap((item) => item.hypotheses).map((hypothesis) => [hypothesis.surface, { surface: hypothesis.surface, rationale: hypothesis.rationale }])).values()],
     ...(numericalNorthStarSatisfied && charter.northStar.requireHumanReview ? [{ surface: "human-review" as const, rationale: "Numerical gates pass; inspect the authoritative replay before accepting the capability claim." }] : []),
   ];
-  const review = {
+  const review = developmentReviewSchema.parse({
     version: 1,
     kind: "mujica-development-review",
     project: project.manifest.id,
@@ -256,7 +266,7 @@ export async function projectReviewCommand(input: string, options: { project?: s
       worstCase: worstCases[0] ? { benchmark: worstCases[0].benchmark, case: worstCases[0].id, severity: worstCases[0].violationSeverity } : null,
       interventionSurfaces,
     },
-  };
+  });
   const reviewHash = hashJson(review);
   const id = `development-review-${reviewHash.slice(0, 16)}`;
   const target = join(project.rootDir, "development-reviews", id);
@@ -287,6 +297,185 @@ export async function projectReviewCommand(input: string, options: { project?: s
   }
   nextActions.push({ id: "open-studio", description: "Project this Review beside the authoritative robot replay", argv: ["studio", project.rootDir], effect: "creates-artifact" as const });
   return success("project.review", { id, reviewHash, path: target, review }, project, [{ kind: "development-review", id, path: target, immutable: true }], nextActions);
+}
+
+async function verifiedDevelopmentReview(projectDirectory: string, requestedId?: string): Promise<{ id: string; reviewHash: string; review: DevelopmentReview; path: string }> {
+  const root = join(projectDirectory, "development-reviews");
+  let id = requestedId;
+  let pointer: Record<string, any> | null = null;
+  if (!id) {
+    const currentPointer: Record<string, any> = JSON.parse(await readFile(join(root, "current.json"), "utf8"));
+    if (currentPointer.version !== 1 || typeof currentPointer.id !== "string") throw new Error("Current Development Review pointer is invalid");
+    pointer = currentPointer;
+    id = currentPointer.id;
+  }
+  if (!/^development-review-[a-f0-9]{16}$/.test(id)) throw new Error(`Invalid Development Review id '${id}'`);
+  const path = confined(projectDirectory, `development-reviews/${id}`);
+  const manifest = JSON.parse(await readFile(join(path, "manifest.json"), "utf8"));
+  const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(path, "review.json"), "utf8")));
+  const reviewHash = hashJson(review);
+  if (
+    manifest.version !== 1
+    || manifest.id !== id
+    || manifest.kind !== review.kind
+    || manifest.project !== review.project
+    || manifest.reviewHash !== reviewHash
+    || manifest.completed !== true
+    || id !== `development-review-${reviewHash.slice(0, 16)}`
+    || (pointer !== null && (pointer.id !== id || pointer.reviewHash !== reviewHash))
+  ) throw new Error(`Development Review '${id}' failed integrity verification`);
+  const project = await loadProject(projectDirectory);
+  if (review.project !== project.manifest.id) throw new Error(`Development Review '${id}' belongs to another project`);
+  const charter = await loadDevelopmentCharter(projectDirectory);
+  if (review.charterHash !== hashJson(charter)) throw new Error(`Development Review '${id}' is stale because the Development Charter changed`);
+  const assembly = await compileAssembly(projectDirectory, review.subject.assembly);
+  if (review.subject.assemblyHash !== assembly.assemblyHash || review.morphologyHash !== hashJson(assembly.morphology)) {
+    throw new Error(`Development Review '${id}' is stale because Assembly '${review.subject.assembly}' changed`);
+  }
+  const controller = await controllerIdentity(projectDirectory, review.subject.controller);
+  if (review.subject.controllerHash !== controller.hash || review.subject.controllerKind !== controller.definition.kind) {
+    throw new Error(`Development Review '${id}' is stale because Controller '${review.subject.controller}' changed`);
+  }
+  for (const benchmark of review.benchmarks) {
+    const lock = JSON.parse(await readFile(confined(projectDirectory, `benchmarks/${benchmark.id}.lock.json`), "utf8"));
+    if (lock.lockHash !== benchmark.lockHash) {
+      throw new Error(`Development Review '${id}' is stale because Benchmark lock '${benchmark.id}' changed`);
+    }
+  }
+  return { id, reviewHash, review, path };
+}
+
+function laneKind(kind: "controller" | "policy" | "development") {
+  return kind === "controller" ? "controller-code" as const : kind === "policy" ? "rl-policy" as const : "complete-design" as const;
+}
+
+function laneCoversSurface(kind: "controller-code" | "rl-policy" | "complete-design", surface: string): boolean {
+  if (surface === "controller") return kind === "controller-code" || kind === "rl-policy";
+  if (surface === "training") return kind === "rl-policy";
+  if (surface === "assembly" || surface === "design") return kind === "complete-design";
+  return false;
+}
+
+export async function projectWorkCommand(input: string, options: { project?: string; review?: string }) {
+  const projectDirectory = await resolveProjectDirectory(input, options.project);
+  const project = await loadProject(projectDirectory);
+  const verified = await verifiedDevelopmentReview(project.rootDir, options.review);
+  const { review } = verified;
+  const blockers = review.benchmarks.flatMap((benchmark) => benchmark.cases
+    .filter((item) => item.gating && item.violations.length > 0)
+    .map((item) => ({
+      benchmark: benchmark.id,
+      case: item.id,
+      severity: item.violationSeverity,
+      violations: item.violations,
+      hypotheses: item.hypotheses,
+      reproduceArgv: item.reproduceArgv,
+    })))
+    .sort((left, right) => right.severity - left.severity || left.benchmark.localeCompare(right.benchmark) || left.case.localeCompare(right.case))
+    .map((item, index) => ({ rank: index + 1, ...item }));
+  const failingBenchmarks = new Set(blockers.map((item) => item.benchmark));
+  const lanes: DevelopmentWorkOrder["lanes"] = [];
+  for (const labId of await listResearchLabIds(project.rootDir)) {
+    const lab = await loadResearchLab(project.rootDir, labId);
+    if (!failingBenchmarks.has(lab.benchmark)) continue;
+    let compatible = false;
+    let subject: { assembly: string; controller: string; training?: string; candidate?: string };
+    let followupController: string;
+    if (lab.execution.kind === "controller") {
+      compatible = lab.execution.assembly === review.subject.assembly && lab.execution.controller === review.subject.controller && review.subject.controllerKind === "program";
+      subject = { assembly: lab.execution.assembly, controller: lab.execution.controller };
+      followupController = lab.execution.controller;
+    } else if (lab.execution.kind === "policy") {
+      const training = await loadTraining(project.rootDir, lab.execution.training);
+      compatible = training.assembly === review.subject.assembly
+        && (review.subject.controllerKind === "policy"
+          ? lab.execution.controller === review.subject.controller
+          : lab.execution.referenceController === review.subject.controller);
+      subject = { assembly: training.assembly, controller: lab.execution.controller, training: lab.execution.training };
+      followupController = lab.execution.controller;
+    } else {
+      const candidate = await loadCandidate(project.rootDir, lab.execution.candidate);
+      compatible = candidate.baseline.assembly === review.subject.assembly && candidate.baseline.controller === review.subject.controller;
+      subject = { assembly: candidate.proposed.assembly, controller: candidate.proposed.controller, candidate: candidate.id };
+      followupController = candidate.proposed.controller;
+    }
+    if (!compatible) continue;
+    const program = await readFile(confined(project.rootDir, lab.program));
+    const kind = laneKind(lab.execution.kind);
+    const blockerCases = blockers.filter((item) => item.benchmark === lab.benchmark).map((item) => item.case);
+    lanes.push({
+      id: `${kind}-${lab.id}`,
+      kind,
+      researchLab: lab.id,
+      labHash: hashJson(lab),
+      programHash: sha256(program),
+      primaryBenchmark: lab.benchmark,
+      blockerCases,
+      regressions: lab.regressions,
+      subject,
+      editablePaths: lab.editable.paths,
+      budget: lab.budget,
+      promotion: lab.promotion,
+      runArgv: ["research", "run", project.rootDir, "--lab", lab.id, "--iterations", "1", "--agent-command", "<agent-command>"],
+      reviewArgv: ["project", "review", project.rootDir, "--assembly", subject.assembly, "--controller", followupController],
+    });
+  }
+  lanes.sort((left, right) => {
+    const leftRank = Math.min(...left.blockerCases.map((caseId) => blockers.find((item) => item.benchmark === left.primaryBenchmark && item.case === caseId)!.rank));
+    const rightRank = Math.min(...right.blockerCases.map((caseId) => blockers.find((item) => item.benchmark === right.primaryBenchmark && item.case === caseId)!.rank));
+    return leftRank - rightRank || left.kind.localeCompare(right.kind) || left.researchLab.localeCompare(right.researchLab);
+  });
+  const uncoveredSurfaces = review.summary.interventionSurfaces.filter((item) => !lanes.some((lane) => laneCoversSurface(lane.kind, item.surface)));
+  const status = review.summary.status === "NORTH_STAR_SATISFIED"
+    ? "NORTH_STAR_SATISFIED" as const
+    : review.summary.status === "HUMAN_REVIEW_REQUIRED"
+      ? "HUMAN_REVIEW_REQUIRED" as const
+      : lanes.length === 0
+        ? "NO_ELIGIBLE_LANES" as const
+        : uncoveredSurfaces.length
+          ? "PARTIALLY_ROUTED" as const
+          : "READY" as const;
+  const workOrder = developmentWorkOrderSchema.parse({
+    version: 1,
+    kind: "mujica-development-work-order",
+    project: project.manifest.id,
+    charterHash: review.charterHash,
+    review: { id: verified.id, hash: verified.reviewHash },
+    subject: review.subject,
+    status,
+    blockers,
+    lanes,
+    uncoveredSurfaces,
+    authorityBoundary: {
+      prioritization: "derived",
+      experimentDecision: "locked-judge",
+      sourcePromotion: "verdict-governed",
+      northStarClaim: "new-development-review-required",
+    },
+  });
+  const workOrderHash = hashJson(workOrder);
+  const id = `development-work-order-${workOrderHash.slice(0, 16)}`;
+  const target = join(project.rootDir, "development-work-orders", id);
+  if (!(await exists(join(target, "manifest.json")))) await atomicDirectory(target, async (directory) => {
+    await writeJson(join(directory, "work-order.json"), workOrder);
+    await writeJson(join(directory, "manifest.json"), {
+      version: 1,
+      id,
+      kind: workOrder.kind,
+      project: project.manifest.id,
+      workOrderHash,
+      reviewId: verified.id,
+      reviewHash: verified.reviewHash,
+      status,
+      completed: true,
+    });
+    await writeFile(join(directory, "report.md"), `# Development Work Order ${id}\n\nStatus: **${status}**\n\nBlockers: ${blockers.length}\n\nEligible lanes: ${lanes.length}\n\n${lanes.map((lane) => `- ${lane.kind}: ${lane.researchLab} → ${lane.primaryBenchmark}`).join("\n") || "- No eligible Research Lab."}\n`);
+  });
+  await writeJson(join(project.rootDir, "development-work-orders", "current.json"), { version: 1, id, workOrderHash });
+  return success("project.work", { id, workOrderHash, path: target, workOrder }, project, [{ kind: "development-work-order", id, path: target, immutable: true }], [
+    ...lanes.map((lane) => ({ id: `run-${lane.id}`, description: `Run one ${lane.kind} experiment through '${lane.researchLab}'`, argv: lane.runArgv, effect: "mutates-project" as const })),
+    { id: "open-studio", description: "Inspect blockers and eligible lanes beside robot evidence", argv: ["studio", project.rootDir], effect: "creates-artifact" as const },
+  ]);
 }
 
 async function copyTemplate(templateRoot: string, destination: string): Promise<void> {

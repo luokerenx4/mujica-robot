@@ -1,0 +1,5 @@
+{
+  "strategy": "reference-anchored-residual",
+  "hypothesis": "A much smaller residual around the reviewed bounded Controller should retain its held-out plant behavior while PPO learns only corrections that survive the strong residual penalty.",
+  "expectedEffect": "Move the learned Policy toward the bounded Controller on heavy-weak and light-strong, improve over the current frozen Policy, and avoid upright-locomotion or motion-quality gate regressions."
+}

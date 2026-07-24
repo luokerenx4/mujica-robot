@@ -155,6 +155,33 @@ describe("agent CLI contract", () => {
     expect(JSON.parse(inspected.stdout).data.developmentReviews).toContain(data.id);
   }, 20_000);
 
+  test("routes exact Review blockers only to compatible governed development lanes", () => {
+    const result = invoke(["project", "work", "examples/quadruped", "--json"]);
+    expect(result.code).toBe(0);
+    const data = JSON.parse(result.stdout).data;
+    expect(data.workOrder).toMatchObject({
+      kind: "mujica-development-work-order",
+      project: "quadruped",
+      status: "READY",
+      subject: { assembly: "command-conditioned-history-3dof", controller: "bounded-traction-gait" },
+      uncoveredSurfaces: [],
+      authorityBoundary: {
+        prioritization: "derived",
+        experimentDecision: "locked-judge",
+        sourcePromotion: "verdict-governed",
+        northStarClaim: "new-development-review-required",
+      },
+    });
+    expect(data.workOrder.blockers[0]).toMatchObject({ rank: 1, benchmark: "sim-to-real-audit", case: "heavy-weak" });
+    expect(data.workOrder.lanes).toHaveLength(2);
+    expect(data.workOrder.lanes[0]).toMatchObject({ kind: "controller-code", researchLab: "robust-transfer-controller", primaryBenchmark: "sim-to-real-audit" });
+    expect(data.workOrder.lanes[1]).toMatchObject({ kind: "rl-policy", researchLab: "sim-to-real-residual-policy", primaryBenchmark: "sim-to-real-audit" });
+    expect(data.workOrder.blockers).toHaveLength(4);
+    expect(data.workOrder.lanes.every((lane: any) => lane.runArgv.includes("<agent-command>"))).toBe(true);
+    expect(data.workOrderHash).toBe(hashJson(data.workOrder));
+    expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
+  }, 20_000);
+
   test("keeps numerical success below the north star when the robot violates its design envelope", async () => {
     const workspace = await mkdtemp(resolve(tmpdir(), "mujica-design-envelope-"));
     try {
@@ -1181,7 +1208,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
-    expect(envelope.data.definitions.researchLabs).toBe(6);
+    expect(envelope.data.definitions.researchLabs).toBe(7);
     expect(envelope.data.definitions.domainProfiles).toBe(4);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
@@ -1200,7 +1227,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-2dee14da161d49fa",
+      "--bundle", "hardware-59feb46f3a150e08",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);

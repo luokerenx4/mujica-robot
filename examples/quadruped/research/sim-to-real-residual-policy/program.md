@@ -1,7 +1,7 @@
 # Domain-randomized residual Policy autoresearch
 
 Improve the frozen residual Policy on exact, held-out plant combinations while
-retaining the serialized `upright-traction-gait` program as its safety-oriented
+retaining the serialized `bounded-traction-gait` program as its reviewed
 prior.
 
 Training samples the fixed `quadruped-pre-hil-v1` synthetic Domain Profile. It is

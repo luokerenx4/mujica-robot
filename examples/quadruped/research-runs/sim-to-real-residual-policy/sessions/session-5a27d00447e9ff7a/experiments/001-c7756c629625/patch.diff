@@ -1,0 +1,27 @@
+diff --git a/before/controllers/sim-to-real-residual-gait/controller.json b/after/controllers/sim-to-real-residual-gait/controller.json
+index 65eb8fc..8c26414 100644
+--- a/before/controllers/sim-to-real-residual-gait/controller.json
++++ b/after/controllers/sim-to-real-residual-gait/controller.json
+@@ -3,6 +3,6 @@
+   "id": "sim-to-real-residual-gait",
+   "name": "Frozen domain-randomized residual policy",
+   "kind": "policy",
+-  "policy": "sim-to-real-residual-locomotion-b4b867ba57f0fe64",
++  "policy": "sim-to-real-residual-locomotion-c8a04a78531406ed",
+   "deterministic": true
+ }
+diff --git a/before/training/sim-to-real-residual-locomotion.training.json b/after/training/sim-to-real-residual-locomotion.training.json
+index 48462fe..788d14e 100644
+--- a/before/training/sim-to-real-residual-locomotion.training.json
++++ b/after/training/sim-to-real-residual-locomotion.training.json
+@@ -20,8 +20,8 @@
+   "gaeLambda": 0.95,
+   "clipRatio": 0.15,
+   "entropyCoefficient": 0,
+-  "residualScale": 0.002,
+-  "residualPenalty": 50,
++  "residualScale": 0.0005,
++  "residualPenalty": 100,
+   "qualityReward": {
+     "jointAcceleration": 0.1,
+     "bodyAngularAcceleration": 0.2,

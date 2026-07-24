@@ -1,0 +1,54 @@
+{
+  "version": 4,
+  "id": "001-c7756c629625",
+  "experimentHash": "c7756c62962507dfa7ab1d535b2a99e9c67ad5aaf5fc4d90cdfca0c6982e7f69",
+  "sequence": 1,
+  "sessionId": "session-5a27d00447e9ff7a",
+  "researchId": "sim-to-real-residual-policy",
+  "labHash": "0e8a84d2dad11b528ab39b0795904ed2c62754fc91ffe9ef9895a2e972c547a8",
+  "programHash": "6a67865863d5fccfdf1717a39878353243f0bea4692b928c90b7fbf2ee1bd5b9",
+  "benchmarkLockHash": "02a8ac3d2ae60a9b20ac4da2c511a962b18d1f206a3ec44b645731142b238771",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "b79971a56719ed91fad75dad61e35edeed5757862919942e6c2346d7ed26fedd",
+  "researcherChangedPaths": [
+    "training/sim-to-real-residual-locomotion.training.json"
+  ],
+  "changedPaths": [
+    "controllers/sim-to-real-residual-gait/controller.json",
+    "training/sim-to-real-residual-locomotion.training.json"
+  ],
+  "proposal": {
+    "strategy": "reference-anchored-residual",
+    "hypothesis": "A much smaller residual around the reviewed bounded Controller should retain its held-out plant behavior while PPO learns only corrections that survive the strong residual penalty.",
+    "expectedEffect": "Move the learned Policy toward the bounded Controller on heavy-weak and light-strong, improve over the current frozen Policy, and avoid upright-locomotion or motion-quality gate regressions."
+  },
+  "policyId": "sim-to-real-residual-locomotion-c8a04a78531406ed",
+  "score": 44.157997570555686,
+  "delta": 0.9051661716444528,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reference-controller: no-lexicographic-improvement"
+    ],
+    "previousViolationCount": 14,
+    "candidateViolationCount": 13,
+    "previousViolationSeverity": 39.4797924446294,
+    "candidateViolationSeverity": 36.26169635766525,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "93a45de8d7e23159dc3aa12cf18861b1fc022ef98ad735cdd0beeadea5c1abdf",
+    "acceptedRunId": "run-b9ad09f59a059aae",
+    "candidateRunId": "run-a9bade5fbf90a642",
+    "caseId": "light-strong"
+  },
+  "durationMs": 61659,
+  "completed": true
+}
