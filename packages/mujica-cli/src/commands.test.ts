@@ -199,6 +199,16 @@ describe("agent CLI contract", () => {
       "articulated-brace-locomotion-policy",
       "articulated-inverted-escape-policy",
     ]);
+    expect(data.workOrder.lanes.find((item: any) => item.researchLab === "articulated-brace-locomotion-policy").baseline).toMatchObject({
+      mode: "policy-head",
+      controller: "articulated-brace-locomotion-policy",
+      issues: [],
+    });
+    expect(data.workOrder.lanes.find((item: any) => item.researchLab === "articulated-inverted-escape-policy").baseline).toMatchObject({
+      mode: "reference-controller-retrain",
+      controller: "articulated-behavior-supervisor",
+      issues: ["execution"],
+    });
     expect(data.workOrder.uncoveredSurfaces).toEqual([]);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);

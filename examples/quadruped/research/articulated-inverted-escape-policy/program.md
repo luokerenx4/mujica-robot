@@ -11,11 +11,11 @@ impulse/capture/rise sequence, retry selection, handoff, and every state outside
 the explicit inverted-escape envelope. PPO is a bounded residual, not a
 replacement controller:
 
-- authority is zero before the first dynamic retry;
+- authority is zero until the Program enters observable dynamic recovery;
 - authority is zero during approach and impact;
 - authority is zero for static self-righting;
-- authority is at most `0.15 Nm` on each leg actuator and `2 Nm` on each waist
-  actuator when the per-actuator experiment is active;
+- per-actuator authority must remain explicitly finite and smaller than the
+  Program's normal actuation envelope;
 - authority is derived only from Program telemetry, never Scenario identity or
   a Mission phase label; and
 - missing, non-finite, or out-of-envelope telemetry fails closed to zero.
@@ -27,12 +27,31 @@ the locked trace proved that neither accepted nor candidate Policy ever reached
 one-foot support in the selected exact-left review. Extra scalar training
 instead regressed both exact-left progress gates and was rejected.
 
-The next bounded hypothesis must therefore change authority structure, not
-merely duration: retain only micro-corrections on the twelve leg actuators,
-concentrate bounded residual authority on the two new waist actuators, and stop
-the learned attempt after a finite recovery-mode dwell. This tests whether the
-new morphology can earn its complexity without letting an unsuccessful Policy
-thrash through every later Mission command.
+Waist-focused finite authority and one-contact continuation were also
+rejected. New Controller evidence then tested progress-adaptive phase, an
+impact brace, early recovery, and momentum-directed recovery entry. Early
+entry reduced complete-Mission violations `42 → 39`, but both early-entry
+variants still lost the previously successful degraded-right recovery. The
+fixed Program trajectory, not merely the inverted plateau, is now the measured
+boundary.
+
+The next bounded hypothesis therefore moves learned authority earlier but
+narrows it by observable plant state:
+
+- `measuredDelaySteps` must equal one;
+- Program mode must be dynamic `recovery`;
+- authority begins only above `0.3 rad` tilt;
+- authority ends after the first retry, above three supporting feet, outside a
+  safe base-height envelope, or after `4.5 s` recovery dwell;
+- each leg actuator receives at most `0.30 Nm`;
+- each waist actuator receives at most `1.50 Nm`.
+
+Static recovery, approach, impact, locomotion, and Mission phase labels remain
+outside learned authority. Exact and degraded Cases are not privileged policy
+inputs: if their observable Program telemetry enters the same gate, the
+residual may act and the locked complete Case must judge it. This tests whether
+PPO can adapt the recovery trajectory to measured entry momentum without
+becoming a general-purpose controller or hiding failed Program behavior.
 
 Training reward may use the dense `tiltEscape` term to escape the fully
 inverted zero-gradient region. Stillness must remain disabled outside a
@@ -42,6 +61,18 @@ The locked complete Mission is primary authority. Static self-righting,
 recovery handoff, command tracking, and command transitions are mandatory
 regressions. A score gain cannot compensate for a newly failed gate, collision,
 joint-limit violation, or lost command capability.
+
+The first delay-one candidate confirmed a useful learned correction on the
+degraded-right plant: signed progress became positive, terminal tilt and
+collisions fell, and joint-limit margin improved. It was nevertheless rejected
+because the complete Mission exposed a later fall during traverse/stop. The
+residual reactivated for that second recovery and the Mission ended mid-rise,
+below the terminal height gate. A follow-up may therefore add the causal
+Program-telemetry requirement `recoveryCompleted=false`. This gives PPO
+authority only during recovery from the authored impact; once the Program has
+completed a recovery, every later fall and the remainder of the Mission are
+Program-only. Do not use Mission stage or Scenario identity to create this
+boundary.
 
 Edit the isolated workspace directly, then print exactly one proposal object:
 

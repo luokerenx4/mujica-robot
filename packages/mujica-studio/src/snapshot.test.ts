@@ -111,6 +111,11 @@ describe("read-only Studio snapshot", () => {
       "articulated-brace-locomotion-policy",
       "articulated-inverted-escape-policy",
     ]);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.find((item) => item.researchLab === "articulated-inverted-escape-policy")?.baseline).toMatchObject({
+      mode: "reference-controller-retrain",
+      controller: "articulated-behavior-supervisor",
+      issues: ["execution"],
+    });
     expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces).toEqual([]);
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
@@ -132,6 +137,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Runtime events");
     expect(html).toContain("Mission Suite");
     expect(html).toContain("Skill probes");
+    expect(html).toContain("training baseline");
+    expect(html).toContain("reference-controller-retrain");
     expect(html).toContain("mujica-continuous-mission-context");
     expect(html).toContain("missionSuiteJudge:'promotion-only'");
     expect(html).toContain("read-only evidence debugger");

@@ -1,0 +1,59 @@
+{
+  "version": 4,
+  "id": "001-387c1117a294",
+  "experimentHash": "387c1117a2949ee5bddaea67fc4910115e3bf9e8fdd4c1680a9a79c74357d2b9",
+  "sequence": 1,
+  "sessionId": "session-dcf9f2536745c351",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "08a8f2a1443e96a41adaaaa1838e45debdc5342326d23b76e6788fecba8b35db",
+  "benchmarkLockHash": "b4f1cedcf5d4a1d438a4c71defdbf8c950c43445088d185ffb39e7c3edc17cf7",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "a3745dd5329ef93b95b31c69ecb57584b5ee16dbf51bb2365f5a486f51f6b036",
+  "historyHash": "016a37e7fa01a01b0108dedf4cd5855edb36ac6a90a05b9ade6afb736a04c3eb",
+  "historyCount": 2,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "delay-one-dynamic-recovery-windowed-residual",
+    "hypothesis": "Controller experiments improved trigger timing and entry classification but proved that one fixed recovery trajectory cannot absorb the delay-one impact-state distribution. A residual restricted to observable delay-one dynamic recovery can adapt the initial recovery and first retry while exact plants, static recovery, locomotion, and later Mission phases remain Program-only.",
+    "expectedEffect": "Reduce both degraded recovery timeouts and terminal posture severity without changing any exact Case, static self-righting, handoff, command-tracking, or command-transition gate."
+  },
+  "policyId": "articulated-inverted-escape-7ee28e3782aeba1c",
+  "score": 72.65714417576632,
+  "delta": -0.06518049130419001,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing"
+    ],
+    "previousViolationCount": 42,
+    "candidateViolationCount": 39,
+    "previousViolationSeverity": 85.78602050689881,
+    "candidateViolationSeverity": 75.69576568525197,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "888dd95f4e9689abd50583671eca86c993f5eac57317ca075087ed71b1052ec1",
+    "acceptedRunId": "run-784ed91fb89b2e09",
+    "candidateRunId": "run-e2e74df021f88852",
+    "caseId": "impact-right-degraded"
+  },
+  "durationMs": 140138,
+  "completed": true
+}

@@ -868,18 +868,103 @@ async function publishDevelopmentRevision(options: {
   return { id, path: target };
 }
 
-async function currentPrimary(project: ProjectContext, lab: ResearchLabDefinition, benchmark: BenchmarkDefinition): Promise<{ lockedBaseline: Evaluation; current: Evaluation; subject: { assembly: string; controller: string } }> {
+export type PolicyLabBaselineResolution = {
+  mode: "policy-head" | "reference-controller-retrain";
+  assembly: string;
+  controller: string;
+  requestedController: string;
+  requestedPolicy: string;
+  issues: Array<"execution" | "observations" | "actions">;
+};
+
+export async function policyLabBaselineResolution(
+  project: ProjectContext,
+  lab: ResearchLabDefinition,
+): Promise<PolicyLabBaselineResolution | null> {
+  if (lab.execution.kind !== "policy") return null;
+  const training = await loadTraining(project.rootDir, lab.execution.training);
+  const assembly = await compileAssembly(project.rootDir, training.assembly);
+  const loaded = await loadController(project.rootDir, lab.execution.controller);
+  if (loaded.definition.kind !== "policy") {
+    throw new Error(
+      `Policy Lab '${lab.id}' Controller '${lab.execution.controller}' is not a Policy Controller`,
+    );
+  }
+  const manifest = JSON.parse(await readFile(confined(
+    project.rootDir,
+    `policies/${loaded.definition.policy}/manifest.json`,
+  ), "utf8"));
+  const issues: PolicyLabBaselineResolution["issues"] = [];
+  if (
+    manifest.executionHash
+      ? manifest.executionHash !== assembly.executionHash
+      : manifest.assemblyHash !== assembly.assemblyHash
+        || manifest.catalogHash !== assembly.catalogHash
+  ) issues.push("execution");
+  if (manifest.observationContractHash !== hashJson(assembly.observationContract)) {
+    issues.push("observations");
+  }
+  if (manifest.actionContractHash !== hashJson(assembly.actionContract)) {
+    issues.push("actions");
+  }
+  if (!issues.length) {
+    return {
+      mode: "policy-head",
+      assembly: training.assembly,
+      controller: lab.execution.controller,
+      requestedController: lab.execution.controller,
+      requestedPolicy: loaded.definition.policy,
+      issues,
+    };
+  }
+  if (!lab.execution.referenceController) {
+    throw new Error(
+      `Policy Lab '${lab.id}' baseline Policy '${loaded.definition.policy}' is incompatible with Assembly '${training.assembly}' (${issues.join(", ")}) and no referenceController can authorize retraining`,
+    );
+  }
+  const reference = await loadController(
+    project.rootDir,
+    lab.execution.referenceController,
+  );
+  if (reference.definition.kind !== "program") {
+    throw new Error(
+      `Policy Lab '${lab.id}' referenceController '${lab.execution.referenceController}' must be a Program Controller`,
+    );
+  }
+  assertProgramControllerCompatible(reference.definition, assembly);
+  return {
+    mode: "reference-controller-retrain",
+    assembly: training.assembly,
+    controller: lab.execution.referenceController,
+    requestedController: lab.execution.controller,
+    requestedPolicy: loaded.definition.policy,
+    issues,
+  };
+}
+
+async function currentPrimary(
+  project: ProjectContext,
+  lab: ResearchLabDefinition,
+  benchmark: BenchmarkDefinition,
+): Promise<{
+  lockedBaseline: Evaluation;
+  current: Evaluation;
+  subject: { assembly: string; controller: string };
+  baseline: PolicyLabBaselineResolution | null;
+}> {
   if (lab.execution.kind === "development") {
     const envelope = await candidateCommand(project.rootDir, lab.execution.candidate, false); const data: any = envelope.data;
-    return { lockedBaseline: data.baseline, current: data.proposed, subject: { assembly: data.candidate.proposed.assembly, controller: data.candidate.proposed.controller } };
+    return { lockedBaseline: data.baseline, current: data.proposed, subject: { assembly: data.candidate.proposed.assembly, controller: data.candidate.proposed.controller }, baseline: null };
   }
+  const policyBaseline = await policyLabBaselineResolution(project, lab);
   const subject = lab.execution.kind === "controller"
     ? { assembly: lab.execution.assembly, controller: lab.execution.controller }
-    : { assembly: (await loadTraining(project.rootDir, lab.execution.training)).assembly, controller: lab.execution.controller };
+    : { assembly: policyBaseline!.assembly, controller: policyBaseline!.controller };
   return {
     lockedBaseline: await evaluatePair(project, benchmark, benchmark.baseline.assembly, benchmark.baseline.controller),
     current: await evaluatePair(project, benchmark, subject.assembly, subject.controller),
     subject,
+    baseline: policyBaseline,
   };
 }
 
@@ -1182,7 +1267,8 @@ export async function researchBriefInspectCommand(projectDir: string, id: string
 
 export async function researchLabInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const binding = await researchLabBinding(project.rootDir, id);
-  return success("research.inspect", { lab: binding.lab, programHash: binding.programHash, benchmarkLockHash: binding.benchmarkLockHash }, project, [], [
+  const baseline = await policyLabBaselineResolution(project, binding.lab);
+  return success("research.inspect", { lab: binding.lab, programHash: binding.programHash, benchmarkLockHash: binding.benchmarkLockHash, baseline }, project, [], [
     { id: "run-research", description: "Run one isolated source experiment through the locked Judge", argv: ["research", "run", project.rootDir, "--lab", id, "--iterations", "1", "--agent-command", "<command>"], effect: "mutates-project" },
     { id: "prepare-human-brief", description: "Bind an explicit human observation before running this Lab", argv: ["research", "brief", project.rootDir, "--lab", id, "--observation", "<observation-id>"], effect: "creates-artifact" },
   ]);
@@ -1429,6 +1515,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
 
   const endedAt = new Date().toISOString(); const sessionManifest = {
     version: 4, id: sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash,
+    baseline: initial.baseline,
     researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null,
     priorHistoryCount: priorHistory.length, priorHistoryHash, historyLimit: RESEARCH_HISTORY_LIMIT,
     startedAt, endedAt, iterationsRequested: requestedIterations, iterationsCompleted: summaries.length,

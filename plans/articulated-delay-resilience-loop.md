@@ -64,19 +64,44 @@ less waist authority.
 More samples and more authority produced a useful directional signal but did
 not produce a promotable robot.
 
-## Next hypothesis
+## Findings and decisions
 
-Do not increase the training budget again in isolation. The next bounded
-Candidate must use measured left/right-aware state and phase-/actuator-specific
-authority:
+The left/right replay pair showed that the impact is already distinguishable
+from declared state at the end of the push: lateral velocity and roll rate have
+opposite signs, while the existing Supervisor waits until roughly `0.8 rad`
+tilt before entering recovery. Five bounded Controller strategies used only
+continuous measured state—phase retardation, smooth reversal, support-side
+brace, early command-stop entry, and momentum-directed entry. None passed all
+four complete Mission Cases. Early entry reduced violations `42 → 39`, but
+lost the currently passing degraded-right self-righting gate. Fixed phase
+tuning is not the remaining root cause.
 
-1. identify impact-side and support-side evidence from declared Observations;
-2. make the Controller fallback continuous rather than a one-shot phase
-   direction latch;
-3. restrict RL authority to the joints and Mission intervals where the
-   deterministic Controller has measured deficit;
-4. judge every change on all four complete Mission Cases before interpreting
-   local reward or Skill improvement.
+The Policy Lab initially exposed a harness defect: its selected frozen Policy
+was built against an older Assembly, yet its Work Order lane was labelled
+ready. Policy Labs now preflight execution, Observation, and Action identity.
+This Lab records `reference-controller-retrain` and trains from
+`articulated-behavior-supervisor`; it cannot crash later in Python or compare
+against an incompatible Policy head.
+
+Session `session-dcf9f2536745c351` trained a `65,536`-step residual restricted
+to delay-one dynamic recovery, with `0.30 Nm` per leg actuator and `1.50 Nm`
+per waist actuator. Exact Cases remained behaviorally unchanged. On
+degraded-right, signed progress improved `-0.345 → +0.226 m`, terminal tilt
+fell `0.237 → 0.063 rad`, collisions fell `23 → 9`, and joint margin
+improved `-0.060 → -0.031 rad`. The complete Mission nevertheless caught a
+later fall during traverse/stop; the Policy reactivated and the episode ended
+mid-rise at `0.227 m`, regressing the terminal-height gate. Verdict: `REVERT`.
+
+Session `session-c48393802da86aed` then restricted authority to the first
+recovery using causal Program telemetry `recoveryCompleted=false`. Its newly
+trained Policy lost degraded-right self-righting and increased violations
+`42 → 45`. Verdict: `REVERT`.
+
+These experiments prove a useful learned correction exists, but not yet a
+promotable Policy. The Program remains the release subject. Future work should
+improve recovery-to-locomotion stability or train a recurrent/contact-aware
+residual; it must not raise sample budget or widen authority without a new
+measured hypothesis.
 
 ## Acceptance
 
@@ -94,6 +119,7 @@ authority:
 - [x] Run and preserve one bounded Controller experiment.
 - [x] Run and preserve one bounded RL experiment.
 - [x] Reject both regressions while retaining immutable evidence.
-- [ ] Implement a continuous side-aware measured Controller prior.
-- [ ] Train a phase-/actuator-conditioned residual on top of that prior.
-- [ ] Promote only if the complete Mission Suite passes.
+- [x] Test continuous side-aware Controller priors on all four Mission Cases.
+- [x] Train and judge phase-/actuator-conditioned residuals.
+- [x] Keep the Program release subject because no Candidate passed the complete
+  Mission Suite.

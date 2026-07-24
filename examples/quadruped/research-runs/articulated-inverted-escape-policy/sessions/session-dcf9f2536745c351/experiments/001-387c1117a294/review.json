@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "08a8f2a1443e96a41adaaaa1838e45debdc5342326d23b76e6788fecba8b35db",
+    "benchmarkLockHash": "b4f1cedcf5d4a1d438a4c71defdbf8c950c43445088d185ffb39e7c3edc17cf7",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-dcf9f2536745c351",
+    "experimentId": "001-387c1117a294",
+    "experimentHash": "387c1117a2949ee5bddaea67fc4910115e3bf9e8fdd4c1680a9a79c74357d2b9"
+  },
+  "proposal": {
+    "strategy": "delay-one-dynamic-recovery-windowed-residual",
+    "hypothesis": "Controller experiments improved trigger timing and entry classification but proved that one fixed recovery trajectory cannot absorb the delay-one impact-state distribution. A residual restricted to observable delay-one dynamic recovery can adapt the initial recovery and first retry while exact plants, static recovery, locomotion, and later Mission phases remain Program-only.",
+    "expectedEffect": "Reduce both degraded recovery timeouts and terminal posture severity without changing any exact Case, static self-righting, handoff, command-tracking, or command-transition gate."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing"
+      ],
+      "previousViolationCount": 42,
+      "candidateViolationCount": 39,
+      "previousViolationSeverity": 85.78602050689881,
+      "candidateViolationSeverity": 75.69576568525197,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "c3c074a91ff7ad0dd6fbf4611a8e6992f909e003b2d4360d7486b8bed7c195d5"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: final-base-height regressed from passing to failing",
+    "candidateScoreDelta": 1.7008990828940682,
+    "weightedScoreDelta": 1.7008990828940682
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-784ed91fb89b2e09",
+    "runKey": "784ed91fb89b2e096492769f93c320afe8dc81594d2f14fca8c07d6c1fc4960d",
+    "resultHash": "174b77debbc474398f04dbcaac7269895f152d39a64ab7ff3c909d07204fe4ce",
+    "artifactHash": "8c12f9307f050d8638a94a06028b7fb543f68e84656799f912372694db990f4e",
+    "manifestHash": "b76c127e041e624f42a6d598ba2e312b51261e09db4187e09bf98f260a3ae19b",
+    "metricsHash": "dcebc723058573d69679e19fbd914c2c3518db07c8e656adec17d710a028e902",
+    "scoreHash": "de2bf93e321b4b979bf4c42019d32fa69559090dea193c79203b734ad3754b70",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 92.09080855969958
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-e2e74df021f88852",
+    "runKey": "e2e74df021f888528a254f6c9c1d3968121158fcca414c6cf9bb3bb75c97f5b1",
+    "resultHash": "201a603cc59f68b1bb672547c2b852e36e29c1e87953bebb0c0aea7d364a8649",
+    "artifactHash": "024dda5609ca9dcac18c60bb28afebf7c5b7502267bda0c83b2c9f859ef21dfa",
+    "manifestHash": "f86404cf94ecc84a0d8be1fc7dae3046ab5cb86856e63b5a76d5f2828eba2172",
+    "metricsHash": "a0bc33c7bd8d5f61ecbc72902f403eef71733d00059e77e1caa14c1a95d6191c",
+    "scoreHash": "e0af9551f93e6f77072cce3602ac7ea88ef5c0d0a99ddfc9f002e48b486ed67b",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": 93.79170764259365
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

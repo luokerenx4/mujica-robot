@@ -1,0 +1,82 @@
+[
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-4c552968f6cf0c63",
+    "experimentId": "001-71a89ae6fe16",
+    "sequence": 1,
+    "startedAt": "2026-07-24T17:15:24.591Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1dd7d6d0eca09ec1fa1d6ea1e76238485a802790d52e51f2babbbf58516b1b37",
+    "benchmarkLockHash": "393b1cd2116f9982b88cfe8c76b09d78d45e7d0d31b51349d9eef3de0722e0c1",
+    "proposal": {
+      "strategy": "single-contact-side-roll-consolidation",
+      "hypothesis": "The first learned escape residual recovered one Mission gate but its authority vanished on the first transient foot contact. Continuing the same bounded residual through at most one support foot and down to the observable side-roll region should let PPO consolidate contact before returning to the Program rise controller.",
+      "expectedEffect": "Preserve the 40-violation tier, reduce final tilt or stable-stand severity in degraded Missions, and introduce no static, handoff, tracking, transition, collision, or joint-limit regression."
+    },
+    "policyId": "articulated-inverted-escape-2044fe48e484208d",
+    "score": -15.768963987729224,
+    "delta": -1.0679806027804748,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "reference-controller: impact-left-exact: forward-progress regressed from passing to failing",
+        "reference-controller: impact-left-exact: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 40,
+      "candidateViolationCount": 40,
+      "previousViolationSeverity": 178.67641034758614,
+      "candidateViolationSeverity": 179.90054223406165
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-218ed0add53417a2",
+    "experimentId": "001-243783da8491",
+    "sequence": 1,
+    "startedAt": "2026-07-24T17:22:08.646Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "a5c645057fbd5d29dc7dd719b3d8153a714d00221fabcc8e1e606b437e12ea62",
+    "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+    "proposal": {
+      "strategy": "waist-focused-finite-residual-authority",
+      "hypothesis": "Scalar authority spent most learned capacity perturbing twelve saturated leg actuators while the new morphology's two waist joints received the same small budget. A per-actuator envelope with 0.15 Nm leg micro-corrections, 2 Nm waist authority, and a finite recovery dwell should test the waist mechanism directly without allowing an unsuccessful Policy to act through the rest of the Mission.",
+      "expectedEffect": "Preserve every passing Mission and regression gate while producing measurable inverted escape, contact, final-tilt, or stable-stand improvement before the residual attempt times out."
+    },
+    "policyId": "articulated-inverted-escape-56094148266b39f9",
+    "score": -15.260637947874706,
+    "delta": -0.5596545629259566,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing",
+        "reference-controller: impact-left-exact: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 40,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 178.67641034758614,
+      "candidateViolationSeverity": 178.43052485495448
+    },
+    "revisionId": null,
+    "error": null
+  }
+]

@@ -1,0 +1,45 @@
+[
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-resilience-controller",
+    "sessionId": "session-2fec8f26286bad66",
+    "experimentId": "001-2fd020f352be",
+    "sequence": 1,
+    "startedAt": "2026-07-24T20:21:46.187Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": true
+    },
+    "labHash": "de67668d34e1a30edaeffd0a7d3e6114e1eef93f680ca6702f98670b52635280",
+    "programHash": "5c7bc6b8b1ecaf3790598c371c410e1c04db6664e1772b1e7ff8d55a864ded4e",
+    "benchmarkLockHash": "c6c1660e04f4ce2fb536b0127afad5fcbf1f3eef11c56bff51fcd0416d1b25fc",
+    "proposal": {
+      "strategy": "measured-low-delay-phase-direction-fallback",
+      "hypothesis": "The degraded Mission moves backward before impact because delay-one falls between the zero-delay progress classifier and the three-step contact-loss classifier. Latching a reversed longitudinal gait direction only after an observable early progress deficit should recover approach direction without applying the unsafe 1.8 sagittal traction scale or reading Scenario identity.",
+      "expectedEffect": "Improve signed approach and complete-Mission progress in both degraded impact Cases, preserve exact delay-zero Missions, and introduce no collision, joint-limit, command, or atomic recovery regression."
+    },
+    "policyId": null,
+    "score": 73.3787816543919,
+    "delta": 0.6564569873213912,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing"
+      ],
+      "previousViolationCount": 42,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 85.78602050689881,
+      "candidateViolationSeverity": 96.93006048624191
+    },
+    "revisionId": null,
+    "error": null
+  }
+]

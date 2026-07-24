@@ -1,0 +1,166 @@
+{
+  "version": 8,
+  "id": "integrated-resilience-mission",
+  "name": "Causally walk, absorb impact, recover, redirect, traverse, and stop",
+  "durationSeconds": 20,
+  "controlHz": 50,
+  "healthyHeight": [
+    0.05,
+    0.8
+  ],
+  "terminateOnFall": false,
+  "missionPhases": [
+    {
+      "id": "approach",
+      "name": "Approach under forward command until impact",
+      "intent": "operate",
+      "requiredCapabilities": [
+        "walking",
+        "command-tracking"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0.2,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      },
+      "exit": {
+        "kind": "external-push-start",
+        "timeoutSeconds": 3.5
+      }
+    },
+    {
+      "id": "impact",
+      "name": "Bounded lateral impact while walking",
+      "intent": "disturbance",
+      "requiredCapabilities": [
+        "impact-tolerance"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0.2,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      },
+      "exit": {
+        "kind": "external-push-end",
+        "timeoutSeconds": 0.5
+      }
+    },
+    {
+      "id": "recover",
+      "name": "Autonomously stabilize or self-right without reset",
+      "intent": "recover",
+      "requiredCapabilities": [
+        "self-righting",
+        "behavior-supervision"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      },
+      "exit": {
+        "kind": "recovery-stable",
+        "timeoutSeconds": 6
+      }
+    },
+    {
+      "id": "resume",
+      "name": "Resume the pending forward mission",
+      "intent": "resume",
+      "requiredCapabilities": [
+        "mission-resumption",
+        "command-tracking"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0.2,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      },
+      "exit": {
+        "kind": "elapsed",
+        "afterSeconds": 2
+      }
+    },
+    {
+      "id": "redirect",
+      "name": "Track a combined forward and yaw command",
+      "intent": "operate",
+      "requiredCapabilities": [
+        "yaw-tracking",
+        "command-transition"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0.12,
+          0
+        ],
+        "yawRateRadPerSec": 0.25
+      },
+      "exit": {
+        "kind": "elapsed",
+        "afterSeconds": 3
+      }
+    },
+    {
+      "id": "traverse",
+      "name": "Redirect into lateral traversal",
+      "intent": "operate",
+      "requiredCapabilities": [
+        "lateral-tracking",
+        "command-transition"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0,
+          0.15
+        ],
+        "yawRateRadPerSec": 0
+      },
+      "exit": {
+        "kind": "elapsed",
+        "afterSeconds": 3
+      }
+    },
+    {
+      "id": "stop",
+      "name": "Brake and hold",
+      "intent": "stop",
+      "requiredCapabilities": [
+        "controlled-stop"
+      ],
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [
+          0,
+          0
+        ],
+        "yawRateRadPerSec": 0
+      },
+      "exit": {
+        "kind": "elapsed",
+        "afterSeconds": 2
+      }
+    }
+  ],
+  "recoveryTarget": {
+    "minimumBaseHeightM": 0.32,
+    "maximumBodyTiltRad": 0.35,
+    "maximumLinearSpeedMps": 0.2,
+    "maximumAngularSpeedRadPerSec": 0.5,
+    "holdSeconds": 0.5
+  }
+}

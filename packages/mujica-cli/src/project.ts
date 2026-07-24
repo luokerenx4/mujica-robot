@@ -29,6 +29,7 @@ import {
 import { success } from "./contract";
 import { writeWorkspaceStudioSnapshot } from "@mujica/studio";
 import { controllerIdentity, diagnosticGates, diagnosticHypotheses, evaluatePair, requireBenchmarkLock } from "./commands";
+import { policyLabBaselineResolution, type PolicyLabBaselineResolution } from "./research-lab";
 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
@@ -394,6 +395,7 @@ export async function projectWorkCommand(input: string, options: { project?: str
     let compatible = false;
     let subject: { assembly: string; controller: string; training?: string; candidate?: string };
     let followupController: string;
+    let baseline: PolicyLabBaselineResolution | null = null;
     if (lab.execution.kind === "controller") {
       compatible = lab.execution.assembly === review.subject.assembly
         && (
@@ -410,6 +412,7 @@ export async function projectWorkCommand(input: string, options: { project?: str
           : lab.execution.referenceController === review.subject.controller);
       subject = { assembly: training.assembly, controller: lab.execution.controller, training: lab.execution.training };
       followupController = lab.execution.controller;
+      if (compatible) baseline = await policyLabBaselineResolution(project, lab);
     } else {
       const candidate = await loadCandidate(project.rootDir, lab.execution.candidate);
       compatible = (
@@ -436,6 +439,13 @@ export async function projectWorkCommand(input: string, options: { project?: str
       blockerCases,
       regressions: lab.regressions,
       subject,
+      ...(baseline ? { baseline: {
+        mode: baseline.mode,
+        controller: baseline.controller,
+        requestedController: baseline.requestedController,
+        requestedPolicy: baseline.requestedPolicy,
+        issues: baseline.issues,
+      } } : {}),
       editablePaths: lab.editable.paths,
       budget: lab.budget,
       promotion: lab.promotion,

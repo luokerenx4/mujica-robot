@@ -32,6 +32,17 @@ describe("Robot Assembly compiler", () => {
       "articulated-brace-locomotion-policy",
       "articulated-inverted-escape-policy",
     ]);
+    expect(workOrder.lanes.find((item) => item.researchLab === "articulated-brace-locomotion-policy")?.baseline).toMatchObject({
+      mode: "policy-head",
+      controller: "articulated-brace-locomotion-policy",
+      issues: [],
+    });
+    expect(workOrder.lanes.find((item) => item.researchLab === "articulated-inverted-escape-policy")?.baseline).toMatchObject({
+      mode: "reference-controller-retrain",
+      controller: "articulated-behavior-supervisor",
+      requestedPolicy: "articulated-inverted-escape-64872c025769000b",
+      issues: ["execution"],
+    });
     expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);

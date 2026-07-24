@@ -1,0 +1,231 @@
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.json b/after/controllers/articulated-behavior-supervisor/controller.json
+index 0b5e92a..2fc3d3a 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.json
++++ b/after/controllers/articulated-behavior-supervisor/controller.json
+@@ -188,7 +188,18 @@
+       "rollRateGain": 0.12693,
+       "pitchPositionGain": 0.22,
+       "pitchRateGain": 0.028,
+-      "maximumPitchCorrection": 0.09
++      "maximumPitchCorrection": 0.09,
++      "progressPhaseDeficitStartM": 0.08,
++      "progressPhaseDeficitFullM": 0.42,
++      "progressPhaseResponseSeconds": 0.18,
++      "impactBraceRollRateThreshold": 1.6,
++      "impactBraceRollRateRange": 1.6,
++      "impactBraceContactScaleN": 30,
++      "impactBraceRollRateScale": 2,
++      "progressPhaseMinimumRateScale": 0.35,
++      "impactBraceMaximumPhaseShiftRad": 0,
++      "impactBraceHipAttenuation": 0,
++      "impactBraceAbductionWidthRad": 0
+     },
+     "recovery": {
+       "uprightTiltRad": 0.35,
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.py b/after/controllers/articulated-behavior-supervisor/controller.py
+index ad9f177..64e8d48 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.py
++++ b/after/controllers/articulated-behavior-supervisor/controller.py
+@@ -290,6 +290,16 @@ class ArticulatedBehaviorSupervisorController:
+             "tractionControlBlend": locomotion_telemetry.get(
+                 "tractionControlBlend"
+             ),
++            "progressPhaseRateScale": locomotion_telemetry.get(
++                "progressPhaseRateScale"
++            ),
++            "progressPhaseDeficitM": locomotion_telemetry.get(
++                "progressPhaseDeficitM"
++            ),
++            "impactBraceBlend": locomotion_telemetry.get("impactBraceBlend"),
++            "supportPhaseShiftRad": locomotion_telemetry.get(
++                "supportPhaseShiftRad"
++            ),
+             "commandMode": locomotion_telemetry.get("commandMode"),
+             "commandProgressM": locomotion_telemetry.get("commandProgressM"),
+             "measuredProgressM": locomotion_telemetry.get("measuredProgressM"),
+diff --git a/before/controllers/articulated-behavior-supervisor/locomotion.py b/after/controllers/articulated-behavior-supervisor/locomotion.py
+index f669c24..1c848a5 100644
+--- a/before/controllers/articulated-behavior-supervisor/locomotion.py
++++ b/after/controllers/articulated-behavior-supervisor/locomotion.py
+@@ -52,6 +52,12 @@ class BoundedTractionGaitController:
+         self.traction_probe_started_at = None
+         self.traction_transition_started_at = None
+         self.traction_control_blend = 0.0
++        self.progress_phase = None
++        self.progress_phase_last_time = None
++        self.progress_phase_rate_scale = 1.0
++        self.progress_phase_deficit_m = 0.0
++        self.impact_brace_blend = 0.0
++        self.support_phase_shift_rad = 0.0
+         self.command_restart_count = 0
+         self.last_telemetry = {
+             "locomotionStrategy": "uninitialized",
+@@ -60,6 +66,10 @@ class BoundedTractionGaitController:
+             "startupRampActive": False,
+             "tractionRecovery": False,
+             "tractionControlBlend": 0.0,
++            "progressPhaseRateScale": 1.0,
++            "progressPhaseDeficitM": 0.0,
++            "impactBraceBlend": 0.0,
++            "supportPhaseShiftRad": 0.0,
+             "commandMode": None,
+             "commandProgressM": 0.0,
+             "measuredProgressM": 0.0,
+@@ -109,6 +119,12 @@ class BoundedTractionGaitController:
+             self.traction_recovery = False
+             self.traction_recovery_severe = False
+             self.traction_recovery_started_at = None
++            self.progress_phase = None
++            self.progress_phase_last_time = None
++            self.progress_phase_rate_scale = 1.0
++            self.progress_phase_deficit_m = 0.0
++            self.impact_brace_blend = 0.0
++            self.support_phase_shift_rad = 0.0
+             if np.linalg.norm(raw) > self.config["commandDeadband"]: self.motion_mode = "longitudinal" if abs(raw[1]) <= self.config["commandDeadband"] and abs(raw[2]) <= self.config["commandDeadband"] else "spatial"
+         dt = max(0.0, time_seconds - float(self.filter_last_time))
+         self.filter_last_time = time_seconds
+@@ -136,7 +152,88 @@ class BoundedTractionGaitController:
+         pitch_rate = float(observation["imu-angular-velocity"][1])
+         phase_lead = self.config["phaseLeadByDelaySteps"][delay]
+         if delay > 0 and abs(roll_rate) > self.config["disturbanceRollRateThreshold"]: phase_lead = self.config["disturbancePhaseLeadSeconds"]
+-        phase = 2.0 * np.pi * self.config["frequencyHz"] * (time_seconds + phase_lead)
++        base_frequency = 2.0 * np.pi * self.config["frequencyHz"]
++        self.progress_phase_deficit_m = max(
++            0.0,
++            self.traction_command_progress - self.traction_measured_progress,
++        )
++        low_delay = 0 < delay < self.config["delayedTractionMinimumDelaySteps"]
++        deficit_span = max(
++            1e-9,
++            self.config["progressPhaseDeficitFullM"]
++            - self.config["progressPhaseDeficitStartM"],
++        )
++        progress_blend = (
++            float(
++                np.clip(
++                    (
++                        self.progress_phase_deficit_m
++                        - self.config["progressPhaseDeficitStartM"]
++                    )
++                    / deficit_span,
++                    0.0,
++                    1.0,
++                )
++            )
++            if low_delay
++            else 0.0
++        )
++        target_rate_scale = 1.0 + progress_blend * (
++            self.config["progressPhaseMinimumRateScale"] - 1.0
++        )
++        if self.progress_phase_last_time is None:
++            phase_dt = 0.0
++            self.progress_phase = base_frequency * time_seconds
++        else:
++            phase_dt = max(0.0, time_seconds - self.progress_phase_last_time)
++        response_seconds = max(
++            1e-6, self.config["progressPhaseResponseSeconds"]
++        )
++        response = 1.0 - np.exp(-phase_dt / response_seconds)
++        self.progress_phase_rate_scale += response * (
++            target_rate_scale - self.progress_phase_rate_scale
++        )
++        self.progress_phase += (
++            base_frequency * self.progress_phase_rate_scale * phase_dt
++        )
++        self.progress_phase_last_time = time_seconds
++        phase = self.progress_phase + base_frequency * phase_lead
++        raw_contacts = np.asarray(
++            observation["foot-contact-force"], dtype=np.float64
++        )
++        left_contact = 0.5 * float(raw_contacts[0] + raw_contacts[2])
++        right_contact = 0.5 * float(raw_contacts[1] + raw_contacts[3])
++        contact_bias = np.tanh(
++            (left_contact - right_contact)
++            / max(1e-6, self.config["impactBraceContactScaleN"])
++        )
++        roll_bias = np.tanh(
++            roll_rate / max(1e-6, self.config["impactBraceRollRateScale"])
++        )
++        roll_excess = max(
++            0.0,
++            abs(roll_rate) - self.config["impactBraceRollRateThreshold"],
++        )
++        self.impact_brace_blend = (
++            float(
++                np.clip(
++                    roll_excess
++                    / max(1e-6, self.config["impactBraceRollRateRange"]),
++                    0.0,
++                    1.0,
++                )
++            )
++            if low_delay
++            else 0.0
++        )
++        support_direction = float(
++            np.clip(0.65 * roll_bias + 0.35 * contact_bias, -1.0, 1.0)
++        )
++        self.support_phase_shift_rad = (
++            self.impact_brace_blend
++            * self.config["impactBraceMaximumPhaseShiftRad"]
++            * support_direction
++        )
+         ramp_seconds = float(self.config["startupRampSecondsByDelaySteps"][delay])
+         if ramp_seconds <= 0.0:
+             gait_scale = 1.0
+@@ -148,7 +245,18 @@ class BoundedTractionGaitController:
+                     1.0,
+                 )
+             )
+-        offsets = np.array([0.0, 0.0, self.config["frontRearPhase"], self.config["frontRearPhase"]]); side = np.array([1.0, -1.0, 1.0, -1.0])
++        side = np.array([1.0, -1.0, 1.0, -1.0])
++        offsets = (
++            np.array(
++                [0.0, 0.0, self.config["frontRearPhase"], self.config["frontRearPhase"]]
++            )
++            + self.support_phase_shift_rad * side
++        )
++        gait_scale *= (
++            1.0
++            - self.impact_brace_blend
++            * self.config["impactBraceHipAttenuation"]
++        )
+         prediction = self.config["statePredictionSeconds"]
+         roll = quaternion_roll(observation["base-orientation"]) + prediction * roll_rate
+         pitch = (
+@@ -165,7 +273,11 @@ class BoundedTractionGaitController:
+         target = np.empty((4, 3))
+         for leg in range(4):
+             wave = np.sin(phase + offsets[leg])
+-            target[leg, 0] = side[leg] * self.config["neutralAbduction"] - correction
++            target[leg, 0] = side[leg] * (
++                self.config["neutralAbduction"]
++                + self.impact_brace_blend
++                * self.config["impactBraceAbductionWidthRad"]
++            ) - correction
+             target[leg, 1] = (
+                 self.config["neutralHip"]
+                 + gait_scale * self.config["hipAmplitude"] * wave
+@@ -182,6 +294,10 @@ class BoundedTractionGaitController:
+             "startupRampActive": gait_scale < 1.0,
+             "tractionRecovery": self.traction_recovery,
+             "tractionControlBlend": self.traction_control_blend,
++            "progressPhaseRateScale": self.progress_phase_rate_scale,
++            "progressPhaseDeficitM": self.progress_phase_deficit_m,
++            "impactBraceBlend": self.impact_brace_blend,
++            "supportPhaseShiftRad": self.support_phase_shift_rad,
+             "commandMode": self.motion_mode,
+             "commandProgressM": self.traction_command_progress,
+             "measuredProgressM": self.traction_measured_progress,
+@@ -346,6 +462,10 @@ class BoundedTractionGaitController:
+             "startupRampActive": False,
+             "tractionRecovery": self.traction_recovery,
+             "tractionControlBlend": self.traction_control_blend,
++            "progressPhaseRateScale": self.progress_phase_rate_scale,
++            "progressPhaseDeficitM": self.progress_phase_deficit_m,
++            "impactBraceBlend": self.impact_brace_blend,
++            "supportPhaseShiftRad": self.support_phase_shift_rad,
+             "commandMode": self.motion_mode,
+             "commandProgressM": self.traction_command_progress,
+             "measuredProgressM": self.traction_measured_progress,

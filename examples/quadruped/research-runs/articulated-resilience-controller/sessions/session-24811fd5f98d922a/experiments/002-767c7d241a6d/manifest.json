@@ -1,0 +1,62 @@
+{
+  "version": 4,
+  "id": "002-767c7d241a6d",
+  "experimentHash": "767c7d241a6d2ae911f062068a6d7d5387f10c445402b1741adbd044c9e50891",
+  "sequence": 2,
+  "sessionId": "session-24811fd5f98d922a",
+  "researchId": "articulated-resilience-controller",
+  "labHash": "de67668d34e1a30edaeffd0a7d3e6114e1eef93f680ca6702f98670b52635280",
+  "programHash": "62f6e6da398c96ee40445c4735d17b5df826f74216ad4db2dd6249f3524630d4",
+  "benchmarkLockHash": "c6c1660e04f4ce2fb536b0127afad5fcbf1f3eef11c56bff51fcd0416d1b25fc",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "4f1e3b3acc88698bc5c8c3ac473e341662098c266943a12d7283fbb1db4ca97d",
+  "historyHash": "3c30f6bfac9f64843b8df3592468898511580c09e7db4b66f5d311b987873668",
+  "historyCount": 2,
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/controller.py",
+    "controllers/articulated-behavior-supervisor/locomotion.py"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/controller.py",
+    "controllers/articulated-behavior-supervisor/locomotion.py"
+  ],
+  "proposal": {
+    "strategy": "continuous-progress-phase-reversal",
+    "hypothesis": "The prior hard reversal found useful forward authority but exchanged left and right recovery. A filtered phase-rate state that crosses zero only as measured progress deficit accumulates should retain that authority without the one-step phase discontinuity that made impact timing side-sensitive.",
+    "expectedEffect": "Recover positive delayed approach progress and avoid exchanging the degraded left and right self-righting outcomes."
+  },
+  "policyId": null,
+  "score": 44.87497507434211,
+  "delta": -27.8473495927284,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-right-degraded: self-righting regressed from passing to failing",
+      "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "impact-right-degraded: final-base-height regressed from passing to failing"
+    ],
+    "previousViolationCount": 42,
+    "candidateViolationCount": 42,
+    "previousViolationSeverity": 85.78602050689881,
+    "candidateViolationSeverity": 91.32133487721453,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "d7ae7e199f06baad83a91c10b3ea1c7279a0cf60e4be309e0ef3cabb9dca996d",
+    "acceptedRunId": "run-b8453e908261b405",
+    "candidateRunId": "run-75071d313a746f6a",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 90520,
+  "completed": true
+}

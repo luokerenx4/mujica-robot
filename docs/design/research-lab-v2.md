@@ -98,6 +98,18 @@ The staged Trainer, model, Training definition, and optional policy wrapper are 
 
 Every candidate Training Run and Policy is published even on REVERT. A KEEP atomically advances the declared source files and policy Controller, then publishes a Policy Revision. It does not become the whole-robot head unless a separate complete robot comparison justifies a Robot Revision.
 
+Before a Policy Lab starts, Mujica resolves its executable baseline against the
+Lab's current training Assembly. A frozen Policy is a valid `policy-head` only
+when its execution, Observation, and Action identities still match. A stale
+Policy must never fail later inside Python or be presented as an executable
+Work Order lane. When the Lab declares a compatible Program
+`referenceController`, Mujica records `reference-controller-retrain`, starts
+the comparison from that Program, and trains a fresh candidate. Without that
+explicit fallback the Lab fails closed before training. The resolution mode,
+requested Policy, executable Controller, and compatibility issues are visible
+in `research inspect`, the immutable Session manifest, Development Work
+Orders, and Studio.
+
 ### Development
 
 The staged Development Candidate may coordinate Assembly, Component, Observation/Action contract, Controller, Trainer, and Policy changes, but its `candidate.json` declaration and Lab editable closure must both authorize the diff. The normal Candidate compiler and semantic verifier judge the staged robot. Only a KEEP may publish the new Robot Revision.

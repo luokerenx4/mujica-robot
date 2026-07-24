@@ -1028,6 +1028,13 @@ export const developmentWorkOrderSchema = z.object({
     blockerCases: z.array(idSchema).min(1),
     regressions: z.array(idSchema),
     subject: z.object({ assembly: idSchema, controller: idSchema, training: idSchema.optional(), candidate: idSchema.optional() }).strict(),
+    baseline: z.object({
+      mode: z.enum(["policy-head", "reference-controller-retrain"]),
+      controller: idSchema,
+      requestedController: idSchema,
+      requestedPolicy: idSchema,
+      issues: z.array(z.enum(["execution", "observations", "actions"])),
+    }).strict().optional(),
     editablePaths: z.array(z.string().min(1)).min(1),
     budget: z.object({ maxExperiments: z.number().int().positive(), maxWallClockSeconds: z.number().int().positive(), maximumTrainingSteps: z.number().int().positive().optional() }).strict(),
     promotion: z.enum(["evidence-only", "policy-revision", "robot-revision"]),

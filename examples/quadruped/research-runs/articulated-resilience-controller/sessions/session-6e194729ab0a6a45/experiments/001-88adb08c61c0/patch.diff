@@ -1,0 +1,105 @@
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.json b/after/controllers/articulated-behavior-supervisor/controller.json
+index 0b5e92a..0616959 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.json
++++ b/after/controllers/articulated-behavior-supervisor/controller.json
+@@ -95,7 +95,11 @@
+           "kneeAmplitude": 0.048
+         }
+       },
+-      "missionCommandDeadband": 0.02
++      "missionCommandDeadband": 0.02,
++      "disturbanceRecoveryCommandDeadband": 0.02,
++      "disturbanceRecoveryMaximumHeightM": 0.38,
++      "disturbanceRecoveryMinimumTiltRad": 0.25,
++      "disturbanceRecoveryMinimumAngularSpeedRadPerSec": 2.2
+     },
+     "locomotion": {
+       "kpAbduction": 16.82265,
+diff --git a/before/controllers/articulated-behavior-supervisor/controller.py b/after/controllers/articulated-behavior-supervisor/controller.py
+index ad9f177..03575d1 100644
+--- a/before/controllers/articulated-behavior-supervisor/controller.py
++++ b/after/controllers/articulated-behavior-supervisor/controller.py
+@@ -44,6 +44,8 @@ class ArticulatedBehaviorSupervisorController:
+         self.last_transition_reason = "reset"
+         self.recovery_completed = False
+         self.mission_command_started = False
++        self.previous_command_active = False
++        self.disturbance_stop_count = 0
+         self.locomotion_time_origin = 0.0
+         self.recovery_pose = None
+         self.last_telemetry = {
+@@ -56,6 +58,8 @@ class ArticulatedBehaviorSupervisorController:
+             "handoffStreakSteps": 0,
+             "recoveryCompleted": False,
+             "missionCommandStarted": False,
++            "disturbanceStopDetected": False,
++            "disturbanceStopCount": 0,
+             "waistPositionRad": [0.0, 0.0],
+             "waistTargetRad": [0.0, 0.0],
+         }
+@@ -176,6 +180,32 @@ class ArticulatedBehaviorSupervisorController:
+ 
+     def act(self, observation, time_seconds: float):
+         fallen, tilt, height, fall_detector, required_streak = self.fallen(observation)
++        command_active = (
++            float(
++                np.linalg.norm(
++                    np.asarray(observation["motion-command"], dtype=np.float64)
++                )
++            )
++            > self.config["disturbanceRecoveryCommandDeadband"]
++        )
++        angular_speed = float(
++            np.linalg.norm(
++                np.asarray(
++                    observation["imu-angular-velocity"], dtype=np.float64
++                )
++            )
++        )
++        disturbance_stop = (
++            self.previous_command_active
++            and not command_active
++            and height <= self.config["disturbanceRecoveryMaximumHeightM"]
++            and tilt >= self.config["disturbanceRecoveryMinimumTiltRad"]
++            and angular_speed
++            >= self.config["disturbanceRecoveryMinimumAngularSpeedRadPerSec"]
++        )
++        self.previous_command_active = command_active
++        if disturbance_stop:
++            self.disturbance_stop_count += 1
+         if self.mode == "uninitialized":
+             self.switch(
+                 "recovery" if fallen else "locomotion",
+@@ -183,13 +213,20 @@ class ArticulatedBehaviorSupervisorController:
+                 "initial-fallen-pose" if fallen else "initial-upright-pose",
+             )
+         elif self.mode in ("settling", "locomotion"):
+-            self.fallen_streak = self.fallen_streak + 1 if fallen else 0
+-            if self.fallen_streak >= required_streak:
++            if disturbance_stop:
+                 self.switch(
+                     "recovery",
+                     time_seconds,
+-                    f"{fall_detector or 'fallen-state'}-debounced",
++                    "disturbance-conditioned-command-stop",
+                 )
++            else:
++                self.fallen_streak = self.fallen_streak + 1 if fallen else 0
++                if self.fallen_streak >= required_streak:
++                    self.switch(
++                        "recovery",
++                        time_seconds,
++                        f"{fall_detector or 'fallen-state'}-debounced",
++                    )
+ 
+         if self.mode == "recovery":
+             action = self.recovery.act(observation, time_seconds)
+@@ -270,6 +307,8 @@ class ArticulatedBehaviorSupervisorController:
+             "handoffStreakSteps": self.handoff_streak,
+             "recoveryCompleted": self.recovery_completed,
+             "missionCommandStarted": self.mission_command_started,
++            "disturbanceStopDetected": disturbance_stop,
++            "disturbanceStopCount": self.disturbance_stop_count,
+             "recoveryPose": self.recovery_pose,
+             "bodyTiltRad": tilt,
+             "baseHeightM": height,

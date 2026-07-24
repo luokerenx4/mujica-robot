@@ -29,22 +29,45 @@ robot to move backward before the lateral impact:
   collisions, and still failed the complete Mission;
 - isolated phase-lead, startup-ramp, and phase-direction probes did not pass
   the complete Case.
+- a hard measured-deficit phase-direction latch improved score
+  `72.7223 → 73.3788` and recovered the left degraded Case, but merely moved
+  self-righting failure to the right degraded Case while increasing normalized
+  violation severity `85.786 → 96.930`.
 
 This ordering is authoritative: improve causal impact entry before spending
 more recovery or PPO budget. Do not repeat a rejected scalar probe under a new
 name.
+
+The continuous phase-rate family reduced pre-impact backward displacement but
+all three points destroyed the previously successful degraded-right recovery.
+The locked evidence therefore redirects the next intervention from gait phase
+to Supervisor timing: at the observable forward-to-zero command edge, both
+degraded Cases are already below `0.37 m` with `2.8–3.5 rad/s` angular speed,
+while the current Supervisor waits another `1–4 s` for `0.8 rad` body tilt.
+Early recovery reduced total violations `42 → 39` and normalized severity
+`85.786 → 84.739`, but classified both still-moving lateral impacts as a
+static `back` fall. The left Case did not discover its side pose until a late
+retry. Dynamic recovery may therefore use measured angular-velocity direction
+to select the initial mirrored pose; static recovery must retain
+orientation-based classification.
 
 ## Bounded intervention surface
 
 Prefer one deployable mechanism per experiment:
 
 - measured command-progress versus base-progress state for delay one or two;
+- a continuously integrated phase-rate state, reset only at observable command
+  boundaries, instead of a one-shot direction latch;
 - delay-indexed gait timing that is scoped to a fresh longitudinal bout;
 - bounded low-delay sagittal authority distinct from the three-step
   contact-loss response;
-- measured pitch, yaw-rate, and lateral-state feedback during impact entry;
+- measured pitch, yaw-rate, roll-rate, left/right foot-load balance, and
+  lateral-state feedback during impact entry;
 - explicit release of traction/recovery state across zero-command recovery
   and the observable zero-to-forward resume edge.
+- an active-to-zero command edge may trigger recovery only when measured
+  height, tilt, and angular speed jointly establish a disturbance; an ordinary
+  controlled stop must remain locomotion-owned.
 
 Any new state must reset from observable command boundaries and be exposed in
 Controller telemetry. It must behave identically in MuJoCo and a hardware
