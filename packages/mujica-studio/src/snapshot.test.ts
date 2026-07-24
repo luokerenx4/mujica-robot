@@ -126,7 +126,9 @@ describe("read-only Studio snapshot", () => {
       },
     });
     const html = await readFile(first.indexPath, "utf8");
-    expect(html).toContain("Continuous Mission · one Episode, no reset");
+    expect(html).toContain("Release authority · Continuous Mission Case");
+    expect(html).toContain("Mission Suite");
+    expect(html).toContain("Skill probes");
     expect(html).toContain("mujica-continuous-mission-context");
     expect(html).toContain("missionSuiteJudge:'promotion-only'");
     expect(html).toContain("read-only evidence debugger");

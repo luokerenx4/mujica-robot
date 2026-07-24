@@ -44,6 +44,45 @@ const SOURCE_ARTIFACT_ROOTS = new Set([...GENERATED_ROOTS, "policies"]);
 type Evaluation = Awaited<ReturnType<typeof evaluatePair>>;
 type SourceHashes = Record<string, string>;
 type ResearchDecision = ReturnType<typeof researchDecision>;
+export type ResearchHistoryEntry = {
+  version: 1;
+  source: "prior-session" | "current-session";
+  researchId: string;
+  sessionId: string;
+  experimentId: string;
+  sequence: number;
+  startedAt: string;
+  binding: {
+    sameLab: boolean;
+    sameProgram: boolean;
+    sameBenchmarkLock: boolean;
+  };
+  labHash: string;
+  programHash: string;
+  benchmarkLockHash: string;
+  proposal: {
+    strategy: string;
+    hypothesis: string;
+    expectedEffect: string;
+  } | null;
+  policyId: string | null;
+  score: number | null;
+  delta: number | null;
+  verdict: "KEEP" | "REVERT" | "CRASH";
+  decision: {
+    selectionReason: string;
+    gateReasons: string[];
+    previousViolationCount: number | null;
+    candidateViolationCount: number | null;
+    previousViolationSeverity: number | null;
+    candidateViolationSeverity: number | null;
+  } | null;
+  revisionId: string | null;
+  error: string | null;
+};
+
+const RESEARCH_HISTORY_LIMIT = 32;
+const HISTORY_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export function selectResearchReviewCase(
   benchmark: BenchmarkDefinition,
@@ -98,6 +137,149 @@ function artifact(kind: Artifact["kind"], id: string, path: string, immutable = 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+}
+
+function record(value: unknown): Record<string, any> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : null;
+}
+
+function boundedText(value: unknown, maximum: number): string {
+  return typeof value === "string" ? value.slice(0, maximum) : "";
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function compactResearchHistoryEntry(options: {
+  source: ResearchHistoryEntry["source"];
+  researchId: string;
+  session: Record<string, any>;
+  experiment: Record<string, any>;
+  currentLabHash: string;
+  currentProgramHash: string;
+  currentBenchmarkLockHash: string;
+}): ResearchHistoryEntry | null {
+  const proposal = record(options.experiment.proposal);
+  const decision = record(options.experiment.decision);
+  const experimentId = boundedText(options.experiment.id ?? options.experiment.experimentId, 160);
+  const sessionId = boundedText(options.session.id, 160);
+  const labHash = boundedText(options.experiment.labHash ?? options.session.labHash, 64);
+  const programHash = boundedText(options.experiment.programHash ?? options.session.programHash, 64);
+  const benchmarkLockHash = boundedText(options.experiment.benchmarkLockHash ?? options.session.benchmarkLockHash, 64);
+  const verdict = options.experiment.verdict;
+  if (
+    !HISTORY_ID.test(experimentId)
+    || !HISTORY_ID.test(sessionId)
+    || !["KEEP", "REVERT", "CRASH"].includes(verdict)
+    || !labHash
+    || !programHash
+    || !benchmarkLockHash
+  ) return null;
+  const gateReasons = Array.isArray(decision?.gateReasons)
+    ? decision.gateReasons.filter((item: unknown) => typeof item === "string").slice(0, 16).map((item: string) => item.slice(0, 500))
+    : [];
+  return {
+    version: 1,
+    source: options.source,
+    researchId: options.researchId,
+    sessionId,
+    experimentId,
+    sequence: Number.isInteger(options.experiment.sequence) ? options.experiment.sequence : 0,
+    startedAt: boundedText(options.session.startedAt, 64),
+    binding: {
+      sameLab: labHash === options.currentLabHash,
+      sameProgram: programHash === options.currentProgramHash,
+      sameBenchmarkLock: benchmarkLockHash === options.currentBenchmarkLockHash,
+    },
+    labHash,
+    programHash,
+    benchmarkLockHash,
+    proposal: proposal ? {
+      strategy: boundedText(proposal.strategy, 240),
+      hypothesis: boundedText(proposal.hypothesis, 1_500),
+      expectedEffect: boundedText(proposal.expectedEffect, 1_000),
+    } : null,
+    policyId: typeof options.experiment.policyId === "string" ? boundedText(options.experiment.policyId, 160) : null,
+    score: finiteNumber(options.experiment.score),
+    delta: finiteNumber(options.experiment.delta),
+    verdict,
+    decision: decision ? {
+      selectionReason: boundedText(decision.selectionReason, 240),
+      gateReasons,
+      previousViolationCount: finiteNumber(decision.previousViolationCount),
+      candidateViolationCount: finiteNumber(decision.candidateViolationCount),
+      previousViolationSeverity: finiteNumber(decision.previousViolationSeverity),
+      candidateViolationSeverity: finiteNumber(decision.candidateViolationSeverity),
+    } : null,
+    revisionId: typeof options.experiment.revisionId === "string" ? boundedText(options.experiment.revisionId, 160) : null,
+    error: typeof options.experiment.error === "string" ? boundedText(options.experiment.error, 1_000) : null,
+  };
+}
+
+export async function loadResearchLabHistory(options: {
+  projectRoot: string;
+  researchId: string;
+  labHash: string;
+  programHash: string;
+  benchmarkLockHash: string;
+  limit?: number;
+}): Promise<ResearchHistoryEntry[]> {
+  const requestedLimit = options.limit ?? RESEARCH_HISTORY_LIMIT;
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > RESEARCH_HISTORY_LIMIT) {
+    throw new Error(`Research history limit must be an integer in 1..${RESEARCH_HISTORY_LIMIT}`);
+  }
+  const sessionsRoot = confined(options.projectRoot, `research-runs/${options.researchId}/sessions`);
+  if (!(await exists(sessionsRoot))) return [];
+  const sessions: Array<{ path: string; manifest: Record<string, any> }> = [];
+  for (const entry of await readdir(sessionsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.isSymbolicLink() || !HISTORY_ID.test(entry.name)) continue;
+    const path = confined(sessionsRoot, entry.name);
+    try {
+      const manifest = record(JSON.parse(await readFile(join(path, "manifest.json"), "utf8")));
+      if (
+        manifest?.completed !== true
+        || manifest.researchId !== options.researchId
+        || manifest.id !== entry.name
+        || !Array.isArray(manifest.experiments)
+      ) continue;
+      sessions.push({ path, manifest });
+    } catch {
+      // History is advisory. A damaged old artifact must not prevent a new governed experiment.
+    }
+  }
+  sessions.sort((left, right) =>
+    String(left.manifest.startedAt ?? "").localeCompare(String(right.manifest.startedAt ?? ""))
+    || String(left.manifest.id).localeCompare(String(right.manifest.id)));
+  const history: ResearchHistoryEntry[] = [];
+  for (const session of sessions) {
+    for (const value of session.manifest.experiments) {
+      const experimentId = typeof value === "string" ? value : "";
+      if (!HISTORY_ID.test(experimentId)) continue;
+      try {
+        const manifest = record(JSON.parse(await readFile(confined(session.path, `experiments/${experimentId}/manifest.json`), "utf8")));
+        if (
+          manifest?.completed !== true
+          || manifest.id !== experimentId
+          || manifest.sessionId !== session.manifest.id
+          || manifest.researchId !== options.researchId
+        ) continue;
+        const compact = compactResearchHistoryEntry({
+          source: "prior-session",
+          researchId: options.researchId,
+          session: session.manifest,
+          experiment: manifest,
+          currentLabHash: options.labHash,
+          currentProgramHash: options.programHash,
+          currentBenchmarkLockHash: options.benchmarkLockHash,
+        });
+        if (compact) history.push(compact);
+      } catch {
+        // See above: incomplete historical context is omitted, never granted authority.
+      }
+    }
+  }
+  return history.slice(-requestedLimit);
 }
 
 async function importImmutableSimulationRun(projectRoot: string, result: Record<string, any>): Promise<string> {
@@ -426,7 +608,7 @@ async function sourcePatch(beforeRoot: string, afterRoot: string): Promise<strin
   return child.stdout.toString();
 }
 
-async function invokeResearcher(command: string, cwd: string, input: unknown, timeoutMs: number): Promise<{ proposal: ResearchLabProposal; stderr: string; durationMs: number }> {
+async function invokeResearcher(command: string, cwd: string, input: unknown, timeoutMs: number): Promise<{ proposal: ResearchLabProposal | null; stderr: string; durationMs: number }> {
   const started = Date.now(); let timedOut = false;
   const child = Bun.spawn(["/bin/sh", "-lc", command], { cwd, stdin: new Blob([JSON.stringify(input)]), stdout: "pipe", stderr: "pipe" });
   const stdoutPromise = new Response(child.stdout).text(); const stderrPromise = new Response(child.stderr).text();
@@ -437,7 +619,7 @@ async function invokeResearcher(command: string, cwd: string, input: unknown, ti
   let inputProposal: unknown;
   try { inputProposal = JSON.parse(stdout.trim()); }
   catch { throw new Error(`Researcher returned invalid JSON: ${stdout.trim().slice(0, 500)}`); }
-  return { proposal: researchLabProposalSchema.parse(inputProposal), stderr, durationMs: Date.now() - started };
+  return { proposal: inputProposal === null ? null : researchLabProposalSchema.parse(inputProposal), stderr, durationMs: Date.now() - started };
 }
 
 async function importImmutableDirectory(source: string, target: string): Promise<void> {
@@ -865,16 +1047,24 @@ export async function researchTimelineStudioCommand(projectDir: string, labId: s
   const sessionsRoot = confined(project.rootDir, `research-runs/${labId}/sessions`);
   if (!(await exists(sessionsRoot))) throw new Error(`Research Lab '${labId}' has no completed Sessions`);
   if (experimentId && !sessionId) throw new Error("Studio Research Timeline requires --session when --experiment is supplied");
-  const availableSessions = (await readdir(sessionsRoot, { withFileTypes: true }))
+  const availableSessionIds = (await readdir(sessionsRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
-    .map((entry) => entry.name)
-    .sort();
-  const selectedSessions = sessionId ? availableSessions.filter((id) => id === sessionId) : availableSessions;
+    .map((entry) => entry.name);
+  const availableSessions = [];
+  for (const id of availableSessionIds) {
+    const manifest = JSON.parse(await readFile(confined(sessionsRoot, `${id}/manifest.json`), "utf8"));
+    if (manifest.completed === true && manifest.id === id && manifest.researchId === labId) availableSessions.push({ id, manifest });
+  }
+  availableSessions.sort((left, right) =>
+    String(left.manifest.startedAt ?? "").localeCompare(String(right.manifest.startedAt ?? ""))
+    || left.id.localeCompare(right.id));
+  const selectedSessions = sessionId ? availableSessions.filter((item) => item.id === sessionId) : availableSessions;
   if (!selectedSessions.length) throw new Error(`Research Session '${sessionId}' does not exist in Lab '${labId}'`);
   const verifiedReviews: Array<Awaited<ReturnType<typeof verifyResearchReview>>> = [];
-  for (const selectedSessionId of selectedSessions) {
+  for (const selectedSession of selectedSessions) {
+    const selectedSessionId = selectedSession.id;
     const sessionRoot = confined(sessionsRoot, selectedSessionId);
-    const sessionManifest = JSON.parse(await readFile(join(sessionRoot, "manifest.json"), "utf8"));
+    const sessionManifest = selectedSession.manifest;
     const experimentIds = Array.isArray(sessionManifest.experiments) ? sessionManifest.experiments.map(String) : [];
     const scopedExperimentIds = experimentId ? experimentIds.filter((id: string) => id === experimentId) : experimentIds;
     if (experimentId && !scopedExperimentIds.length) {
@@ -1001,7 +1191,7 @@ export async function researchLabInspectCommand(projectDir: string, id: string) 
 export async function researchLabStatusCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); await loadResearchLab(project.rootDir, id); const sessionsRoot = join(project.rootDir, "research-runs", id, "sessions"); const sessions: any[] = [];
   if (await exists(sessionsRoot)) for (const entry of await readdir(sessionsRoot, { withFileTypes: true })) if (entry.isDirectory() && await exists(join(sessionsRoot, entry.name, "manifest.json"))) sessions.push(JSON.parse(await readFile(join(sessionsRoot, entry.name, "manifest.json"), "utf8")));
-  sessions.sort((left, right) => String(left.startedAt).localeCompare(String(right.startedAt)));
+  sessions.sort((left, right) => String(left.startedAt).localeCompare(String(right.startedAt)) || String(left.id).localeCompare(String(right.id)));
   return success("research.status", { lab: id, sessions, head: sessions.at(-1) ?? null }, project);
 }
 
@@ -1018,30 +1208,72 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
   if (researchBrief) await writeJson(join(sessionRoot, "brief.json"), researchBrief.brief);
   await writeFile(ledgerPath, "sequence\texperiment\tpolicy\tscore\tdelta\tviolations\tstatus\tstrategy\tdescription\n");
   const initial = await currentPrimary(project, lab, benchmark); let current = initial.current; let currentSubject = initial.subject; const objective = await loadObjective(project.rootDir, benchmark.objective);
+  const priorHistory = await loadResearchLabHistory({
+    projectRoot: project.rootDir,
+    researchId: lab.id,
+    labHash,
+    programHash,
+    benchmarkLockHash: lock.lockHash,
+  });
+  const priorHistoryHash = hashJson(priorHistory);
   const summaries: any[] = []; const artifacts: Artifact[] = []; let exhausted = false;
 
   for (let sequence = 1; sequence <= iterations; sequence++) {
     const workspaceContainer = await mkdtemp(join(tmpdir(), `mujica-${id}-`)); const workspace = join(workspaceContainer, "project"); const snapshots = join(workspaceContainer, "snapshots"); const beforeSnapshot = join(snapshots, "before"); const afterSnapshot = join(snapshots, "after");
     const experimentStarted = Date.now(); const deadlineMs = experimentStarted + lab.budget.maxWallClockSeconds * 1000;
     const previous = current;
+    const currentSessionHistory = summaries.map((summary) => compactResearchHistoryEntry({
+      source: "current-session",
+      researchId: lab.id,
+      session: { id: sessionId, startedAt, labHash, programHash, benchmarkLockHash: lock.lockHash },
+      experiment: summary,
+      currentLabHash: labHash,
+      currentProgramHash: programHash,
+      currentBenchmarkLockHash: lock.lockHash,
+    })).filter((item): item is ResearchHistoryEntry => item !== null);
+    const requestHistory = [...priorHistory, ...currentSessionHistory].slice(-RESEARCH_HISTORY_LIMIT);
+    const requestHistoryHash = hashJson(requestHistory);
     let proposal: ResearchLabProposal | null = null; let researcher: { stderr: string; durationMs: number } | null = null; let patch = ""; let beforeSource: SourceHashes = {}; let afterSource: SourceHashes = {}; let execution: any = null; let candidate: Evaluation | null = null; let referencePrimary: Evaluation | null = null; let regressionResults: any[] = []; let decision: ReturnType<typeof researchDecision> | null = null; let verdict: "KEEP" | "REVERT" | "CRASH" = "CRASH"; let errorMessage: string | null = null; let policyId: string | null = null; let revision: { id: string; path: string } | null = null; let finalChanged: string[] = []; let researcherChangedPaths: string[] = []; let review: ResearchReview | null = null; let reviewError: string | null = null;
     try {
       await copyProject(project.rootDir, workspace); beforeSource = await materializeEditableSnapshot(project.rootDir, beforeSnapshot, lab); const beforeGuard = await snapshotFiles(workspace, false);
       const response = await invokeResearcher(agentCommand, workspace, {
-        version: 3,
+        version: 4,
         lab,
         program,
         programHash,
         benchmarkLockHash: lock.lockHash,
         workspace,
         currentBest: current,
-        history: summaries,
+        history: requestHistory,
+        historyProvenance: {
+          schemaVersion: 1,
+          maximumEntries: RESEARCH_HISTORY_LIMIT,
+          priorSessionEntries: requestHistory.filter((item) => item.source === "prior-session").length,
+          currentSessionEntries: requestHistory.filter((item) => item.source === "current-session").length,
+          sameBenchmarkLockEntries: requestHistory.filter((item) => item.binding.sameBenchmarkLock).length,
+          historyHash: requestHistoryHash,
+          note: "Historical hypotheses remain useful across bindings; compare numeric scores only when sameBenchmarkLock is true.",
+        },
         researchBrief: researchBrief?.brief ?? null,
         researchBriefId: researchBrief?.id ?? null,
         researchBriefHash: researchBrief?.briefHash ?? null,
       }, Math.max(1, deadlineMs - Date.now()));
-      proposal = response.proposal; researcher = { stderr: response.stderr, durationMs: response.durationMs };
+      researcher = { stderr: response.stderr, durationMs: response.durationMs };
       const afterGuard = await snapshotFiles(workspace, false); researcherChangedPaths = changedPaths(beforeGuard, afterGuard);
+      if (response.proposal === null) {
+        if (researcherChangedPaths.length) throw new Error("Researcher declared exhaustion after changing project source");
+        exhausted = true;
+        await writeJson(join(sessionRoot, "exhaustion.json"), {
+          version: 1,
+          reason: "researcher-returned-null",
+          historyHash: requestHistoryHash,
+          historyCount: requestHistory.length,
+          priorHistoryCount: priorHistory.length,
+          atSequence: sequence,
+        });
+        break;
+      }
+      proposal = response.proposal;
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
       assertResearchLabEditableChanges(lab, researcherChangedPaths);
       const stagedProject = await loadProject(workspace); const stagedBenchmark = await loadBenchmark(workspace, lab.benchmark);
@@ -1089,7 +1321,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
         : candidateDecision;
       decision = finalDecision;
       afterSource = await materializeEditableSnapshot(workspace, afterSnapshot, lab); finalChanged = changedPaths(beforeSource, afterSource); assertResearchLabEditableChanges(lab, finalChanged); patch = await sourcePatch(beforeSnapshot, afterSnapshot);
-      const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), referenceResults: referencePrimary?.cases.map((item) => item.resultHash) ?? null, regressionResults: regressionResults.map((item) => ({ reference: item.reference?.cases.map((entry: any) => entry.resultHash) ?? null, candidate: item.candidate.cases.map((entry: any) => entry.resultHash) })), verdict });
+      const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, requestHistoryHash, proposal, beforeSource, afterSource, policyId, results: candidateEvaluation.cases.map((item) => item.resultHash), referenceResults: referencePrimary?.cases.map((item) => item.resultHash) ?? null, regressionResults: regressionResults.map((item) => ({ reference: item.reference?.cases.map((entry: any) => entry.resultHash) ?? null, candidate: item.candidate.cases.map((entry: any) => entry.resultHash) })), verdict });
       const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`;
       try {
         review = await captureResearchReview({
@@ -1145,7 +1377,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       }
       const artifactPath = join(experimentsRoot, experimentId);
       await atomicDirectory(artifactPath, async (directory) => {
-        await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch);
+        await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "history.json"), requestHistory); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch);
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeJson(join(directory, "execution.json"), execution);
         await writeJson(join(directory, "evaluation.json"), { previousPrimary: previous, primary: candidateEvaluation, referencePrimary, regressions: regressionResults });
         await writeJson(join(directory, "verdict.json"), { verdict, decision, revisionId: revision?.id ?? null });
@@ -1153,6 +1385,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
         await writeJson(join(directory, "manifest.json"), {
           version: 4, id: experimentId, experimentHash, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash,
           researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: hashJson(afterSource),
+          historyHash: requestHistoryHash, historyCount: requestHistory.length,
           researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: candidateEvaluation.aggregateScore,
           delta: candidateEvaluation.aggregateScore - previous.aggregateScore, verdict, decision, revisionId: revision?.id ?? null,
           review: review
@@ -1179,13 +1412,13 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       }
       await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${candidateEvaluation.aggregateScore}\t${summary.delta}\t${finalDecision.candidateViolationCount}\t${verdict.toLowerCase()}\t${proposal.strategy}\t${proposal.hypothesis.replace(/[\t\r\n]+/g, " ")}\n`);
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : String(error); const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, proposal, beforeSource, afterSource, researcherChangedPaths, errorMessage, verdict: "CRASH" }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(experimentsRoot, experimentId);
+      errorMessage = error instanceof Error ? error.message : String(error); const experimentHash = hashJson({ labHash, programHash, lockHash: lock.lockHash, briefHash: researchBrief?.briefHash ?? null, requestHistoryHash, proposal, beforeSource, afterSource, researcherChangedPaths, errorMessage, verdict: "CRASH" }); const experimentId = `${String(sequence).padStart(3, "0")}-${experimentHash.slice(0, 12)}`; const artifactPath = join(experimentsRoot, experimentId);
       if (!patch && await exists(beforeSnapshot) && await exists(afterSnapshot)) try { patch = await sourcePatch(beforeSnapshot, afterSnapshot); } catch {}
       await atomicDirectory(artifactPath, async (directory) => {
-        await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch); await writeJson(join(directory, "execution.json"), execution);
+        await writeJson(join(directory, "proposal.json"), proposal); await writeJson(join(directory, "history.json"), requestHistory); await writeJson(join(directory, "before-source-hashes.json"), beforeSource); await writeJson(join(directory, "after-source-hashes.json"), afterSource); await writeFile(join(directory, "patch.diff"), patch); await writeJson(join(directory, "execution.json"), execution);
         if (researcher?.stderr.trim()) await writeFile(join(directory, "agent.stderr.txt"), researcher.stderr); await writeFile(join(directory, "error.txt"), `${errorMessage}\n`);
         await writeJson(join(directory, "verdict.json"), { verdict: "CRASH", error: errorMessage });
-        await writeJson(join(directory, "manifest.json"), { version: 4, id: experimentId, experimentHash, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, sourceHash: Object.keys(afterSource).length ? hashJson(afterSource) : null, researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, review: { status: "NOT_APPLICABLE", error: "Experiment did not complete locked Judge evaluation" }, durationMs: Date.now() - experimentStarted, completed: true });
+        await writeJson(join(directory, "manifest.json"), { version: 4, id: experimentId, experimentHash, sequence, sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash, researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null, historyHash: requestHistoryHash, historyCount: requestHistory.length, sourceHash: Object.keys(afterSource).length ? hashJson(afterSource) : null, researcherChangedPaths, changedPaths: finalChanged, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, review: { status: "NOT_APPLICABLE", error: "Experiment did not complete locked Judge evaluation" }, durationMs: Date.now() - experimentStarted, completed: true });
       });
       const summary = { sequence, experimentId, proposal, policyId, score: current.aggregateScore, delta: 0, verdict: "CRASH", error: errorMessage, revisionId: null, artifactPath }; summaries.push(summary); artifacts.push(artifact("research-experiment", experimentId, artifactPath));
       await appendFile(ledgerPath, `${sequence}\t${experimentId}\t${policyId ?? "-"}\t${current.aggregateScore}\t0\t-\tcrash\t${proposal?.strategy ?? "proposal-error"}\t${errorMessage.replace(/[\t\r\n]+/g, " ")}\n`);
@@ -1197,6 +1430,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
   const endedAt = new Date().toISOString(); const sessionManifest = {
     version: 4, id: sessionId, researchId: lab.id, labHash, programHash, benchmarkLockHash: lock.lockHash,
     researchBriefId: researchBrief?.id ?? null, researchBriefHash: researchBrief?.briefHash ?? null,
+    priorHistoryCount: priorHistory.length, priorHistoryHash, historyLimit: RESEARCH_HISTORY_LIMIT,
     startedAt, endedAt, iterationsRequested: requestedIterations, iterationsCompleted: summaries.length,
     initialScore: initial.current.aggregateScore, finalScore: current.aggregateScore,
     scoreDelta: current.aggregateScore - initial.current.aggregateScore, exhausted,

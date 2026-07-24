@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync, rmSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
-import { assertDevelopmentPromotionEvidence, assertResearchLabEditableChanges, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
+import { assertDevelopmentPromotionEvidence, assertResearchLabEditableChanges, loadResearchLabHistory, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
@@ -363,7 +363,7 @@ describe("agent CLI contract", () => {
       ]);
       expect(duplicated.code).toBe(1);
       expect(JSON.parse(duplicated.stderr).error.message).toContain("must be unique");
-      const verifyBriefAgent = "python3 -c 'import json,sys; r=json.load(sys.stdin); b=r[\"researchBrief\"]; assert r[\"version\"] == 3; assert r[\"researchBriefId\"].startswith(\"brief-\"); assert b[\"authorityBoundary\"][\"humanInput\"] == \"hypothesis-only\"; assert b[\"authorityBoundary\"][\"promotion\"] == \"locked-judge-only\"; print(json.dumps({\"strategy\":\"brief-transport-smoke\",\"hypothesis\":\"Verify exact Research Brief transport without editing source.\",\"expectedEffect\":\"The Harness should reject the no-change proposal after preserving Brief provenance.\"}))'";
+      const verifyBriefAgent = "python3 -c 'import json,sys; r=json.load(sys.stdin); b=r[\"researchBrief\"]; assert r[\"version\"] == 4; assert r[\"historyProvenance\"][\"schemaVersion\"] == 1; assert r[\"historyProvenance\"][\"historyHash\"]; assert r[\"researchBriefId\"].startswith(\"brief-\"); assert b[\"authorityBoundary\"][\"humanInput\"] == \"hypothesis-only\"; assert b[\"authorityBoundary\"][\"promotion\"] == \"locked-judge-only\"; print(json.dumps({\"strategy\":\"brief-transport-smoke\",\"hypothesis\":\"Verify exact Research Brief transport without editing source.\",\"expectedEffect\":\"The Harness should reject the no-change proposal after preserving Brief provenance.\"}))'";
       const briefedRun = invoke([
         "research", "run", "examples/quadruped",
         "--lab", "motion-quality-residual-policy",
@@ -1216,7 +1216,7 @@ describe("agent CLI contract", () => {
       },
     });
     const timelineHtml = readFileSync(resolve(JSON.parse(studio.stdout).data.indexPath), "utf8");
-    expect(timelineHtml).toContain("Training Cockpit · Research Timeline");
+    expect(timelineHtml).toContain("Robot Research · Iteration Timeline");
     expect(timelineHtml).toContain("data-timeline-key");
     expect(timelineHtml).toContain("Metrics only");
   }, 15_000);
@@ -1499,6 +1499,48 @@ describe("agent CLI contract", () => {
     expect(() => assertResearchLabEditableChanges(lab, [])).toThrow("no source changes");
     const inspect = invoke(["research", "inspect", "examples/quadruped", "--lab", lab.id, "--json"]); const envelope = JSON.parse(inspect.stdout);
     expect(inspect.code).toBe(0); expect(envelope.data.lab.version).toBe(2); expect(envelope.data.benchmarkLockHash).toHaveLength(64);
+  });
+
+  test("Research Lab carries compact deterministic history across Sessions", async () => {
+    const project = await mkdtemp(join(tmpdir(), "mujica-research-history-"));
+    const researchId = "history-lab"; const sessionsRoot = join(project, "research-runs", researchId, "sessions");
+    const labHash = "a".repeat(64); const programHash = "b".repeat(64); const benchmarkLockHash = "c".repeat(64);
+    const writeSession = async (options: { id: string; startedAt: string; experimentId: string; verdict: "KEEP" | "REVERT" | "CRASH"; lockHash: string }) => {
+      const root = join(sessionsRoot, options.id); const experimentRoot = join(root, "experiments", options.experimentId);
+      await mkdir(experimentRoot, { recursive: true });
+      await writeFile(join(root, "manifest.json"), JSON.stringify({
+        version: 4, id: options.id, researchId, labHash, programHash, benchmarkLockHash: options.lockHash,
+        startedAt: options.startedAt, experiments: [options.experimentId], completed: true,
+      }));
+      await writeFile(join(experimentRoot, "manifest.json"), JSON.stringify({
+        version: 4, id: options.experimentId, sequence: 1, sessionId: options.id, researchId, labHash, programHash,
+        benchmarkLockHash: options.lockHash, proposal: { strategy: `strategy-${options.id}`, hypothesis: "bounded hypothesis", expectedEffect: "bounded effect" },
+        score: 12.5, delta: -0.25, verdict: options.verdict,
+        decision: { selectionReason: "gate-regression", gateReasons: ["mission: recovery failed"], previousViolationCount: 1, candidateViolationCount: 2, previousViolationSeverity: 3, candidateViolationSeverity: 4 },
+        policyId: null, revisionId: null, completed: true,
+      }));
+    };
+    try {
+      await writeSession({ id: "session-z", startedAt: "2026-07-25T02:00:00.000Z", experimentId: "001-later", verdict: "CRASH", lockHash: "d".repeat(64) });
+      await writeSession({ id: "session-a", startedAt: "2026-07-25T01:00:00.000Z", experimentId: "001-earlier", verdict: "REVERT", lockHash: benchmarkLockHash });
+      await mkdir(join(sessionsRoot, "session-corrupt"), { recursive: true });
+      await writeFile(join(sessionsRoot, "session-corrupt", "manifest.json"), "{broken");
+      const history = await loadResearchLabHistory({ projectRoot: project, researchId, labHash, programHash, benchmarkLockHash });
+      expect(history.map((item) => item.experimentId)).toEqual(["001-earlier", "001-later"]);
+      expect(history[0]).toMatchObject({
+        source: "prior-session",
+        binding: { sameLab: true, sameProgram: true, sameBenchmarkLock: true },
+        proposal: { strategy: "strategy-session-a" },
+        verdict: "REVERT",
+      });
+      expect(history[1]?.binding.sameBenchmarkLock).toBe(false);
+      expect((await loadResearchLabHistory({ projectRoot: project, researchId, labHash, programHash, benchmarkLockHash, limit: 1 }))
+        .map((item) => item.experimentId)).toEqual(["001-later"]);
+      await expect(loadResearchLabHistory({ projectRoot: project, researchId, labHash, programHash, benchmarkLockHash, limit: 33 }))
+        .rejects.toThrow();
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
   });
 
   test("Research Lab reuses deterministic Training evidence without treating volatile paths as identity", () => {

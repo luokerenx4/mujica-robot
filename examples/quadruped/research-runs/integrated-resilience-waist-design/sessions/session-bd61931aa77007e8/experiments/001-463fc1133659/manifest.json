@@ -1,0 +1,67 @@
+{
+  "version": 4,
+  "id": "001-463fc1133659",
+  "experimentHash": "463fc1133659dd16c27e10340e8daaf9950ad6bb2e064f41450e4d10b13e4da9",
+  "sequence": 1,
+  "sessionId": "session-bd61931aa77007e8",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+  "programHash": "752d8cb6c89866ec78bc3e56341ac7451700f90026f01a1a3b60f59596f9cf43",
+  "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "0cad9d31a5b93770740dd4b03aa9f68decf5a08a45ee6895513be05d8c28f14b",
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "proposal": {
+    "strategy": "rollover-keel-with-geometry-conditioned-recovery-damping",
+    "hypothesis": "The useful 130 mm keel changes the recovery plant, so retaining the old recovery gains is not a fair complete-robot design. Raising only static sagittal recovery damping from 2.4 to 3.0 should contain the observed front-knee and back-hip overshoot, while reducing retry-only waist targets from 0.18 to 0.14 rad should preserve the keel's inverted-basin escape with less yaw and collision disturbance.",
+    "expectedEffect": "Preserve all previously passing Mission, self-righting, handoff, and command-tracking gates while retaining the clearance keel's lower violation severity and improved Mission score."
+  },
+  "policyId": null,
+  "score": -11.862362576463095,
+  "delta": 2.925838207173623,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: forward-progress regressed from passing to failing",
+      "impact-left-exact: signed-forward-progress regressed from passing to failing",
+      "impact-left-exact: disallowed-collision regressed from passing to failing",
+      "impact-right-exact: transition-terminal-yaw regressed from passing to failing",
+      "impact-right-exact: disallowed-collision regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-left-degraded: disallowed-collision regressed from passing to failing",
+      "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+      "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+      "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 41,
+    "candidateViolationCount": 44,
+    "previousViolationSeverity": 177.78128625413592,
+    "candidateViolationSeverity": 169.95056105818864,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "3a176be3ba7c3b5df2868176c3a0dd97d6040e095c61b1df50dd6c036c19c894",
+    "acceptedRunId": "run-632b42a136e8bbb4",
+    "candidateRunId": "run-f1e22fef6a549ecb",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 59867,
+  "completed": true
+}

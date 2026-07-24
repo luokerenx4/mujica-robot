@@ -1,0 +1,114 @@
+diff --git a/before/robots/quadruped-waist-3dof/model.xml b/after/robots/quadruped-waist-3dof/model.xml
+index 2e48660..6203695 100644
+--- a/before/robots/quadruped-waist-3dof/model.xml
++++ b/after/robots/quadruped-waist-3dof/model.xml
+@@ -12,6 +12,7 @@
+     <body name="torso" pos="0 0 0.44">
+       <freejoint name="root"/>
+       <geom name="front-torso-geom" type="box" pos="0.13 0 0" size="0.12 0.15 0.06" mass="2" rgba="0.24 0.48 0.82 1"/>
++      <geom name="front-rollover-keel" type="capsule" fromto="0.08 0 0.095 0.245 0 0.095" size="0.035" mass="0.03" rgba="0.95 0.56 0.18 1"/>
+       <site name="imu-site" pos="0.13 0 0.065" size="0.015" rgba="0.2 1 0.3 1"/><!-- MUJICA_MOUNT:torso-payload -->
+       <site name="foot-array-site" pos="0 0 0" size="0.005" rgba="0 0 0 0"/>
+ 
+@@ -50,6 +51,7 @@
+         <body name="rear-torso">
+           <joint name="waist-pitch" axis="0 1 0" range="-0.7 0.7" damping="1.2" armature="0.04"/>
+           <geom name="rear-torso-geom" type="box" pos="-0.13 0 0" size="0.12 0.15 0.06" mass="2.1" rgba="0.18 0.38 0.72 1"/>
++          <geom name="rear-rollover-keel" type="capsule" fromto="-0.245 0 0.095 -0.08 0 0.095" size="0.035" mass="0.03" rgba="0.95 0.56 0.18 1"/>
+           <body name="leg-rl-abductor" pos="-0.20 0.14 0">
+             <joint name="abd-rl" axis="1 0 0" range="-0.65 0.65"/>
+             <geom type="sphere" size="0.035" mass="0.08" rgba="0.35 0.75 0.9 1"/>
+diff --git a/before/robots/quadruped-waist-3dof/robot.json b/after/robots/quadruped-waist-3dof/robot.json
+index e04cf05..52faa2e 100644
+--- a/before/robots/quadruped-waist-3dof/robot.json
++++ b/after/robots/quadruped-waist-3dof/robot.json
+@@ -1,24 +1,77 @@
+ {
+   "version": 1,
+   "id": "quadruped-waist-3dof",
+-  "name": "Fourteen-actuator split-torso spatial quadruped",
++  "name": "Fourteen-actuator split-torso quadruped with segmented rollover keel",
+   "mjcf": "model.xml",
+   "mounts": [
+-    { "id": "torso-sensor", "type": "sensor-bus", "site": "imu-site", "exclusive": false },
+-    { "id": "torso-payload", "type": "payload-bay", "site": "imu-site", "exclusive": true },
+-    { "id": "foot-array", "type": "foot-array", "site": "foot-array-site", "exclusive": true }
++    {
++      "id": "torso-sensor",
++      "type": "sensor-bus",
++      "site": "imu-site",
++      "exclusive": false
++    },
++    {
++      "id": "torso-payload",
++      "type": "payload-bay",
++      "site": "imu-site",
++      "exclusive": true
++    },
++    {
++      "id": "foot-array",
++      "type": "foot-array",
++      "site": "foot-array-site",
++      "exclusive": true
++    }
+   ],
+   "observations": [
+-    { "name": "joint-position", "kind": "joint-position", "size": 14, "source": "qpos:joints", "unit": "rad" },
+-    { "name": "joint-velocity", "kind": "joint-velocity", "size": 14, "source": "qvel:joints", "unit": "rad-s" },
+-    { "name": "base-height", "kind": "body-state", "size": 1, "source": "qpos:root-height", "unit": "m" },
+-    { "name": "base-orientation", "kind": "body-state", "size": 4, "source": "qpos:root-quaternion", "unit": "quaternion" },
+-    { "name": "base-velocity", "kind": "body-state", "size": 6, "source": "qvel:root", "unit": "mixed" }
++    {
++      "name": "joint-position",
++      "kind": "joint-position",
++      "size": 14,
++      "source": "qpos:joints",
++      "unit": "rad"
++    },
++    {
++      "name": "joint-velocity",
++      "kind": "joint-velocity",
++      "size": 14,
++      "source": "qvel:joints",
++      "unit": "rad-s"
++    },
++    {
++      "name": "base-height",
++      "kind": "body-state",
++      "size": 1,
++      "source": "qpos:root-height",
++      "unit": "m"
++    },
++    {
++      "name": "base-orientation",
++      "kind": "body-state",
++      "size": 4,
++      "source": "qpos:root-quaternion",
++      "unit": "quaternion"
++    },
++    {
++      "name": "base-velocity",
++      "kind": "body-state",
++      "size": 6,
++      "source": "qvel:root",
++      "unit": "mixed"
++    }
+   ],
+   "actions": [
+-    { "name": "joint-torque", "kind": "actuator", "size": 14, "source": "actuator:all", "unit": "nm", "low": -8, "high": 8 }
++    {
++      "name": "joint-torque",
++      "kind": "actuator",
++      "size": 14,
++      "source": "actuator:all",
++      "unit": "nm",
++      "low": -8,
++      "high": 8
++    }
+   ],
+-  "massKg": 6.12,
++  "massKg": 6.18,
+   "license": "Apache-2.0",
+-  "attribution": "Original two-axis articulated quadruped model created for Mujica"
++  "attribution": "Original two-axis articulated quadruped and segmented dorsal rollover keel created for Mujica"
+ }

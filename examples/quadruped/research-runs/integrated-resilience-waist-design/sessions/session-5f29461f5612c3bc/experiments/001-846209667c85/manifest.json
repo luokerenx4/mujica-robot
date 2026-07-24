@@ -1,0 +1,61 @@
+{
+  "version": 4,
+  "id": "001-846209667c85",
+  "experimentHash": "846209667c8503ec9b4353047d6f1df6e5f6093eba59d0ea06510080d4063c0d",
+  "sequence": 1,
+  "sessionId": "session-5f29461f5612c3bc",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+  "programHash": "9885bf8b897b73f07ec338b5a33e730420ca58fad9b59a1c87d31a0f6e53b784",
+  "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "c8113755ac76b744813d5ba8e6e19e270336793461f525e16a915bfe6a0f7e32",
+  "researcherChangedPaths": [
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "changedPaths": [
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "proposal": {
+    "strategy": "waist-clearance-segmented-rollover-keel",
+    "hypothesis": "The first keel left the inverted basin but its two segments overlapped by 4–6 mm at the waist and injected forces during ordinary locomotion. Shortening both inner ends to leave a 90 mm surface gap and halving added mass should preserve the rollover support line without cross-waist contact.",
+    "expectedEffect": "Retain the first keel's lower final inverted tilt and higher torso clearance while eliminating keel-to-keel contact, ordinary-gait regressions, and new disallowed self-collision."
+  },
+  "policyId": null,
+  "score": -12.613642690925648,
+  "delta": 2.17455809271107,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: unsettled-yaw regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-left-degraded: disallowed-collision regressed from passing to failing",
+      "self-righting-morphology-v2: front: joint-limit-margin regressed from passing to failing",
+      "recovery-handoff: front-forward: joint-limit-margin regressed from passing to failing",
+      "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 41,
+    "candidateViolationCount": 41,
+    "previousViolationSeverity": 177.78128625413592,
+    "candidateViolationSeverity": 168.21978013264953,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": true,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "662b22cece2a2d38198b3004b01f03bd401b357679bbdac6757e78ddd3f7eada",
+    "acceptedRunId": "run-632b42a136e8bbb4",
+    "candidateRunId": "run-9e0a301e8ce2be00",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 58851,
+  "completed": true
+}

@@ -1,0 +1,66 @@
+{
+  "version": 4,
+  "id": "001-7681e15af6fc",
+  "experimentHash": "7681e15af6fcc281e5a229e3c580bab3b8602e89bec8645767b0ff7404bfef66",
+  "sequence": 1,
+  "sessionId": "session-aa40ce3d6c3a7642",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+  "programHash": "5ecd04136e0adbac6c0d63e7120be756c7469d2592ebe86dc632db619583ddd8",
+  "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "86efc69b2a7dff2b039e7bf0a6dfc6958ecf7d89fb37874492cb7ad1183d68ca",
+  "researcherChangedPaths": [
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "changedPaths": [
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json"
+  ],
+  "proposal": {
+    "strategy": "low-profile-waist-clearance-rollover-keel",
+    "hypothesis": "The waist-clearance keel improved primary score by 2.17 and severity by 9.56 without ordinary command-tracking regressions, but its 130 mm outer height perturbed exact yaw and atomic recovery boundaries. A 100 mm outer profile with 40 g total mass should retain a narrow inverted support line while reducing recovery impulse and joint-limit disturbance.",
+    "expectedEffect": "Preserve all previously passing Mission and regression gates while retaining a measurable reduction in inverted tilt, normalized violation severity, or aggregate Mission score."
+  },
+  "policyId": null,
+  "score": -17.853654998281893,
+  "delta": -3.0654542146451753,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: disallowed-collision regressed from passing to failing",
+      "impact-right-exact: disallowed-collision regressed from passing to failing",
+      "impact-left-degraded: forward-progress regressed from passing to failing",
+      "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-left-degraded: backward-displacement regressed from passing to failing",
+      "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+      "impact-left-degraded: disallowed-collision regressed from passing to failing",
+      "impact-right-degraded: forward-progress regressed from passing to failing",
+      "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+      "impact-right-degraded: backward-displacement regressed from passing to failing",
+      "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+      "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 41,
+    "candidateViolationCount": 46,
+    "previousViolationSeverity": 177.78128625413592,
+    "candidateViolationSeverity": 186.41507374904626,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "a42e48bb239bcbf55c0721f634455e32b7e9cd8724b5affe2faeedd77dd9b0d0",
+    "acceptedRunId": "run-632b42a136e8bbb4",
+    "candidateRunId": "run-0445f8ce8fbc7ecc",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 56415,
+  "completed": true
+}

@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-waist-design",
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "5ecd04136e0adbac6c0d63e7120be756c7469d2592ebe86dc632db619583ddd8",
+    "benchmarkLockHash": "2f894533380661e066aba475bfc954c11287977d2014ee893c66318963a7e4b4",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-aa40ce3d6c3a7642",
+    "experimentId": "001-7681e15af6fc",
+    "experimentHash": "7681e15af6fcc281e5a229e3c580bab3b8602e89bec8645767b0ff7404bfef66"
+  },
+  "proposal": {
+    "strategy": "low-profile-waist-clearance-rollover-keel",
+    "hypothesis": "The waist-clearance keel improved primary score by 2.17 and severity by 9.56 without ordinary command-tracking regressions, but its 130 mm outer height perturbed exact yaw and atomic recovery boundaries. A 100 mm outer profile with 40 g total mass should retain a narrow inverted support line while reducing recovery impulse and joint-limit disturbance.",
+    "expectedEffect": "Preserve all previously passing Mission and regression gates while retaining a measurable reduction in inverted tilt, normalized violation severity, or aggregate Mission score."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: disallowed-collision regressed from passing to failing",
+        "impact-right-exact: disallowed-collision regressed from passing to failing",
+        "impact-left-degraded: forward-progress regressed from passing to failing",
+        "impact-left-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: yaw-overshoot regressed from passing to failing",
+        "impact-left-degraded: disallowed-collision regressed from passing to failing",
+        "impact-right-degraded: forward-progress regressed from passing to failing",
+        "impact-right-degraded: signed-forward-progress regressed from passing to failing",
+        "impact-right-degraded: backward-displacement regressed from passing to failing",
+        "recovery-handoff: back-forward: forward-progress regressed from passing to failing",
+        "recovery-handoff: back-forward: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 41,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 177.78128625413592,
+      "candidateViolationSeverity": 186.41507374904626,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "4c331d3bfdee2023738a29af60ec853b891370d93332a614cb4c3f5474221a24"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: disallowed-collision regressed from passing to failing",
+    "candidateScoreDelta": 0.46058491650657274,
+    "weightedScoreDelta": 0.46058491650657274
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-632b42a136e8bbb4",
+    "runKey": "632b42a136e8bbb49ed24a67f71de99a73a9fcf77cdbb810d86598baf2b456cd",
+    "resultHash": "a671f36762d0382b66379c164259c1a87545344998950cc24782e90a3d11d47b",
+    "artifactHash": "2c5cbf0abaa255694eb1b83916fbd68218d5f40e592f2124a7ba0af11fe21d05",
+    "manifestHash": "875780d8763815a09593e7a5782ab2225ff833d62d3ce42b74feee77ccd256d1",
+    "metricsHash": "e5f8e979324ef822b7031658a2b5dd05f46e83a8e66ba6981748a00105958786",
+    "scoreHash": "4dd63f7c9e2d977ce946adcee52907fc6a5adae6b3342117ace031ff5ac41e8e",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -18.594686017340308
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-0445f8ce8fbc7ecc",
+    "runKey": "0445f8ce8fbc7ecc9f8fe7dfa85114cdc336c823cbc469e136bb121ab4a8078a",
+    "resultHash": "70715aec629d5a7e8cf9fc88049bbe5eacdcfea9e57456990e25f0ee39a680d4",
+    "artifactHash": "c2a5bbb8987937e1318512df3f811fa20b68d4df98f58c91eea37a96879fe7c5",
+    "manifestHash": "37e0044f79addff24250fa316db35de19ac969e6957b0b06fa1bd8162d1ae008",
+    "metricsHash": "f7d352d7fc9c288c1fae85ccdf91768fb9b32486c2dd8a45d0ca09a435a6e301",
+    "scoreHash": "724ab3aeeb9e1dd5f82d632ae67d9fc6dfd17ab2aeced4887ec7ca4556d84cb2",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -18.134101100833735
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

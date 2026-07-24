@@ -350,6 +350,41 @@ dynamic basin boundary. The next useful intervention should change the
 post-retry contact sequence or learn a tightly gated retry residual, not scan
 more waist amplitudes without a new causal hypothesis.
 
+## Cross-session morphology result
+
+Four governed complete-design experiments then tested whether a segmented
+dorsal rollover keel could create a reachable contact basin. All four were
+judged on the same complete no-reset Mission Suite and all were reverted:
+
+- an overlapping two-segment keel did leave the inverted basin, but its
+  capsules contacted around the waist and raised violations `41 → 46`;
+- the clearance-corrected `0.13 m` profile kept violations at `41`, improved
+  severity `177.781 → 168.220`, and improved score by `2.175`, but never made
+  a foot reachable and regressed exact/degraded yaw, collision, and atomic
+  recovery boundaries;
+- a lower `0.10 m` profile was non-monotonically worse at `46` violations and
+  `-3.065` score delta;
+- restoring the better geometry while raising sagittal recovery damping and
+  reducing retry waist magnitude improved score by `2.926`, but raised
+  violations `41 → 44` and retained unsafe front/back recovery boundaries.
+
+The rigid selected robot and the previously kept articulated branch therefore
+remain unchanged. The useful conclusion is structural rather than promotional:
+a narrow dorsal support can escape the `π`-tilt rest basin, but this centered
+keel family cannot both create foot support and preserve Mission safety. The
+next morphology family must alter lateral bracing/contact pairing or leg reach,
+not continue scalar keel sweeps.
+
+Research Lab V2 now supplies every Agent with a bounded, deterministic history
+of completed experiments across Sessions. Each entry carries Lab, Program, and
+Benchmark-lock comparability flags; numerical score comparisons are valid only
+under the same Benchmark lock, while old causal failures remain useful
+hypotheses after a Harness relock. The exact compact history and its hash are
+stored with each experiment. An Agent may return JSON `null` without changing
+source to mark a bounded hypothesis family exhausted. This prevents an
+auto-research loop from silently repeating reverted geometry whenever a new
+Session is opened.
+
 ## HCI
 
 Studio renders a `Continuous Mission · one Episode, no reset` panel above the
