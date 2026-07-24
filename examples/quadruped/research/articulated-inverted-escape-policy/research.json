@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "id": "articulated-inverted-escape-policy",
+  "name": "Continuous-Mission articulated inverted-escape code and RL research",
+  "program": "research/articulated-inverted-escape-policy/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting-morphology-v2",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "articulated-inverted-escape",
+    "controller": "articulated-inverted-escape-policy",
+    "referenceController": "articulated-behavior-supervisor",
+    "seed": 260725
+  },
+  "editable": {
+    "paths": [
+      "trainers/articulated-inverted-escape-residual-ppo/**",
+      "training/articulated-inverted-escape.training.json",
+      "controllers/articulated-inverted-escape-policy/controller.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 900,
+    "maximumTrainingSteps": 65536
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "policy-revision"
+}

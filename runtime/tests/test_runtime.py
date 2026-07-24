@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
-from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, transform_policy_action
+from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
@@ -276,12 +276,43 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(first[0].shape, (1, 12)); self.assertEqual(first[1].shape, (1,)); self.assertEqual(first[2].shape, (1, 12))
         torch.testing.assert_close(first[0], second[0]); torch.testing.assert_close(first[1], second[1])
     def test_training_residual_scale_is_frozen_into_the_effective_transform(self):
-        base = {"kind": "spatial-gait-residual", "residualScale": 1.0}
+        base = {
+            "kind": "spatial-gait-residual",
+            "residualScale": 1.0,
+            "residualScaleByAction": [0.1, 0.2],
+        }
         effective = effective_action_transform(base, {"residualScale": 0.25})
         self.assertEqual(effective["residualScale"], 0.25)
+        self.assertNotIn("residualScaleByAction", effective)
         self.assertEqual(base["residualScale"], 1.0)
+        self.assertIn("residualScaleByAction", base)
         with self.assertRaisesRegex(RuntimeError, "requires a Trainer action transform"):
             effective_action_transform(None, {"residualScale": 0.25})
+
+    def test_program_residual_authority_can_be_budgeted_per_actuator(self):
+        np.testing.assert_allclose(
+            program_residual_scale_vector({"residualScale": 0.25}, 3),
+            [0.25, 0.25, 0.25],
+        )
+        np.testing.assert_allclose(
+            program_residual_scale_vector(
+                {"residualScaleByAction": [0.1, 0.2, 2.0]},
+                3,
+            ),
+            [0.1, 0.2, 2.0],
+        )
+        for transform in (
+            {"residualScale": -0.1},
+            {"residualScaleByAction": [0.1, 0.2]},
+            {"residualScaleByAction": [0.1, float("nan"), 0.2]},
+            {"residualScaleByAction": [0.1, -0.2, 0.2]},
+            {"residualScaleByAction": [True, 0.2, 0.2]},
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "finite and nonnegative|exactly 3",
+            ):
+                program_residual_scale_vector(transform, 3)
 
     def test_program_residual_gate_fails_closed_and_ramps_inside_allowed_mode(self):
         class Prior:
@@ -436,7 +467,7 @@ class RuntimeContractTest(unittest.TestCase):
         }
         bonus, terms = recovery_reward_bonus(info, telemetry, weights, 0.08)
         self.assertAlmostEqual(bonus, 10.0)
-        self.assertEqual(terms, weights)
+        self.assertEqual(terms, {**weights, "tiltEscape": 0.0})
         self.assertEqual(recovery_reward_bonus(info, telemetry, weights, 0.0)[0], 0.0)
         self.assertEqual(
             recovery_reward_bonus(
@@ -460,6 +491,31 @@ class RuntimeContractTest(unittest.TestCase):
         )
         self.assertLess(unstable, bonus)
         self.assertLess(unstable_terms["stillness"], 0.2)
+        inverted, inverted_terms = recovery_reward_bonus(
+            info,
+            {**telemetry, "bodyTiltRad": np.pi, "supportFeet": 0},
+            {
+                **weights,
+                "tiltEscape": 8.0,
+                "stillnessMaximumTiltRad": 0.5,
+            },
+            1.0,
+        )
+        half_escaped, half_escaped_terms = recovery_reward_bonus(
+            info,
+            {**telemetry, "bodyTiltRad": np.pi / 2.0, "supportFeet": 0},
+            {
+                **weights,
+                "tiltEscape": 8.0,
+                "stillnessMaximumTiltRad": 0.5,
+            },
+            1.0,
+        )
+        self.assertEqual(inverted_terms["tiltEscape"], 0.0)
+        self.assertEqual(inverted_terms["stillness"], 0.0)
+        self.assertAlmostEqual(half_escaped_terms["tiltEscape"], 4.0)
+        self.assertEqual(half_escaped_terms["stillness"], 0.0)
+        self.assertGreater(half_escaped, inverted)
 
     def test_residual_policy_updates_ignore_steps_without_action_authority(self):
         advantages = np.asarray([100.0, 2.0, 4.0, -100.0], dtype=np.float32)

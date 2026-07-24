@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1dd7d6d0eca09ec1fa1d6ea1e76238485a802790d52e51f2babbbf58516b1b37",
+    "benchmarkLockHash": "393b1cd2116f9982b88cfe8c76b09d78d45e7d0d31b51349d9eef3de0722e0c1",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-4c552968f6cf0c63",
+    "experimentId": "001-71a89ae6fe16",
+    "experimentHash": "71a89ae6fe16f89d1318ee8c3f79ba1480beef107f71e0929ec1a743a78cedf1"
+  },
+  "proposal": {
+    "strategy": "single-contact-side-roll-consolidation",
+    "hypothesis": "The first learned escape residual recovered one Mission gate but its authority vanished on the first transient foot contact. Continuing the same bounded residual through at most one support foot and down to the observable side-roll region should let PPO consolidate contact before returning to the Program rise controller.",
+    "expectedEffect": "Preserve the 40-violation tier, reduce final tilt or stable-stand severity in degraded Missions, and introduce no static, handoff, tracking, transition, collision, or joint-limit regression."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: forward-progress regressed from passing to failing",
+        "impact-left-exact: signed-forward-progress regressed from passing to failing",
+        "reference-controller: impact-left-exact: forward-progress regressed from passing to failing",
+        "reference-controller: impact-left-exact: signed-forward-progress regressed from passing to failing"
+      ],
+      "previousViolationCount": 40,
+      "candidateViolationCount": 40,
+      "previousViolationSeverity": 178.67641034758614,
+      "candidateViolationSeverity": 179.90054223406165,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "6bcabbd8609b264a6e961996a8195131f1b94b0e0e7e25448db8614210aa458d"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: forward-progress regressed from passing to failing",
+    "candidateScoreDelta": -1.4467051373978883,
+    "weightedScoreDelta": -1.4467051373978883
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-669e4db338ca76fa",
+    "runKey": "669e4db338ca76fa5a0b1583bfd15e60413581ebeb2ab35f0552e22eb8b01646",
+    "resultHash": "bea1b93f33571c5d99b9da4427a03ca0932c9bc53954fc9b284ba88dc3ea5119",
+    "artifactHash": "ccb8f06554f5a30140d182644bd7e726291dc4fb2663989ccda637da1a1284f0",
+    "manifestHash": "6f85d6fe4c7bfa98d870cb5def595f65d2f86c8893ddc50d07db1f03393b37fe",
+    "metricsHash": "5c6d0e882c7b22ee91de2c7df6c2628c5770405933a6ba6abf341184908cccc9",
+    "scoreHash": "75fa56ec2bc2694abb169bf26fe34a6ec2321be8cdb80798e285f6df41e89a83",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -18.78074352967585
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-497739bebdb4a1a5",
+    "runKey": "497739bebdb4a1a59c8353d05d708da0815f24644f23ea39b65dee74d3de5fea",
+    "resultHash": "f4b5d7714b032a7921ef6454847e420c9be8d752c5bae0d25bbc1e60240022dc",
+    "artifactHash": "a598cdede93ee4871418c7eb43d8e51e9ff350ede2c6cd7ca2f4dfa0702557bf",
+    "manifestHash": "bb5b2f13b56307bec2f66e7b3a5831f074f9261d96eb08a15a1d50b9aa3f4152",
+    "metricsHash": "f11faad38b952725709bafb854245f20e1aa05b9eeafa575167bf84ba61b6578",
+    "scoreHash": "8599f7adb879b876b1dc7b9ed2ba905cfbfe87f712d2938a7f01b372a1b5a780",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -20.227448667073737
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

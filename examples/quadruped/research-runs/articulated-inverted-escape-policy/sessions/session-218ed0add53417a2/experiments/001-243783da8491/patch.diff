@@ -1,0 +1,87 @@
+diff --git a/before/controllers/articulated-inverted-escape-policy/controller.json b/after/controllers/articulated-inverted-escape-policy/controller.json
+index bc5c9e9..a905ad4 100644
+--- a/before/controllers/articulated-inverted-escape-policy/controller.json
++++ b/after/controllers/articulated-inverted-escape-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "articulated-inverted-escape-policy",
+   "name": "Frozen state-gated articulated inverted-escape residual",
+   "kind": "policy",
+-  "policy": "articulated-inverted-escape-64872c025769000b",
++  "policy": "articulated-inverted-escape-56094148266b39f9",
+   "deterministic": true
+ }
+diff --git a/before/trainers/articulated-inverted-escape-residual-ppo/trainer.py b/after/trainers/articulated-inverted-escape-residual-ppo/trainer.py
+index 93fd2b6..7e50e4e 100644
+--- a/before/trainers/articulated-inverted-escape-residual-ppo/trainer.py
++++ b/after/trainers/articulated-inverted-escape-residual-ppo/trainer.py
+@@ -4,10 +4,16 @@ from mujica_runtime.training import PPOTrainer
+ def create_trainer():
+     return PPOTrainer(
+         hidden_sizes=[64, 64],
+-        initial_log_std=-1.5,
++        initial_log_std=-1.2,
+         action_transform={
+             "kind": "program-controller-residual",
+-            "residualScale": 1.0,
++            "residualScaleByAction": [
++                0.15, 0.15, 0.15,
++                0.15, 0.15, 0.15,
++                0.15, 0.15, 0.15,
++                0.15, 0.15, 0.15,
++                2.0, 2.0,
++            ],
+             "residualGate": {
+                 "kind": "prior-telemetry-mode",
+                 "allowedModes": ["recovery"],
+@@ -22,6 +28,7 @@ def create_trainer():
+                     "recoveryRetryCount": 2,
+                     "baseHeightM": 0.16,
+                     "supportFeet": 0,
++                    "modeDwellSeconds": 6.0,
+                 },
+                 "rampSeconds": 0,
+             },
+diff --git a/before/training/articulated-inverted-escape.training.json b/after/training/articulated-inverted-escape.training.json
+index c62827c..e3261aa 100644
+--- a/before/training/articulated-inverted-escape.training.json
++++ b/after/training/articulated-inverted-escape.training.json
+@@ -16,33 +16,32 @@
+     {
+       "id": "continuous-inverted-escape",
+       "throughPhase": "recover",
+-      "untilStep": 16384,
++      "untilStep": 32768,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "complete-mission-exact-plants",
+       "throughPhase": "stop",
+-      "untilStep": 24576,
++      "untilStep": 49152,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "complete-mission-randomized-plants",
+       "throughPhase": "stop",
+-      "untilStep": 32768,
++      "untilStep": 65536,
+       "domainProfile": "quadruped-resilient-mission-v1"
+     }
+   ],
+   "promotionBenchmark": "integrated-resilience-mission",
+-  "totalSteps": 32768,
++  "totalSteps": 65536,
+   "rolloutSteps": 256,
+   "epochs": 4,
+   "minibatchSize": 64,
+-  "learningRate": 0.0001,
++  "learningRate": 0.00005,
+   "gamma": 0.995,
+   "gaeLambda": 0.97,
+   "clipRatio": 0.15,
+-  "entropyCoefficient": 0.001,
+-  "residualScale": 1.0,
++  "entropyCoefficient": 0.0005,
+   "residualPenalty": 0.02,
+   "qualityReward": {
+     "jointAcceleration": 0.0001,

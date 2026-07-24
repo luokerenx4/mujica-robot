@@ -1,0 +1,77 @@
+diff --git a/before/controllers/articulated-inverted-escape-policy/controller.json b/after/controllers/articulated-inverted-escape-policy/controller.json
+index bc5c9e9..f55e963 100644
+--- a/before/controllers/articulated-inverted-escape-policy/controller.json
++++ b/after/controllers/articulated-inverted-escape-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "articulated-inverted-escape-policy",
+   "name": "Frozen state-gated articulated inverted-escape residual",
+   "kind": "policy",
+-  "policy": "articulated-inverted-escape-64872c025769000b",
++  "policy": "articulated-inverted-escape-2044fe48e484208d",
+   "deterministic": true
+ }
+diff --git a/before/trainers/articulated-inverted-escape-residual-ppo/trainer.py b/after/trainers/articulated-inverted-escape-residual-ppo/trainer.py
+index 93fd2b6..9ff4ff4 100644
+--- a/before/trainers/articulated-inverted-escape-residual-ppo/trainer.py
++++ b/after/trainers/articulated-inverted-escape-residual-ppo/trainer.py
+@@ -16,12 +16,12 @@ def create_trainer():
+                 },
+                 "minimumTelemetry": {
+                     "recoveryRetryCount": 1,
+-                    "bodyTiltRad": 2.6,
++                    "bodyTiltRad": 1.2,
+                 },
+                 "maximumTelemetry": {
+                     "recoveryRetryCount": 2,
+-                    "baseHeightM": 0.16,
+-                    "supportFeet": 0,
++                    "baseHeightM": 0.25,
++                    "supportFeet": 1,
+                 },
+                 "rampSeconds": 0,
+             },
+diff --git a/before/training/articulated-inverted-escape.training.json b/after/training/articulated-inverted-escape.training.json
+index c62827c..76ef0e7 100644
+--- a/before/training/articulated-inverted-escape.training.json
++++ b/after/training/articulated-inverted-escape.training.json
+@@ -16,33 +16,33 @@
+     {
+       "id": "continuous-inverted-escape",
+       "throughPhase": "recover",
+-      "untilStep": 16384,
++      "untilStep": 32768,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "complete-mission-exact-plants",
+       "throughPhase": "stop",
+-      "untilStep": 24576,
++      "untilStep": 49152,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "complete-mission-randomized-plants",
+       "throughPhase": "stop",
+-      "untilStep": 32768,
++      "untilStep": 65536,
+       "domainProfile": "quadruped-resilient-mission-v1"
+     }
+   ],
+   "promotionBenchmark": "integrated-resilience-mission",
+-  "totalSteps": 32768,
++  "totalSteps": 65536,
+   "rolloutSteps": 256,
+   "epochs": 4,
+   "minibatchSize": 64,
+-  "learningRate": 0.0001,
++  "learningRate": 0.00005,
+   "gamma": 0.995,
+   "gaeLambda": 0.97,
+   "clipRatio": 0.15,
+-  "entropyCoefficient": 0.001,
+-  "residualScale": 1.0,
++  "entropyCoefficient": 0.0005,
++  "residualScale": 1,
+   "residualPenalty": 0.02,
+   "qualityReward": {
+     "jointAcceleration": 0.0001,

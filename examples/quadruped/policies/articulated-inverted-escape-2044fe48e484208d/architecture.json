@@ -1,0 +1,36 @@
+{
+  "kind": "mlp-actor-critic",
+  "observationSize": 53,
+  "actionSize": 14,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScale": 1.0,
+    "residualGate": {
+      "kind": "prior-telemetry-mode",
+      "allowedModes": [
+        "recovery"
+      ],
+      "requiredTelemetry": {
+        "dynamicRecovery": true
+      },
+      "minimumTelemetry": {
+        "recoveryRetryCount": 1,
+        "bodyTiltRad": 1.2
+      },
+      "maximumTelemetry": {
+        "recoveryRetryCount": 2,
+        "baseHeightM": 0.25,
+        "supportFeet": 1
+      },
+      "rampSeconds": 0
+    },
+    "controllerId": "articulated-behavior-supervisor",
+    "controllerHash": "a9fb6bedcc7c0f28c82bff2da426ea575a2863624129c055bfd1e33337076340"
+  }
+}

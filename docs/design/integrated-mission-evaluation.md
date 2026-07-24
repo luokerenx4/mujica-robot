@@ -326,6 +326,14 @@ self-righting, recovery-handoff, and command-tracking regression preserved its
 previous state. This is an intermediate branch improvement, published as
 Robot Revision `quadruped-r-b1f06e0ffbc8`; it is not a North-Star pass.
 
+The subsequent articulated residual experiments demonstrate why the complete
+Mission remains the authority boundary. A learned retry policy could improve
+one degraded impact while harming exact-case yaw, and more training never made
+a foot reachable from the fully inverted state. Mujica therefore preserves
+the Policies and traces as negative evidence but routes the blocker back to
+the complete-design lane. ML may optimize a reachable recovery basin; it must
+not hide a structural contact-geometry failure behind local reward.
+
 That KEEP also exposed and verified a Harness correction. Development Labs now
 publish the exact Lab-judged evidence rather than asking the legacy Candidate
 selector to issue a conflicting second verdict. Publication re-evaluates the

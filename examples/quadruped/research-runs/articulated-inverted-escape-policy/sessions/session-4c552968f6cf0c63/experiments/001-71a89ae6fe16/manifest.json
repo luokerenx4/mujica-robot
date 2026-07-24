@@ -1,0 +1,59 @@
+{
+  "version": 4,
+  "id": "001-71a89ae6fe16",
+  "experimentHash": "71a89ae6fe16f89d1318ee8c3f79ba1480beef107f71e0929ec1a743a78cedf1",
+  "sequence": 1,
+  "sessionId": "session-4c552968f6cf0c63",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1dd7d6d0eca09ec1fa1d6ea1e76238485a802790d52e51f2babbbf58516b1b37",
+  "benchmarkLockHash": "393b1cd2116f9982b88cfe8c76b09d78d45e7d0d31b51349d9eef3de0722e0c1",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "5e8e1cd8e609bf6d6b49b8e986859d69aa1a41512a607ae3da5629fdf061180f",
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "single-contact-side-roll-consolidation",
+    "hypothesis": "The first learned escape residual recovered one Mission gate but its authority vanished on the first transient foot contact. Continuing the same bounded residual through at most one support foot and down to the observable side-roll region should let PPO consolidate contact before returning to the Program rise controller.",
+    "expectedEffect": "Preserve the 40-violation tier, reduce final tilt or stable-stand severity in degraded Missions, and introduce no static, handoff, tracking, transition, collision, or joint-limit regression."
+  },
+  "policyId": "articulated-inverted-escape-2044fe48e484208d",
+  "score": -15.768963987729224,
+  "delta": -1.0679806027804748,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: forward-progress regressed from passing to failing",
+      "impact-left-exact: signed-forward-progress regressed from passing to failing",
+      "reference-controller: impact-left-exact: forward-progress regressed from passing to failing",
+      "reference-controller: impact-left-exact: signed-forward-progress regressed from passing to failing"
+    ],
+    "previousViolationCount": 40,
+    "candidateViolationCount": 40,
+    "previousViolationSeverity": 178.67641034758614,
+    "candidateViolationSeverity": 179.90054223406165,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "9f89400abbebb3b33e09df63fb38cf8e95af1b6a4f75614b97b81b8a5d318a62",
+    "acceptedRunId": "run-669e4db338ca76fa",
+    "candidateRunId": "run-497739bebdb4a1a5",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 156463,
+  "completed": true
+}

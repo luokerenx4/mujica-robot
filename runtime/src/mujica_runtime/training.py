@@ -13,7 +13,7 @@ import mujoco
 import numpy as np
 import torch
 
-from .controllers import Controller, PolicyNetwork, create_policy_network, load_program_controller, load_python_module, program_residual_gate_scale, transform_policy_action
+from .controllers import Controller, PolicyNetwork, create_policy_network, load_program_controller, load_python_module, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
 from .environment import RobotEnvironment
 from .io import atomic_directory, hardware_info, hash_file, hash_json, write_json
 
@@ -110,7 +110,13 @@ def recovery_reward_bonus(
     weights: dict[str, Any] | None,
     actor_authority: float,
 ) -> tuple[float, dict[str, float]]:
-    terms = {"upright": 0.0, "height": 0.0, "stillness": 0.0, "support": 0.0}
+    terms = {
+        "upright": 0.0,
+        "height": 0.0,
+        "stillness": 0.0,
+        "support": 0.0,
+        "tiltEscape": 0.0,
+    }
     if (
         not weights
         or actor_authority <= 0.0
@@ -140,17 +146,24 @@ def recovery_reward_bonus(
     terms["upright"] = float(weights.get("upright", 0.0)) * float(
         np.exp(-8.0 * tilt * tilt)
     )
+    terms["tiltEscape"] = float(weights.get("tiltEscape", 0.0)) * float(
+        np.clip((np.pi - tilt) / np.pi, 0.0, 1.0)
+    )
     terms["height"] = float(weights.get("height", 0.0)) * float(
         np.clip((height - 0.05) / (0.32 - 0.05), 0.0, 1.0)
     )
-    terms["stillness"] = float(weights.get("stillness", 0.0)) * float(
-        1.0
-        / (
-            1.0
-            + 2.0 * linear_speed * linear_speed
-            + 2.0 * angular_speed * angular_speed
-        )
+    stillness_maximum_tilt = float(
+        weights.get("stillnessMaximumTiltRad", np.pi)
     )
+    if tilt <= stillness_maximum_tilt:
+        terms["stillness"] = float(weights.get("stillness", 0.0)) * float(
+            1.0
+            / (
+                1.0
+                + 2.0 * linear_speed * linear_speed
+                + 2.0 * angular_speed * angular_speed
+            )
+        )
     terms["support"] = float(weights.get("support", 0.0)) * float(
         np.clip(support_feet / 4.0, 0.0, 1.0)
     )
@@ -202,6 +215,7 @@ def effective_action_transform(base: dict[str, Any] | None, config: dict[str, An
         if transform is None:
             raise RuntimeError("Training residualScale requires a Trainer action transform")
         transform["residualScale"] = float(config["residualScale"])
+        transform.pop("residualScaleByAction", None)
     return transform
 
 
@@ -361,6 +375,12 @@ class PPOTrainer:
             program_prior.reset(seed + episode_index)
         observation_map = environment.reset(); observation = environment.vector(observation_map)
         observation_size = observation.size; action_size = environment.model.nu
+        residual_scale_vector = (
+            program_residual_scale_vector(action_transform, action_size)
+            if action_transform
+            and action_transform.get("kind") == "program-controller-residual"
+            else None
+        )
         architecture: dict[str, Any] = {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal"}
         if self.history_encoder:
             offsets: dict[str, int] = {}; offset = 0
@@ -390,7 +410,7 @@ class PPOTrainer:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability")}
-            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support")}
+            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
@@ -417,7 +437,7 @@ class PPOTrainer:
                     transformed = (
                         prior_action
                         + residual_gate_scale
-                        * float(action_transform.get("residualScale", 1.0))
+                        * residual_scale_vector
                         * raw_action
                     )
                     batch_residual_gate_scales.append(residual_gate_scale)
@@ -431,7 +451,11 @@ class PPOTrainer:
                 action = np.clip(transformed, lows, highs)
                 result = environment.step(action)
                 quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
-                actor_authority = float(batch_policy_masks[-1]) * float((action_transform or {}).get("residualScale", 1.0))
+                actor_authority = float(batch_policy_masks[-1]) * (
+                    float(np.max(residual_scale_vector))
+                    if residual_scale_vector is not None
+                    else 1.0
+                )
                 mission_bonus, mission_terms = mission_reward_bonus(result.info, config.get("missionReward"), actor_authority)
                 recovery_bonus, recovery_terms = recovery_reward_bonus(
                     result.info,

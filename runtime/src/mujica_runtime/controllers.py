@@ -219,6 +219,40 @@ def program_residual_gate_scale(
     return float(np.clip(dwell_seconds / ramp_seconds, 0.0, 1.0))
 
 
+def program_residual_scale_vector(
+    transform: dict[str, Any],
+    action_size: int,
+) -> np.ndarray:
+    """Resolve a scalar or per-actuator residual authority envelope."""
+    per_action = transform.get("residualScaleByAction")
+    if per_action is None:
+        raw_scale = transform.get("residualScale", 1.0)
+        if (
+            isinstance(raw_scale, bool)
+            or not isinstance(raw_scale, (int, float))
+            or not np.isfinite(float(raw_scale))
+            or float(raw_scale) < 0.0
+        ):
+            raise RuntimeError("Program residualScale must be finite and nonnegative")
+        return np.full(action_size, float(raw_scale), dtype=np.float64)
+    if not isinstance(per_action, list) or len(per_action) != action_size:
+        raise RuntimeError(
+            f"Program residualScaleByAction must contain exactly {action_size} values"
+        )
+    scale = np.asarray(per_action)
+    if (
+        any(isinstance(value, bool) for value in per_action)
+        or
+        scale.dtype.kind not in ("i", "u", "f")
+        or not np.all(np.isfinite(scale))
+        or np.any(scale < 0.0)
+    ):
+        raise RuntimeError(
+            "Program residualScaleByAction values must be finite and nonnegative"
+        )
+    return scale.astype(np.float64)
+
+
 @dataclass
 class FrozenPolicyController:
     network: PolicyNetwork
@@ -257,7 +291,10 @@ class FrozenPolicyController:
             action = (
                 prior_action
                 + self.last_residual_gate_scale
-                * float(self.action_transform.get("residualScale", 1.0))
+                * program_residual_scale_vector(
+                    self.action_transform,
+                    raw_action.numel(),
+                )
                 * raw_action.numpy()
             )
         else:
