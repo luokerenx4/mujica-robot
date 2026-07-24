@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "id": "integrated-resilience-waist-design",
+  "name": "Complete-Mission articulated-waist co-design",
+  "program": "research/integrated-resilience-waist-design/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting-morphology-v2",
+    "recovery-handoff",
+    "command-tracking"
+  ],
+  "execution": {
+    "kind": "development",
+    "candidate": "integrated-resilience-waist-design"
+  },
+  "editable": {
+    "paths": [
+      "assemblies/resilient-command-conditioned-waist-3dof.robot.json",
+      "components/waist-actuator-delay-state/**",
+      "robots/quadruped-waist-3dof/**",
+      "controllers/articulated-behavior-supervisor/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 900
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "robot-revision"
+}

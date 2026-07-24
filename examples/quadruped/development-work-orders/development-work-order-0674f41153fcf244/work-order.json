@@ -1,0 +1,1251 @@
+{
+  "version": 1,
+  "kind": "mujica-development-work-order",
+  "project": "quadruped",
+  "charterHash": "94fbdf5fa1e7c8bed087c118d54d17fbb241772fc124a9816d5447d0b949fc2b",
+  "review": {
+    "id": "development-review-2e53d6a28a665eb5",
+    "hash": "2e53d6a28a665eb593ebb63ae018932c874838779224c21849990f7a292e9738"
+  },
+  "subject": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "assemblyHash": "b3ebe11b4d05040e754b939c6a1fb00edbf210778da98521b5eae39ce08875ab",
+    "controller": "behavior-supervisor",
+    "controllerHash": "1fd2d7da9fee0d7516c01e4f6c9f70dba5c589dd440ac84554bddbaf3ec1c2d3",
+    "controllerKind": "program"
+  },
+  "status": "READY",
+  "blockers": [
+    {
+      "rank": 1,
+      "benchmark": "integrated-resilience-mission",
+      "case": "impact-right-degraded",
+      "severity": 29.543835596420525,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.05,
+          "margin": -0.05,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": -0.09730032080116215,
+          "threshold": 0.05,
+          "margin": -0.14730032080116215,
+          "severity": 2.9460064160232426,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "yaw-overshoot",
+          "metric": "maximumYawRateOvershootRadPerSec",
+          "comparator": "<=",
+          "value": 1.008203804015522,
+          "threshold": 1,
+          "margin": -0.008203804015521898,
+          "severity": 0.008203804015521898,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 3,
+          "threshold": 0,
+          "margin": -3,
+          "severity": 3,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "self-righting",
+          "metric": "selfRightingSuccess",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 1,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "stable-stand-time",
+          "metric": "timeToStableStandSeconds",
+          "comparator": "<=",
+          "value": 15.3,
+          "threshold": 5.5,
+          "margin": -9.8,
+          "severity": 9.8,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "stable-standing-dwell",
+          "metric": "stableStandingDwellSeconds",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.5,
+          "margin": -0.5,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "final-body-tilt",
+          "metric": "finalBodyTiltRad",
+          "comparator": "<=",
+          "value": 3.0702526353824426,
+          "threshold": 0.5,
+          "margin": -2.5702526353824426,
+          "severity": 5.140505270764885,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "final-base-height",
+          "metric": "finalBaseHeightM",
+          "comparator": ">=",
+          "value": 0.06881249231543105,
+          "threshold": 0.28,
+          "margin": -0.21118750768456898,
+          "severity": 0.7542410988734606,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "joint-limit-margin",
+          "metric": "minimumJointLimitMarginRad",
+          "comparator": ">=",
+          "value": -0.07785313569042387,
+          "threshold": 0.02,
+          "margin": -0.09785313569042388,
+          "severity": 4.8926567845211935,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "disallowed-collision",
+          "metric": "disallowedCollisionSteps",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 0.0022222222222222222,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect yaw response after the exact boundary and test bounded steering damping against current measured yaw rate.",
+          "rationale": "The measured yaw transient ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the frozen resting pose, recovery-target entry/exit events, and contact sequence; test a bounded pose-conditioned recovery state machine before changing the scenario.",
+          "rationale": "The robot did not reach and hold the shared stable-standing target within the locked time envelope."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "assembly",
+          "description": "Compare rigid and articulated reachable recovery workspaces under the same controller authority and locked resting pose.",
+          "rationale": "A recovery failure may be a morphology reachability limit rather than a controller gain problem."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "assembly",
+          "description": "Inspect joint-limit and self-contact frames, then change geometry, joint range, or recovery sequencing only inside an explicit complete-design lane.",
+          "rationale": "The attempted recovery used structurally unsafe configurations."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "integrated-resilience-mission",
+        "--scenario",
+        "mission-impact-right-degraded",
+        "--objective",
+        "integrated-resilience-mission",
+        "--seed",
+        "7204"
+      ]
+    },
+    {
+      "rank": 2,
+      "benchmark": "integrated-resilience-mission",
+      "case": "impact-left-degraded",
+      "severity": 23.24435077649431,
+      "violations": [
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 2,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-yaw",
+          "metric": "unsettledYawRateTransitionCount",
+          "comparator": "<=",
+          "value": 1,
+          "threshold": 0,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "self-righting",
+          "metric": "selfRightingSuccess",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 1,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "stable-stand-time",
+          "metric": "timeToStableStandSeconds",
+          "comparator": "<=",
+          "value": 15.3,
+          "threshold": 5.5,
+          "margin": -9.8,
+          "severity": 9.8,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "stable-standing-dwell",
+          "metric": "stableStandingDwellSeconds",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.5,
+          "margin": -0.5,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "final-body-tilt",
+          "metric": "finalBodyTiltRad",
+          "comparator": "<=",
+          "value": 3.106749117959656,
+          "threshold": 0.5,
+          "margin": -2.606749117959656,
+          "severity": 5.213498235919312,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "final-base-height",
+          "metric": "finalBaseHeightM",
+          "comparator": ">=",
+          "value": 0.06506934123441076,
+          "threshold": 0.28,
+          "margin": -0.21493065876558926,
+          "severity": 0.7676094955913901,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "joint-limit-margin",
+          "metric": "minimumJointLimitMarginRad",
+          "comparator": ">=",
+          "value": -0.029220416455227688,
+          "threshold": 0.02,
+          "margin": -0.04922041645522769,
+          "severity": 2.4610208227613843,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "disallowed-collision",
+          "metric": "disallowedCollisionSteps",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 0.0022222222222222222,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect yaw response after the exact boundary and test bounded steering damping against current measured yaw rate.",
+          "rationale": "The measured yaw transient ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the frozen resting pose, recovery-target entry/exit events, and contact sequence; test a bounded pose-conditioned recovery state machine before changing the scenario.",
+          "rationale": "The robot did not reach and hold the shared stable-standing target within the locked time envelope."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "assembly",
+          "description": "Compare rigid and articulated reachable recovery workspaces under the same controller authority and locked resting pose.",
+          "rationale": "A recovery failure may be a morphology reachability limit rather than a controller gain problem."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "assembly",
+          "description": "Inspect joint-limit and self-contact frames, then change geometry, joint range, or recovery sequencing only inside an explicit complete-design lane.",
+          "rationale": "The attempted recovery used structurally unsafe configurations."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "integrated-resilience-mission",
+        "--scenario",
+        "mission-impact-left-degraded",
+        "--objective",
+        "integrated-resilience-mission",
+        "--seed",
+        "7203"
+      ]
+    },
+    {
+      "rank": 3,
+      "benchmark": "sim-to-real-audit",
+      "case": "heavy-weak",
+      "severity": 15.620878823049752,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.2,
+          "margin": -0.2,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": -0.6346609529794203,
+          "threshold": 0.2,
+          "margin": -0.8346609529794202,
+          "severity": 4.173304764897101,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "backward-displacement",
+          "metric": "backwardDisplacement",
+          "comparator": "<=",
+          "value": 0.7933261912242753,
+          "threshold": 0.02,
+          "margin": -0.7733261912242753,
+          "severity": 7.733261912242752,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "pitch-angle",
+          "metric": "maximumAbsolutePitchRad",
+          "comparator": "<=",
+          "value": 0.8655369457188862,
+          "threshold": 0.6,
+          "margin": -0.2655369457188862,
+          "severity": 0.5310738914377724,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "body-tilt",
+          "metric": "maximumBodyTiltRad",
+          "comparator": "<=",
+          "value": 0.8669008682397373,
+          "threshold": 0.65,
+          "margin": -0.2169008682397373,
+          "severity": 0.4338017364794746,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "lateral-drift",
+          "metric": "lateralDrift",
+          "comparator": "<=",
+          "value": 0.43688539345764715,
+          "threshold": 0.25,
+          "margin": -0.18688539345764715,
+          "severity": 0.7475415738305886,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-velocity-tracking",
+          "metric": "planarVelocityTrackingError",
+          "comparator": "<=",
+          "value": 0.41801829177277305,
+          "threshold": 0.22,
+          "margin": -0.19801829177277305,
+          "severity": 0.9000831444216957,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "yaw-rate-tracking",
+          "metric": "yawRateTrackingError",
+          "comparator": "<=",
+          "value": 0.385634129909128,
+          "threshold": 0.35,
+          "margin": -0.03563412990912801,
+          "severity": 0.10181179974036575,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect signed pitch and yaw-invariant body tilt, then test bounded front/rear posture or foot-placement feedback before increasing gait authority.",
+          "rationale": "Backward pitch, body pitch angle/rate, or quaternion-derived torso tilt exceeded the locked stability envelope."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Test delay-aware lateral-state feedback or foot-placement recovery without changing the fixed disturbance.",
+          "rationale": "Measured lateral displacement exceeded the locked gate while the Controller owns the current recovery response."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.",
+          "rationale": "The measured planar velocity error exceeded the locked command-tracking gate."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Test a bounded left-right or front-rear steering differential against measured body yaw rate.",
+          "rationale": "The measured yaw-rate error exceeded the locked command-tracking gate."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "heldout-heavy-weak",
+        "--objective",
+        "upright-locomotion",
+        "--seed",
+        "2711"
+      ]
+    },
+    {
+      "rank": 4,
+      "benchmark": "sim-to-real-audit",
+      "case": "light-strong",
+      "severity": 7.190891841910056,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.2,
+          "margin": -0.2,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": -0.28173958661301485,
+          "threshold": 0.2,
+          "margin": -0.48173958661301486,
+          "severity": 2.408697933065074,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "backward-displacement",
+          "metric": "backwardDisplacement",
+          "comparator": "<=",
+          "value": 0.35217448326626855,
+          "threshold": 0.02,
+          "margin": -0.3321744832662685,
+          "severity": 3.3217448326626853,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "planar-velocity-tracking",
+          "metric": "planarVelocityTrackingError",
+          "comparator": "<=",
+          "value": 0.3212987967601052,
+          "threshold": 0.22,
+          "margin": -0.1012987967601052,
+          "severity": 0.46044907618229636,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare the commanded direction and speed with gait amplitude, phase, and planar feedback before changing the Task.",
+          "rationale": "The measured planar velocity error exceeded the locked command-tracking gate."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "heldout-light-strong",
+        "--objective",
+        "upright-locomotion",
+        "--seed",
+        "2712"
+      ]
+    },
+    {
+      "rank": 5,
+      "benchmark": "command-transitions",
+      "case": "delayed-braking",
+      "severity": 4.568454902294375,
+      "violations": [
+        {
+          "id": "survival",
+          "metric": "survivalRate",
+          "comparator": ">=",
+          "value": 0.41846153846153844,
+          "threshold": 0.8,
+          "margin": -0.3815384615384616,
+          "severity": 0.476923076923077,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "transition-terminal-planar",
+          "metric": "maximumTransitionTerminalPlanarTrackingError",
+          "comparator": "<=",
+          "value": 0.5228829563428244,
+          "threshold": 0.25,
+          "margin": -0.27288295634282445,
+          "severity": 1.0915318253712978,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 2,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-yaw",
+          "metric": "unsettledYawRateTransitionCount",
+          "comparator": "<=",
+          "value": 1,
+          "threshold": 0,
+          "margin": -1,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the fall event and pre-fall trajectory before changing task performance terms.",
+          "rationale": "The measured survival gate failed; stability is prerequisite evidence."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect yaw response after the exact boundary and test bounded steering damping against current measured yaw rate.",
+          "rationale": "The measured yaw transient ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-reverse-stop",
+        "--scenario",
+        "actuator-delay-three-step",
+        "--objective",
+        "command-transitions",
+        "--seed",
+        "1205"
+      ]
+    },
+    {
+      "rank": 6,
+      "benchmark": "integrated-resilience-mission",
+      "case": "impact-right-exact",
+      "severity": 3.3105283921565447,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0.017236790196086385,
+          "threshold": 0.05,
+          "margin": -0.03276320980391362,
+          "severity": 0.6552641960782724,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": 0.017236790196086385,
+          "threshold": 0.05,
+          "margin": -0.03276320980391362,
+          "severity": 0.6552641960782724,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 2,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "integrated-resilience-mission",
+        "--scenario",
+        "mission-impact-right",
+        "--objective",
+        "integrated-resilience-mission",
+        "--seed",
+        "7202"
+      ]
+    },
+    {
+      "rank": 7,
+      "benchmark": "integrated-resilience-mission",
+      "case": "impact-left-exact",
+      "severity": 3.0949152802844653,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0.02262711799288837,
+          "threshold": 0.05,
+          "margin": -0.027372882007111632,
+          "severity": 0.5474576401422326,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "signed-forward-progress",
+          "metric": "signedForwardProgress",
+          "comparator": ">=",
+          "value": 0.02262711799288837,
+          "threshold": 0.05,
+          "margin": -0.027372882007111632,
+          "severity": 0.5474576401422326,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "unsettled-planar",
+          "metric": "unsettledPlanarTransitionCount",
+          "comparator": "<=",
+          "value": 2,
+          "threshold": 0,
+          "margin": -2,
+          "severity": 2,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect command-boundary rows and test bounded planar braking or command-rate state without previewing the schedule.",
+          "rationale": "The measured planar transient response ended too far from target, settled too slowly, failed to remain settled, or overshot the new command."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "integrated-resilience-mission",
+        "--scenario",
+        "mission-impact-left",
+        "--objective",
+        "integrated-resilience-mission",
+        "--seed",
+        "7201"
+      ]
+    },
+    {
+      "rank": 8,
+      "benchmark": "spatial-robustness",
+      "case": "actuator-delay",
+      "severity": 1,
+      "violations": [
+        {
+          "id": "forward-progress",
+          "metric": "forwardProgress",
+          "comparator": ">=",
+          "value": 0,
+          "threshold": 0.25,
+          "margin": -0.25,
+          "severity": 1,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect target-direction displacement and test gait timing, traction authority, or measured slip recovery on this fixed case.",
+          "rationale": "Survival alone did not produce the required signed target-direction progress or the robot moved backward beyond the locked allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "actuator-delay",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "606"
+      ]
+    },
+    {
+      "rank": 9,
+      "benchmark": "command-tracking",
+      "case": "delayed-forward",
+      "severity": 0.8378131110618958,
+      "violations": [
+        {
+          "id": "survival",
+          "metric": "survivalRate",
+          "comparator": ">=",
+          "value": 0.472,
+          "threshold": 0.8,
+          "margin": -0.32800000000000007,
+          "severity": 0.4100000000000001,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -14.278131110618958,
+          "threshold": -10,
+          "margin": -4.278131110618958,
+          "severity": 0.4278131110618958,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the fall event and pre-fall trajectory before changing task performance terms.",
+          "rationale": "The measured survival gate failed; stability is prerequisite evidence."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "actuator-delay-three-step",
+        "--objective",
+        "command-tracking",
+        "--seed",
+        "1106"
+      ]
+    },
+    {
+      "rank": 10,
+      "benchmark": "spatial-robustness",
+      "case": "payload",
+      "severity": 0.3688382032482269,
+      "violations": [
+        {
+          "id": "survival",
+          "metric": "survivalRate",
+          "comparator": ">=",
+          "value": 0.632,
+          "threshold": 0.8,
+          "margin": -0.16800000000000004,
+          "severity": 0.21000000000000005,
+          "enforced": true,
+          "passed": false
+        },
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -23.176764064964537,
+          "threshold": -20,
+          "margin": -3.1767640649645372,
+          "severity": 0.15883820324822687,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Inspect the fall event and pre-fall trajectory before changing task performance terms.",
+          "rationale": "The measured survival gate failed; stability is prerequisite evidence."
+        },
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "payload-variation",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "505"
+      ]
+    },
+    {
+      "rank": 11,
+      "benchmark": "spatial-robustness",
+      "case": "low-friction",
+      "severity": 0.32624561275343,
+      "violations": [
+        {
+          "id": "score-regression",
+          "metric": "scoreDelta",
+          "comparator": ">=",
+          "value": -26.5249122550686,
+          "threshold": -20,
+          "margin": -6.5249122550686,
+          "severity": 0.32624561275343,
+          "enforced": true,
+          "passed": false
+        }
+      ],
+      "hypotheses": [
+        {
+          "kind": "hypothesis",
+          "surface": "controller",
+          "description": "Compare score terms and preserve the regressed fixed-case behavior before pursuing aggregate gains.",
+          "rationale": "The case regressed beyond the locked baseline allowance."
+        }
+      ],
+      "reproduceArgv": [
+        "simulate",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor",
+        "--task",
+        "forward-walk",
+        "--scenario",
+        "low-friction",
+        "--objective",
+        "spatial-locomotion",
+        "--seed",
+        "404"
+      ]
+    }
+  ],
+  "lanes": [
+    {
+      "id": "complete-design-integrated-resilience-waist-design",
+      "kind": "complete-design",
+      "researchLab": "integrated-resilience-waist-design",
+      "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+      "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+      "primaryBenchmark": "integrated-resilience-mission",
+      "blockerCases": [
+        "impact-right-degraded",
+        "impact-left-degraded",
+        "impact-right-exact",
+        "impact-left-exact"
+      ],
+      "regressions": [
+        "self-righting-morphology-v2",
+        "recovery-handoff",
+        "command-tracking"
+      ],
+      "subject": {
+        "assembly": "resilient-command-conditioned-waist-3dof",
+        "controller": "articulated-behavior-supervisor",
+        "candidate": "integrated-resilience-waist-design"
+      },
+      "editablePaths": [
+        "assemblies/resilient-command-conditioned-waist-3dof.robot.json",
+        "components/waist-actuator-delay-state/**",
+        "robots/quadruped-waist-3dof/**",
+        "controllers/articulated-behavior-supervisor/**"
+      ],
+      "budget": {
+        "maxExperiments": 4,
+        "maxWallClockSeconds": 900
+      },
+      "promotion": "robot-revision",
+      "runArgv": [
+        "research",
+        "run",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--lab",
+        "integrated-resilience-waist-design",
+        "--iterations",
+        "1",
+        "--agent-command",
+        "<agent-command>"
+      ],
+      "reviewArgv": [
+        "project",
+        "review",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-waist-3dof",
+        "--controller",
+        "articulated-behavior-supervisor"
+      ]
+    },
+    {
+      "id": "controller-code-integrated-resilience-controller",
+      "kind": "controller-code",
+      "researchLab": "integrated-resilience-controller",
+      "labHash": "a1d3d4cac2824d0f96dc2c3140e16a33a8adab0d98d4c8d8cbb5c4b1decfae59",
+      "programHash": "92d3f5e4714353ad030caa26fdac20ca82e376538fc1e3c51742b9903f858cd7",
+      "primaryBenchmark": "integrated-resilience-mission",
+      "blockerCases": [
+        "impact-right-degraded",
+        "impact-left-degraded",
+        "impact-right-exact",
+        "impact-left-exact"
+      ],
+      "regressions": [
+        "self-righting",
+        "recovery-handoff",
+        "command-tracking",
+        "command-transitions"
+      ],
+      "subject": {
+        "assembly": "resilient-command-conditioned-history-3dof",
+        "controller": "behavior-supervisor"
+      },
+      "editablePaths": [
+        "controllers/behavior-supervisor/**"
+      ],
+      "budget": {
+        "maxExperiments": 4,
+        "maxWallClockSeconds": 480
+      },
+      "promotion": "robot-revision",
+      "runArgv": [
+        "research",
+        "run",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--lab",
+        "integrated-resilience-controller",
+        "--iterations",
+        "1",
+        "--agent-command",
+        "<agent-command>"
+      ],
+      "reviewArgv": [
+        "project",
+        "review",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "behavior-supervisor"
+      ]
+    },
+    {
+      "id": "rl-policy-integrated-recovery-hybrid-policy",
+      "kind": "rl-policy",
+      "researchLab": "integrated-recovery-hybrid-policy",
+      "labHash": "bc3e63112be312ff99449c6e54906c4624ef478e9ebb4a08774561a2aad1d022",
+      "programHash": "cbd2292ad1a7137a90ba7bf77a444e6493bef431aa38294cdfbf47f78775a952",
+      "primaryBenchmark": "integrated-resilience-mission",
+      "blockerCases": [
+        "impact-right-degraded",
+        "impact-left-degraded",
+        "impact-right-exact",
+        "impact-left-exact"
+      ],
+      "regressions": [
+        "self-righting",
+        "recovery-handoff",
+        "command-tracking",
+        "command-transitions"
+      ],
+      "subject": {
+        "assembly": "resilient-command-conditioned-history-3dof",
+        "controller": "integrated-recovery-hybrid-policy",
+        "training": "integrated-recovery-hybrid"
+      },
+      "editablePaths": [
+        "controllers/behavior-supervisor/recovery.py",
+        "controllers/behavior-supervisor/controller.json",
+        "trainers/recovery-settle-residual-ppo/**",
+        "training/integrated-recovery-hybrid.training.json",
+        "controllers/integrated-recovery-hybrid-policy/controller.json"
+      ],
+      "budget": {
+        "maxExperiments": 4,
+        "maxWallClockSeconds": 900,
+        "maximumTrainingSteps": 131072
+      },
+      "promotion": "policy-revision",
+      "runArgv": [
+        "research",
+        "run",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--lab",
+        "integrated-recovery-hybrid-policy",
+        "--iterations",
+        "1",
+        "--agent-command",
+        "<agent-command>"
+      ],
+      "reviewArgv": [
+        "project",
+        "review",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "integrated-recovery-hybrid-policy"
+      ]
+    },
+    {
+      "id": "rl-policy-integrated-resilience-policy",
+      "kind": "rl-policy",
+      "researchLab": "integrated-resilience-policy",
+      "labHash": "4f68aef28c30563c1a34697d089b1c2e8432a7eaa2bd95316a5e96b4b760ea1c",
+      "programHash": "ec2f0c90e5f8d4e94eccd1f238578a9174577015e2acef7cf806c11952ed45bb",
+      "primaryBenchmark": "integrated-resilience-mission",
+      "blockerCases": [
+        "impact-right-degraded",
+        "impact-left-degraded",
+        "impact-right-exact",
+        "impact-left-exact"
+      ],
+      "regressions": [
+        "self-righting",
+        "recovery-handoff",
+        "command-tracking",
+        "command-transitions"
+      ],
+      "subject": {
+        "assembly": "resilient-command-conditioned-history-3dof",
+        "controller": "integrated-resilience-curriculum-policy",
+        "training": "integrated-resilience-curriculum"
+      },
+      "editablePaths": [
+        "trainers/resilient-residual-ppo/**",
+        "training/integrated-resilience-curriculum.training.json",
+        "controllers/integrated-resilience-curriculum-policy/controller.json",
+        "domain-profiles/quadruped-resilient-mission-v1.domain.json"
+      ],
+      "budget": {
+        "maxExperiments": 4,
+        "maxWallClockSeconds": 600,
+        "maximumTrainingSteps": 32768
+      },
+      "promotion": "policy-revision",
+      "runArgv": [
+        "research",
+        "run",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--lab",
+        "integrated-resilience-policy",
+        "--iterations",
+        "1",
+        "--agent-command",
+        "<agent-command>"
+      ],
+      "reviewArgv": [
+        "project",
+        "review",
+        "/Users/ame/Documents/2607toydev/mujica/examples/quadruped",
+        "--assembly",
+        "resilient-command-conditioned-history-3dof",
+        "--controller",
+        "integrated-resilience-curriculum-policy"
+      ]
+    }
+  ],
+  "uncoveredSurfaces": [],
+  "authorityBoundary": {
+    "prioritization": "derived",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed",
+    "northStarClaim": "new-development-review-required"
+  }
+}

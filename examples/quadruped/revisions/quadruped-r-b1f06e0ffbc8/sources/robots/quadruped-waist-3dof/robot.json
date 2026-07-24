@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "quadruped-waist-3dof",
+  "name": "Fourteen-actuator split-torso spatial quadruped",
+  "mjcf": "model.xml",
+  "mounts": [
+    { "id": "torso-sensor", "type": "sensor-bus", "site": "imu-site", "exclusive": false },
+    { "id": "torso-payload", "type": "payload-bay", "site": "imu-site", "exclusive": true },
+    { "id": "foot-array", "type": "foot-array", "site": "foot-array-site", "exclusive": true }
+  ],
+  "observations": [
+    { "name": "joint-position", "kind": "joint-position", "size": 14, "source": "qpos:joints", "unit": "rad" },
+    { "name": "joint-velocity", "kind": "joint-velocity", "size": 14, "source": "qvel:joints", "unit": "rad-s" },
+    { "name": "base-height", "kind": "body-state", "size": 1, "source": "qpos:root-height", "unit": "m" },
+    { "name": "base-orientation", "kind": "body-state", "size": 4, "source": "qpos:root-quaternion", "unit": "quaternion" },
+    { "name": "base-velocity", "kind": "body-state", "size": 6, "source": "qvel:root", "unit": "mixed" }
+  ],
+  "actions": [
+    { "name": "joint-torque", "kind": "actuator", "size": 14, "source": "actuator:all", "unit": "nm", "low": -8, "high": 8 }
+  ],
+  "massKg": 6.12,
+  "license": "Apache-2.0",
+  "attribution": "Original two-axis articulated quadruped model created for Mujica"
+}

@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "id": "integrated-resilience-waist-design",
+  "name": "Test a two-axis waist and explicit observation-budget trade on the complete resilience Mission",
+  "kind": "development",
+  "benchmark": "integrated-resilience-mission",
+  "baseRevision": null,
+  "baseline": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "proposed": {
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": ["waist-actuator-delay-state"]
+    },
+    "observations": {
+      "added": [],
+      "removed": [
+        "command-action-history",
+        "applied-action-history"
+      ],
+      "changed": [
+        "joint-position",
+        "joint-velocity"
+      ]
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": ["joint-torque"]
+    },
+    "controller": {
+      "from": "behavior-supervisor",
+      "to": "articulated-behavior-supervisor",
+      "files": [
+        "controllers/articulated-behavior-supervisor/controller.json",
+        "controllers/articulated-behavior-supervisor/controller.py",
+        "controllers/articulated-behavior-supervisor/locomotion.py",
+        "controllers/articulated-behavior-supervisor/recovery.py"
+      ]
+    },
+    "trainer": null,
+    "policy": null
+  },
+  "allowedChanges": [
+    "assemblies/resilient-command-conditioned-waist-3dof.robot.json",
+    "components/waist-actuator-delay-state/component.json",
+    "components/waist-actuator-delay-state/model.xml",
+    "robots/quadruped-waist-3dof/robot.json",
+    "robots/quadruped-waist-3dof/model.xml",
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/controller.py",
+    "controllers/articulated-behavior-supervisor/locomotion.py",
+    "controllers/articulated-behavior-supervisor/recovery.py"
+  ],
+  "fixedInputs": [
+    "benchmarks/integrated-resilience-mission.benchmark.json",
+    "benchmarks/integrated-resilience-mission.lock.json",
+    "objectives/integrated-resilience-mission.objective.json",
+    "tasks/integrated-resilience-mission.task.json",
+    "scenarios/mission-impact-left.scenario.json",
+    "scenarios/mission-impact-right.scenario.json",
+    "scenarios/mission-impact-left-degraded.scenario.json",
+    "scenarios/mission-impact-right-degraded.scenario.json"
+  ],
+  "hypothesis": "A bounded roll/pitch waist can improve the disturbed recovery basin and preserve post-recovery command execution when its extra actions are paid for by removing raw action history and retaining only explicit measured delay state.",
+  "expectedEffect": "Pass more locked no-reset Mission gates than the rigid baseline while remaining within 6.5 kg, 14 actions, 145 observations, and the existing contact/cost envelope; otherwise retain the simpler rigid torso."
+}

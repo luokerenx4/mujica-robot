@@ -227,6 +227,13 @@ async function researchLabDefinitions(root: string): Promise<Array<Record<string
   return values;
 }
 
+export function sortResearchSessionsChronologically<T extends Record<string, any>>(sessions: T[]): T[] {
+  return sessions.sort((left, right) =>
+    String(left.startedAt ?? "").localeCompare(String(right.startedAt ?? ""))
+    || String(left.id ?? "").localeCompare(String(right.id ?? "")),
+  );
+}
+
 async function researchSessions(root: string): Promise<Array<Record<string, any>>> {
   if (!(await exists(root))) return [];
   const labs = await readdir(root, { withFileTypes: true }); const values: Array<Record<string, any>> = [];
@@ -261,7 +268,7 @@ async function researchSessions(root: string): Promise<Array<Record<string, any>
       values.push({ ...manifest, experiments });
     }
   }
-  return values;
+  return sortResearchSessionsChronologically(values);
 }
 
 async function sampledNdjson(path: string, maximum: number): Promise<{ rows: unknown[]; total: number; stride: number }> {
@@ -988,7 +995,7 @@ function candidateCard(c){
   return '<div class="row"><code>'+esc(c.id)+'</code> <span class="tag">'+esc(c.kind)+'</span><br><span class="muted">'+esc(c.baseline.assembly)+'/'+esc(c.baseline.controller)+' → '+esc(c.proposed.assembly)+'/'+esc(c.proposed.controller)+'</span>'
     +'<br><strong>Design burden</strong><br><span class="muted">'+esc(burden)+'</span>'
     +(c.hypothesis?'<br><strong>Hypothesis</strong><br><span class="muted">'+esc(c.hypothesis)+'</span>':'')
-    +(latest?'<br><strong>Latest governed design evidence</strong> <span class="tag" style="color:'+(latestStatus==='KEEP'?'var(--a)':latestStatus==='REVERT'?'var(--b)':'var(--bad)')+'">'+esc(latestStatus)+'</span><br><span class="muted"><code>'+esc(latest.id)+'</code> · '+latest.iterationsCompleted+'/'+latest.iterationsRequested+' experiments · score '+Number(latest.initialScore).toFixed(4)+' → '+Number(latest.finalScore).toFixed(4)+' · reviews '+esc(latest.reviewCount??0)+'</span>':'')
+    +(latest?'<br><strong>Latest governed Lab evidence</strong> <span class="tag" style="color:'+(latestStatus==='KEEP'?'var(--a)':latestStatus==='REVERT'?'var(--b)':'var(--bad)')+'">'+esc(latestStatus)+'</span><br><span class="muted"><code>'+esc(latest.id)+'</code> · '+latest.iterationsCompleted+'/'+latest.iterationsRequested+' experiments · score '+Number(latest.initialScore).toFixed(4)+' → '+Number(latest.finalScore).toFixed(4)+' · reviews '+esc(latest.reviewCount??0)+'<br>KEEP advances this Lab branch; the Charter Review remains the whole-robot acceptance authority.</span>':'')
     +'</div>';
 }
 q('#candidates').innerHTML=S.candidates.map(candidateCard).join('');

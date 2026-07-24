@@ -1,0 +1,376 @@
+{
+  "version": 1,
+  "id": "articulated-behavior-supervisor",
+  "name": "Hysteretic locomotion and articulated-waist recovery supervisor",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {
+        "name": "joint-position",
+        "size": 14
+      },
+      {
+        "name": "joint-velocity",
+        "size": 14
+      },
+      {
+        "name": "base-height",
+        "size": 1
+      },
+      {
+        "name": "base-velocity",
+        "size": 6
+      },
+      {
+        "name": "base-orientation",
+        "size": 4
+      },
+      {
+        "name": "imu-angular-velocity",
+        "size": 3
+      },
+      {
+        "name": "foot-contact-force",
+        "size": 4
+      },
+      {
+        "name": "actuator-delay-steps",
+        "size": 1
+      },
+      {
+        "name": "motion-command",
+        "size": 3
+      }
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 14,
+        "low": -8,
+        "high": 8
+      }
+    ]
+  },
+  "config": {
+    "waist": {
+      "neutralTargetRad": [
+        0,
+        0
+      ],
+      "kp": 18,
+      "kd": 3,
+      "maximumAbsoluteAction": 8
+    },
+    "supervisor": {
+      "enterRecoveryTiltRad": 0.85,
+      "enterRecoveryLowHeightM": 0.2,
+      "enterRecoveryStreakSteps": 5,
+      "enterDynamicSideRecoveryUpComponent": 0.6,
+      "enterDynamicSideRecoveryMinimumTiltRad": 0.8,
+      "enterDynamicSideRecoveryMaximumHeightM": 0.5,
+      "enterDynamicSideRecoveryStreakSteps": 1,
+      "enterDynamicSagittalRecoveryUpComponent": 0.65,
+      "enterDynamicSagittalRecoveryMinimumTiltRad": 0.8,
+      "enterDynamicSagittalRecoveryMaximumHeightM": 0.35,
+      "enterDynamicSagittalRecoveryStreakSteps": 1,
+      "minimumRecoveryTargetSteps": 25,
+      "minimumDynamicRecoveryTargetSteps": 1,
+      "handoffBlendSeconds": 2,
+      "postRecoveryGaitByPose": {
+        "front": {
+          "hipAmplitude": 0.14,
+          "kneeAmplitude": 0.048
+        },
+        "back": {
+          "hipAmplitude": 0.14,
+          "kneeAmplitude": 0.048
+        },
+        "left": {
+          "hipAmplitude": 0.14,
+          "kneeAmplitude": 0.048
+        },
+        "right": {
+          "hipAmplitude": 0.14,
+          "kneeAmplitude": 0.048
+        }
+      },
+      "missionCommandDeadband": 0.02
+    },
+    "locomotion": {
+      "kpAbduction": 16.82265,
+      "kdAbduction": 3.27295,
+      "kpSagittal": 30.53877,
+      "kdSagittal": 2.16306,
+      "frequencyHz": 1.01295,
+      "nominalForwardSpeedMps": 0.25,
+      "nominalLateralSpeedMps": 0.12,
+      "nominalYawRateRadPerSec": 0.5,
+      "commandDeadband": 0.02,
+      "forceWorldFrameTracking": false,
+      "planarCommandRateLimitMps2": 100,
+      "yawCommandRateLimitRadPerSec2": 100,
+      "delayedCommandRateScale": 0.75,
+      "transitionDelayTwoPhaseLeadSeconds": 0.1,
+      "transitionDelayThreePhaseLeadSeconds": 0.125,
+      "delayedStopRateLimitMps2": 0.15,
+      "transitionForwardVelocityGain": 0.3,
+      "delayedTransitionForwardVelocityGain": 0.1,
+      "tractionRecoveryAssessmentSeconds": 1.5,
+      "tractionRecoveryProgressDeficitM": 0.18,
+      "tractionRecoveryHipScale": 2,
+      "tractionRecoverySevereBackwardPitchRad": 0.15,
+      "tractionRecoverySevereHipScale": 1.74,
+      "delayedTractionMinimumDelaySteps": 3,
+      "delayedTractionContactAssessmentSeconds": 0.1,
+      "delayedTractionInitialContactMeanN": 10,
+      "delayedTractionPostContactLossMeanN": 2,
+      "delayedTractionTransitionReleaseSeconds": 0.15,
+      "delayedTractionTransitionForwardVelocityGain": 0.3,
+      "delayedTractionBrakingForwardVelocityGain": 0.5,
+      "delayedTractionTransitionYawDampingGain": 0.1,
+      "delayedTractionRecoveryHipScale": 1.8,
+      "delayedTractionRecoveryRampSeconds": 0.05,
+      "startupRampSecondsByDelaySteps": [
+        0,
+        0,
+        0.8,
+        0
+      ],
+      "delayedTractionRecoveryPhaseLeadSeconds": 0,
+      "delayedTractionRecoveryFrequencyScale": 1,
+      "delayedTractionKpSagittalScale": 1,
+      "delayedTractionKdSagittalScale": 1.5,
+      "delayedTractionLateralVelocityGain": 0,
+      "delayedTractionLateralPositionGain": 0.049,
+      "transitionLateralVelocityGain": 0.3,
+      "transitionYawRateGain": -0.2,
+      "transitionYawDampingGain": 0.2,
+      "forwardVelocityGain": 0,
+      "lateralVelocityGain": 0,
+      "commandLateralVelocityGain": -0.1,
+      "crossTrackPositionGain": 0.6,
+      "crossTrackVelocityGain": 0.4,
+      "yawRateCommandGain": 0,
+      "reverseHipScale": 0.5,
+      "lateralAbductionAmplitude": 0.08,
+      "lateralCommandLean": 0.1,
+      "delayedLateralCommandLean": 0.05,
+      "yawAbductionDifferential": 0.12,
+      "yawAbductionBias": 0,
+      "yawHipDifferential": 1.3,
+      "yawPhaseDifferential": 0.3,
+      "negativeYawAbductionDifferential": 0.12,
+      "negativeYawAbductionBias": -0.02,
+      "negativeYawHipDifferential": -1.6,
+      "negativeYawPhaseDifferential": 0.3,
+      "phaseLeadByDelaySteps": [
+        0.12,
+        0.0075,
+        0.02,
+        0.225
+      ],
+      "disturbancePhaseLeadSeconds": 0.01,
+      "transitionDisturbancePhaseLeadSeconds": 0.1,
+      "disturbanceRollRateThreshold": 1,
+      "rollLateralVelocityGain": 0,
+      "lateralPositionGain": 0,
+      "maximumRollCorrection": 0.16,
+      "statePredictionSeconds": 0.01973,
+      "neutralAbduction": 0.19944,
+      "neutralHip": 0.3409,
+      "neutralKnee": -0.36902,
+      "hipAmplitude": 0.16,
+      "kneeAmplitude": 0.05614,
+      "frontRearPhase": 3.141592653589793,
+      "contactGain": 0.02,
+      "rollPositionGain": 0.31249,
+      "rollRateGain": 0.12693,
+      "pitchPositionGain": 0.22,
+      "pitchRateGain": 0.028,
+      "maximumPitchCorrection": 0.09
+    },
+    "recovery": {
+      "uprightTiltRad": 0.35,
+      "kpAbduction": 22,
+      "kdAbduction": 2.8,
+      "kdAbductionByPose": {
+        "front": 2.8,
+        "back": 2.8,
+        "left": 3.5,
+        "right": 3.5,
+        "upright": 2.8
+      },
+      "kpSagittal": 32,
+      "kdSagittal": 2.4,
+      "kpWaist": 18,
+      "kdWaist": 3,
+      "maximumWaistTargetRad": 0.62,
+      "waistImpulseTargetByPose": {
+        "front": [
+          0,
+          0.1
+        ],
+        "back": [
+          0,
+          -0.1
+        ],
+        "left": [
+          0.1,
+          0
+        ],
+        "right": [
+          -0.1,
+          0
+        ],
+        "upright": [
+          0,
+          0
+        ]
+      },
+      "waistCaptureTargetByPose": {
+        "front": [
+          0,
+          -0.034999999999999996
+        ],
+        "back": [
+          0,
+          0.034999999999999996
+        ],
+        "left": [
+          -0.034999999999999996,
+          0
+        ],
+        "right": [
+          0.034999999999999996,
+          0
+        ],
+        "upright": [
+          0,
+          0
+        ]
+      },
+      "dynamicEntryAngularSpeedThresholdRadPerSec": 1.5,
+      "dynamicRiseKdSagittal": 4,
+      "dynamicHoldActionBlend": 0.2,
+      "impulseSeconds": 0.8,
+      "captureUntilSeconds": 1.2,
+      "riseSecondsByPose": {
+        "front": 3,
+        "back": 3,
+        "left": 2,
+        "right": 2
+      },
+      "retryAfterSeconds": 2.2,
+      "maximumRetryAngularSpeedRadPerSec": 2.5,
+      "maximumRecoveryRetries": 2,
+      "dynamicRetryImpulseSeconds": 0.3,
+      "dynamicRetryCaptureUntilSeconds": 0.55,
+      "dynamicRetryRiseSecondsByPose": {
+        "front": 0.3,
+        "back": 0.3,
+        "left": 0.3,
+        "right": 0.3
+      },
+      "feedbackByPose": {
+        "front": {
+          "rollGain": 0.4,
+          "rollRateGain": 0.05,
+          "pitchGain": 1.5,
+          "pitchRateGain": 0.15
+        },
+        "back": {
+          "rollGain": 0.2,
+          "rollRateGain": 0.05,
+          "pitchGain": 1.5,
+          "pitchRateGain": 0.15
+        },
+        "left": {
+          "rollGain": 1.25,
+          "rollRateGain": 0.1,
+          "pitchGain": 2,
+          "pitchRateGain": 0.1
+        },
+        "right": {
+          "rollGain": 1.25,
+          "rollRateGain": 0.1,
+          "pitchGain": 2,
+          "pitchRateGain": 0.1
+        }
+      },
+      "frontImpulseTarget": [
+        0.1859914657052404,
+        0.409714795313582,
+        -0.005086982089814617,
+        0.5554240793552805,
+        -0.41762646308804025,
+        -0.7877352540657173
+      ],
+      "frontCaptureTarget": [
+        0.019854144309887172,
+        0.9389589841248264,
+        -0.0021052268442697418,
+        0.38473868960542756,
+        0.5139114900711059,
+        -0.7627263374051683
+      ],
+      "backImpulseTarget": [
+        0.092,
+        0.495,
+        -2.185,
+        0.624,
+        -0.989,
+        -0.161
+      ],
+      "backCaptureTarget": [
+        0.02,
+        -0.06,
+        -1.812,
+        0.014,
+        -0.36,
+        -1.405
+      ],
+      "leftImpulseTarget": [
+        0.551,
+        -0.109,
+        -0.03,
+        0.406,
+        -0.982,
+        -0.322
+      ],
+      "leftCaptureTarget": [
+        0.52528,
+        0.26,
+        -1.27,
+        -0.47334,
+        -0.701,
+        -0.523
+      ],
+      "standTarget": [
+        0.2,
+        0.34,
+        -0.45,
+        0.2,
+        0.34,
+        -0.45
+      ],
+      "maximumAbsoluteAbductionTargetRad": 0.6,
+      "maximumAbsoluteAbductionTargetRadByPose": {
+        "front": 0.6,
+        "back": 0.6,
+        "left": 0.58,
+        "right": 0.58,
+        "upright": 0.6
+      },
+      "maximumAbsoluteHipTargetRad": 1.15,
+      "minimumKneeTargetRad": -2.1,
+      "maximumKneeTargetRad": 0.05,
+      "minimumRecoveryHeightM": 0.32,
+      "maximumRecoveryTiltRad": 0.35,
+      "maximumRecoveryLinearSpeedMps": 0.2,
+      "maximumRecoveryAngularSpeedRadPerSec": 0.5,
+      "contactThresholdNewton": 1,
+      "minimumSupportFeet": 2
+    }
+  }
+}

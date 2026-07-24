@@ -102,6 +102,22 @@ Every candidate Training Run and Policy is published even on REVERT. A KEEP atom
 
 The staged Development Candidate may coordinate Assembly, Component, Observation/Action contract, Controller, Trainer, and Policy changes, but its `candidate.json` declaration and Lab editable closure must both authorize the diff. The normal Candidate compiler and semantic verifier judge the staged robot. Only a KEEP may publish the new Robot Revision.
 
+The compiler/verifier and the Lab Judge have different authority. The former
+proves that the declared morphology, ABI, source closure, Benchmark lock, and
+evaluation hashes are the ones actually tested. The latter makes the
+lexicographic KEEP/REVERT decision against the current accepted state of that
+Lab branch. Publication must not rerun the legacy all-gates-feasible Candidate
+selector as a second Judge: coupled robot development often needs several
+immutable, monotonically improving revisions before the branch reaches the
+North Star.
+
+A Development Lab KEEP is therefore branch-level acceptance, not a claim that
+the complete robot is ready. Its Robot Revision records `kind:
+research-lab-development`, the parent Revision, Lab/Experiment identity,
+before/after violation counts, selection reason, exact changed files, semantic
+contract changes, and the complete source closure. The executable Development
+Review and Charter remain the whole-robot acceptance authority.
+
 ## Isolation and transactions
 
 Each experiment receives a disposable copy of the robot project. Generated caches and prior mutable experiment directories are excluded; immutable Policies needed by the current Controller are included. Agent edits and all candidate execution happen in that copy.

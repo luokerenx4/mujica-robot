@@ -1,0 +1,55 @@
+{
+  "version": 4,
+  "id": "001-c77b034e46be",
+  "experimentHash": "c77b034e46bea2c9684c8dff7707cd497a62a44cd151e419c8e26270ffe5edc0",
+  "sequence": 1,
+  "sessionId": "session-29626346c24d3213",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+  "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+  "benchmarkLockHash": "7e31244fcb9bdd6483a672dd49f4f2caff919cad4b7f35579e3c94cf24dc9608",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "220ca870ef7be739c4bb8557971352e198f63bd939dd66120d97fc441efaa210",
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "dynamic-retry-parity-with-neutral-waist",
+    "hypothesis": "The first parity experiment improved severity but introduced self-collision during the initial dynamic impulse because articulated damping was changed before a pose retry existed. Keep the accepted initial dynamics, then enable reclassification, retry timing, and retry-only damping with a neutral waist.",
+    "expectedEffect": "Preserve zero disallowed collision steps before the retry while improving dynamic recovery severity, without changing static targets, waist moments, geometry, or locked inputs."
+  },
+  "policyId": null,
+  "score": -15.189916639944906,
+  "delta": -0.8960888299140439,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: unsettled-yaw regressed from passing to failing"
+    ],
+    "previousViolationCount": 44,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 186.04979183341183,
+    "candidateViolationSeverity": 182.25506722115077,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "3d47bdce44cb82fa9142e7812ad11608f88d014978b7ea94639d44c557a03866",
+    "acceptedRunId": "run-1360f4eaf4b68865",
+    "candidateRunId": "run-8d902644625ead8c",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 63708,
+  "completed": true
+}

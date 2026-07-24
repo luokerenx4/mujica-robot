@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "id": "quadruped-r-b1f06e0ffbc8",
+  "kind": "research-lab-development",
+  "parent": "quadruped-r-40206836cd00",
+  "researchId": "integrated-resilience-waist-design",
+  "experimentId": "001-140af53cae12",
+  "experimentHash": "140af53cae12e4f1ae0855041bb0520b3fb6ab635c6c33eb66f33f8eb22c6690",
+  "candidateId": "integrated-resilience-waist-design",
+  "candidateHash": "c1bea9e638a5498be02a511dd0f080097761263da778db00528cd49a6fb483fa",
+  "benchmarkId": "integrated-resilience-mission",
+  "benchmarkLockHash": "127e3a42c2a168f80a1a92a278f09e7be003f85f72c3031ba9ef3b535c9cbd60",
+  "assembly": "resilient-command-conditioned-waist-3dof",
+  "assemblyHash": "300d2d8db8a961096497fea6466bd14f319a578bd87bc8ec3c30db8e575e234f",
+  "componentHashes": {
+    "body-imu": "7e99cd0abe5a68f86e19306f03ede45db2e5b06eaee192f12cfcec42e216279f",
+    "actuator-history": "6f7232452a14840070e1176ee98b99524d122ee83effb6dedbe3fdc00ba1e6e6",
+    "motion-command-input": "11a370f3a32cdd5a9518180ccfcfeb306beb5b674e357f91a851353b2a846c46",
+    "foot-force-kit": "d7a3083ba2e1f1f498814db1ed14b62a036344d4a12448bb33cdecc20e0f8b8c"
+  },
+  "observationContractHash": "5010fc6acf4f3ce2c17141e582ff530c848a6b1ffdb01f963d535dcab7a2ba4d",
+  "actionContractHash": "fca26a6e3f7ce7961bbea86a50e5b47fb6b65c4798829905f93ddc71c862833e",
+  "controller": "articulated-behavior-supervisor",
+  "controllerHash": "a9fb6bedcc7c0f28c82bff2da426ea575a2863624129c055bfd1e33337076340",
+  "policyId": null,
+  "policyHash": null,
+  "verifiedChanges": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": [
+        "waist-actuator-delay-state"
+      ]
+    },
+    "observations": {
+      "added": [],
+      "removed": [
+        "applied-action-history",
+        "command-action-history"
+      ],
+      "changed": [
+        "joint-position",
+        "joint-velocity"
+      ]
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": [
+        "joint-torque"
+      ]
+    }
+  },
+  "aggregateScore": -14.788200783636718,
+  "scoreDelta": -0.49437297360585575,
+  "previousViolationCount": 44,
+  "candidateViolationCount": 41,
+  "selectionReason": "fewer-gate-violations",
+  "exactChangedFiles": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py"
+  ],
+  "sourceClosure": [
+    "assemblies/resilient-command-conditioned-waist-3dof.robot.json",
+    "benchmarks/command-tracking.benchmark.json",
+    "benchmarks/command-tracking.lock.json",
+    "benchmarks/integrated-resilience-mission.benchmark.json",
+    "benchmarks/integrated-resilience-mission.lock.json",
+    "benchmarks/recovery-handoff.benchmark.json",
+    "benchmarks/recovery-handoff.lock.json",
+    "benchmarks/self-righting-morphology-v2.benchmark.json",
+    "benchmarks/self-righting-morphology-v2.lock.json",
+    "candidates/integrated-resilience-waist-design/candidate.json",
+    "components/body-imu/component.json",
+    "components/body-imu/model.xml",
+    "components/foot-force-sensor/component.json",
+    "components/foot-force-sensor/model.xml",
+    "components/motion-command-input/component.json",
+    "components/motion-command-input/model.xml",
+    "components/waist-actuator-delay-state/component.json",
+    "components/waist-actuator-delay-state/model.xml",
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/controller.py",
+    "controllers/articulated-behavior-supervisor/locomotion.py",
+    "controllers/articulated-behavior-supervisor/recovery.py",
+    "objectives/command-tracking.objective.json",
+    "objectives/integrated-resilience-mission.objective.json",
+    "objectives/recovery-handoff.objective.json",
+    "objectives/self-righting.objective.json",
+    "research/integrated-resilience-waist-design/program.md",
+    "research/integrated-resilience-waist-design/research.json",
+    "robots/quadruped-waist-3dof/model.xml",
+    "robots/quadruped-waist-3dof/robot.json",
+    "scenarios/actuator-delay-three-step.scenario.json",
+    "scenarios/delayed-lateral-push.scenario.json",
+    "scenarios/fallen-back.scenario.json",
+    "scenarios/fallen-front.scenario.json",
+    "scenarios/fallen-left.scenario.json",
+    "scenarios/fallen-right.scenario.json",
+    "scenarios/mission-impact-left-degraded.scenario.json",
+    "scenarios/mission-impact-left.scenario.json",
+    "scenarios/mission-impact-right-degraded.scenario.json",
+    "scenarios/mission-impact-right.scenario.json",
+    "scenarios/nominal.scenario.json",
+    "tasks/forward-walk.task.json",
+    "tasks/integrated-resilience-mission.task.json",
+    "tasks/lateral-walk.task.json",
+    "tasks/recover-forward.task.json",
+    "tasks/reverse-walk.task.json",
+    "tasks/self-right.task.json",
+    "tasks/stand.task.json",
+    "tasks/yaw-left.task.json"
+  ],
+  "appliedAt": "2026-07-24T16:35:51.160Z"
+}

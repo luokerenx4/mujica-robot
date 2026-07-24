@@ -30,7 +30,7 @@ import {
   type ResearchBrief,
   type ResearchReview,
 } from "@mujica/core";
-import { candidateCommand, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons, simulateCommand, studioCommand } from "./commands";
+import { candidateCommand, controllerIdentity, evaluatePair, executeTraining, requireBenchmarkLock, researchDecision, researchGateReasons, simulateCommand, studioCommand } from "./commands";
 import { success, type Artifact } from "./contract";
 import { verifyHumanObservation } from "./evidence";
 
@@ -581,6 +581,111 @@ async function publishPolicyRevision(options: {
   return { id, path: target };
 }
 
+export function assertDevelopmentPromotionEvidence(options: {
+  decision: ResearchDecision;
+  expectedBenchmarkLockHash: string;
+  actualBenchmarkLockHash: string;
+  expectedResultHashes: string[];
+  actualResultHashes: string[];
+}): void {
+  if (options.decision.verdict !== "KEEP") throw new Error("Development Revision requires the locked Research Lab Judge to KEEP the experiment");
+  if (options.actualBenchmarkLockHash !== options.expectedBenchmarkLockHash) throw new Error("Development Revision Benchmark lock differs from the evaluated Research Lab experiment");
+  if (hashJson(options.actualResultHashes) !== hashJson(options.expectedResultHashes)) throw new Error("Development Revision results differ from the evaluated Research Lab experiment");
+}
+
+async function publishDevelopmentRevision(options: {
+  project: ProjectContext; lab: ResearchLabDefinition; benchmark: BenchmarkDefinition; lockHash: string; experimentId: string; experimentHash: string;
+  proposal: ResearchLabProposal; previous: Evaluation; candidate: Evaluation; decision: ResearchDecision; candidateEvidence: any; changedPaths: string[];
+}): Promise<{ id: string; path: string }> {
+  if (options.lab.execution.kind !== "development") throw new Error("Development Revision publisher received a non-development Lab");
+  const evidence = options.candidateEvidence;
+  assertDevelopmentPromotionEvidence({
+    decision: options.decision,
+    expectedBenchmarkLockHash: options.lockHash,
+    actualBenchmarkLockHash: String(evidence.benchmarkLockHash),
+    expectedResultHashes: options.candidate.cases.map((item) => item.resultHash),
+    actualResultHashes: evidence.proposed.cases.map((item: any) => String(item.resultHash)),
+  });
+  if (evidence.candidate.id !== options.lab.execution.candidate) throw new Error("Development Revision Candidate differs from the locked Research Lab execution");
+  if (evidence.proposed.assemblyHash !== options.candidate.assemblyHash) throw new Error("Development Revision Assembly differs from the evaluated Research Lab experiment");
+
+  const parent = await latestRevision(options.project.rootDir);
+  const controller = await controllerIdentity(options.project.rootDir, evidence.candidate.proposed.controller);
+  const policyId = controller.definition.kind === "policy" ? controller.definition.policy : null;
+  const policyHash = policyId ? await hashDirectory(confined(options.project.rootDir, `policies/${policyId}`)) : null;
+  const componentHashes = Object.fromEntries(evidence.comparison.to.components.map((item: any) => [item.instanceId, item.hash]));
+  const revisionHash = hashJson({
+    parent,
+    lab: options.lab.id,
+    experimentHash: options.experimentHash,
+    candidateHash: evidence.candidateHash,
+    lockHash: options.lockHash,
+    assemblyHash: options.candidate.assemblyHash,
+    results: options.candidate.cases.map((item) => item.resultHash),
+  });
+  const id = `${options.project.manifest.id}-r-${revisionHash.slice(0, 12)}`;
+  const target = join(options.project.rootDir, "revisions", id);
+  const sourceClosure = [...new Set([
+    ...evidence.comparison.to.sourceFiles,
+    ...evidence.candidate.allowedChanges,
+    ...evidence.candidate.fixedInputs,
+    ...await labSourceClosure(options.project.rootDir, options.lab, options.benchmark),
+    `candidates/${evidence.candidate.id}/candidate.json`,
+  ])].sort();
+  await atomicDirectory(target, async (directory) => {
+    for (const path of sourceClosure) {
+      const destination = join(directory, "sources", path);
+      await mkdir(dirname(destination), { recursive: true });
+      await writeFile(destination, await readFile(confined(options.project.rootDir, path)));
+    }
+    const compiled = join(directory, "compiled");
+    await mkdir(compiled, { recursive: true });
+    for (const name of ["model.xml", "observation-contract.json", "action-contract.json", "compiled-assembly.json"]) {
+      await writeFile(join(compiled, name), await readFile(join(evidence.comparison.to.artifactDir, name)));
+    }
+    if (policyId) await cp(confined(options.project.rootDir, `policies/${policyId}`), join(directory, "policy"), { recursive: true });
+    await writeJson(join(directory, "evaluation.json"), {
+      proposal: options.proposal,
+      previous: options.previous,
+      candidate: options.candidate,
+      decision: options.decision,
+      candidateEvidence: evidence,
+    });
+    await writeJson(join(directory, "manifest.json"), {
+      version: 1,
+      id,
+      kind: "research-lab-development",
+      parent,
+      researchId: options.lab.id,
+      experimentId: options.experimentId,
+      experimentHash: options.experimentHash,
+      candidateId: evidence.candidate.id,
+      candidateHash: evidence.candidateHash,
+      benchmarkId: options.benchmark.id,
+      benchmarkLockHash: options.lockHash,
+      assembly: evidence.candidate.proposed.assembly,
+      assemblyHash: options.candidate.assemblyHash,
+      componentHashes,
+      observationContractHash: hashJson(evidence.comparison.to.observationContract),
+      actionContractHash: hashJson(evidence.comparison.to.actionContract),
+      controller: evidence.candidate.proposed.controller,
+      controllerHash: controller.hash,
+      policyId,
+      policyHash,
+      verifiedChanges: evidence.verifiedChanges,
+      aggregateScore: options.candidate.aggregateScore,
+      scoreDelta: options.candidate.aggregateScore - options.previous.aggregateScore,
+      previousViolationCount: options.decision.previousViolationCount,
+      candidateViolationCount: options.decision.candidateViolationCount,
+      selectionReason: options.decision.selectionReason,
+      exactChangedFiles: options.changedPaths,
+      sourceClosure,
+      appliedAt: new Date().toISOString(),
+    });
+  });
+  return { id, path: target };
+}
+
 async function currentPrimary(project: ProjectContext, lab: ResearchLabDefinition, benchmark: BenchmarkDefinition): Promise<{ lockedBaseline: Evaluation; current: Evaluation; subject: { assembly: string; controller: string } }> {
   if (lab.execution.kind === "development") {
     const envelope = await candidateCommand(project.rootDir, lab.execution.candidate, false); const data: any = envelope.data;
@@ -1018,7 +1123,21 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
           } else if (lab.promotion === "robot-revision") {
             if (lab.execution.kind === "controller") revision = await publishControllerRevision({ project, lab, benchmark, lockHash: lock.lockHash, experimentId, experimentHash, proposal, previous, candidate: candidateEvaluation, decision: finalDecision });
             else if (lab.execution.kind === "development") {
-              const applied = await candidateCommand(project.rootDir, lab.execution.candidate, true, deadlineMs); const data: any = applied.data; revision = { id: data.revisionId, path: data.revisionPath };
+              const verified = await candidateCommand(project.rootDir, lab.execution.candidate, false, deadlineMs);
+              revision = await publishDevelopmentRevision({
+                project,
+                lab,
+                benchmark,
+                lockHash: lock.lockHash,
+                experimentId,
+                experimentHash,
+                proposal,
+                previous,
+                candidate: candidateEvaluation,
+                decision: finalDecision,
+                candidateEvidence: verified.data,
+                changedPaths: finalChanged,
+              });
             }
           }
         } catch (error) { await rollback(); throw error; }

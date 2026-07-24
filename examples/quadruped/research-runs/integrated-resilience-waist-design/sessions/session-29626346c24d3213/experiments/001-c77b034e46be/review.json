@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "integrated-resilience-waist-design",
+    "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+    "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+    "benchmarkLockHash": "7e31244fcb9bdd6483a672dd49f4f2caff919cad4b7f35579e3c94cf24dc9608",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-29626346c24d3213",
+    "experimentId": "001-c77b034e46be",
+    "experimentHash": "c77b034e46bea2c9684c8dff7707cd497a62a44cd151e419c8e26270ffe5edc0"
+  },
+  "proposal": {
+    "strategy": "dynamic-retry-parity-with-neutral-waist",
+    "hypothesis": "The first parity experiment improved severity but introduced self-collision during the initial dynamic impulse because articulated damping was changed before a pose retry existed. Keep the accepted initial dynamics, then enable reclassification, retry timing, and retry-only damping with a neutral waist.",
+    "expectedEffect": "Preserve zero disallowed collision steps before the retry while improving dynamic recovery severity, without changing static targets, waist moments, geometry, or locked inputs."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-exact: unsettled-yaw regressed from passing to failing"
+      ],
+      "previousViolationCount": 44,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 186.04979183341183,
+      "candidateViolationSeverity": 182.25506722115077,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "b34a94f3ca1617a88661aabf6f3f87e9aaba8692d2cacb2bd74e314dd028ebb6"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-exact: unsettled-yaw regressed from passing to failing",
+    "candidateScoreDelta": -0.11332013107899286,
+    "weightedScoreDelta": -0.11332013107899286
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-1360f4eaf4b68865",
+    "runKey": "1360f4eaf4b68865174d221b4f62a948f7edc3a0b2223f5fee288cfed5a293ec",
+    "resultHash": "3fc34693d1cb452fdf7234274c13a3bdd05dd2f73a8214035994d59831bccf8c",
+    "artifactHash": "5ba8c2d02ed5684da65d0743053d07e51d147c540e53fdabe7f54ad5b8ca728e",
+    "manifestHash": "3ad98bdfceeedbd1ed58f6d3abfa6cc2a6c18f3fd4c575fe855bc82f65125cec",
+    "metricsHash": "89f9604610db307bd722d88aaf7398fecf7a832cfbdae9f54b52e85b45324f16",
+    "scoreHash": "a912a454294b714d6e80079a9fe6ec9a30f905d139fea550005187c7996ce897",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -19.469731353363727
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-8d902644625ead8c",
+    "runKey": "8d902644625ead8c50bec948395d0f61628be06880be3ba59dd0a2ea7cf2b24b",
+    "resultHash": "3127a6bf2f6b7226536650d562e47f65712e5c23455adbad8549ec16dac0b463",
+    "artifactHash": "d9e2b1778dc715b490650349fb124f8dd64e7587556c6ffca9c526250a2e43ce",
+    "manifestHash": "ddd047dfdacc3886f25ac6b410046885567222905539235cb15bb5a3f8085982",
+    "metricsHash": "7f7f2aff7454ec575d839459a02827e43f670a7f0082b70f67771487a61894c3",
+    "scoreHash": "17eb6299654632be67edba732560aef4d0b5ab2f974816136a4c7de351402694",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -19.58305148444272
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

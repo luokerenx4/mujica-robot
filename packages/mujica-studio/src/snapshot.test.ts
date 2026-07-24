@@ -3,12 +3,19 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { hashJson, sha256 } from "@mujica/core";
-import { buildStudioSnapshot, writeStudioSnapshot } from "./snapshot";
+import { buildStudioSnapshot, sortResearchSessionsChronologically, writeStudioSnapshot } from "./snapshot";
 import { writeWorkspaceStudioSnapshot } from "./workspace";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
 describe("read-only Studio snapshot", () => {
+  test("orders Research sessions by evidence time rather than opaque id", () => {
+    expect(sortResearchSessionsChronologically([
+      { id: "session-z", startedAt: "2026-07-24T16:00:00.000Z" },
+      { id: "session-a", startedAt: "2026-07-24T17:00:00.000Z" },
+    ]).map((item) => item.id)).toEqual(["session-z", "session-a"]);
+  });
+
   test("packages multiple governed projects behind one Workspace home", async () => {
     const workspace = resolve(import.meta.dir, "../../../examples");
     const result = await writeWorkspaceStudioSnapshot(workspace);
@@ -187,7 +194,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Compiled design envelope");
     expect(html).toContain("Observed capability stages");
     expect(html).toContain("Design burden");
-    expect(html).toContain("Latest governed design evidence");
+    expect(html).toContain("Latest governed Lab evidence");
+    expect(html).toContain("the Charter Review remains the whole-robot acceptance authority");
     expect(html).toContain("mujica-development-review-context");
     expect(html).toContain("visualInput:'hypothesis-only'");
   });

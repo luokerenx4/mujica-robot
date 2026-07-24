@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
-import { assertResearchLabEditableChanges, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
+import { assertDevelopmentPromotionEvidence, assertResearchLabEditableChanges, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 
 const root = resolve(import.meta.dir, "../../..");
@@ -1248,9 +1248,12 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.samples).toBe(250); expect(result.data.evidence.deviceHealthSamples).toBe(250); expect(result.data.evidence.deviceHealthTrips).toBe(1);
     expect(result.data.evidence.commandLeaseExpirations).toBe(1); expect(result.data.evidence.driverAutonomousStops).toBe(1);
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
+    const policyExported = invoke(["hardware", "export", "examples/quadruped", "--target", "history-policy-shadow-dry-run", "--json"]);
+    expect(policyExported.code).toBe(0);
+    const policyBundle = JSON.parse(policyExported.stdout);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-c0ceaa0ce38d0568",
+      "--bundle", policyBundle.data.id,
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -1410,6 +1413,42 @@ describe("agent CLI contract", () => {
     const feasibility = researchDecision(objective as any, result(0.4, 50) as any, result(0.4, 60) as any, result(0.1, 57) as any, 0.01);
     expect(feasibility).toMatchObject({ verdict: "KEEP", previousViolationCount: 1, candidateViolationCount: 0, feasibilityImproved: true, scoreImproved: false, selectionReason: "fewer-gate-violations" });
     expect(researchDecision(objective as any, result(0.4, 50) as any, result(0.1, 60) as any, result(0.1, 57) as any, 0.01).verdict).toBe("REVERT");
+  });
+
+  test("Development Lab promotion trusts its locked lexicographic Judge and exact evidence", () => {
+    const decision = {
+      verdict: "KEEP" as const,
+      gateReasons: [],
+      previousViolationCount: 44,
+      candidateViolationCount: 43,
+      previousViolationSeverity: 186,
+      candidateViolationSeverity: 182,
+      feasibilityImproved: true,
+      severityImproved: false,
+      scoreImproved: false,
+      selectionReason: "fewer-gate-violations" as const,
+    };
+    expect(() => assertDevelopmentPromotionEvidence({
+      decision,
+      expectedBenchmarkLockHash: "a".repeat(64),
+      actualBenchmarkLockHash: "a".repeat(64),
+      expectedResultHashes: ["b".repeat(64)],
+      actualResultHashes: ["b".repeat(64)],
+    })).not.toThrow();
+    expect(() => assertDevelopmentPromotionEvidence({
+      decision,
+      expectedBenchmarkLockHash: "a".repeat(64),
+      actualBenchmarkLockHash: "a".repeat(64),
+      expectedResultHashes: ["b".repeat(64)],
+      actualResultHashes: ["c".repeat(64)],
+    })).toThrow("results differ");
+    expect(() => assertDevelopmentPromotionEvidence({
+      decision: { ...decision, verdict: "REVERT" },
+      expectedBenchmarkLockHash: "a".repeat(64),
+      actualBenchmarkLockHash: "a".repeat(64),
+      expectedResultHashes: ["b".repeat(64)],
+      actualResultHashes: ["b".repeat(64)],
+    })).toThrow("Judge to KEEP");
   });
 
   test("Research Review selects a Judge-named gate case before score magnitude", () => {

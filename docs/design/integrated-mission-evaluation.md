@@ -295,6 +295,53 @@ the gates but did not beat the selected Controller. All three remain immutable
 intervention lane, but a learned layer is not promoted merely because it has
 lower training loss or a better non-authoritative aggregate.
 
+## Articulated-waist branch result
+
+The next complete-design audit found that the articulated controller was not
+actually comparable with the selected rigid controller: its recovery module
+predated dynamic-entry classification, pose reclassification, bounded retries,
+retry-only damping, and feedback hold. Earlier waist experiments had therefore
+mixed a morphology question with a stale Controller fork.
+
+The parity experiment first restored those causal recovery semantics while
+leaving the waist neutral. It reduced the integrated Mission violation count
+from `44 → 43` and severity from `186.050 → 182.255`, but regressed one
+previously passing exact-impact yaw gate and was reverted. Restricting the
+changed damping to post-retry motion removed that collision surface.
+
+Experiment `001-140af53cae12` then added a `0.18 rad` pose-directed waist
+moment only during a classified dynamic retry. Across the four complete
+no-reset Mission Cases it:
+
+- reduced violations `44 → 41`;
+- reduced normalized severity `186.050 → 177.781`;
+- recovered forward and signed-forward progress in the left exact impact;
+- recovered terminal planar tracking in the right degraded impact; and
+- reduced right-degraded disallowed collision steps `3 → 1`.
+
+The aggregate score fell `-14.2938 → -14.7882`, and the robot still did not
+self-right successfully. The lexicographic Judge nevertheless kept the change
+because three enforced gates moved into the feasible tier and every locked
+self-righting, recovery-handoff, and command-tracking regression preserved its
+previous state. This is an intermediate branch improvement, published as
+Robot Revision `quadruped-r-b1f06e0ffbc8`; it is not a North-Star pass.
+
+That KEEP also exposed and verified a Harness correction. Development Labs now
+publish the exact Lab-judged evidence rather than asking the legacy Candidate
+selector to issue a conflicting second verdict. Publication re-evaluates the
+committed source and requires byte-matching Benchmark lock, result hashes,
+Assembly hash, semantic changes, and source closure before creating a
+Revision.
+
+A follow-up reduced the retry moment from `0.18` to `0.10 rad`. It lost the
+left-exact yaw-settling gate, moved violations `41 → 42`, increased severity
+`177.781 → 180.777`, and reduced aggregate score by another `0.301`. Experiment
+`001-31991b52c254` was reverted. The response is therefore not a smooth
+“smaller is safer” gain curve: the kept moment appears to cross a discrete
+dynamic basin boundary. The next useful intervention should change the
+post-retry contact sequence or learn a tightly gated retry residual, not scan
+more waist amplitudes without a new causal hypothesis.
+
 ## HCI
 
 Studio renders a `Continuous Mission · one Episode, no reset` panel above the

@@ -1,0 +1,57 @@
+{
+  "version": 4,
+  "id": "001-639814ac0611",
+  "experimentHash": "639814ac0611a4a4d603e4bae2d9828cc1f5e502072a021f6670ec3c08a35a89",
+  "sequence": 1,
+  "sessionId": "session-b3797d8ed8f46fce",
+  "researchId": "integrated-resilience-waist-design",
+  "labHash": "773ede1c497f844bd94acff390f3bf916838e6a55da156d799355a107c67089b",
+  "programHash": "372105599b14d0d874192b56c54b4a87365931eb2c43c88fdd8a1c7b61bf9aff",
+  "benchmarkLockHash": "7e31244fcb9bdd6483a672dd49f4f2caff919cad4b7f35579e3c94cf24dc9608",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "dfe2e0140579dea4c2fafbcc43e265822d8c5e85bcf04f6186667410f0857bc3",
+  "researcherChangedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py"
+  ],
+  "changedPaths": [
+    "controllers/articulated-behavior-supervisor/controller.json",
+    "controllers/articulated-behavior-supervisor/recovery.py"
+  ],
+  "proposal": {
+    "strategy": "dynamic-retry-parity-with-neutral-waist",
+    "hypothesis": "The articulated candidate was judged with a stale recovery fork that never marked dynamic entry and never reclassified the fallen pose. Porting the accepted rigid Controller's retry semantics while holding the waist neutral isolates software parity from morphology.",
+    "expectedEffect": "Recover the exact dynamic Mission cases and eliminate the false morphology regression without changing static recovery targets, waist moments, geometry, or locked inputs."
+  },
+  "policyId": null,
+  "score": -14.831459552449525,
+  "delta": -0.5376317424186627,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-exact: disallowed-collision regressed from passing to failing",
+      "impact-right-exact: disallowed-collision regressed from passing to failing",
+      "impact-left-degraded: disallowed-collision regressed from passing to failing"
+    ],
+    "previousViolationCount": 44,
+    "candidateViolationCount": 44,
+    "previousViolationSeverity": 186.04979183341183,
+    "candidateViolationSeverity": 178.05572088705924,
+    "feasibilityImproved": false,
+    "severityImproved": true,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "4a86d7a1437d7d215cc14c89870722cda5e9cde84c071525781c51918e32ce2f",
+    "acceptedRunId": "run-1360f4eaf4b68865",
+    "candidateRunId": "run-b14eef11cc50f019",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 61747,
+  "completed": true
+}
