@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadObjective, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -587,6 +587,11 @@ describe("Robot Assembly compiler", () => {
       { id: "resume", intent: "resume" },
     ]);
     expect(task.missionPhases.at(-1)).toMatchObject({ id: "stop", intent: "stop" });
+    expect(task.recoveryRelapse).toEqual({
+      minimumBaseHeightM: 0.24,
+      maximumBodyTiltRad: 0.7,
+      holdSeconds: 0.1,
+    });
     expect(taskSchema.safeParse({
       ...task,
       missionPhases: task.missionPhases.map((phase, index) => index === 0
@@ -603,6 +608,18 @@ describe("Robot Assembly compiler", () => {
         ? { ...phase, exit: { kind: "elapsed", afterSeconds: 5.5 } }
         : phase),
     }).success).toBe(false);
+    expect(taskSchema.safeParse({
+      ...task,
+      recoveryRelapse: { ...task.recoveryRelapse, holdSeconds: 0.11 },
+    }).success).toBe(false);
+    expect(taskSchema.safeParse({
+      ...task,
+      recoveryRelapse: { ...task.recoveryRelapse, minimumBaseHeightM: 0.33 },
+    }).success).toBe(false);
+    expect(taskSchema.safeParse({
+      ...task,
+      recoveryRelapse: { ...task.recoveryRelapse, maximumBodyTiltRad: 0.3 },
+    }).success).toBe(false);
 
     const benchmark = await loadBenchmark(project, "integrated-resilience-mission");
     expect(benchmark).toMatchObject({
@@ -612,6 +629,9 @@ describe("Robot Assembly compiler", () => {
       requiredCapabilities: expect.arrayContaining(["walking", "self-righting", "controlled-stop"]),
     });
     expect(benchmark.cases).toHaveLength(4);
+    const objective = await loadObjective(project, "integrated-resilience-mission");
+    expect(objective.weights.recoveryRelapse).toBe(20);
+    expect(objective.gates.maximumRecoveryRelapses).toBe(0);
   });
 
   test("Program Controller identity covers local helper modules, not only the entry file", async () => {

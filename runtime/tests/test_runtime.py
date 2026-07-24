@@ -17,7 +17,7 @@ from mujica_runtime.environment import RobotEnvironment, active_mission_phase, c
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
-from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
@@ -822,6 +822,11 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(task["missionPhases"][0]["exit"]["kind"], "external-push-start")
         self.assertEqual(task["missionPhases"][1]["exit"]["kind"], "external-push-end")
         self.assertEqual(task["missionPhases"][2]["exit"]["kind"], "recovery-stable")
+        self.assertEqual(task["recoveryRelapse"], {
+            "minimumBaseHeightM": 0.24,
+            "maximumBodyTiltRad": 0.7,
+            "holdSeconds": 0.1,
+        })
 
         rows = []
         for index, phase in enumerate(task["missionPhases"]):
@@ -854,6 +859,45 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertIn("self-righting", evidence["requiredCapabilities"])
         self.assertEqual(evidence["phases"][-1]["id"], "stop")
         self.assertEqual(evidence["phases"][-1]["controllerModes"], ["locomotion"])
+
+    def test_recovery_relapse_requires_sustained_physical_failure_after_self_right(self):
+        task = {
+            "controlHz": 50,
+            "recoveryRelapse": {
+                "minimumBaseHeightM": 0.24,
+                "maximumBodyTiltRad": 0.7,
+                "holdSeconds": 0.1,
+            },
+        }
+        rows = []
+
+        def add(time_seconds, height=0.32, tilt=0.1, stage="resume"):
+            rows.append({
+                "time": time_seconds,
+                "qpos": [0.0, 0.0, height],
+                "bodyTiltRad": tilt,
+                "missionStage": stage,
+            })
+
+        add(1.0, tilt=1.0)
+        for index in range(4):
+            add(1.02 + 0.02 * index, tilt=0.8)
+        add(1.10)
+        for index in range(5):
+            add(1.12 + 0.02 * index, tilt=0.8)
+        add(1.22)
+        for index in range(5):
+            add(1.24 + 0.02 * index, height=0.2, stage="redirect")
+
+        events = recovery_relapse_events(rows, 1.0, task)
+        self.assertEqual(len(events), 2)
+        self.assertAlmostEqual(events[0]["enteredAt"], 1.12)
+        self.assertAlmostEqual(events[0]["time"], 1.20)
+        self.assertEqual(events[0]["breaches"], ["body-tilt"])
+        self.assertEqual(events[0]["missionStage"], "resume")
+        self.assertAlmostEqual(events[1]["enteredAt"], 1.24)
+        self.assertEqual(events[1]["breaches"], ["base-height"])
+        self.assertEqual(events[1]["missionStage"], "redirect")
 
     def test_causal_mission_advances_from_disturbance_and_robot_state(self):
         model, compiled = compiled_assembly("force-sensing-3dof")

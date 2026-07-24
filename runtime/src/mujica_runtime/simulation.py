@@ -267,6 +267,60 @@ def mission_phase_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any]
     }
 
 
+def recovery_relapse_events(
+    trajectory: list[dict[str, Any]],
+    self_righted_at: float | None,
+    task: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Find sustained physical failures after the first stable self-righting event."""
+    contract = task.get("recoveryRelapse")
+    if contract is None or self_righted_at is None:
+        return []
+    hold_steps = max(1, round(float(contract["holdSeconds"]) * float(task["controlHz"])))
+    entered_at: float | None = None
+    breach_steps = 0
+    latched = False
+    breaches: set[str] = set()
+    events: list[dict[str, Any]] = []
+    for row in trajectory:
+        row_time = float(row["time"])
+        if row_time <= float(self_righted_at) + 1e-9:
+            continue
+        height = float(row["qpos"][2])
+        body_tilt = float(row["bodyTiltRad"])
+        current_breaches = {
+            *({"base-height"} if height < float(contract["minimumBaseHeightM"]) else set()),
+            *({"body-tilt"} if body_tilt > float(contract["maximumBodyTiltRad"]) else set()),
+        }
+        if not current_breaches:
+            entered_at = None
+            breach_steps = 0
+            latched = False
+            breaches.clear()
+            continue
+        if latched:
+            continue
+        if breach_steps == 0:
+            entered_at = row_time
+        breach_steps += 1
+        breaches.update(current_breaches)
+        if breach_steps >= hold_steps:
+            events.append({
+                "type": "robot.recovery-relapsed",
+                "time": row_time,
+                "enteredAt": entered_at,
+                "stableRecoveryAt": float(self_righted_at),
+                "timeSinceSelfRightSeconds": row_time - float(self_righted_at),
+                "height": height,
+                "bodyTiltRad": body_tilt,
+                "missionStage": row.get("missionStage"),
+                "breaches": sorted(breaches),
+                "failureEnvelope": contract,
+            })
+            latched = True
+    return events
+
+
 def episode_survival_rate(healthy_steps: int, planned_steps: int) -> float:
     """Measure survival against the requested episode, not the truncated trace."""
     return float(healthy_steps) / max(1, int(planned_steps))
@@ -396,6 +450,7 @@ def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: 
         "footImpact": -weights.get("footImpact", 0.0) * metrics.get("meanFootContactImpactNPerSec", 0.0),
         "selfRighting": weights.get("selfRighting", 0.0) * metrics.get("selfRightingSuccess", 0.0),
         "recoveryTime": -weights.get("recoveryTime", 0.0) * metrics.get("timeToStableStandSeconds", 0.0),
+        "recoveryRelapse": -weights.get("recoveryRelapse", 0.0) * metrics.get("recoveryRelapseCount", 0.0),
         "jointLimitMargin": weights.get("jointLimitMargin", 0.0) * min(metrics.get("minimumJointLimitMarginRad", 0.0), 1.0),
         "componentMass": -weights["componentMass"] * compiled["totalMassKg"],
         "sensorChannels": -weights["sensorChannels"] * compiled["sensorChannelCount"],
@@ -674,6 +729,17 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
             fell = True
             environment.events.append({"type": "robot.fall", "time": float(environment.data.time), "height": info["height"]})
         if result.terminated or result.truncated: break
+    self_righted_at = next(
+        (
+            float(event["time"])
+            for event in environment.events
+            if event["type"] == "robot.self-righted"
+        ),
+        None,
+    )
+    relapse_events = recovery_relapse_events(trajectory, self_righted_at, request["task"])
+    environment.events.extend(relapse_events)
+    environment.events.sort(key=lambda event: float(event.get("time", 0.0)))
     steps = max(1, environment.step_index)
     mean_measured_motion = measured_motion_total / steps
     mean_motion_command = motion_command_total / steps
@@ -693,6 +759,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]) - float(recovery_evaluation_start or 0.0),
         "stableStandingDwellSeconds": maximum_recovery_stable_steps / float(request["task"]["controlHz"]),
         "finalStableStandingDwellSeconds": recovery_stable_steps / float(request["task"]["controlHz"]),
+        "recoveryRelapseCount": len(relapse_events),
         "minimumJointLimitMarginRad": minimum_limit_margin, "disallowedCollisionSteps": disallowed_collision_steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),

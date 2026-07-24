@@ -314,10 +314,24 @@ const causalMissionTaskSchema = z.object({
     maximumAngularSpeedRadPerSec: z.number().finite().nonnegative(),
     holdSeconds: z.number().finite().positive(),
   }).strict(),
+  recoveryRelapse: z.object({
+    minimumBaseHeightM: z.number().finite().positive(),
+    maximumBodyTiltRad: z.number().finite().min(0).max(Math.PI),
+    holdSeconds: z.number().finite().positive(),
+  }).strict().optional(),
 }).strict().superRefine((task, context) => {
   const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
   if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
   if (!aligned(task.recoveryTarget.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryRelapse) {
+    if (!aligned(task.recoveryRelapse.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryRelapse", "holdSeconds"], message: "must align to an integer control step" });
+    if (task.recoveryRelapse.minimumBaseHeightM > task.recoveryTarget.minimumBaseHeightM) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryRelapse", "minimumBaseHeightM"], message: "must not exceed the recovery target height" });
+    }
+    if (task.recoveryRelapse.maximumBodyTiltRad < task.recoveryTarget.maximumBodyTiltRad) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryRelapse", "maximumBodyTiltRad"], message: "must not be tighter than the recovery target tilt" });
+    }
+  }
   const phaseIds = new Set<string>();
   let maximumPathSeconds = 0;
   task.missionPhases.forEach((phase, index) => {
@@ -446,7 +460,7 @@ export const objectiveSchema = z.object({
     transitionTracking: z.number().default(0), energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
     jointJerk: z.number().default(0), bodyAngularJerk: z.number().default(0), actionSlew: z.number().default(0),
     actuatorSaturation: z.number().default(0), footSlip: z.number().default(0), footImpact: z.number().default(0),
-    selfRighting: z.number().default(0), recoveryTime: z.number().default(0), jointLimitMargin: z.number().default(0),
+    selfRighting: z.number().default(0), recoveryTime: z.number().default(0), recoveryRelapse: z.number().default(0), jointLimitMargin: z.number().default(0),
   }).strict(),
   transientMeasurement: z.object({
     planarToleranceMps: z.number().finite().nonnegative(), yawRateToleranceRadPerSec: z.number().finite().nonnegative(), holdSeconds: z.number().finite().positive(),
@@ -468,6 +482,7 @@ export const objectiveSchema = z.object({
     minimumSelfRightingSuccess: z.number().min(0).max(1).default(0),
     maximumTimeToStableStandSeconds: z.number().nonnegative().default(1_000_000),
     minimumStableStandingDwellSeconds: z.number().nonnegative().default(0),
+    maximumRecoveryRelapses: z.number().int().nonnegative().default(1_000_000),
     maximumFinalBodyTiltRad: z.number().nonnegative().default(Math.PI),
     minimumFinalBaseHeightM: z.number().nonnegative().default(0),
     minimumJointLimitMarginRad: z.number().finite().default(-1_000_000),

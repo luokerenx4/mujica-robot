@@ -17,7 +17,7 @@ failure witnessed by the Mission Suite.
 
 - Review subject:
   `resilient-command-conditioned-waist-3dof/articulated-behavior-supervisor`
-- Current score: `72.7223`
+- Current score under the durable-recovery Judge: `62.7223`
 - Worst Case: `integrated-resilience-mission/impact-left-degraded`
 - Work Order status: `READY`
 - Routed lanes:
@@ -92,6 +92,29 @@ improved `-0.060 → -0.031 rad`. The complete Mission nevertheless caught a
 later fall during traverse/stop; the Policy reactivated and the episode ended
 mid-rise at `0.227 m`, regressing the terminal-height gate. Verdict: `REVERT`.
 
+That comparison exposed a Judge defect rather than merely a Policy defect:
+terminal posture depended on when the second fall happened relative to the
+fixed horizon. The accepted Program also fell again after self-righting; it
+fell earlier and happened to be upright at the end. Task v8 now declares a
+physical post-recovery failure envelope (`height < 0.24 m` or yaw-invariant
+tilt `> 0.7 rad` for `0.1 s`). Runtime emits
+`robot.recovery-relapsed`, the Objective locks zero relapses, diagnostics route
+the complete recovery-to-locomotion suffix, and Studio exposes the event.
+
+Rejudging preserved the useful distinction without rewarding horizon luck:
+
+- accepted Program: degraded-right `2` relapse episodes;
+- first narrow recovery Policy: degraded-right `3` relapse episodes;
+- exact left/right Cases: `0` relapses;
+- Program aggregate: `72.7223 → 62.7223` under the strengthened Judge;
+- Policy aggregate: `72.6571 → 57.6571`.
+
+The first Program relapse occurs in `traverse`, `2.4 s` after stable
+self-righting, as body tilt remains above the failure envelope. The Supervisor
+re-enters recovery immediately afterward. This makes the next bounded problem
+explicit: preserve recovery through the settling-to-locomotion handoff and the
+subsequent command transition, not merely reach standing once.
+
 Session `session-c48393802da86aed` then restricted authority to the first
 recovery using causal Program telemetry `recoveryCompleted=false`. Its newly
 trained Policy lost degraded-right self-righting and increased violations
@@ -108,6 +131,8 @@ measured hypothesis.
 - no new passing-gate regression;
 - no left/right failure exchange;
 - both degraded Cases exit recovery without timeout;
+- zero post-recovery relapse events through resume, redirect, traverse, and
+  stop;
 - downstream signed progress and stop stability remain observable in the same
   episode;
 - only the locked Mission Suite may promote the Candidate.
@@ -123,3 +148,7 @@ measured hypothesis.
 - [x] Train and judge phase-/actuator-conditioned residuals.
 - [x] Keep the Program release subject because no Candidate passed the complete
   Mission Suite.
+- [x] Replace terminal-frame recovery luck with a causal post-recovery relapse
+  event, score term, hard gate, diagnostics, and Studio evidence.
+- [ ] Optimize the recovery-to-locomotion handoff against the strengthened
+  complete-Mission Judge.

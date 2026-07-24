@@ -87,6 +87,27 @@ The Runtime records one initial reset and forbids resets inside a Mission Case.
 It publishes per-phase duration, health, tracking error, tilt, displacement,
 recovery-target occupancy, and actual Controller modes.
 
+### Durable recovery, not terminal-frame luck
+
+Reaching the stable-standing target once is necessary but not sufficient.
+Task v8 may declare a `recoveryRelapse` failure envelope with a minimum base
+height, maximum yaw-invariant body tilt, and control-grid-aligned dwell. After
+the first `robot.self-righted` event, Runtime scans the same uninterrupted
+trajectory. A sustained envelope breach emits `robot.recovery-relapsed` and
+increments `recoveryRelapseCount`; a shorter excursion is treated as transient
+motion rather than a second fall.
+
+The envelope is intentionally hysteretic: its minimum height cannot exceed the
+recovery target height and its maximum tilt cannot be tighter than the recovery
+target tilt. This separates “qualified as stably recovered” from “physically
+failed again.” The integrated Objective gives relapse a score penalty and
+locks `maximumRecoveryRelapses: 0`.
+
+Terminal height and tilt remain useful posture evidence, but they no longer
+stand in for durable recovery. A Controller that falls early and happens to be
+upright at the horizon, or a Policy that falls later and ends mid-rise, is now
+judged by the same causal failure event rather than by timing luck.
+
 Authored phase and Controller mode are deliberately different signals. The
 phase says what the mission expects; Controller mode says what the robot
 actually did. For example, a `resume` phase that still contains `recovery` or
@@ -108,6 +129,11 @@ A Scenario is therefore not a walking, collision, or self-righting skill.
 Those behaviors are phases of the same Task. Multiple Cases provide
 stochastic coverage by repeating the complete job; they do not split the job
 into independently promotable episodes.
+
+Atomic walking, impact, recovery, and self-righting Tasks remain executable
+unit tests for fault isolation and curriculum design. Their results may route
+an Agent toward Controller, Assembly, or Training work, but they cannot keep a
+Candidate that fails the integrated Mission Suite.
 
 ## Training contract
 
