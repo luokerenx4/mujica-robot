@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "id": "resilient-mission-controller",
+  "name": "Continuous resilience Controller research",
+  "program": "research/resilient-mission-controller/program.md",
+  "benchmark": "resilient-mission",
+  "regressions": [
+    "self-righting",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "controller",
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "editable": {
+    "paths": [
+      "controllers/behavior-supervisor/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 360
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "robot-revision"
+}

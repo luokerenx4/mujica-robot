@@ -1,0 +1,40 @@
+{
+  "definition": {
+    "version": 1,
+    "id": "quadruped-pre-hil-v2",
+    "name": "ODD-covering quadruped pre-HIL uncertainty envelope",
+    "provenance": {
+      "kind": "synthetic",
+      "evidence": null,
+      "notes": "Engineering envelope derived from the authored pre-HIL operating scenarios, not measured hardware calibration. It deliberately covers but does not reuse the fixed held-out Judge cases. Replace with a versioned HIL or real profile after system identification."
+    },
+    "parameters": {
+      "bodyMassScale": {
+        "minimum": 0.9,
+        "maximum": 1.1
+      },
+      "jointDampingScale": {
+        "minimum": 0.65,
+        "maximum": 1.35
+      },
+      "actuatorStrengthScale": {
+        "minimum": 0.85,
+        "maximum": 1.15
+      },
+      "frictionScale": {
+        "minimum": 0.75,
+        "maximum": 1.2
+      },
+      "observationNoiseStd": {
+        "minimum": 0,
+        "maximum": 0.0035
+      },
+      "actuatorDelayJitterSteps": {
+        "minimum": 0,
+        "maximum": 3
+      }
+    }
+  },
+  "evidenceHash": null,
+  "hash": "8f76249f123f7611eb189bd904451d0c3fbe76a5aeb58f39d2a1744f3de00951"
+}

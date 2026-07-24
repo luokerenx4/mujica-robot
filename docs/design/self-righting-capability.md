@@ -117,6 +117,25 @@ Those failures narrowed the hypothesis correctly. Candidate `phased-self-rightin
 
 Judge selected `KEEP` and published Robot Revision `quadruped-r-0bb926344064`. Because the rigid morphology now satisfies the authored witness, the two-axis waist remains rejected: extra mass, Action width, collision geometry, and hardware complexity are not justified by this capability evidence.
 
+The morphology question was re-opened after the behavior supervisor existed, using a new
+`self-righting-morphology-v2` Benchmark whose baseline is the successful phased rigid
+Controller rather than the obsolete cyclic Controller. The articulated Controller was
+then moved to the same impulse/capture/rise state machine while holding the two waist
+targets neutral. This controlled comparison still failed all four cases:
+
+- phased rigid torso: aggregate `90.306324`, four successful recoveries, zero violations;
+- phased split torso: aggregate `-15.130470`, zero successful recoveries;
+- the front case briefly reached the standing target but could not hold it and accumulated
+  disallowed self-contact; and
+- the back and side cases entered the inverted basin.
+
+This result does not prove that a waist can never help. It proves that articulation changes
+the plant enough that a rigid-body leg sequence cannot be reused, even with the waist
+servoed to zero. Mujica therefore keeps the waist as a `REVERT` complete-design lane. A
+future attempt must jointly optimize torso geometry and leg/waist sequencing, then beat
+the already-passing rigid baseline by enough to pay for `+0.2 kg`, two actuators, a wider
+Observation/Action ABI, self-contact risk, and hardware reliability cost.
+
 ## RL residual result
 
 PPO was then placed on top of the successful program prior rather than asked to rediscover recovery. The first `0.05` residual-authority run and a second `0.001` run both completed 8,192 steps and reported strong episode reward. Frozen deterministic evaluation still failed three of four recovery cases in the tighter run: back recovery passed, front lost the stable target, and left/right fell into the inverted basin.

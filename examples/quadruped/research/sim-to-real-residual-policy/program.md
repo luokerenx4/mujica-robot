@@ -1,13 +1,14 @@
 # Domain-randomized residual Policy autoresearch
 
 Improve the frozen residual Policy on exact, held-out plant combinations while
-retaining the serialized `bounded-traction-gait` program as its reviewed
+retaining the complete serialized `behavior-supervisor` package as its reviewed
 prior.
 
-Training samples the fixed `quadruped-pre-hil-v1` synthetic Domain Profile. It is
-an engineering uncertainty envelope, not a measured hardware calibration. The
-Profile, held-out Scenarios, Benchmarks, Objective, seeds, Assembly, task, prior
-Controller, and Runtime are judge inputs and must remain unchanged.
+Training samples the versioned `quadruped-pre-hil-v2` synthetic Domain Profile.
+It is an authored ODD-covering engineering envelope, not measured hardware
+calibration. It may be changed only by publishing a new versioned Profile inside
+the declared editable surface; held-out Scenarios, Benchmarks, Objective, seeds,
+Assembly, task, prior Controller, and Runtime remain immutable Judge inputs.
 
 The locked `sim-to-real-audit` Benchmark is primary. Its heavy/weak and
 light/strong cases are capability gates; slippery/weak is a scored stress probe.
@@ -15,7 +16,8 @@ Locked `upright-locomotion` and `motion-quality` are mandatory regressions. A
 higher aggregate score cannot compensate for a new fall, lost command
 capability, backwards travel, or motion-quality gate violation.
 
-You may edit only the declared Trainer, Training, and Policy Controller source.
+You may edit only the declared Trainer, Training, Policy Controller, and
+versioned synthetic Domain Profile source.
 Every experiment must perform real PPO and freeze a new Policy before any
 evaluation. `totalSteps` may not exceed `8192`. Prefer one legible ML hypothesis
 at a time: more samples, a smaller residual, less exploration, or a targeted

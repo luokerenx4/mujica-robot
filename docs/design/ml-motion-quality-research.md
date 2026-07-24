@@ -47,6 +47,43 @@ The accepted strategy then shrank learned authority to a `0.002` residual scale 
 
 The next experiment expanded residual scale to `0.004`. It regressed delayed lateral drift, braking terminal tracking, and overshoot, so the Lab retained its immutable Training Run and Policy but reverted the source head. This establishes the intended authority boundary: learning may propose more control, but promotion stays fail-closed.
 
+## Behavior-scoped residual authority
+
+A complete robot Controller may contain safety recovery, handoff, and ordinary locomotion.
+A residual Policy trained only on locomotion must not silently receive authority in every
+supervisor mode merely because all modes share one Action ABI.
+
+Program-residual Policy artifacts may therefore declare a fail-closed
+`prior-telemetry-mode` gate. Runtime first executes the frozen Program prior, reads its
+current telemetry, and applies learned residual authority only when:
+
+- the current mode is explicitly allowed;
+- every required telemetry predicate matches; and
+- the configured mode-dwell ramp has granted authority.
+
+Missing telemetry, an unknown mode, or a failed predicate produces exactly zero residual.
+The current quadruped ML lane permits learning only in ordinary `locomotion`, ramps
+authority over `0.5 s`, and requires `recoveryCompleted == false`. Recovery, settling, and
+post-recovery mission execution stay on the deterministic Program Controller. Runtime
+publishes `policyResidualGateScale` on every trajectory row so Studio and headless evidence
+show how much learned authority was actually active.
+
+This boundary was introduced after two 8,192-step ODD-randomized GRU trials:
+
+1. `sim-to-real-residual-locomotion-24bd59f6599a0231` used residual scale `0.1` without
+   behavior gating. It improved training reward but produced 11 held-out sim-to-real
+   violations and destroyed recovery handoff with 24 violations.
+2. `sim-to-real-residual-locomotion-8a3fd952637a728a` used scale `0.03`, stronger
+   zero-output regularization, and locomotion-mode gating. All four self-righting events
+   survived, but post-recovery side progress still regressed and held-out sim-to-real
+   performance worsened to 13 violations.
+
+Both Policies are retained as immutable negative evidence and neither is selected by a
+Controller. The deterministic startup-ramp Program change remains better on the fixed
+transfer Judge: it raises aggregate score by `6.883708` and changes the heavy/weak case
+from a fall to full survival, though seven enforced tracking/drift violations remain. This
+is a partial robustness improvement, not a real-hardware readiness claim.
+
 ## Human and Agent roles
 
 The Coding Agent reads prior immutable results, edits the isolated source closure, and states one hypothesis. PPO performs numerical optimization. Mujica freezes the model and evaluates it. A human may then compare exact Run replays, but visual preference cannot override the verdict.

@@ -206,7 +206,8 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     const calibration = await loadCalibration(root, id); if (calibration.id !== id) throw new Error(`Calibration id '${calibration.id}' must match filename '${id}'`);
     const calibrationAssembly = await compileAssembly(root, calibration.assembly);
     const scenario = await loadScenario(root, calibration.scenario);
-    if (scenario.actuatorDelaySteps !== 0 || scenario.lateralPush !== null) throw new Error(`Calibration '${id}' base Scenario must have zero delay and no external push`);
+    const externalPush = scenario.version === 1 ? scenario.lateralPush : scenario.externalPush;
+    if (scenario.actuatorDelaySteps !== 0 || externalPush !== null) throw new Error(`Calibration '${id}' base Scenario must have zero delay and no external push`);
     for (const source of calibration.sources) {
       if (source.kind === "capture") await requireFile(confined(root, source.path), `Calibration '${id}' capture`);
       else if (source.kind === "simulation-run") await requireFile(confined(root, `runs/${source.run}/manifest.json`), `Calibration '${id}' Simulation Run`);

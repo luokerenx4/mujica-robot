@@ -370,19 +370,25 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     minimum_limit_margin = minimum_joint_limit_margin(environment.model, environment.data)
     disallowed_collision_steps = 0
     recovery_target = request["task"].get("recoveryTarget")
+    recovery_evaluation_start = float(
+        request["task"].get("recoveryEvaluationStartSeconds", 0.0)
+    )
     recovery_hold_steps = max(1, round(float(recovery_target["holdSeconds"]) * float(request["task"]["controlHz"]))) if recovery_target else 0
     recovery_stable_steps = 0
     maximum_recovery_stable_steps = 0
     recovery_entered_at: float | None = None
     time_to_stable_stand: float | None = None
+    recovery_triggered = False
     survived_steps = 0
     fell = False
     previous_pushing = False
     previous_controller_phase: str | None = None
     previous_controller_mode: str | None = None
+    previous_mission_stage: str | None = None
+    mission_stage_steps: dict[str, int] = {}
     while True:
         if (
-            int(request["task"]["version"]) == 5
+            int(request["task"]["version"]) in (5, 6)
             and mobility_initial_position is None
             and float(environment.data.time) + 1e-9
             >= float(request["task"]["mobilityMeasurementStartSeconds"])
@@ -428,7 +434,13 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         previous_position = current_position
         info = result.info
         if info["healthy"]: survived_steps += 1
-        if info["pushing"] and not previous_pushing: environment.events.append({"type": "scenario.push-start", "time": float(environment.data.time), "forceNewton": request["scenario"]["lateralPush"]["forceNewton"]})
+        if info["pushing"] and not previous_pushing:
+            environment.events.append({
+                "type": "scenario.push-start",
+                "time": float(environment.data.time),
+                "forceNewton": environment.external_push["forceNewton"],
+                "directionXY": environment.external_push["directionXY"],
+            })
         if previous_pushing and not info["pushing"]: environment.events.append({"type": "scenario.push-end", "time": float(environment.data.time)})
         previous_pushing = bool(info["pushing"])
         for key in totals: totals[key] += float(info[key])
@@ -450,35 +462,75 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         if disallowed_contact:
             disallowed_collision_steps += 1
         recovery_target_satisfied = False
-        if recovery_target:
+        recovery_evaluation_active = (
+            recovery_target is not None
+            and float(environment.data.time) + 1e-9 >= recovery_evaluation_start
+        )
+        if recovery_target and recovery_evaluation_active:
             recovery_target_satisfied = (
                 float(environment.data.qpos[2]) >= float(recovery_target["minimumBaseHeightM"])
                 and body_tilt <= float(recovery_target["maximumBodyTiltRad"])
                 and float(np.linalg.norm(environment.data.qvel[:3])) <= float(recovery_target["maximumLinearSpeedMps"])
                 and float(np.linalg.norm(environment.data.qvel[3:6])) <= float(recovery_target["maximumAngularSpeedRadPerSec"])
             )
-            if recovery_target_satisfied:
+            if not recovery_target_satisfied and not recovery_triggered:
+                recovery_triggered = True
+                environment.events.append({
+                    "type": "robot.recovery-required",
+                    "time": float(environment.data.time),
+                    "height": float(environment.data.qpos[2]),
+                    "bodyTiltRad": body_tilt,
+                })
+            if recovery_target_satisfied and recovery_triggered:
                 if recovery_stable_steps == 0:
                     recovery_entered_at = float(environment.data.time)
                     environment.events.append({"type": "robot.recovery-target-entered", "time": recovery_entered_at})
                 recovery_stable_steps += 1
                 maximum_recovery_stable_steps = max(maximum_recovery_stable_steps, recovery_stable_steps)
                 if time_to_stable_stand is None and recovery_stable_steps >= recovery_hold_steps:
-                    time_to_stable_stand = float(recovery_entered_at)
+                    time_to_stable_stand = (
+                        float(recovery_entered_at) - recovery_evaluation_start
+                    )
                     environment.events.append({
                         "type": "robot.self-righted",
                         "time": float(environment.data.time),
-                        "stableSince": time_to_stable_stand,
+                        "stableSince": recovery_entered_at,
+                        "recoveryElapsedSeconds": time_to_stable_stand,
                         "requiredDwellSeconds": float(recovery_target["holdSeconds"]),
                     })
-            else:
+            elif recovery_triggered:
                 if recovery_stable_steps > 0:
                     environment.events.append({"type": "robot.recovery-target-exited", "time": float(environment.data.time), "stableSince": recovery_entered_at})
                 recovery_stable_steps = 0
                 recovery_entered_at = None
+        mission_stage: str | None = None
+        if int(request["task"]["version"]) == 6:
+            push = environment.external_push
+            current_time = float(environment.data.time)
+            if push is not None and current_time < float(push["timeSeconds"]) - 1e-9:
+                mission_stage = "approach"
+            elif push is not None and current_time <= (
+                float(push["timeSeconds"]) + float(push["durationSeconds"]) + 1e-9
+            ):
+                mission_stage = "disturbance"
+            elif time_to_stable_stand is not None:
+                mission_stage = "resume"
+            elif recovery_triggered:
+                mission_stage = "recovery"
+            else:
+                mission_stage = "post-disturbance"
+            mission_stage_steps[mission_stage] = mission_stage_steps.get(mission_stage, 0) + 1
+            if mission_stage != previous_mission_stage:
+                environment.events.append({
+                    "type": "mission.stage-changed",
+                    "time": current_time,
+                    "from": previous_mission_stage,
+                    "to": mission_stage,
+                })
+                previous_mission_stage = mission_stage
         foot_contact_force = result.observation.get("foot-contact-force")
         foot_positions_world = environment.foot_positions_world()
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "recoveryTargetSatisfied": recovery_target_satisfied, "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "missionStage": mission_stage, "recoveryEvaluationActive": recovery_evaluation_active, "recoveryTargetSatisfied": recovery_target_satisfied, "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -498,8 +550,9 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "maximumAbsolutePitchRad": maximum_absolute_pitch, "maximumAbsolutePitchRateRadPerSec": maximum_absolute_pitch_rate,
         "meanBodyTiltRad": body_tilt_total / steps, "maximumBodyTiltRad": maximum_body_tilt,
         "initialBodyTiltRad": initial_body_tilt, "minimumBodyTiltRad": minimum_body_tilt, "finalBodyTiltRad": quaternion_body_tilt(environment.data.qpos[3:7]), "finalBaseHeightM": float(environment.data.qpos[2]),
-        "selfRightingTask": recovery_target is not None, "selfRightingSuccess": 1.0 if time_to_stable_stand is not None else 0.0,
-        "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]),
+        "selfRightingTask": recovery_target is not None, "recoveryTriggered": recovery_triggered,
+        "selfRightingSuccess": 1.0 if recovery_triggered and time_to_stable_stand is not None else 0.0,
+        "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]) - recovery_evaluation_start,
         "stableStandingDwellSeconds": maximum_recovery_stable_steps / float(request["task"]["controlHz"]),
         "finalStableStandingDwellSeconds": recovery_stable_steps / float(request["task"]["controlHz"]),
         "minimumJointLimitMarginRad": minimum_limit_margin, "disallowedCollisionSteps": disallowed_collision_steps,
@@ -518,6 +571,13 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     }
     metrics["episodeInitialBasePosition"] = initial_position.tolist()
     metrics["mobilityMeasurementStartedAtSeconds"] = mobility_started_at
+    metrics["recoveryEvaluationStartedAtSeconds"] = (
+        recovery_evaluation_start if recovery_target is not None else None
+    )
+    metrics["missionStageDurationsSeconds"] = {
+        stage: steps / float(request["task"]["controlHz"])
+        for stage, steps in mission_stage_steps.items()
+    }
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})
     run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})

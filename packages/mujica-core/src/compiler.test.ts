@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -12,11 +12,17 @@ describe("Robot Assembly compiler", () => {
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
+    expect(review.summary.worstCase).toMatchObject({ benchmark: "resilient-mission", case: "impact-left" });
+    expect(review.northStar).toMatchObject({
+      stage: "continuous-resilience",
+      benchmark: "resilient-mission",
+      satisfied: false,
+    });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["controller-code", "rl-policy"]);
-    expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["sim-to-real-audit", "sim-to-real-audit"]);
+    expect(workOrder.lanes.map((lane) => lane.kind)).toEqual(["controller-code", "rl-policy", "controller-code", "rl-policy"]);
+    expect(workOrder.lanes.map((lane) => lane.primaryBenchmark)).toEqual(["resilient-mission", "resilient-mission", "sim-to-real-audit", "sim-to-real-audit"]);
     expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
+    expect(workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
@@ -186,12 +192,14 @@ describe("Robot Assembly compiler", () => {
   });
 
   test("Domain Profiles are bounded provenance-carrying Training inputs", async () => {
-    const profile = await loadDomainProfile(project, "quadruped-pre-hil-v1");
+    const profile = await loadDomainProfile(project, "quadruped-pre-hil-v2");
     expect(profile.provenance.kind).toBe("synthetic");
     expect(profile.provenance.evidence).toBeNull();
-    expect(profile.parameters.actuatorStrengthScale).toEqual({ minimum: 0.9, maximum: 1.1 });
+    expect(profile.parameters.actuatorStrengthScale).toEqual({ minimum: 0.85, maximum: 1.15 });
     const training = await loadTraining(project, "sim-to-real-residual-locomotion");
     expect(training.domainProfile).toBe(profile.id);
+    expect(profile.parameters.bodyMassScale).toEqual({ minimum: 0.9, maximum: 1.1 });
+    expect(profile.parameters.actuatorDelayJitterSteps).toEqual({ minimum: 0, maximum: 3 });
     expect(domainProfileSchema.safeParse({ ...profile, parameters: { bodyMassScale: { minimum: 1.1, maximum: 0.9 } } }).success).toBe(false);
     expect(domainProfileSchema.safeParse({ ...profile, provenance: { kind: "real", evidence: null, notes: "" } }).success).toBe(false);
   });
@@ -473,6 +481,48 @@ describe("Robot Assembly compiler", () => {
     expect(taskSchema.safeParse({ ...task, motionCommandSchedule: [{ ...task.motionCommandSchedule[0], atSeconds: 0.01 }] }).success).toBe(false);
     expect(taskSchema.safeParse({ ...task, recoveryTarget: { ...task.recoveryTarget, holdSeconds: 0.51 } }).success).toBe(false);
     expect(taskSchema.safeParse({ ...task, mobilityMeasurementStartSeconds: 5.01 }).success).toBe(false);
+  });
+
+  test("continuous resilience Tasks bind one mission to vector disturbances and randomized timing", async () => {
+    const task = await loadTask(project, "resilient-forward-mission");
+    expect(taskSchema.parse(task)).toMatchObject({
+      version: 6,
+      recoveryEvaluationStartSeconds: 2.5,
+      mobilityMeasurementStartSeconds: 8,
+    });
+    if (task.version !== 6) throw new Error("Expected continuous resilience Task");
+    expect(taskSchema.safeParse({
+      ...task,
+      mobilityMeasurementStartSeconds: task.recoveryEvaluationStartSeconds,
+    }).success).toBe(false);
+    expect(taskSchema.safeParse({
+      ...task,
+      recoveryEvaluationStartSeconds: 2.51,
+    }).success).toBe(false);
+
+    const scenario = JSON.parse(await readFile(join(project, "scenarios/mission-impact-left.scenario.json"), "utf8"));
+    expect(scenarioSchema.parse(scenario)).toMatchObject({
+      version: 2,
+      externalPush: { forceNewton: 100, directionXY: [0, 1] },
+    });
+    expect(scenarioSchema.safeParse({
+      ...scenario,
+      externalPush: { ...scenario.externalPush, directionXY: [0, 0] },
+    }).success).toBe(false);
+
+    const profile = await loadDomainProfile(project, "quadruped-resilient-mission-v1");
+    expect(profile.parameters).toMatchObject({
+      pushTimeOffsetSeconds: { minimum: -0.3, maximum: 0.3 },
+      pushForceScale: { minimum: 0.75, maximum: 1.25 },
+      pushDirectionJitterRad: { minimum: -0.35, maximum: 0.35 },
+    });
+    expect(domainProfileSchema.safeParse({
+      ...profile,
+      parameters: {
+        ...profile.parameters,
+        pushForceScale: { minimum: 0, maximum: 1 },
+      },
+    }).success).toBe(false);
   });
 
   test("Program Controller identity covers local helper modules, not only the entry file", async () => {

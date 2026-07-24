@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "resilient-mission",
+  "name": "Frozen walk-impact-recover-resume mission",
+  "objective": "resilient-mission",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "cases": [
+    {
+      "id": "impact-left",
+      "task": "resilient-forward-mission",
+      "scenario": "mission-impact-left",
+      "seed": 7101,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "impact-right",
+      "task": "resilient-forward-mission",
+      "scenario": "mission-impact-right",
+      "seed": 7102,
+      "weight": 1,
+      "gating": true
+    }
+  ]
+}

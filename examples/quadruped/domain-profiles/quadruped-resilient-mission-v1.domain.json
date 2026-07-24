@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "quadruped-resilient-mission-v1",
+  "name": "Synthetic continuous mission and impact envelope",
+  "provenance": {
+    "kind": "synthetic",
+    "evidence": null,
+    "notes": "Training-only engineering envelope. Impact time, magnitude, and planar direction vary continuously around two authored opposing base directions; plant ranges remain synthetic until replaced by HIL or real identification."
+  },
+  "parameters": {
+    "bodyMassScale": {
+      "minimum": 0.92,
+      "maximum": 1.08
+    },
+    "jointDampingScale": {
+      "minimum": 0.75,
+      "maximum": 1.25
+    },
+    "actuatorStrengthScale": {
+      "minimum": 0.9,
+      "maximum": 1.1
+    },
+    "frictionScale": {
+      "minimum": 0.8,
+      "maximum": 1.15
+    },
+    "observationNoiseStd": {
+      "minimum": 0,
+      "maximum": 0.002
+    },
+    "actuatorDelayJitterSteps": {
+      "minimum": 0,
+      "maximum": 1
+    },
+    "pushTimeOffsetSeconds": {
+      "minimum": -0.3,
+      "maximum": 0.3
+    },
+    "pushForceScale": {
+      "minimum": 0.75,
+      "maximum": 1.25
+    },
+    "pushDirectionJitterRad": {
+      "minimum": -0.35,
+      "maximum": 0.35
+    }
+  }
+}

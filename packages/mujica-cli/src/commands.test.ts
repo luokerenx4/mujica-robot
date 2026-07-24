@@ -162,7 +162,7 @@ describe("agent CLI contract", () => {
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "HUMAN_REVIEW_REQUIRED",
+      status: "PARTIALLY_ROUTED",
       subject: { assembly: "command-conditioned-history-3dof", controller: "behavior-supervisor" },
       authorityBoundary: {
         prioritization: "derived",
@@ -172,13 +172,21 @@ describe("agent CLI contract", () => {
       },
     });
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting")).toBeUndefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "resilient-mission" && item.case === "impact-left")).toBeDefined();
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "heavy-weak")).toBeDefined();
-    expect(data.workOrder.lanes).toHaveLength(2);
+    expect(data.workOrder.lanes).toHaveLength(4);
     expect(data.workOrder.lanes.map((lane: any) => [lane.kind, lane.researchLab])).toEqual([
+      ["controller-code", "resilient-mission-controller"],
+      ["rl-policy", "resilient-mission-policy"],
       ["controller-code", "robust-transfer-controller"],
       ["rl-policy", "sim-to-real-residual-policy"],
     ]);
-    expect(data.workOrder.lanes.every((lane: any) => lane.primaryBenchmark === "sim-to-real-audit")).toBe(true);
+    expect(data.workOrder.lanes.map((lane: any) => lane.primaryBenchmark)).toEqual([
+      "resilient-mission",
+      "resilient-mission",
+      "sim-to-real-audit",
+      "sim-to-real-audit",
+    ]);
     expect(data.workOrder.lanes.every((lane: any) => lane.runArgv.includes("<agent-command>"))).toBe(true);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
@@ -1210,9 +1218,9 @@ describe("agent CLI contract", () => {
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.researchLabs).toBe(10);
+    expect(envelope.data.definitions.researchLabs).toBe(12);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
-    expect(envelope.data.definitions.domainProfiles).toBe(4);
+    expect(envelope.data.definitions.domainProfiles).toBe(6);
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
     expect(envelope.data.definitions.driverPackages).toBe(1);

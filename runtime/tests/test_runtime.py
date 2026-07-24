@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
-from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, transform_policy_action
+from mujica_runtime.controllers import POLICY_WARMUP_PASSES, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, transform_policy_action
 from mujica_runtime.environment import RobotEnvironment, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
@@ -275,6 +275,69 @@ class RuntimeContractTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "requires a Trainer action transform"):
             effective_action_transform(None, {"residualScale": 0.25})
 
+    def test_program_residual_gate_fails_closed_and_ramps_inside_allowed_mode(self):
+        class Prior:
+            def __init__(self, telemetry):
+                self.value = telemetry
+
+            def telemetry(self):
+                return self.value
+
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["locomotion"],
+                "requiredTelemetry": {"recoveryCompleted": False},
+                "rampSeconds": 0.5,
+            }
+        }
+        self.assertEqual(program_residual_gate_scale(transform, Prior({"mode": "recovery"})), 0.0)
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(
+                    {
+                        "mode": "locomotion",
+                        "modeDwellSeconds": 1.0,
+                        "recoveryCompleted": True,
+                    }
+                ),
+            ),
+            0.0,
+        )
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(
+                    {
+                        "mode": "locomotion",
+                        "modeDwellSeconds": 0.1,
+                        "recoveryCompleted": False,
+                    }
+                ),
+            ),
+            0.2,
+        )
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(
+                    {
+                        "mode": "locomotion",
+                        "modeDwellSeconds": 1.0,
+                        "recoveryCompleted": False,
+                    }
+                ),
+            ),
+            1.0,
+        )
+        self.assertEqual(program_residual_gate_scale(transform, object()), 0.0)
+        with self.assertRaisesRegex(RuntimeError, "Unsupported program residual gate"):
+            program_residual_gate_scale(
+                {"residualGate": {"kind": "unknown"}},
+                Prior({"mode": "locomotion"}),
+            )
+
     def test_quality_reward_is_explicit_normalized_and_neutral_when_omitted(self):
         info = {"motionQuality": {
             "jointAccelerationMeanAbsRadPerSec2": 500.0,
@@ -297,6 +360,9 @@ class RuntimeContractTest(unittest.TestCase):
             "frictionScale": {"minimum": 0.7, "maximum": 1.3},
             "observationNoiseStd": {"minimum": 0.001, "maximum": 0.003},
             "actuatorDelayJitterSteps": {"minimum": 1, "maximum": 2},
+            "pushTimeOffsetSeconds": {"minimum": -0.2, "maximum": 0.2},
+            "pushForceScale": {"minimum": 0.8, "maximum": 1.2},
+            "pushDirectionJitterRad": {"minimum": -0.3, "maximum": 0.3},
         }}
         first = sample_domain_profile(profile, 19); second = sample_domain_profile(profile, 19)
         self.assertEqual(first, second)
@@ -310,9 +376,19 @@ class RuntimeContractTest(unittest.TestCase):
 
         model, compiled = compiled_assembly("command-conditioned-history-3dof")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
-        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        scenario = json.loads((PROJECT / "scenarios" / "mission-impact-left.scenario.json").read_text())
         nominal = RobotEnvironment(model, compiled, task, scenario, 7)
-        sample = {"bodyMassScale": 1.1, "jointDampingScale": 0.5, "actuatorStrengthScale": 0.8, "frictionScale": 0.6, "observationNoiseStd": 0.002, "actuatorDelayJitterSteps": 2}
+        sample = {
+            "bodyMassScale": 1.1,
+            "jointDampingScale": 0.5,
+            "actuatorStrengthScale": 0.8,
+            "frictionScale": 0.6,
+            "observationNoiseStd": 0.002,
+            "actuatorDelayJitterSteps": 2,
+            "pushTimeOffsetSeconds": 0.15,
+            "pushForceScale": 0.8,
+            "pushDirectionJitterRad": np.pi / 2,
+        }
         randomized = RobotEnvironment(model, compiled, task, scenario, 7, sample)
         self.assertAlmostEqual(float(randomized.model.body_mass.sum()), float(nominal.model.body_mass.sum()) * 1.1)
         np.testing.assert_allclose(randomized.model.body_inertia, nominal.model.body_inertia * 1.1)
@@ -321,8 +397,12 @@ class RuntimeContractTest(unittest.TestCase):
         np.testing.assert_allclose(randomized.model.geom_friction[:, 0], float(scenario["friction"]) * 0.6)
         self.assertEqual(randomized.scenario["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
         self.assertAlmostEqual(randomized.scenario["observationNoiseStd"], float(scenario["observationNoiseStd"]) + 0.002)
+        self.assertAlmostEqual(randomized.external_push["timeSeconds"], 2.65)
+        self.assertAlmostEqual(randomized.external_push["forceNewton"], 80.0)
+        np.testing.assert_allclose(randomized.external_push["directionXY"], [-1.0, 0.0], atol=1e-12)
         randomized.reset()
         self.assertEqual(randomized.events[0]["plant"]["actuatorDelaySteps"], int(scenario["actuatorDelaySteps"]) + 2)
+        self.assertEqual(randomized.events[0]["disturbance"], randomized.external_push)
 
     def test_system_identification_recovers_an_independent_hidden_plant(self):
         hidden = {

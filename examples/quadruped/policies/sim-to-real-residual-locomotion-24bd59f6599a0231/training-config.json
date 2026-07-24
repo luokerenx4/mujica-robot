@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "sim-to-real-residual-locomotion",
+  "name": "Domain-randomized upright residual locomotion",
+  "assembly": "command-conditioned-history-3dof",
+  "trainer": "motion-quality-residual-ppo",
+  "task": "forward-walk",
+  "scenarios": [
+    "nominal"
+  ],
+  "priorController": "behavior-supervisor",
+  "domainProfile": "quadruped-pre-hil-v2",
+  "totalSteps": 8192,
+  "rolloutSteps": 256,
+  "epochs": 2,
+  "minibatchSize": 64,
+  "learningRate": 1e-05,
+  "gamma": 0.99,
+  "gaeLambda": 0.95,
+  "clipRatio": 0.15,
+  "entropyCoefficient": 0,
+  "residualScale": 0.1,
+  "residualPenalty": 5,
+  "qualityReward": {
+    "jointAcceleration": 0.1,
+    "bodyAngularAcceleration": 0.2,
+    "actionSlew": 0.1,
+    "actuatorSaturation": 0.2,
+    "footSlip": 0.3,
+    "footImpact": 0.2
+  }
+}

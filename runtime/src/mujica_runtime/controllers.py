@@ -167,6 +167,39 @@ def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.nd
     return prior + float(transform.get("residualScale", 1.0)) * raw_action
 
 
+def program_residual_gate_scale(
+    transform: dict[str, Any],
+    program_prior: Controller,
+) -> float:
+    """Fail closed when a learned residual is outside its declared behavior mode."""
+    gate = transform.get("residualGate")
+    if gate is None:
+        return 1.0
+    if gate.get("kind") != "prior-telemetry-mode":
+        raise RuntimeError(
+            f"Unsupported program residual gate '{gate.get('kind')}'"
+        )
+    telemetry_provider = getattr(program_prior, "telemetry", None)
+    if telemetry_provider is None:
+        return 0.0
+    telemetry = telemetry_provider()
+    if not isinstance(telemetry, dict):
+        return 0.0
+    allowed_modes = gate.get("allowedModes", [])
+    if telemetry.get("mode") not in allowed_modes:
+        return 0.0
+    for field, expected in gate.get("requiredTelemetry", {}).items():
+        if telemetry.get(field) != expected:
+            return 0.0
+    ramp_seconds = float(gate.get("rampSeconds", 0.0))
+    if ramp_seconds <= 0.0:
+        return 1.0
+    dwell_seconds = float(telemetry.get("modeDwellSeconds", 0.0))
+    if not np.isfinite(dwell_seconds):
+        return 0.0
+    return float(np.clip(dwell_seconds / ramp_seconds, 0.0, 1.0))
+
+
 @dataclass
 class FrozenPolicyController:
     network: PolicyNetwork
@@ -179,10 +212,12 @@ class FrozenPolicyController:
     action_transform: dict[str, Any] | None
     program_prior: Controller | None = None
     warmup_passes: int = 0
+    last_residual_gate_scale: float = 0.0
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
         if self.program_prior is not None: self.program_prior.reset(seed)
+        self.last_residual_gate_scale = 0.0
 
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
         vector = np.concatenate([observation[channel["name"]] for channel in self.observation_channels]).astype(np.float32)
@@ -195,10 +230,32 @@ class FrozenPolicyController:
                 raw_action = torch.distributions.Normal(mean, log_std.exp()).sample()[0]
         if self.action_transform and self.action_transform.get("kind") == "program-controller-residual":
             if self.program_prior is None: raise RuntimeError("Frozen Policy is missing its serialized program prior")
-            action = self.program_prior.act(observation, time_seconds) + float(self.action_transform.get("residualScale", 1.0)) * raw_action.numpy()
+            prior_action = self.program_prior.act(observation, time_seconds)
+            self.last_residual_gate_scale = program_residual_gate_scale(
+                self.action_transform,
+                self.program_prior,
+            )
+            action = (
+                prior_action
+                + self.last_residual_gate_scale
+                * float(self.action_transform.get("residualScale", 1.0))
+                * raw_action.numpy()
+            )
         else:
+            self.last_residual_gate_scale = 1.0
             action = transform_policy_action(raw_action.numpy(), observation, self.action_transform, time_seconds)
         return np.clip(action, self.action_low, self.action_high)
+
+    def telemetry(self) -> dict[str, Any]:
+        telemetry: dict[str, Any] = {}
+        if self.program_prior is not None:
+            provider = getattr(self.program_prior, "telemetry", None)
+            if provider is not None:
+                prior_telemetry = provider()
+                if isinstance(prior_telemetry, dict):
+                    telemetry.update(prior_telemetry)
+        telemetry["policyResidualGateScale"] = self.last_residual_gate_scale
+        return telemetry
 
 
 def load_policy_controller(project_dir: Path, definition: dict[str, Any], compiled: dict[str, Any]) -> FrozenPolicyController:

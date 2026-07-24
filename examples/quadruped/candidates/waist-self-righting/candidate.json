@@ -3,11 +3,11 @@
   "id": "waist-self-righting",
   "name": "Compare two-axis waist against rigid-torso self-righting",
   "kind": "development",
-  "benchmark": "self-righting",
+  "benchmark": "self-righting-morphology-v2",
   "baseRevision": null,
   "baseline": {
     "assembly": "self-righting-rigid-3dof",
-    "controller": "rigid-self-right"
+    "controller": "phased-self-right"
   },
   "proposed": {
     "assembly": "self-righting-waist-3dof",
@@ -30,7 +30,7 @@
       "changed": ["joint-torque"]
     },
     "controller": {
-      "from": "rigid-self-right",
+      "from": "phased-self-right",
       "to": "waist-self-right",
       "files": [
         "controllers/waist-self-right/controller.json",
@@ -48,8 +48,8 @@
     "controllers/waist-self-right/controller.py"
   ],
   "fixedInputs": [
-    "benchmarks/self-righting.benchmark.json",
-    "benchmarks/self-righting.lock.json",
+    "benchmarks/self-righting-morphology-v2.benchmark.json",
+    "benchmarks/self-righting-morphology-v2.lock.json",
     "objectives/self-righting.objective.json",
     "tasks/self-right.task.json",
     "scenarios/fallen-front.scenario.json",
@@ -57,6 +57,6 @@
     "scenarios/fallen-left.scenario.json",
     "scenarios/fallen-right.scenario.json"
   ],
-  "hypothesis": "A bounded roll/pitch waist expands the reachable recovery workspace enough to reduce self-righting violations across front, back, and side resting poses.",
-  "expectedEffect": "Reduce locked recovery violations or stable-stand time enough to justify 0.2 kg and two additional Action coordinates without adding self-collision or joint-limit violations."
+  "hypothesis": "A bounded roll/pitch waist expands the reachable recovery workspace beyond the already-successful phased rigid-torso controller.",
+  "expectedEffect": "Pass the same four locked recovery gates and reduce stable-stand time, energy, or saturation enough to justify 0.2 kg and two additional Action coordinates without adding self-collision or joint-limit violations."
 }

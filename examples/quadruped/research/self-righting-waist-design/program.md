@@ -2,7 +2,7 @@
 
 Treat the waist as a bounded morphology hypothesis, not as the expected answer.
 
-The fixed authority is the locked four-pose `self-righting` Benchmark. The editable closure is only the articulated Assembly, its Robot Base, and its matched Controller. Do not edit the rigid baseline, Task, Scenarios, Objective, Benchmark, or lock.
+The fixed authority is the locked four-pose `self-righting-morphology-v2` Benchmark. Its baseline is the already-successful phased rigid-torso Controller, not the obsolete cyclic recovery baseline. The editable closure is only the articulated Assembly, its Robot Base, and its matched Controller. Do not edit the rigid baseline, Task, Scenarios, Objective, Benchmark, or lock.
 
 Each proposal must state whether it changes:
 

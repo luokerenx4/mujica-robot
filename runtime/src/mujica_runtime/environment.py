@@ -25,7 +25,7 @@ def motion_command_vector(command: dict[str, Any]) -> np.ndarray:
 def compile_motion_command_schedule(task: dict[str, Any]) -> list[dict[str, Any]]:
     if int(task["version"]) in (2, 4):
         return [{"atStep": 0, "atSeconds": 0.0, "command": motion_command_vector(task["motionCommand"])}]
-    if int(task["version"]) not in (3, 5):
+    if int(task["version"]) not in (3, 5, 6):
         raise RuntimeError(f"Unsupported Task version '{task['version']}'")
     control_hz = float(task["controlHz"])
     schedule: list[dict[str, Any]] = []
@@ -55,6 +55,43 @@ class RobotEnvironment:
         self.body_mass_scale = float(scenario.get("bodyMassScale", 1.0)) * float(self.domain_sample.get("bodyMassScale", 1.0))
         self.joint_damping_scale = float(scenario.get("jointDampingScale", 1.0)) * float(self.domain_sample.get("jointDampingScale", 1.0))
         self.actuator_strength_scale = float(scenario.get("actuatorStrengthScale", 1.0)) * float(self.domain_sample.get("actuatorStrengthScale", 1.0))
+        legacy_push = scenario.get("lateralPush")
+        external_push = scenario.get("externalPush")
+        if external_push is not None:
+            direction = np.asarray(external_push["directionXY"], dtype=np.float64)
+            force_newton = float(external_push["forceNewton"])
+            push = dict(external_push)
+        elif legacy_push is not None:
+            force_newton = abs(float(legacy_push["forceNewton"]))
+            direction = np.asarray(
+                [0.0, 1.0 if float(legacy_push["forceNewton"]) >= 0.0 else -1.0],
+                dtype=np.float64,
+            )
+            push = dict(legacy_push)
+        else:
+            force_newton = 0.0
+            direction = np.asarray([0.0, 1.0], dtype=np.float64)
+            push = None
+        self.external_push: dict[str, Any] | None = None
+        if push is not None:
+            direction /= float(np.linalg.norm(direction))
+            angle = float(self.domain_sample.get("pushDirectionJitterRad", 0.0))
+            rotation = np.asarray(
+                [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]],
+                dtype=np.float64,
+            )
+            direction = rotation @ direction
+            self.external_push = {
+                "timeSeconds": max(
+                    0.0,
+                    float(push["timeSeconds"])
+                    + float(self.domain_sample.get("pushTimeOffsetSeconds", 0.0)),
+                ),
+                "durationSeconds": float(push["durationSeconds"]),
+                "forceNewton": force_newton
+                * float(self.domain_sample.get("pushForceScale", 1.0)),
+                "directionXY": direction.tolist(),
+            }
         self.rng = np.random.default_rng(seed)
         self.seed = seed
         self.control_dt = 1.0 / float(task["controlHz"])
@@ -121,6 +158,7 @@ class RobotEnvironment:
                 "observationNoiseStd": float(self.scenario["observationNoiseStd"]),
                 "actuatorDelaySteps": int(self.scenario["actuatorDelaySteps"]),
             },
+            "disturbance": self.external_push,
         }]
         return self.observation()
 
@@ -215,13 +253,17 @@ class RobotEnvironment:
         self.command_history.append(action.copy())
         self.applied_history.append(applied.copy())
         self.data.ctrl[:] = applied
-        push = self.scenario.get("lateralPush")
+        push = self.external_push
         pushing = False
         if push:
             now = self.step_index * self.control_dt
             pushing = float(push["timeSeconds"]) <= now < float(push["timeSeconds"]) + float(push["durationSeconds"])
             torso = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, self.base_body_name)
-            if torso >= 0: self.data.xfrc_applied[torso, 1] = float(push["forceNewton"]) if pushing else 0.0
+            if torso >= 0:
+                direction = np.asarray(push["directionXY"], dtype=np.float64)
+                self.data.xfrc_applied[torso, :2] = (
+                    float(push["forceNewton"]) * direction if pushing else 0.0
+                )
         for _ in range(self.physics_steps): mujoco.mj_step(self.model, self.data)
         self.step_index += 1
         height = float(self.data.qpos[2])

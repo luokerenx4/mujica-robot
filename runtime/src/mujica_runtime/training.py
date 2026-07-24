@@ -13,7 +13,7 @@ import mujoco
 import numpy as np
 import torch
 
-from .controllers import Controller, PolicyNetwork, create_policy_network, load_program_controller, load_python_module, transform_policy_action
+from .controllers import Controller, PolicyNetwork, create_policy_network, load_program_controller, load_python_module, program_residual_gate_scale, transform_policy_action
 from .environment import RobotEnvironment
 from .io import atomic_directory, hardware_info, hash_file, hash_json, write_json
 
@@ -41,6 +41,9 @@ DOMAIN_PARAMETER_NAMES = (
     "frictionScale",
     "observationNoiseStd",
     "actuatorDelayJitterSteps",
+    "pushTimeOffsetSeconds",
+    "pushForceScale",
+    "pushDirectionJitterRad",
 )
 
 
@@ -168,6 +171,8 @@ class PPOTrainer:
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
+            batch_residual_gate_scales: list[float] = []
+            batch_residual_l2: list[float] = []
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
                 normalizer.update(observation); normalized = normalizer.normalize(observation)
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
@@ -176,7 +181,22 @@ class PPOTrainer:
                 raw_action = action_tensor[0].numpy()
                 if action_transform and action_transform.get("kind") == "program-controller-residual":
                     if program_prior is None: raise RuntimeError("Program residual prior is unavailable")
-                    transformed = program_prior.act(observation_map, float(environment.data.time)) + float(action_transform.get("residualScale", 1.0)) * raw_action
+                    prior_action = program_prior.act(
+                        observation_map, float(environment.data.time)
+                    )
+                    residual_gate_scale = program_residual_gate_scale(
+                        action_transform, program_prior
+                    )
+                    transformed = (
+                        prior_action
+                        + residual_gate_scale
+                        * float(action_transform.get("residualScale", 1.0))
+                        * raw_action
+                    )
+                    batch_residual_gate_scales.append(residual_gate_scale)
+                    batch_residual_l2.append(
+                        float(np.linalg.norm(raw_action) / np.sqrt(raw_action.size))
+                    )
                 else:
                     transformed = transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time))
                 action = np.clip(transformed, lows, highs)
@@ -226,6 +246,8 @@ class PPOTrainer:
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
                 "meanBaseReward": float(np.mean(batch_base_rewards)), "meanQualityPenalty": float(np.mean(batch_quality_penalties)),
                 "meanQualityTerms": {name: float(np.mean(values)) if values else 0.0 for name, values in batch_quality_terms.items()},
+                "meanResidualGateScale": float(np.mean(batch_residual_gate_scales)) if batch_residual_gate_scales else None,
+                "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
             })
 
         torch.save(network.state_dict(), output_dir / "model.pt")

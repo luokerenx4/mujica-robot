@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "id": "resilient-mission-policy",
+  "name": "Continuous resilience residual Policy autoresearch",
+  "program": "research/resilient-mission-policy/program.md",
+  "benchmark": "resilient-mission",
+  "regressions": [
+    "self-righting",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "resilient-mission-residual",
+    "controller": "resilient-mission-residual-gait",
+    "referenceController": "behavior-supervisor",
+    "seed": 260724
+  },
+  "editable": {
+    "paths": [
+      "trainers/motion-quality-residual-ppo/**",
+      "training/resilient-mission-residual.training.json",
+      "controllers/resilient-mission-residual-gait/controller.json",
+      "domain-profiles/quadruped-resilient-mission-v1.domain.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 480,
+    "maximumTrainingSteps": 16384
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "policy-revision"
+}

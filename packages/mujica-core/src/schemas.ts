@@ -186,11 +186,41 @@ const scheduledRecoveryTaskSchema = z.object({
   });
 });
 
+const continuousRecoveryTaskSchema = z.object({
+  version: z.literal(6), ...taskBase,
+  motionCommandSchedule: z.array(z.object({ atSeconds: z.number().finite().nonnegative(), command: motionCommandSchema }).strict()).min(1).max(16),
+  recoveryEvaluationStartSeconds: z.number().finite().nonnegative(),
+  mobilityMeasurementStartSeconds: z.number().finite().nonnegative(),
+  recoveryTarget: z.object({
+    minimumBaseHeightM: z.number().finite().positive(),
+    maximumBodyTiltRad: z.number().finite().min(0).max(Math.PI),
+    maximumLinearSpeedMps: z.number().finite().nonnegative(),
+    maximumAngularSpeedRadPerSec: z.number().finite().nonnegative(),
+    holdSeconds: z.number().finite().positive(),
+  }).strict(),
+}).strict().superRefine((task, context) => {
+  const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
+  if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.recoveryEvaluationStartSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryEvaluationStartSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.mobilityMeasurementStartSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["mobilityMeasurementStartSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryEvaluationStartSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryEvaluationStartSeconds"], message: "must start before the episode ends" });
+  if (task.mobilityMeasurementStartSeconds <= task.recoveryEvaluationStartSeconds || task.mobilityMeasurementStartSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["mobilityMeasurementStartSeconds"], message: "must start after recovery evaluation and before episode end" });
+  if (!aligned(task.recoveryTarget.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryTarget.holdSeconds > task.durationSeconds - task.recoveryEvaluationStartSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must fit after recovery evaluation starts" });
+  task.motionCommandSchedule.forEach((segment, index) => {
+    if (index === 0 && segment.atSeconds !== 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "first segment must start at 0 seconds" });
+    if (index > 0 && segment.atSeconds <= task.motionCommandSchedule[index - 1]!.atSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment times must be strictly increasing" });
+    if (segment.atSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment must start before the episode ends" });
+    if (!aligned(segment.atSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "must align to an integer control step" });
+  });
+});
+
 export const taskSchema = z.union([
   z.object({ version: z.literal(2), ...taskBase, motionCommand: motionCommandSchema }).strict(),
   scheduledTaskSchema,
   recoveryTaskSchema,
   scheduledRecoveryTaskSchema,
+  continuousRecoveryTaskSchema,
 ]);
 
 const initialBasePoseSchema = z.object({
@@ -201,20 +231,41 @@ const initialBasePoseSchema = z.object({
   if (Math.abs(norm - 1) > 1e-9) context.addIssue({ code: z.ZodIssueCode.custom, path: ["orientationWxyz"], message: "must be a normalized quaternion" });
 });
 
-export const scenarioSchema = z.object({
-  version: z.literal(1), id: idSchema, name: z.string().min(1), friction: z.number().positive(), payloadKg: z.number().nonnegative(),
-  lateralPush: z.object({ timeSeconds: z.number().nonnegative(), durationSeconds: z.number().positive(), forceNewton: z.number() }).strict().nullable(),
+const scenarioBase = {
+  id: idSchema, name: z.string().min(1), friction: z.number().positive(), payloadKg: z.number().nonnegative(),
   observationNoiseStd: z.number().nonnegative(), actuatorDelaySteps: z.number().int().nonnegative(),
   initialJointPositionNoiseStd: z.number().nonnegative().default(0), initialJointVelocityNoiseStd: z.number().nonnegative().default(0),
   initialBasePose: initialBasePoseSchema.optional(),
   bodyMassScale: z.number().positive().optional(), jointDampingScale: z.number().nonnegative().optional(), actuatorStrengthScale: z.number().positive().optional(),
-}).strict();
+};
+
+const planarDirectionSchema = z.tuple([z.number().finite(), z.number().finite()]).superRefine((direction, context) => {
+  if (Math.hypot(...direction) <= 1e-9) context.addIssue({ code: z.ZodIssueCode.custom, message: "external push direction must be nonzero" });
+});
+
+export const scenarioSchema = z.union([
+  z.object({
+  version: z.literal(1), ...scenarioBase,
+  lateralPush: z.object({ timeSeconds: z.number().nonnegative(), durationSeconds: z.number().positive(), forceNewton: z.number() }).strict().nullable(),
+  }).strict(),
+  z.object({
+    version: z.literal(2), ...scenarioBase,
+    externalPush: z.object({
+      timeSeconds: z.number().nonnegative(),
+      durationSeconds: z.number().positive(),
+      forceNewton: z.number().positive(),
+      directionXY: planarDirectionSchema,
+    }).strict().nullable(),
+  }).strict(),
+]);
 
 const positiveDomainRangeSchema = z.object({ minimum: z.number().positive(), maximum: z.number().positive() }).strict()
   .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
 const nonnegativeDomainRangeSchema = z.object({ minimum: z.number().nonnegative(), maximum: z.number().nonnegative() }).strict()
   .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
 const integerDomainRangeSchema = z.object({ minimum: z.number().int(), maximum: z.number().int() }).strict()
+  .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
+const finiteDomainRangeSchema = z.object({ minimum: z.number().finite(), maximum: z.number().finite() }).strict()
   .refine((value) => value.minimum <= value.maximum, "minimum must not exceed maximum");
 
 export const domainProfileSchema = z.object({
@@ -230,6 +281,9 @@ export const domainProfileSchema = z.object({
     frictionScale: positiveDomainRangeSchema.optional(),
     observationNoiseStd: nonnegativeDomainRangeSchema.optional(),
     actuatorDelayJitterSteps: integerDomainRangeSchema.optional(),
+    pushTimeOffsetSeconds: finiteDomainRangeSchema.optional(),
+    pushForceScale: positiveDomainRangeSchema.optional(),
+    pushDirectionJitterRad: finiteDomainRangeSchema.optional(),
   }).strict(),
 }).strict().superRefine((profile, context) => {
   if (profile.provenance.kind !== "synthetic" && profile.provenance.evidence === null) {

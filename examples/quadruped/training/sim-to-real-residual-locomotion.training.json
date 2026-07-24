@@ -5,13 +5,12 @@
   "assembly": "command-conditioned-history-3dof",
   "trainer": "motion-quality-residual-ppo",
   "priorController": "behavior-supervisor",
-  "domainProfile": "quadruped-pre-hil-v1",
+  "domainProfile": "quadruped-pre-hil-v2",
   "task": "forward-walk",
   "scenarios": [
-    "nominal",
-    "actuator-delay-three-step"
+    "nominal"
   ],
-  "totalSteps": 4096,
+  "totalSteps": 8192,
   "rolloutSteps": 256,
   "epochs": 2,
   "minibatchSize": 64,
@@ -20,8 +19,8 @@
   "gaeLambda": 0.95,
   "clipRatio": 0.15,
   "entropyCoefficient": 0,
-  "residualScale": 0.002,
-  "residualPenalty": 50,
+  "residualScale": 0.03,
+  "residualPenalty": 20,
   "qualityReward": {
     "jointAcceleration": 0.1,
     "bodyAngularAcceleration": 0.2,

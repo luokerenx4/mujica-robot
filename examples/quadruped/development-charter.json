@@ -22,7 +22,8 @@
       "bounded payload variation",
       "bounded lateral disturbances",
       "bounded sensing and actuator delay",
-      "front, back, and side resting falls on level floor"
+      "front, back, and side resting falls on level floor",
+      "continuous walk-impact-recover-resume missions on level floor"
     ],
     "exclusions": [
       "stairs and discontinuous terrain",
@@ -38,9 +39,9 @@
     "notes": "Free-base quadruped with three actuated joints per leg in the current development Assembly."
   },
   "northStar": {
-    "statement": "Recover from deterministic front, back, and side resting poses, then retain commanded mobility and governed transfer evidence.",
-    "stage": "self-righting",
-    "benchmark": "self-righting",
+    "statement": "Complete one continuous commanded mission through approach, bounded impact, autonomous recovery, and resumed locomotion without a simulation reset.",
+    "stage": "continuous-resilience",
+    "benchmark": "resilient-mission",
     "requireHumanReview": true
   },
   "designConstraints": {
@@ -70,7 +71,7 @@
       "id": "self-righting",
       "name": "Autonomous self-righting",
       "question": "Can the complete robot recover from front, back, left-side, and right-side resting poses into a stable stand without unsafe contacts, joint-limit use, or excess actuator authority?",
-      "status": "active",
+      "status": "accepted",
       "scenarios": [
         { "task": "self-right", "scenario": "fallen-front", "benchmark": "self-righting", "role": "release" },
         { "task": "self-right", "scenario": "fallen-back", "benchmark": "self-righting", "role": "release" },
@@ -83,6 +84,44 @@
         "One deployed Controller autonomously hands authority from recovery back to locomotion and satisfies the locked post-recovery command.",
         "Recovery respects joint-limit, collision, actuator, mass, cost, and Action-width gates.",
         "The selected morphology retains required locked locomotion regressions."
+      ]
+    },
+    {
+      "id": "continuous-resilience",
+      "name": "Continuous disturbance resilience",
+      "question": "Can the robot walk into a bounded impact, recover from the resulting dynamic state, and resume the same command without resetting controller or plant state?",
+      "status": "active",
+      "scenarios": [
+        {
+          "task": "resilient-forward-mission",
+          "scenario": "mission-impact-left",
+          "benchmark": "resilient-mission",
+          "role": "release"
+        },
+        {
+          "task": "resilient-forward-mission",
+          "scenario": "mission-impact-right",
+          "benchmark": "resilient-mission",
+          "role": "release"
+        },
+        {
+          "task": "self-right",
+          "scenario": "fallen-left",
+          "benchmark": "self-righting",
+          "role": "regression"
+        },
+        {
+          "task": "recover-forward",
+          "scenario": "fallen-right",
+          "benchmark": "recovery-handoff",
+          "role": "regression"
+        }
+      ],
+      "exitCriteria": [
+        "Both locked continuous missions reach the stable recovery target after a real target loss.",
+        "The robot produces positive signed progress after the fixed recovery budget.",
+        "Atomic self-righting, handoff, command, and transition regressions remain passing.",
+        "A frozen learned Policy is promoted only if locked mission gates improve without regression."
       ]
     },
     {
