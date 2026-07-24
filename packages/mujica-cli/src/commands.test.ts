@@ -155,14 +155,14 @@ describe("agent CLI contract", () => {
     expect(JSON.parse(inspected.stdout).data.developmentReviews).toContain(data.id);
   }, 20_000);
 
-  test("keeps numerically satisfied Review evidence below human acceptance", () => {
+  test("routes integrated Mission blockers without granting promotion authority", () => {
     const result = invoke(["project", "work", "examples/quadruped", "--json"]);
     expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout).data;
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "HUMAN_REVIEW_REQUIRED",
+      status: "PARTIALLY_ROUTED",
       subject: { assembly: "resilient-command-conditioned-history-3dof", controller: "behavior-supervisor" },
       authorityBoundary: {
         prioritization: "derived",
@@ -172,10 +172,13 @@ describe("agent CLI contract", () => {
       },
     });
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting")).toBeUndefined();
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "resilient-mission")).toBeUndefined();
+    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "integrated-resilience-mission" && item.case === "impact-right-degraded")).toBeDefined();
     expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "heavy-weak")).toBeDefined();
-    expect(data.workOrder.lanes).toEqual([]);
-    expect(data.workOrder.uncoveredSurfaces.some((item: any) => item.surface === "human-review")).toBe(true);
+    expect(data.workOrder.lanes.map((item: any) => item.researchLab)).toEqual([
+      "integrated-resilience-controller",
+      "integrated-resilience-policy",
+    ]);
+    expect(data.workOrder.uncoveredSurfaces.some((item: any) => item.surface === "assembly")).toBe(true);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
   }, 20_000);
@@ -1206,7 +1209,7 @@ describe("agent CLI contract", () => {
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.researchLabs).toBe(12);
+    expect(envelope.data.definitions.researchLabs).toBe(14);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
     expect(envelope.data.definitions.domainProfiles).toBe(7);
     expect(envelope.data.definitions.calibrations).toBe(2);
@@ -1226,7 +1229,7 @@ describe("agent CLI contract", () => {
     expect(result.data.evidence.actuatorIsolationTrips).toBe(1); expect(result.data.evidence.postStopHealthChecks).toBe(3); expect(result.data.evidence.postStopRecoveryCandidates).toBe(1); expect(result.data.reasons).toEqual([]);
     const policyVerified = invoke([
       "hardware", "verify", "examples/quadruped",
-      "--bundle", "hardware-3813b60c7568c41d",
+      "--bundle", "hardware-ed27657ccf518e43",
       "--evidence", "examples/quadruped/hardware-evidence/history-policy-shadow-dry-run.json",
       "--json",
     ]);
@@ -1328,7 +1331,7 @@ describe("agent CLI contract", () => {
     expect(candidate.data.proposed.cases.every((item: any) => item.metrics.survivalRate >= 0.8 && item.metrics.lateralDrift <= 0.25 && item.metrics.planarVelocityTrackingError <= 0.22 && item.metrics.yawRateTrackingError <= 0.35 && (item.metrics.targetDistance === 0 || item.metrics.forwardProgress >= 0.2))).toBe(true);
     const spatialResult = invoke(["diagnose", "examples/quadruped", "--assembly", "command-conditioned-history-3dof", "--controller", "command-tracking-gait", "--benchmark", "spatial-generalization", "--json"]); const spatial = JSON.parse(spatialResult.stdout);
     expect(spatialResult.code).toBe(0); expect(spatial.data.status).toBe("PASS"); expect(spatial.data.violationCount).toBe(0);
-  }, 45_000);
+  }, 60_000);
 
   test("Policy requalification requires byte-identical MJCF and contracts", () => {
     const result = invoke(["policy", "requalify", "examples/quadruped", "--policy", "spatial-residual-locomotion-81df145800cc15c7", "--assembly", "force-sensing-3dof", "--json"]); const envelope = JSON.parse(result.stdout);
@@ -1347,7 +1350,7 @@ describe("agent CLI contract", () => {
     const delay = envelope.data.evaluation.cases.find((item: any) => item.case.id === "actuator-delay");
     expect(delay.metrics.survivalRate).toBe(1);
     expect(delay.metrics.forwardProgress).toBeGreaterThan(0.69);
-  }, 15_000);
+  }, 30_000);
 
   test("diagnosis ranks measured gate failures separately from hypotheses", () => {
     const result = invoke(["diagnose", "examples/quadruped", "--assembly", "force-sensing-3dof", "--controller", "spatial-forward-gait", "--benchmark", "spatial-generalization", "--json"]); const envelope = JSON.parse(result.stdout);

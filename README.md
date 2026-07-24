@@ -272,6 +272,15 @@ Task v5 closes the next deployment seam: one `behavior-supervisor` now keeps loc
 
 Task v6 makes resilience one causally continuous release test: the robot must walk, absorb a vector impact without reset, recover, and continue the same command. Atomic Benchmarks remain diagnostic, while `resilient-mission` is the end-to-end gate and Studio exposes `approach → disturbance → recovery → resume` directly on the replay. The first honest baseline fails both left/right missions despite passing 4/4 static recovery poses, proving that approach gait, impact basin, and recovery cannot be optimized as unrelated demos. A training-only Domain Profile now samples impact time, force, direction, and plant parameters across the complete episode. See [continuous resilience mission](docs/design/continuous-resilience-mission.md).
 
+Task v7 extends that boundary into a complete eighteen-second Mission:
+`approach → impact → recover → resume → redirect → traverse → stop`. A
+Mission Case never resets; a Mission Suite resets only between complete cases
+and is the sole promotion authority. Training v2 may mix short Skills with full
+Missions, but records their actual exposure and keeps reward diagnostic-only.
+Studio shows authored phases beside actual Controller modes and seeks both A/B
+replays from any phase row. See
+[integrated Mission evaluation](docs/design/integrated-mission-evaluation.md).
+
 The traction lane now reaches `friction = 0.1` without exposing Scenario identity to the Controller. Runs distinguish clipped and signed progress, backward displacement, signed pitch/pitch rate, and per-foot contact force. `bounded-traction-gait` preserves the proven mild-slip authority, then latches a lower severe mode only after measured backward pitch crosses `0.15 rad`. The expanded eleven-case Benchmark includes three hard seeded extreme reset cases; all ten hard cases pass with zero backward displacement, while `friction = 0.05` remains honest non-gating failure evidence. Candidate KEEP removes 20 baseline violations, improves `47.5783 → 66.0074`, retains zero violations on four prior capability suites, and publishes Robot Revision `quadruped-r-1101a73a0752`. See [traction recovery](docs/design/traction-recovery.md).
 
 `mujica diagnose` turns a locked evaluation into signed gate margins, a ranked worst case, and an exact `simulate` reproduction command. It keeps measured failures separate from intervention hypotheses; those findings drove the command Controller from eight initial violations to zero without weakening either Benchmark.

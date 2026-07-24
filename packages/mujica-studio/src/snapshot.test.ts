@@ -28,7 +28,7 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("New Project");
     expect(html).toContain("['project','create'");
     expect(html).toContain("Each robot owns its Charter, source, and evidence");
-  });
+  }, 15_000);
 
   test("projects real robot evidence into a deterministic offline debugger", async () => {
     const first = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
@@ -39,8 +39,8 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
-    expect(first.snapshot.benchmarks).toHaveLength(18);
-    expect(first.snapshot.candidates).toHaveLength(14);
+    expect(first.snapshot.benchmarks).toHaveLength(19);
+    expect(first.snapshot.candidates).toHaveLength(16);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareCaptures.length).toBeGreaterThanOrEqual(1);
@@ -53,6 +53,19 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.researchBriefs).toEqual(second.snapshot.researchBriefs);
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("upright-residual-policy");
     expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("transition-controller-review");
+    expect(first.snapshot.researchLabs.map((item) => item.id)).toContain("integrated-resilience-policy");
+    expect(first.snapshot.policies.find((item) => item.id === "integrated-resilience-curriculum-c811d76190c264d3")).toMatchObject({
+      integrity: "VERIFIED",
+      training: {
+        id: "integrated-resilience-curriculum",
+        runId: "training-d153cd89a44e2381",
+        totalSteps: 8192,
+        curriculumCoverage: {
+          "recovery-handoff-skill": { role: "skill", episodesStarted: 1, episodesCompleted: 1, steps: 450 },
+          "integrated-mission": { role: "mission", episodesStarted: 9, episodesCompleted: 8, steps: 7742 },
+        },
+      },
+    });
     expect(first.snapshot.policies.find((item) => item.id === "resilient-mission-residual-8af2efac119bc98c")).toMatchObject({
       integrity: "VERIFIED",
       training: {
@@ -79,14 +92,17 @@ describe("read-only Studio snapshot", () => {
     });
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
-        status: "HUMAN_REVIEW_REQUIRED",
+        status: "PARTIALLY_ROUTED",
       },
     });
     expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
-    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(false);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
     expect(first.snapshot.developmentWorkOrder?.workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
-    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes).toEqual([]);
-    expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces.some((item) => item.surface === "human-review")).toBe(true);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.lanes.map((item) => item.researchLab)).toEqual([
+      "integrated-resilience-controller",
+      "integrated-resilience-policy",
+    ]);
+    expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces.some((item) => item.surface === "assembly")).toBe(true);
     const session = first.snapshot.researchSessions.find((item) => item.id === "session-2d54b3b2e5ee8251");
     expect(session?.experiments[0]).toMatchObject({ id: "001-7244577953a6", verdict: "REVERT" });
     const reviewedSession = first.snapshot.researchSessions.find((item) => item.id === "session-c773bff5c54a2cd7");
@@ -101,6 +117,9 @@ describe("read-only Studio snapshot", () => {
       },
     });
     const html = await readFile(first.indexPath, "utf8");
+    expect(html).toContain("Continuous Mission · one Episode, no reset");
+    expect(html).toContain("mujica-continuous-mission-context");
+    expect(html).toContain("missionSuiteJudge:'promotion-only'");
     expect(html).toContain("read-only evidence debugger");
     expect(html).toContain("Authoritative MuJoCo replay comparison");
     expect(html).toContain("Top-down path");

@@ -229,7 +229,18 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   const objectiveIds = await fileIds(join(root, "objectives"), ".objective.json"); for (const id of objectiveIds) await loadObjective(root, id);
   const trainingIds = await fileIds(join(root, "training"), ".training.json");
   for (const id of trainingIds) {
-    const training = await loadTraining(root, id); const assembly = await compileAssembly(root, training.assembly); await loadTrainer(root, training.trainer); await loadTask(root, training.task); for (const scenario of training.scenarios) await loadScenario(root, scenario);
+    const training = await loadTraining(root, id); const assembly = await compileAssembly(root, training.assembly); await loadTrainer(root, training.trainer);
+    if (training.version === 1) {
+      await loadTask(root, training.task); for (const scenario of training.scenarios) await loadScenario(root, scenario);
+    } else {
+      const promotionBenchmark = await loadBenchmark(root, training.promotionBenchmark);
+      if (promotionBenchmark.version !== 2) throw new Error(`Curriculum Training '${id}' promotionBenchmark must be a Mission Suite`);
+      for (const entry of training.curriculum) {
+        const task = await loadTask(root, entry.task);
+        if (entry.role === "mission" && task.version !== 7) throw new Error(`Curriculum Training '${id}' Mission entry '${entry.id}' must use an integrated Mission Task`);
+        for (const scenario of entry.scenarios) await loadScenario(root, scenario);
+      }
+    }
     if (training.domainProfile) await loadDomainProfile(root, training.domainProfile);
     if (training.priorController) {
       const prior = await loadController(root, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training '${id}' priorController must be a program Controller`); assertProgramControllerCompatible(prior.definition, assembly);
@@ -237,7 +248,19 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   }
   const benchmarkIds = await fileIds(join(root, "benchmarks"), ".benchmark.json");
   for (const id of benchmarkIds) {
-    const benchmark = await loadBenchmark(root, id); await loadObjective(root, benchmark.objective); const assembly = await compileAssembly(root, benchmark.baseline.assembly); const controller = await loadController(root, benchmark.baseline.controller); assertProgramControllerCompatible(controller.definition, assembly); for (const item of benchmark.cases) { await loadTask(root, item.task); await loadScenario(root, item.scenario); }
+    const benchmark = await loadBenchmark(root, id); await loadObjective(root, benchmark.objective); const assembly = await compileAssembly(root, benchmark.baseline.assembly); const controller = await loadController(root, benchmark.baseline.controller); assertProgramControllerCompatible(controller.definition, assembly);
+    const missionCapabilities = new Set<string>();
+    for (const item of benchmark.cases) {
+      const task = await loadTask(root, item.task); await loadScenario(root, item.scenario);
+      if (benchmark.version === 2) {
+        if (task.version !== 7) throw new Error(`Mission Suite '${benchmark.id}' case '${item.id}' must use an integrated Mission Task`);
+        for (const phase of task.missionPhases) for (const capability of phase.requiredCapabilities) missionCapabilities.add(capability);
+      }
+    }
+    if (benchmark.version === 2) {
+      const missing = benchmark.requiredCapabilities.filter((capability) => !missionCapabilities.has(capability));
+      if (missing.length) throw new Error(`Mission Suite '${benchmark.id}' does not witness required capabilities: ${missing.join(", ")}`);
+    }
   }
   for (const stage of charter.capabilityStages) {
     for (const witness of stage.scenarios) {

@@ -174,6 +174,72 @@ def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str
     }
 
 
+def active_mission_phase(task: dict[str, Any], time_seconds: float) -> dict[str, Any] | None:
+    phases = task.get("missionPhases")
+    if not phases:
+        return None
+    active = phases[0]
+    for phase in phases[1:]:
+        if float(phase["atSeconds"]) > time_seconds + 1e-9:
+            break
+        active = phase
+    return active
+
+
+def mission_phase_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any]) -> dict[str, Any] | None:
+    phases = task.get("missionPhases")
+    if not phases:
+        return None
+    control_hz = float(task["controlHz"])
+    evidence: list[dict[str, Any]] = []
+    for index, phase in enumerate(phases):
+        start = float(phase["atSeconds"])
+        end = float(phases[index + 1]["atSeconds"]) if index + 1 < len(phases) else float(task["durationSeconds"])
+        rows = [row for row in trajectory if row.get("missionStage") == phase["id"]]
+        first_position = np.asarray(rows[0]["qpos"][:3], dtype=np.float64) if rows else np.zeros(3, dtype=np.float64)
+        final_position = np.asarray(rows[-1]["qpos"][:3], dtype=np.float64) if rows else first_position
+        planar_errors = [
+            float(np.linalg.norm(np.asarray(row["measuredMotion"][:2], dtype=np.float64) - np.asarray(row["motionCommand"][:2], dtype=np.float64)))
+            for row in rows
+        ]
+        yaw_errors = [
+            abs(float(row["measuredMotion"][2]) - float(row["motionCommand"][2]))
+            for row in rows
+        ]
+        controller_modes = sorted({
+            str(row["controllerTelemetry"]["mode"])
+            for row in rows
+            if isinstance(row.get("controllerTelemetry"), dict) and row["controllerTelemetry"].get("mode") is not None
+        })
+        evidence.append({
+            **phase,
+            "endSeconds": end,
+            "expectedSteps": round((end - start) * control_hz),
+            "observedSteps": len(rows),
+            "observedDurationSeconds": len(rows) / control_hz,
+            "healthyFraction": float(np.mean([bool(row["healthy"]) for row in rows])) if rows else 0.0,
+            "meanPlanarTrackingErrorMps": float(np.mean(planar_errors)) if planar_errors else 0.0,
+            "meanYawRateTrackingErrorRadPerSec": float(np.mean(yaw_errors)) if yaw_errors else 0.0,
+            "maximumBodyTiltRad": max((float(row["bodyTiltRad"]) for row in rows), default=0.0),
+            "recoveryTargetSatisfiedFraction": float(np.mean([bool(row.get("recoveryTargetSatisfied")) for row in rows])) if rows else 0.0,
+            "netDisplacementM": (final_position - first_position).tolist(),
+            "controllerModes": controller_modes,
+        })
+    required_capabilities = sorted({
+        str(capability)
+        for phase in phases
+        for capability in phase["requiredCapabilities"]
+    })
+    return {
+        "kind": "continuous-mission",
+        "resetPolicy": "no-reset-within-case",
+        "episodeResetCount": 1,
+        "phaseCount": len(evidence),
+        "requiredCapabilities": required_capabilities,
+        "phases": evidence,
+    }
+
+
 def episode_survival_rate(healthy_steps: int, planned_steps: int) -> float:
     """Measure survival against the requested episode, not the truncated trace."""
     return float(healthy_steps) / max(1, int(planned_steps))
@@ -388,7 +454,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     mission_stage_steps: dict[str, int] = {}
     while True:
         if (
-            int(request["task"]["version"]) in (5, 6)
+            int(request["task"]["version"]) in (5, 6, 7)
             and mobility_initial_position is None
             and float(environment.data.time) + 1e-9
             >= float(request["task"]["mobilityMeasurementStartSeconds"])
@@ -504,7 +570,23 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                 recovery_stable_steps = 0
                 recovery_entered_at = None
         mission_stage: str | None = None
-        if int(request["task"]["version"]) == 6:
+        if int(request["task"]["version"]) == 7:
+            current_time = float(environment.data.time)
+            phase = active_mission_phase(request["task"], current_time)
+            mission_stage = str(phase["id"]) if phase is not None else None
+            if mission_stage is not None:
+                mission_stage_steps[mission_stage] = mission_stage_steps.get(mission_stage, 0) + 1
+                if mission_stage != previous_mission_stage:
+                    environment.events.append({
+                        "type": "mission.stage-changed",
+                        "time": current_time,
+                        "from": previous_mission_stage,
+                        "to": mission_stage,
+                        "intent": phase["intent"],
+                        "requiredCapabilities": phase["requiredCapabilities"],
+                    })
+                    previous_mission_stage = mission_stage
+        elif int(request["task"]["version"]) == 6:
             push = environment.external_push
             current_time = float(environment.data.time)
             if push is not None and current_time < float(push["timeSeconds"]) - 1e-9:
@@ -578,6 +660,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         stage: steps / float(request["task"]["controlHz"])
         for stage, steps in mission_stage_steps.items()
     }
+    metrics["mission"] = mission_phase_metrics(trajectory, request["task"])
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})
     run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})

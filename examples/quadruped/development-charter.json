@@ -23,7 +23,8 @@
       "bounded lateral disturbances",
       "bounded sensing and actuator delay",
       "front, back, and side resting falls on level floor",
-      "continuous walk-impact-recover-resume missions on level floor"
+      "continuous walk-impact-recover-resume missions on level floor",
+      "no-reset missions that continue through redirection, lateral traversal, and controlled stop"
     ],
     "exclusions": [
       "stairs and discontinuous terrain",
@@ -39,9 +40,9 @@
     "notes": "Free-base quadruped with three actuated joints per leg in the current development Assembly."
   },
   "northStar": {
-    "statement": "Complete one continuous commanded mission through approach, bounded impact, autonomous recovery, and resumed locomotion without a simulation reset.",
+    "statement": "Complete one no-reset commanded mission through approach, bounded impact, autonomous recovery, resumed locomotion, redirection, lateral traversal, and controlled stop.",
     "stage": "continuous-resilience",
-    "benchmark": "resilient-mission",
+    "benchmark": "integrated-resilience-mission",
     "requireHumanReview": true
   },
   "designConstraints": {
@@ -89,19 +90,31 @@
     {
       "id": "continuous-resilience",
       "name": "Continuous disturbance resilience",
-      "question": "Can the robot walk into a bounded impact, recover from the resulting dynamic state, and resume the same command without resetting controller or plant state?",
+      "question": "Can the robot finish one no-reset mission that combines walking, bounded impact, autonomous recovery, resumed locomotion, redirection, lateral traversal, and controlled stop?",
       "status": "active",
       "scenarios": [
         {
-          "task": "resilient-forward-mission",
+          "task": "integrated-resilience-mission",
           "scenario": "mission-impact-left",
-          "benchmark": "resilient-mission",
+          "benchmark": "integrated-resilience-mission",
           "role": "release"
         },
         {
-          "task": "resilient-forward-mission",
+          "task": "integrated-resilience-mission",
           "scenario": "mission-impact-right",
-          "benchmark": "resilient-mission",
+          "benchmark": "integrated-resilience-mission",
+          "role": "release"
+        },
+        {
+          "task": "integrated-resilience-mission",
+          "scenario": "mission-impact-left-degraded",
+          "benchmark": "integrated-resilience-mission",
+          "role": "release"
+        },
+        {
+          "task": "integrated-resilience-mission",
+          "scenario": "mission-impact-right-degraded",
+          "benchmark": "integrated-resilience-mission",
           "role": "release"
         },
         {
@@ -118,8 +131,9 @@
         }
       ],
       "exitCriteria": [
-        "Both locked continuous missions reach the stable recovery target after a real target loss.",
-        "The robot produces positive signed progress after the fixed recovery budget.",
+        "All locked Mission cases reach the stable recovery target after a real target loss.",
+        "Each Case remains one continuous Episode with exactly one reset at the beginning.",
+        "The robot resumes the pending task, redirects, traverses laterally, and settles at stop after recovery.",
         "Atomic self-righting, handoff, command, and transition regressions remain passing.",
         "A frozen learned Policy is promoted only if locked mission gates improve without regression."
       ]

@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "id": "integrated-resilience-mission",
+  "name": "Locked no-reset integrated resilience Mission Suite",
+  "kind": "mission-suite",
+  "resetPolicy": "between-cases",
+  "requiredCapabilities": [
+    "walking",
+    "command-tracking",
+    "impact-tolerance",
+    "self-righting",
+    "behavior-supervision",
+    "mission-resumption",
+    "yaw-tracking",
+    "command-transition",
+    "lateral-tracking",
+    "controlled-stop"
+  ],
+  "objective": "integrated-resilience-mission",
+  "baseline": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "cases": [
+    {
+      "id": "impact-left-exact",
+      "task": "integrated-resilience-mission",
+      "scenario": "mission-impact-left",
+      "seed": 7201,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "impact-right-exact",
+      "task": "integrated-resilience-mission",
+      "scenario": "mission-impact-right",
+      "seed": 7202,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "impact-left-degraded",
+      "task": "integrated-resilience-mission",
+      "scenario": "mission-impact-left-degraded",
+      "seed": 7203,
+      "weight": 1,
+      "gating": true
+    },
+    {
+      "id": "impact-right-degraded",
+      "task": "integrated-resilience-mission",
+      "scenario": "mission-impact-right-degraded",
+      "seed": 7204,
+      "weight": 1,
+      "gating": true
+    }
+  ]
+}

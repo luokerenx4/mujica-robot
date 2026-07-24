@@ -17,7 +17,7 @@ from mujica_runtime.environment import RobotEnvironment, compile_motion_command_
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
-from mujica_runtime.simulation import episode_survival_rate, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, normalize_masked_advantages, quality_reward_penalty, sample_domain_profile, summarize_domain_samples
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
@@ -651,6 +651,34 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(metrics["targetDistance"], 0.8)
         self.assertAlmostEqual(metrics["forwardProgress"], 0.5)
 
+    def test_integrated_mission_exposes_authored_no_reset_phase_evidence(self):
+        task = json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text())
+        self.assertEqual(active_mission_phase(task, 0.0)["id"], "approach")
+        self.assertEqual(active_mission_phase(task, 2.5)["id"], "impact")
+        self.assertEqual(active_mission_phase(task, 2.66)["id"], "recover")
+        self.assertEqual(active_mission_phase(task, 16.0)["id"], "stop")
+
+        rows = []
+        for index, phase in enumerate(task["missionPhases"]):
+            rows.append({
+                "missionStage": phase["id"],
+                "qpos": [float(index), 0.0, 0.35],
+                "measuredMotion": [0.1, 0.0, 0.0],
+                "motionCommand": [0.1, 0.0, 0.0],
+                "bodyTiltRad": 0.1,
+                "healthy": True,
+                "recoveryTargetSatisfied": phase["intent"] in ("resume", "operate", "stop"),
+                "controllerTelemetry": {"mode": "locomotion" if phase["intent"] != "recover" else "recovery"},
+            })
+        evidence = mission_phase_metrics(rows, task)
+        self.assertEqual(evidence["kind"], "continuous-mission")
+        self.assertEqual(evidence["resetPolicy"], "no-reset-within-case")
+        self.assertEqual(evidence["episodeResetCount"], 1)
+        self.assertEqual(evidence["phaseCount"], 7)
+        self.assertIn("self-righting", evidence["requiredCapabilities"])
+        self.assertEqual(evidence["phases"][-1]["id"], "stop")
+        self.assertEqual(evidence["phases"][-1]["controllerModes"], ["locomotion"])
+
     def test_phased_self_right_controller_classifies_pose_and_exposes_phase_telemetry(self):
         root = PROJECT / "controllers" / "phased-self-right"
         definition = json.loads((root / "controller.json").read_text())
@@ -1208,6 +1236,55 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertTrue((Path(directory) / "model.pt").exists())
             metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
             self.assertEqual(metrics["totalSteps"], 64)
+
+    def test_ppo_curriculum_records_skill_and_mission_exposure(self):
+        model, compiled = compiled_assembly("baseline")
+        scenario = json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())
+        short_task = {
+            "version": 2,
+            "id": "short",
+            "name": "Short",
+            "durationSeconds": 0.04,
+            "controlHz": 50,
+            "healthyHeight": [0.05, 0.8],
+            "terminateOnFall": False,
+            "motionCommand": {
+                "frame": "world",
+                "linearVelocityMps": [0.0, 0.0],
+                "yawRateRadPerSec": 0.0,
+            },
+        }
+        request = {
+            "modelPath": str(model),
+            "compiled": compiled,
+            "task": None,
+            "scenarios": [],
+            "curriculum": [
+                {"id": "skill", "role": "skill", "weight": 0.5, "task": {**short_task, "id": "skill"}, "scenarios": [scenario]},
+                {"id": "mission", "role": "mission", "weight": 0.5, "task": {**short_task, "id": "mission"}, "scenarios": [scenario]},
+            ],
+            "seed": 11,
+            "training": {
+                "totalSteps": 64,
+                "rolloutSteps": 32,
+                "epochs": 1,
+                "minibatchSize": 16,
+                "learningRate": 0.0003,
+                "gamma": 0.99,
+                "gaeLambda": 0.95,
+                "clipRatio": 0.2,
+                "entropyCoefficient": 0.01,
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            PPOTrainer(hidden_sizes=[16]).train(request, Path(directory))
+            metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
+            coverage = metrics["curriculumCoverage"]
+            self.assertEqual(set(coverage), {"skill", "mission"})
+            self.assertEqual(sum(item["steps"] for item in coverage.values()), 64)
+            self.assertGreater(coverage["skill"]["episodesStarted"], 0)
+            self.assertGreater(coverage["mission"]["episodesStarted"], 0)
+            self.assertEqual({item["role"] for item in coverage.values()}, {"skill", "mission"})
 
 
 if __name__ == "__main__":

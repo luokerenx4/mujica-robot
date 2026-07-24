@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, validateProject, verifyCandidateChanges } from "./index";
+import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
@@ -12,21 +12,24 @@ describe("Robot Assembly compiler", () => {
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "sim-to-real-audit", case: "heavy-weak" });
+    expect(review.summary.worstCase).toMatchObject({ benchmark: "integrated-resilience-mission", case: "impact-right-degraded" });
     expect(review.northStar).toMatchObject({
       stage: "continuous-resilience",
-      benchmark: "resilient-mission",
+      benchmark: "integrated-resilience-mission",
       satisfied: false,
-      numericalSatisfied: true,
+      numericalSatisfied: false,
       humanReviewStatus: "REQUIRED",
     });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.status).toBe("HUMAN_REVIEW_REQUIRED");
-    expect(workOrder.lanes).toEqual([]);
+    expect(workOrder.status).toBe("PARTIALLY_ROUTED");
+    expect(workOrder.lanes.map((item) => item.researchLab)).toEqual([
+      "integrated-resilience-controller",
+      "integrated-resilience-policy",
+    ]);
     expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(false);
-    expect(workOrder.blockers.some((item) => item.benchmark === "resilient-mission")).toBe(false);
+    expect(workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
     expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
-    expect(workOrder.uncoveredSurfaces.some((item) => item.surface === "human-review")).toBe(true);
+    expect(workOrder.uncoveredSurfaces.some((item) => item.surface === "assembly")).toBe(true);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 
@@ -444,6 +447,20 @@ describe("Robot Assembly compiler", () => {
     expect(generalized.editable.parameters.find((item) => item.path === "/residualPenalty")?.maximum).toBe(0.2);
     const historyLab = await loadResearchLab(project, "capture-calibrated-history-policy");
     expect(historyLab.execution).toMatchObject({ kind: "policy", referenceController: "latency-aware-spatial-gait" });
+    const curriculum = await loadTraining(project, "integrated-resilience-curriculum");
+    expect(curriculum).toMatchObject({
+      version: 2,
+      promotionBenchmark: "integrated-resilience-mission",
+      curriculum: [
+        { id: "recovery-handoff-skill", role: "skill", weight: 0.35 },
+        { id: "integrated-mission", role: "mission", weight: 0.65 },
+      ],
+    });
+    if (curriculum.version !== 2) throw new Error("Expected curriculum Training");
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      curriculum: curriculum.curriculum.filter((entry) => entry.role === "skill"),
+    }).success).toBe(false);
   });
 
   test("robustness benchmarks distinguish promotion gates from scored challenges", async () => {
@@ -526,6 +543,40 @@ describe("Robot Assembly compiler", () => {
         pushForceScale: { minimum: 0, maximum: 1 },
       },
     }).success).toBe(false);
+  });
+
+  test("integrated Mission Suites name every no-reset phase and required capability", async () => {
+    const task = await loadTask(project, "integrated-resilience-mission");
+    expect(task).toMatchObject({ version: 7, durationSeconds: 18 });
+    if (task.version !== 7) throw new Error("Expected integrated Mission Task");
+    expect(task.missionPhases.slice(0, 4).map((phase) => ({ id: phase.id, intent: phase.intent }))).toEqual([
+      { id: "approach", intent: "operate" },
+      { id: "impact", intent: "disturbance" },
+      { id: "recover", intent: "recover" },
+      { id: "resume", intent: "resume" },
+    ]);
+    expect(task.missionPhases.at(-1)).toMatchObject({ id: "stop", intent: "stop" });
+    expect(taskSchema.safeParse({
+      ...task,
+      motionCommandSchedule: [
+        ...task.motionCommandSchedule.slice(0, 1),
+        { ...task.motionCommandSchedule[1], atSeconds: 8.02 },
+        ...task.motionCommandSchedule.slice(2),
+      ],
+    }).success).toBe(false);
+    expect(taskSchema.safeParse({
+      ...task,
+      missionPhases: task.missionPhases.filter((phase) => phase.intent !== "recover"),
+    }).success).toBe(false);
+
+    const benchmark = await loadBenchmark(project, "integrated-resilience-mission");
+    expect(benchmark).toMatchObject({
+      version: 2,
+      kind: "mission-suite",
+      resetPolicy: "between-cases",
+      requiredCapabilities: expect.arrayContaining(["walking", "self-righting", "controlled-stop"]),
+    });
+    expect(benchmark.cases).toHaveLength(4);
   });
 
   test("Program Controller identity covers local helper modules, not only the entry file", async () => {

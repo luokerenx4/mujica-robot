@@ -215,12 +215,71 @@ const continuousRecoveryTaskSchema = z.object({
   });
 });
 
+const missionPhaseSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1),
+  atSeconds: z.number().finite().nonnegative(),
+  intent: z.enum(["operate", "disturbance", "recover", "resume", "stop"]),
+  requiredCapabilities: z.array(idSchema).min(1).refine(
+    (capabilities) => new Set(capabilities).size === capabilities.length,
+    "required capabilities must be unique",
+  ),
+}).strict();
+
+const integratedMissionTaskSchema = z.object({
+  version: z.literal(7), ...taskBase,
+  motionCommandSchedule: z.array(z.object({ atSeconds: z.number().finite().nonnegative(), command: motionCommandSchema }).strict()).min(1).max(16),
+  missionPhases: z.array(missionPhaseSchema).min(3).max(32),
+  recoveryEvaluationStartSeconds: z.number().finite().nonnegative(),
+  mobilityMeasurementStartSeconds: z.number().finite().nonnegative(),
+  recoveryTarget: z.object({
+    minimumBaseHeightM: z.number().finite().positive(),
+    maximumBodyTiltRad: z.number().finite().min(0).max(Math.PI),
+    maximumLinearSpeedMps: z.number().finite().nonnegative(),
+    maximumAngularSpeedRadPerSec: z.number().finite().nonnegative(),
+    holdSeconds: z.number().finite().positive(),
+  }).strict(),
+}).strict().superRefine((task, context) => {
+  const aligned = (seconds: number) => Math.abs(seconds * task.controlHz - Math.round(seconds * task.controlHz)) <= 1e-9;
+  if (!aligned(task.durationSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["durationSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.recoveryEvaluationStartSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryEvaluationStartSeconds"], message: "must align to an integer control step" });
+  if (!aligned(task.mobilityMeasurementStartSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["mobilityMeasurementStartSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryEvaluationStartSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryEvaluationStartSeconds"], message: "must start before the episode ends" });
+  if (task.mobilityMeasurementStartSeconds <= task.recoveryEvaluationStartSeconds || task.mobilityMeasurementStartSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["mobilityMeasurementStartSeconds"], message: "must start after recovery evaluation and before episode end" });
+  if (!aligned(task.recoveryTarget.holdSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must align to an integer control step" });
+  if (task.recoveryTarget.holdSeconds > task.durationSeconds - task.recoveryEvaluationStartSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recoveryTarget", "holdSeconds"], message: "must fit after recovery evaluation starts" });
+  task.motionCommandSchedule.forEach((segment, index) => {
+    if (index === 0 && segment.atSeconds !== 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "first segment must start at 0 seconds" });
+    if (index > 0 && segment.atSeconds <= task.motionCommandSchedule[index - 1]!.atSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment times must be strictly increasing" });
+    if (segment.atSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "segment must start before the episode ends" });
+    if (!aligned(segment.atSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "must align to an integer control step" });
+  });
+  const phaseIds = new Set<string>();
+  const phaseTimes = new Set<number>();
+  task.missionPhases.forEach((phase, index) => {
+    if (phaseIds.has(phase.id)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "id"], message: "mission phase ids must be unique" });
+    phaseIds.add(phase.id);
+    if (index === 0 && phase.atSeconds !== 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "atSeconds"], message: "first mission phase must start at 0 seconds" });
+    if (index > 0 && phase.atSeconds <= task.missionPhases[index - 1]!.atSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "atSeconds"], message: "mission phase times must be strictly increasing" });
+    if (phase.atSeconds >= task.durationSeconds) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "atSeconds"], message: "mission phase must start before the episode ends" });
+    if (!aligned(phase.atSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases", index, "atSeconds"], message: "must align to an integer control step" });
+    phaseTimes.add(phase.atSeconds);
+  });
+  task.motionCommandSchedule.forEach((segment, index) => {
+    if (!phaseTimes.has(segment.atSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["motionCommandSchedule", index, "atSeconds"], message: "every command boundary must coincide with a named mission phase" });
+  });
+  if (!task.missionPhases.some((phase) => phase.intent === "disturbance")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a disturbance phase" });
+  if (!task.missionPhases.some((phase) => phase.intent === "recover")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a recovery phase" });
+  if (!task.missionPhases.some((phase) => phase.intent === "resume")) context.addIssue({ code: z.ZodIssueCode.custom, path: ["missionPhases"], message: "integrated mission requires a resume phase" });
+});
+
 export const taskSchema = z.union([
   z.object({ version: z.literal(2), ...taskBase, motionCommand: motionCommandSchema }).strict(),
   scheduledTaskSchema,
   recoveryTaskSchema,
   scheduledRecoveryTaskSchema,
   continuousRecoveryTaskSchema,
+  integratedMissionTaskSchema,
 ]);
 
 const initialBasePoseSchema = z.object({
@@ -332,16 +391,31 @@ export const objectiveSchema = z.object({
   }).strict(),
 }).strict();
 
-export const benchmarkSchema = z.object({
+const benchmarkCaseSchema = z.object({ id: idSchema, task: idSchema, scenario: idSchema, seed: z.number().int(), weight: z.number().positive(), gating: z.boolean().default(true) }).strict();
+const benchmarkBase = {
+  id: idSchema, name: z.string().min(1), objective: idSchema,
+  baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(),
+  cases: z.array(benchmarkCaseSchema).min(1),
+};
+
+export const benchmarkSchema = z.union([z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), objective: idSchema,
   baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(),
-  cases: z.array(z.object({ id: idSchema, task: idSchema, scenario: idSchema, seed: z.number().int(), weight: z.number().positive(), gating: z.boolean().default(true) }).strict()).min(1),
-}).strict();
+  cases: z.array(benchmarkCaseSchema).min(1),
+}).strict(), z.object({
+  version: z.literal(2), ...benchmarkBase,
+  kind: z.literal("mission-suite"),
+  resetPolicy: z.literal("between-cases"),
+  requiredCapabilities: z.array(idSchema).min(2).refine(
+    (capabilities) => new Set(capabilities).size === capabilities.length,
+    "required capabilities must be unique",
+  ),
+}).strict()]);
 
 export const trainerSchema = z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("ppo"), entry: relativeFileSchema, model: relativeFileSchema }).strict();
 
-export const trainingSchema = z.object({
-  version: z.literal(1), id: idSchema, name: z.string().min(1), assembly: idSchema, trainer: idSchema, task: idSchema, scenarios: z.array(idSchema).min(1),
+const trainingOptimizationFields = {
+  id: idSchema, name: z.string().min(1), assembly: idSchema, trainer: idSchema,
   priorController: idSchema.optional(),
   domainProfile: idSchema.optional(),
   totalSteps: z.number().int().positive(), rolloutSteps: z.number().int().positive(), epochs: z.number().int().positive(), minibatchSize: z.number().int().positive(),
@@ -352,7 +426,36 @@ export const trainingSchema = z.object({
     jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
     actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),
   }).strict().optional(),
-}).strict();
+};
+
+export const trainingSchema = z.union([
+  z.object({
+    version: z.literal(1), ...trainingOptimizationFields,
+    task: idSchema,
+    scenarios: z.array(idSchema).min(1),
+  }).strict(),
+  z.object({
+    version: z.literal(2), ...trainingOptimizationFields,
+    curriculum: z.array(z.object({
+      id: idSchema,
+      role: z.enum(["skill", "mission"]),
+      task: idSchema,
+      scenarios: z.array(idSchema).min(1),
+      weight: z.number().positive(),
+    }).strict()).min(2).max(16),
+    promotionBenchmark: idSchema,
+  }).strict().superRefine((training, context) => {
+    if (new Set(training.curriculum.map((item) => item.id)).size !== training.curriculum.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculum"], message: "curriculum ids must be unique" });
+    }
+    if (!training.curriculum.some((item) => item.role === "skill")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculum"], message: "curriculum requires at least one Skill entry" });
+    }
+    if (!training.curriculum.some((item) => item.role === "mission")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculum"], message: "curriculum requires at least one Mission entry" });
+    }
+  }),
+]);
 
 export const calibrationSchema = z.object({
   version: z.literal(1),

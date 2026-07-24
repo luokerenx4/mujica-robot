@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "id": "integrated-resilience-residual",
+  "name": "Judge the existing post-recovery residual on the integrated Mission Suite",
+  "kind": "development",
+  "benchmark": "integrated-resilience-mission",
+  "baseRevision": "quadruped-r-53000ed55a18",
+  "baseline": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "proposed": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "resilient-mission-residual-gait"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "behavior-supervisor",
+      "to": "resilient-mission-residual-gait",
+      "files": [
+        "controllers/resilient-mission-residual-gait/controller.json"
+      ]
+    },
+    "trainer": {
+      "from": null,
+      "to": "resilient-residual-ppo",
+      "files": [
+        "trainers/resilient-residual-ppo/trainer.json",
+        "trainers/resilient-residual-ppo/trainer.py",
+        "trainers/resilient-residual-ppo/model.py",
+        "training/resilient-mission-residual.training.json"
+      ]
+    },
+    "policy": {
+      "from": null,
+      "to": "resilient-mission-residual-8af2efac119bc98c"
+    }
+  },
+  "allowedChanges": [
+    "controllers/resilient-mission-residual-gait/controller.json",
+    "domain-profiles/quadruped-resilient-resume-curriculum-v1.domain.json",
+    "trainers/resilient-residual-ppo/trainer.json",
+    "trainers/resilient-residual-ppo/trainer.py",
+    "trainers/resilient-residual-ppo/model.py",
+    "training/resilient-mission-residual.training.json"
+  ],
+  "fixedInputs": [
+    "assemblies/resilient-command-conditioned-history-3dof.robot.json",
+    "benchmarks/integrated-resilience-mission.benchmark.json",
+    "benchmarks/integrated-resilience-mission.lock.json",
+    "objectives/integrated-resilience-mission.objective.json",
+    "tasks/integrated-resilience-mission.task.json",
+    "scenarios/mission-impact-left.scenario.json",
+    "scenarios/mission-impact-right.scenario.json",
+    "scenarios/mission-impact-left-degraded.scenario.json",
+    "scenarios/mission-impact-right-degraded.scenario.json",
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/locomotion.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "hypothesis": "A residual trained only on post-recovery locomotion may improve downstream Mission phases without changing impact entry or self-righting.",
+  "expectedEffect": "Improve resumed progress, redirection, lateral traversal, or braking across the locked Mission Suite while preserving every safety and recovery gate."
+}

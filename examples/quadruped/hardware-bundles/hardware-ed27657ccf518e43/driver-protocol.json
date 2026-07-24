@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "protocol": "stdio-jsonl-v1",
+  "handshake": {
+    "bundleHash": "ed27657ccf518e433ec2e499d31eb87a351e8ddb1e37d639a7ceae5ddc30b129",
+    "observationContractHash": "1b8b5074b338fb869e29b3f884a7c0be9a7ab2a62c6cbb5b124ff76dcd02285b",
+    "actionContractHash": "bcf91d1288a562fb902d430e0a8278eadb1b99bfab82e0881e93d010939ef6f8",
+    "stateContractHash": "b69162417ca16e32bc9131a9ff1527e8b20ec91adc875be114ebf2f6e6ed68ab"
+  },
+  "capabilities": [
+    "applied-action",
+    "command-lease",
+    "decision-deadline",
+    "device-health",
+    "latched-stop-health",
+    "shadow-action",
+    "state-abi-v1",
+    "state-age-ms",
+    "stop-ack"
+  ],
+  "messages": [
+    "hello",
+    "start-episode",
+    "state",
+    "action",
+    "shadow-action",
+    "deadline-rejected",
+    "lease-expired",
+    "control-rejected",
+    "safe-stop",
+    "emergency-stop",
+    "stopped",
+    "health-check",
+    "health-state",
+    "close",
+    "completed"
+  ],
+  "state": {
+    "required": [
+      "episode",
+      "step",
+      "qpos",
+      "qvel",
+      "observation",
+      "appliedAction",
+      "stateAgeMs",
+      "deviceHealth"
+    ],
+    "qpos": "state-contract.json#qpos",
+    "qvel": "state-contract.json#qvel"
+  },
+  "deviceHealth": {
+    "actuatorStates": [
+      "ready",
+      "derated",
+      "faulted",
+      "offline"
+    ]
+  },
+  "commandLease": {
+    "durationMs": 100,
+    "maximumOverrunMs": 25,
+    "renewalMessages": [
+      "start-episode",
+      "action",
+      "shadow-action"
+    ],
+    "automaticRearm": false
+  },
+  "stopRecovery": {
+    "automaticRearm": false,
+    "requiresNewSession": true
+  }
+}

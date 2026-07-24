@@ -144,25 +144,54 @@ class PPOTrainer:
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
         torch.use_deterministic_algorithms(True, warn_only=True)
-        scenarios = request["scenarios"]
-        scenario_index = 0
+        curriculum = request.get("curriculum")
+        if not curriculum:
+            curriculum = [{
+                "id": "legacy-training",
+                "role": "skill",
+                "weight": 1.0,
+                "task": request["task"],
+                "scenarios": request["scenarios"],
+            }]
+        weights = np.asarray([float(entry["weight"]) for entry in curriculum], dtype=np.float64)
+        weights /= weights.sum()
+        curriculum_rng = np.random.default_rng(seed + 20_000_000)
+        scenario_indices = {str(entry["id"]): 0 for entry in curriculum}
+        episode_index = 0
         domain_samples: list[dict[str, Any]] = []
 
         def make_environment() -> RobotEnvironment:
-            nonlocal scenario_index
-            scenario = scenarios[scenario_index % len(scenarios)]; scenario_index += 1
-            episode_seed = seed + scenario_index
-            domain_seed = seed + 10_000_000 + scenario_index
+            nonlocal episode_index
+            curriculum_index = int(curriculum_rng.choice(len(curriculum), p=weights))
+            entry = curriculum[curriculum_index]
+            entry_id = str(entry["id"])
+            scenario_index = scenario_indices[entry_id]
+            scenario = entry["scenarios"][scenario_index % len(entry["scenarios"])]
+            scenario_indices[entry_id] = scenario_index + 1
+            episode_index += 1
+            episode_seed = seed + episode_index
+            domain_seed = seed + 10_000_000 + episode_index
             domain_sample = sample_domain_profile(request.get("domainProfile"), domain_seed)
-            domain_samples.append({"episode": scenario_index, "scenario": scenario["id"], "environmentSeed": episode_seed, "domainSeed": domain_seed, "steps": 0, "completed": False, "parameters": domain_sample})
-            return RobotEnvironment(Path(request["modelPath"]), request["compiled"], request["task"], scenario, episode_seed, domain_sample)
+            domain_samples.append({
+                "episode": episode_index,
+                "curriculum": entry_id,
+                "role": entry["role"],
+                "task": entry["task"]["id"],
+                "scenario": scenario["id"],
+                "environmentSeed": episode_seed,
+                "domainSeed": domain_seed,
+                "steps": 0,
+                "completed": False,
+                "parameters": domain_sample,
+            })
+            return RobotEnvironment(Path(request["modelPath"]), request["compiled"], entry["task"], scenario, episode_seed, domain_sample)
 
         environment = make_environment()
         program_prior: Controller | None = None
         if action_transform and action_transform.get("kind") == "program-controller-residual":
             if not request.get("priorController") or not request.get("priorControllerRoot"): raise RuntimeError("Program residual Trainer requires a priorController")
             program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"])
-            program_prior.reset(seed + scenario_index)
+            program_prior.reset(seed + episode_index)
         observation_map = environment.reset(); observation = environment.vector(observation_map)
         observation_size = observation.size; action_size = environment.model.nu
         architecture: dict[str, Any] = {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal"}
@@ -239,7 +268,7 @@ class PPOTrainer:
                     completed_rewards.append(episode_reward); episode_reward = 0.0
                     if completed_steps < total_steps:
                         environment = make_environment()
-                        if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + scenario_index)
+                        if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + episode_index)
                         observation_map = environment.reset(); observation = environment.vector(observation_map)
             with torch.no_grad():
                 normalized = normalizer.normalize(observation); _, next_value, _ = network(torch.from_numpy(normalized).unsqueeze(0)); bootstrap = float(next_value.item())
@@ -295,6 +324,16 @@ class PPOTrainer:
             } if request.get("domainProfile") else None,
             "domainSamples": domain_samples,
             "domainCoverage": summarize_domain_samples(domain_samples),
+            "curriculumCoverage": {
+                str(entry["id"]): {
+                    "role": entry["role"],
+                    "weight": float(entry["weight"]),
+                    "episodesStarted": sum(sample["curriculum"] == entry["id"] for sample in domain_samples),
+                    "episodesCompleted": sum(sample["curriculum"] == entry["id"] and sample["completed"] for sample in domain_samples),
+                    "steps": sum(int(sample["steps"]) for sample in domain_samples if sample["curriculum"] == entry["id"]),
+                }
+                for entry in curriculum
+            },
         })
         return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}
 
@@ -310,7 +349,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
     assert_domain_profile_plant_compatible(request)
     module = load_python_module((trainer_root / definition["entry"]).resolve(), f"mujica_trainer_{definition['id'].replace('-', '_')}")
     trainer = module.create_trainer()
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "plantHash": request["compiled"]["plantHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request["task"], "scenarios": request["scenarios"], "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "plantHash": request["compiled"]["plantHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request.get("task"), "scenarios": request.get("scenarios"), "curriculum": request.get("curriculum"), "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
     training_run_id = f"training-{run_key[:16]}"; training_run = project_dir / "training-runs" / training_run_id
     if (training_run / "manifest.json").exists(): return {**json.loads((training_run / "result.json").read_text()), "artifactPath": str(training_run), "cached": True}
     policy_result: dict[str, Any] = {}
@@ -321,7 +360,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
         started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time() - started
         model_hash = hash_file(work / "model.pt")
         observation_hash = hash_json(request["compiled"]["observationContract"]); action_hash = hash_json(request["compiled"]["actionContract"])
-        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "plantHash": request["compiled"]["plantHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]), "scenarioHashes": [hash_json(item) for item in request["scenarios"]], "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
+        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "plantHash": request["compiled"]["plantHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]) if request.get("task") else None, "scenarioHashes": [hash_json(item) for item in request.get("scenarios", [])], "curriculumHash": hash_json(request["curriculum"]) if request.get("curriculum") else None, "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
         policy_id = f"{request['training']['id']}-{hash_json(policy_identity)[:16]}"; policy_dir = project_dir / "policies" / policy_id
         reuse_policy = False
         if policy_dir.exists():

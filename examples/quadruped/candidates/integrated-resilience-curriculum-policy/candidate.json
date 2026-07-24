@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "id": "integrated-resilience-curriculum-policy",
+  "name": "Judge the mixed Skill and Mission curriculum policy on the integrated Mission Suite",
+  "kind": "development",
+  "benchmark": "integrated-resilience-mission",
+  "baseRevision": "quadruped-r-53000ed55a18",
+  "baseline": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "behavior-supervisor"
+  },
+  "proposed": {
+    "assembly": "resilient-command-conditioned-history-3dof",
+    "controller": "integrated-resilience-curriculum-policy"
+  },
+  "changes": {
+    "components": {
+      "added": [],
+      "removed": [],
+      "modified": []
+    },
+    "observations": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "actions": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "controller": {
+      "from": "behavior-supervisor",
+      "to": "integrated-resilience-curriculum-policy",
+      "files": [
+        "controllers/integrated-resilience-curriculum-policy/controller.json"
+      ]
+    },
+    "trainer": {
+      "from": null,
+      "to": "resilient-residual-ppo",
+      "files": [
+        "trainers/resilient-residual-ppo/trainer.json",
+        "trainers/resilient-residual-ppo/trainer.py",
+        "trainers/resilient-residual-ppo/model.py",
+        "training/integrated-resilience-curriculum.training.json"
+      ]
+    },
+    "policy": {
+      "from": null,
+      "to": "integrated-resilience-curriculum-c811d76190c264d3"
+    }
+  },
+  "allowedChanges": [
+    "controllers/integrated-resilience-curriculum-policy/controller.json",
+    "domain-profiles/quadruped-resilient-mission-v1.domain.json",
+    "trainers/resilient-residual-ppo/trainer.json",
+    "trainers/resilient-residual-ppo/trainer.py",
+    "trainers/resilient-residual-ppo/model.py",
+    "training/integrated-resilience-curriculum.training.json"
+  ],
+  "fixedInputs": [
+    "assemblies/resilient-command-conditioned-history-3dof.robot.json",
+    "benchmarks/integrated-resilience-mission.benchmark.json",
+    "benchmarks/integrated-resilience-mission.lock.json",
+    "objectives/integrated-resilience-mission.objective.json",
+    "tasks/integrated-resilience-mission.task.json",
+    "scenarios/mission-impact-left.scenario.json",
+    "scenarios/mission-impact-right.scenario.json",
+    "scenarios/mission-impact-left-degraded.scenario.json",
+    "scenarios/mission-impact-right-degraded.scenario.json",
+    "controllers/behavior-supervisor/controller.json",
+    "controllers/behavior-supervisor/controller.py",
+    "controllers/behavior-supervisor/locomotion.py",
+    "controllers/behavior-supervisor/recovery.py"
+  ],
+  "hypothesis": "Mixing isolated recovery-handoff practice with full no-reset Missions teaches the residual both the local recovery boundary and the downstream consequences of its actions.",
+  "expectedEffect": "Improve complete-Mission progress and transition settling across the locked exact and degraded cases without regressing impact survival, self-righting, or stop safety."
+}

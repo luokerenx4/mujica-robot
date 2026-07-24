@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "id": "integrated-resilience-policy",
+  "name": "Integrated Mission curriculum Policy research",
+  "program": "research/integrated-resilience-policy/program.md",
+  "benchmark": "integrated-resilience-mission",
+  "regressions": [
+    "self-righting",
+    "recovery-handoff",
+    "command-tracking",
+    "command-transitions"
+  ],
+  "execution": {
+    "kind": "policy",
+    "training": "integrated-resilience-curriculum",
+    "controller": "integrated-resilience-curriculum-policy",
+    "referenceController": "behavior-supervisor",
+    "seed": 260726
+  },
+  "editable": {
+    "paths": [
+      "trainers/resilient-residual-ppo/**",
+      "training/integrated-resilience-curriculum.training.json",
+      "controllers/integrated-resilience-curriculum-policy/controller.json",
+      "domain-profiles/quadruped-resilient-mission-v1.domain.json"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 4,
+    "maxWallClockSeconds": 600,
+    "maximumTrainingSteps": 32768
+  },
+  "minimumImprovement": 0.02,
+  "promotion": "policy-revision"
+}
