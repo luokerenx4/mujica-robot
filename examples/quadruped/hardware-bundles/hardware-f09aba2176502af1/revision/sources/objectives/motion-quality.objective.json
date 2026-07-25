@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "motion-quality",
+  "name": "Task-preserving motion quality",
+  "weights": {
+    "survival": 30,
+    "velocityTracking": 30,
+    "forwardProgress": 25,
+    "upright": 20,
+    "lateralDrift": 10,
+    "transitionTracking": 0,
+    "energy": 0.005,
+    "smoothness": 0.001,
+    "jointJerk": 0.0005,
+    "bodyAngularJerk": 0.001,
+    "actionSlew": 0.01,
+    "actuatorSaturation": 5,
+    "footSlip": 10,
+    "footImpact": 0.0002,
+    "componentMass": 0.2,
+    "sensorChannels": 0.01,
+    "trainingSteps": 0.0001
+  },
+  "gates": {
+    "minimumSurvivalRate": 0.8,
+    "minimumForwardProgress": 0.25,
+    "minimumSignedForwardProgress": 0.25,
+    "maximumBackwardDisplacement": 0.02,
+    "maximumAbsolutePitchRad": 0.6,
+    "maximumBodyTiltRad": 0.65,
+    "maximumLateralDrift": 0.2,
+    "maximumPlanarVelocityTrackingError": 0.25,
+    "maximumYawRateTrackingError": 0.5,
+    "maximumMeanJointJerkRadPerSec3": 15000,
+    "maximumMeanBodyAngularJerkRadPerSec3": 2200,
+    "maximumMeanActionSlewRatePerSec": 350,
+    "maximumActuatorSaturationRate": 0.7,
+    "maximumMeanFootSlipSpeedMps": 0.15,
+    "maximumPeakFootContactImpactNPerSec": 10000,
+    "maximumRegression": 10
+  }
+}

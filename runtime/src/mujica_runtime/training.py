@@ -4,6 +4,7 @@ import json
 import random
 import shutil
 import time
+from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -162,6 +163,11 @@ def mission_outcome_sample(
     global_step_start: int | None,
 ) -> dict[str, Any]:
     """Create one lossless episode ledger row for training or frozen probing."""
+    mission_phases = entry["task"].get("missionPhases", [])
+    complete_mission_stage = bool(
+        mission_phases
+        and entry.get("throughPhase") == mission_phases[-1]["id"]
+    )
     return {
         "episode": episode,
         "curriculum": str(entry["id"]),
@@ -173,6 +179,7 @@ def mission_outcome_sample(
         "domainSeed": domain_seed,
         "globalStepStart": global_step_start,
         "throughPhase": entry.get("throughPhase"),
+        "completeMissionStage": complete_mission_stage,
         "episodeEndSeconds": entry.get(
             "episodeEndSeconds", float(entry["task"]["durationSeconds"])
         ),
@@ -629,6 +636,7 @@ class PPOTrainer:
     def train(self, request: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         config = request["training"]
         action_transform = effective_action_transform(self.action_transform, config)
+        elite_replay_config = config.get("eliteReplay")
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
         torch.use_deterministic_algorithms(True, warn_only=True)
@@ -771,6 +779,21 @@ class PPOTrainer:
         episode_reward = 0.0; completed_rewards: list[float] = []
         mission_phase_samples: dict[str, dict[str, Any]] = {}
         lows = np.asarray(request["compiled"]["actionLow"], dtype=np.float32); highs = np.asarray(request["compiled"]["actionHigh"], dtype=np.float32)
+        elite_replay_observations: deque[np.ndarray] = deque(
+            maxlen=int(elite_replay_config["capacity"])
+            if elite_replay_config
+            else 1
+        )
+        elite_replay_actions: deque[np.ndarray] = deque(
+            maxlen=int(elite_replay_config["capacity"])
+            if elite_replay_config
+            else 1
+        )
+        elite_replay_rng = np.random.default_rng(seed + 50_000_000)
+        episode_elite_candidates: list[tuple[np.ndarray, np.ndarray]] = []
+        episode_elite_admitted = False
+        elite_replay_admissions = 0
+        elite_replay_episode_admissions = 0
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
@@ -780,6 +803,7 @@ class PPOTrainer:
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
+            batch_elite_replay_losses: list[float] = []
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
                 normalizer.update(observation); normalized = normalizer.normalize(observation)
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
@@ -820,14 +844,21 @@ class PPOTrainer:
                 else:
                     transformed = transform_policy_action(raw_action, observation_map, action_transform, float(environment.data.time))
                     batch_policy_masks.append(1.0)
-                action = np.clip(transformed, lows, highs)
-                result = environment.step(action)
-                quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
                 actor_authority = float(batch_policy_masks[-1]) * (
                     float(np.max(residual_scale_vector))
                     if residual_scale_vector is not None
                     else 1.0
                 )
+                if elite_replay_config and actor_authority > 0.0:
+                    episode_elite_candidates.append(
+                        (observation.copy(), raw_action.astype(np.float32))
+                    )
+                    tail_steps = int(elite_replay_config["tailSteps"])
+                    if len(episode_elite_candidates) > tail_steps:
+                        del episode_elite_candidates[:-tail_steps]
+                action = np.clip(transformed, lows, highs)
+                result = environment.step(action)
+                quality_penalty, quality_terms = quality_reward_penalty(result.info, config.get("qualityReward"))
                 mission_bonus, mission_terms = mission_reward_bonus(result.info, config.get("missionReward"), actor_authority)
                 recovery_bonus, recovery_terms = recovery_reward_bonus(
                     result.info,
@@ -843,12 +874,34 @@ class PPOTrainer:
                 episode_sample = domain_samples[-1]
                 episode_sample["activePolicySteps"] += int(actor_authority > 0.0)
                 episode_sample["actorAuthoritySum"] += actor_authority
+                previous_target_satisfied = episode_recovery_target_satisfied
                 episode_recovery_target_satisfied = record_mission_outcome_step(
                     episode_sample,
                     result.info,
                     actor_authority,
                     episode_recovery_target_satisfied,
                 )
+                actor_target_entry = bool(
+                    actor_authority > 0.0
+                    and episode_recovery_target_satisfied
+                    and not previous_target_satisfied
+                )
+                if (
+                    elite_replay_config
+                    and actor_target_entry
+                    and not episode_elite_admitted
+                    and (
+                        elite_replay_config.get("scope", "all-progression")
+                        == "all-progression"
+                        or episode_sample.get("completeMissionStage") is True
+                    )
+                ):
+                    for elite_observation, elite_action in episode_elite_candidates:
+                        elite_replay_observations.append(elite_observation)
+                        elite_replay_actions.append(elite_action)
+                    elite_replay_admissions += len(episode_elite_candidates)
+                    elite_replay_episode_admissions += 1
+                    episode_elite_admitted = True
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
                 batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(learning_reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
@@ -900,6 +953,8 @@ class PPOTrainer:
                         environment = make_environment()
                         if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + episode_index)
                         residual_gate_scale_state = 0.0
+                        episode_elite_candidates = []
+                        episode_elite_admitted = False
                         observation_map = environment.reset(); observation = environment.vector(observation_map)
                         episode_recovery_target_satisfied = environment.recovery_target_satisfied()
             with torch.no_grad():
@@ -926,7 +981,37 @@ class PPOTrainer:
                     ratio = (new_log - old_log_t).exp(); clipped = torch.clamp(ratio, 1.0 - float(config["clipRatio"]), 1.0 + float(config["clipRatio"]))
                     policy_loss = -masked_mean(torch.min(ratio * advantage_t, clipped * advantage_t), policy_mask_t); value_loss = 0.5 * torch.square(value - return_t).mean()
                     residual_penalty = float(config.get("residualPenalty", 0.0)) * masked_mean(torch.square(mean).mean(dim=-1), policy_mask_t)
-                    loss = policy_loss + value_loss + residual_penalty - float(config["entropyCoefficient"]) * entropy
+                    elite_replay_loss = torch.zeros((), dtype=mean.dtype)
+                    if elite_replay_config and elite_replay_observations:
+                        elite_batch_size = min(
+                            int(elite_replay_config["minibatchSize"]),
+                            len(elite_replay_observations),
+                        )
+                        elite_indices = elite_replay_rng.integers(
+                            0,
+                            len(elite_replay_observations),
+                            size=elite_batch_size,
+                        )
+                        elite_observations = normalizer.normalize(np.asarray([
+                            elite_replay_observations[int(index)]
+                            for index in elite_indices
+                        ]))
+                        elite_actions = np.asarray([
+                            elite_replay_actions[int(index)]
+                            for index in elite_indices
+                        ])
+                        elite_mean, _, _ = network(
+                            torch.tensor(elite_observations)
+                        )
+                        elite_replay_loss = float(
+                            elite_replay_config["coefficient"]
+                        ) * torch.square(
+                            elite_mean - torch.tensor(elite_actions)
+                        ).mean()
+                        batch_elite_replay_losses.append(
+                            float(elite_replay_loss.detach().item())
+                        )
+                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss - float(config["entropyCoefficient"]) * entropy
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
             metrics.append({
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
@@ -939,6 +1024,9 @@ class PPOTrainer:
                 "meanResidualGateScale": float(np.mean(batch_residual_gate_scales)) if batch_residual_gate_scales else None,
                 "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
                 "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
+                "meanEliteReplayLoss": float(np.mean(batch_elite_replay_losses)) if batch_elite_replay_losses else None,
+                "eliteReplayTransitions": len(elite_replay_observations),
+                "eliteReplayEpisodeAdmissions": elite_replay_episode_admissions,
             })
 
         deterministic_mission_probe = (
@@ -980,6 +1068,12 @@ class PPOTrainer:
             "missionOutcomeActionMode": "stochastic-sampled",
             "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
             "deterministicMissionProbe": deterministic_mission_probe,
+            "eliteReplay": {
+                **elite_replay_config,
+                "admittedTransitions": elite_replay_admissions,
+                "retainedTransitions": len(elite_replay_observations),
+                "admittedEpisodes": elite_replay_episode_admissions,
+            } if elite_replay_config else None,
             "curriculumCoverage": {
                 str(entry["id"]): {
                     "role": entry["role"],

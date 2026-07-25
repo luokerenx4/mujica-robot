@@ -223,6 +223,16 @@ not update weights or normalization statistics and are not charged to the
 declared Training budget. This probe is a deployability diagnostic below the
 locked Mission Suite Judge; it does not promote a Policy.
 
+Training may optionally enable bounded `eliteReplay` consolidation. The only
+supported trigger is an actor-authorized transition into the Task-authored
+recovery target. Mujica retains a bounded tail of the raw observations and
+sampled residual actions that causally preceded the first such entry in an
+episode, then adds a small behavior-cloning loss during later PPO updates so
+exploration-only behavior can move into the actor mean. The buffer has explicit
+tail, capacity, minibatch, coefficient, and stage-scope limits. It never admits
+physical target crossings caused only by the Program, never expands Policy
+authority, never adds Training steps, and never changes promotion authority.
+
 Legacy Training v2 still supports `episode-probability` and `step-share` for
 reproducing existing Policies. It is not the main integrated-robot
 development contract. Training v3 advances monotonically by cumulative global
@@ -768,3 +778,32 @@ locked degraded Cases. The evidence-backed next problem is therefore
 stochastic-to-deterministic policy consolidation, not a speculative authority
 handoff change. The deterministic post-Training probe makes that gap explicit
 before a Candidate reaches the uninterrupted Mission Judge.
+
+## Exploration-to-mean consolidation result
+
+The same 65,536-step conjunctive run was reproduced under the deterministic
+probe contract as Policy `articulated-inverted-escape-d23b22b99d4a2c80`.
+Its stochastic rollouts again produced six actor-caused target entries. Across
+six frozen actor-mean progression-stage × Scenario probes it produced zero:
+every recovery timed out and maximum stable progress remained zero. The locked
+Judge reproduced the prior `39.984379` score and `REVERT`, directly confirming
+that the observed entries were exploration evidence rather than deployable
+Policy behavior.
+
+Policy `articulated-inverted-escape-2c084934ac04e4a6` added elite replay with a
+64-step tail, 4,096-transition capacity, 64-sample minibatch, and `0.05`
+coefficient. Nine episodes admitted 576 transitions. The frozen actor mean
+then caused one target entry, while the locked Judge improved from 43 to 42
+violations and from `87.786` to `81.735` normalized severity. Aggregate score
+reached `59.449401`, but terminal height regressed on degraded-right and both
+recovery-handoff score gates regressed, so the Harness correctly returned
+`REVERT`.
+
+A stricter `complete-mission` replay scope admitted only one 64-transition
+episode. It moved the deterministic target entry to a complete left Mission
+probe but regressed the locked Judge to 46 violations and `108.883` severity.
+This separates semantic correctness from sample sufficiency: complete-Mission
+success is the right deployment evidence, but one elite episode cannot support
+reliable policy consolidation. The next bounded problem is collection and
+selection of more diverse complete-Mission recovery evidence, not increasing
+the cloning coefficient or weakening the Judge.

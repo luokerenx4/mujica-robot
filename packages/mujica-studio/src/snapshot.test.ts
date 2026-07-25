@@ -166,6 +166,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("exploration evidence, not deployable Policy proof");
     expect(html).toContain("Frozen deterministic Policy probe");
     expect(html).toContain("zero Training-budget steps");
+    expect(html).toContain("Policy consolidation");
+    expect(html).toContain("Elite recovery replay");
+    expect(html).toContain("exploration-to-mean consolidation");
     expect(html).toContain("Frozen-weight Authority Counterfactual");
     expect(html).toContain("byte-identical Policy weights");
     expect(html).toContain("mujica-frozen-policy-authority-counterfactual");

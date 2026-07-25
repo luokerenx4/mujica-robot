@@ -2088,6 +2088,13 @@ class RuntimeContractTest(unittest.TestCase):
                 "gaeLambda": 0.95,
                 "clipRatio": 0.2,
                 "entropyCoefficient": 0.01,
+                "eliteReplay": {
+                    "trigger": "actor-recovery-target-entry",
+                    "tailSteps": 8,
+                    "capacity": 32,
+                    "minibatchSize": 8,
+                    "coefficient": 0.05,
+                },
             },
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -2097,6 +2104,13 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertTrue((Path(directory) / "model.pt").exists())
             metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
             self.assertEqual(metrics["totalSteps"], 64)
+            self.assertEqual(
+                metrics["eliteReplay"]["trigger"],
+                "actor-recovery-target-entry",
+            )
+            self.assertLessEqual(
+                metrics["eliteReplay"]["retainedTransitions"], 32
+            )
             self.assertEqual(
                 metrics["missionOutcomeActionMode"], "stochastic-sampled"
             )
@@ -2342,6 +2356,16 @@ class RuntimeContractTest(unittest.TestCase):
                     for sample in probe["episodes"]
                 },
                 {"approach-prefix", "complete-mission"},
+            )
+            self.assertEqual(
+                {
+                    sample["curriculum"]: sample["completeMissionStage"]
+                    for sample in probe["episodes"]
+                },
+                {
+                    "approach-prefix": False,
+                    "complete-mission": True,
+                },
             )
             self.assertEqual(
                 {

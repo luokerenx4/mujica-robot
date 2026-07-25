@@ -554,6 +554,14 @@ const trainingOptimizationFields = {
   learningRate: z.number().positive(), gamma: z.number().min(0).max(1), gaeLambda: z.number().min(0).max(1), clipRatio: z.number().positive(), entropyCoefficient: z.number().nonnegative(),
   residualScale: z.number().min(0).max(1).optional(),
   residualPenalty: z.number().nonnegative().optional(),
+  eliteReplay: z.object({
+    trigger: z.literal("actor-recovery-target-entry"),
+    scope: z.enum(["all-progression", "complete-mission"]).optional(),
+    tailSteps: z.number().int().min(1).max(256),
+    capacity: z.number().int().min(1).max(8192),
+    minibatchSize: z.number().int().min(1).max(1024),
+    coefficient: z.number().finite().positive().max(10),
+  }).strict().optional(),
   qualityReward: z.object({
     jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
     actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),

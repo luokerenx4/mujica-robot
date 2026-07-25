@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "91833960d12849145852e5f5c3b5ca8d3ff4d214d28c3e0e471da63bad6c7808",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-c84b9a6b5e071a4b",
+    "experimentId": "001-dfbd09d196d0",
+    "experimentHash": "dfbd09d196d04546754d6ccfe0f8fc76fd0fca29c298f751a340127b9b9850a3"
+  },
+  "proposal": {
+    "strategy": "elite-target-entry-replay-consolidation",
+    "hypothesis": "The reproducible 65,536-step continuous-Mission run produced six actor-caused recovery-target entries under sampled PPO actions, but the frozen actor mean produced zero entries, zero stable progress, and a timeout in every deterministic probe. Preserve the exact architecture, authority envelope, curriculum, reward, seed, and training budget; when an actor-authorized action first enters the Task-authored recovery target, retain only the preceding 64 actor-authorized observation/action pairs and distill that bounded successful tail into the actor mean during later PPO updates.",
+    "expectedEffect": "Convert exploration-only target entries into deterministic actor-mean target entries in both impact directions without increasing Training steps or changing the locked Task, Scenario, Program prior, authority envelope, or Mission Judge; any failure to improve the frozen probe or complete-Mission gate tier must remain REVERT."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 81.7352693017512,
+      "feasibilityImproved": true,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "e6f7ae6aa75790042c3a45658a7907113460b04dbb1aad5bbd0547e8515e616c"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: final-base-height regressed from passing to failing",
+    "candidateScoreDelta": -3.9476738216145932,
+    "weightedScoreDelta": -3.9476738216145932
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-06f9e43e9aee09e6",
+    "runKey": "06f9e43e9aee09e627199ecfd432e02fc0ce34bc0fc08e9ea0681a0fae908a5a",
+    "resultHash": "588169e5c8782292a75a52ed5282b4df40617cbbfb0f6f6234e2c3224ba675f4",
+    "artifactHash": "7a40947615a00d36cc6c14c5555ded42b380ded5dad7ffb675975d4d5d326c06",
+    "manifestHash": "58a1c5cd4f76a18105406e00bfb5219547402d6e415da96c6ab3847fb6bbf032",
+    "metricsHash": "4852e8e6fca12738428082117baedae3c9d1fd35b2a58352adade2ab074783df",
+    "scoreHash": "0d346c861fef2156fcf6ad66a202b5a2f7ac14922e371f1e4d1ad09a6269e6d3",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 52.090808559699596
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-69dab3f97de018e2",
+    "runKey": "69dab3f97de018e26ca9ed87d5df7b4cdeddbb822bec53478df747fc6c70732f",
+    "resultHash": "6b8f677ac88f8939ccb5ef399a4807238aa346a518939305c88cd6e79e30fc7a",
+    "artifactHash": "7eb7e2922b386af12c1032e57b150d6c7bc8695678123644809801d5816dc60c",
+    "manifestHash": "4586ed54ebd2b87341c693d7744ba4e4c7d94ed2479422da43f9c5285609b9f2",
+    "metricsHash": "2dfd6f0dc494e80781f4840fa8c3982683b3ecf0797cfb86cd85934dac534127",
+    "scoreHash": "ad6bc0387cad6f69ff48a1e82bfe558ddb3e3be02f32836117a6fa224f2a20ea",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": 48.143134738085
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

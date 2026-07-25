@@ -1,0 +1,61 @@
+{
+  "version": 4,
+  "id": "001-dfbd09d196d0",
+  "experimentHash": "dfbd09d196d04546754d6ccfe0f8fc76fd0fca29c298f751a340127b9b9850a3",
+  "sequence": 1,
+  "sessionId": "session-c84b9a6b5e071a4b",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "91833960d12849145852e5f5c3b5ca8d3ff4d214d28c3e0e471da63bad6c7808",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "041d6b7c929029322d69c03543c06666219f545bcd4352bcb1eebd30dd107f1f",
+  "historyHash": "0dcfe3c6d3707b347899f60778cf70fc80a98f51ba3d5717a8f6fddc261c7926",
+  "historyCount": 12,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "elite-target-entry-replay-consolidation",
+    "hypothesis": "The reproducible 65,536-step continuous-Mission run produced six actor-caused recovery-target entries under sampled PPO actions, but the frozen actor mean produced zero entries, zero stable progress, and a timeout in every deterministic probe. Preserve the exact architecture, authority envelope, curriculum, reward, seed, and training budget; when an actor-authorized action first enters the Task-authored recovery target, retain only the preceding 64 actor-authorized observation/action pairs and distill that bounded successful tail into the actor mean during later PPO updates.",
+    "expectedEffect": "Convert exploration-only target entries into deterministic actor-mean target entries in both impact directions without increasing Training steps or changing the locked Task, Scenario, Program prior, authority envelope, or Mission Judge; any failure to improve the frozen probe or complete-Mission gate tier must remain REVERT."
+  },
+  "policyId": "articulated-inverted-escape-2c084934ac04e4a6",
+  "score": 59.44940085353308,
+  "delta": -3.2729238135374317,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 42,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 81.7352693017512,
+    "feasibilityImproved": true,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "c0f5233829987bf5bd175ff69433d11e4c5bf5c6912a46f4e5a9e6adcf1ac858",
+    "acceptedRunId": "run-06f9e43e9aee09e6",
+    "candidateRunId": "run-69dab3f97de018e2",
+    "caseId": "impact-right-degraded"
+  },
+  "durationMs": 165386,
+  "completed": true
+}

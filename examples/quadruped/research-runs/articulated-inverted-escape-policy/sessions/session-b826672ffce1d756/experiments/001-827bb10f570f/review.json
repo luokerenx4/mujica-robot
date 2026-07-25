@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "02946277f9ed906b3a40c2086ccd7fc960b25a863586e1de47b1de67ac09b326",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-b826672ffce1d756",
+    "experimentId": "001-827bb10f570f",
+    "experimentHash": "827bb10f570fc59accbe907ee46d475ea1be4bbba72593bf174f01f7242ebcff"
+  },
+  "proposal": {
+    "strategy": "conjunctive-task-target-balanced-recovery",
+    "hypothesis": "The prior continuous-Mission run exposed a reward and observability mismatch rather than a left/right sampling imbalance: complete-stage training was balanced by direction, but only six Task-target entries occurred in 110 episodes, and the rejected degraded-right Policy ended upright yet 3.1 cm below the authored height threshold. Replace part of the independent posture shaping with a smooth geometric conjunction of the Task-authored height, tilt, linear-speed, and angular-speed targets, retain sparse actor-causal target entry, and publish every stage-by-Scenario episode outcome so PPO cannot receive a high local recovery return while silently missing one physical target dimension or the downstream Mission.",
+    "expectedEffect": "Increase actor-caused target entries and stable-recovery episodes in both impact directions—especially degraded-right base height—while reducing recovery deadline expiry and preserving timeout-free traverse/stop completion; the new outcome ledger must make any directional or curriculum-stage tradeoff explicit."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 45,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 106.69065412124016,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "b085a61929cc78a24b316d71758a3929bb3c48bc241a0705e30d82ab4289dd54"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: self-righting regressed from passing to failing",
+    "candidateScoreDelta": -81.23864434011584,
+    "weightedScoreDelta": -81.23864434011584
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-656874ccb3ec361d",
+    "runKey": "656874ccb3ec361d988bb57faf165158a9681be1245891451e4ad77985af0026",
+    "resultHash": "e5fd993c03e8676d8dbaedd2a34522fa2f6cd01ed901c68852de98f4eb55115f",
+    "artifactHash": "93beb874f02faec1fa9dba3fa5a55e7767f7ac6f0a67688dea9e9188b3b19ffd",
+    "manifestHash": "c5d15d7164299d294f3465d5140bc83ac65c2572195bbb4037ccbfef3d3cd4d2",
+    "metricsHash": "4852e8e6fca12738428082117baedae3c9d1fd35b2a58352adade2ab074783df",
+    "scoreHash": "0d346c861fef2156fcf6ad66a202b5a2f7ac14922e371f1e4d1ad09a6269e6d3",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 52.090808559699596
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-9b98cf0af6fc671e",
+    "runKey": "9b98cf0af6fc671e850c7e5c1aa5378142df48b473608c6a169a57a4e224f262",
+    "resultHash": "a5306a0deb05576f60cdff324089759eb26efcd1496f7236a26aadb03b955df5",
+    "artifactHash": "93b73938faae1c0a7caefff9f3ecfe04832ed3889c8903750af19fe5bb0aef41",
+    "manifestHash": "9ecb85097c60aa39c2f591f6a7d3a7fbb5dabe01cb26d0e03fc7a699a3f5fa40",
+    "metricsHash": "d88c66701b6fdd81f23851c2a5fe3d0f2f849ee492e04d9e8f3a1b2f8b9a0802",
+    "scoreHash": "368441815956f98fab07815912f88fb8e4644a6dd13f4d8515914c8916d81068",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -29.14783578041624
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

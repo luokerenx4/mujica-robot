@@ -1,0 +1,71 @@
+{
+  "version": 4,
+  "id": "001-bea44a78a492",
+  "experimentHash": "bea44a78a49287a2d2e3c2befe2ca1a46c38d848cdaf30913a176a87a440ba80",
+  "sequence": 1,
+  "sessionId": "session-e118e40d3f3f3158",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "765c9ca6b245a8da19836d35c349525790876d329fecf14636b66965b725c95e",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "3261389cd212c211f534567d7e831a5ac0dcbdf206afe606a530c59b5b6242e5",
+  "historyHash": "a7af9410f4bc4d042c78fac97765ec0ba9f0c5df99fffae3d40fa3825d425764",
+  "historyCount": 13,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "complete-mission-elite-replay-consolidation",
+    "hypothesis": "All-progression elite replay moved the frozen actor mean from zero to one target entry and improved the locked Mission violation tier, but six of its nine admitted episodes came from the short recovery prefix while the deterministic complete-Mission probes still entered the target zero times. Keep the replay algorithm and every physical/training input fixed, but admit target-entry tails only from progression stages that run through the final authored Mission phase.",
+    "expectedEffect": "Consolidate behavior that was demonstrated in the same uninterrupted impact→recover→resume→redirect→traverse→stop context used for deployment, improve deterministic complete-Mission target entry and terminal posture on both directions, and remove the final-height and recovery-handoff regressions without weakening any locked gate."
+  },
+  "policyId": "articulated-inverted-escape-e62da94dd48e6f9b",
+  "score": 40.0763009016497,
+  "delta": -22.646023765420807,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: backward-displacement regressed from passing to failing",
+      "impact-right-degraded: self-righting regressed from passing to failing",
+      "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "impact-right-degraded: final-body-tilt regressed from passing to failing",
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "impact-right-degraded: score-regression regressed from passing to failing",
+      "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+      "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+      "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 46,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 108.88328053166414,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "af9761c043d64bc21ea89f6c5fc1944c838dd4bdd01f3f4d28935827a72771c5",
+    "acceptedRunId": "run-7e54b9b2c3931232",
+    "candidateRunId": "run-c62de44b7069888c",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 159639,
+  "completed": true
+}

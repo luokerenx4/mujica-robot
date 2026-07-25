@@ -527,6 +527,28 @@ describe("Robot Assembly compiler", () => {
     }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
+      eliteReplay: {
+        trigger: "actor-recovery-target-entry",
+        scope: "complete-mission",
+        tailSteps: 64,
+        capacity: 4096,
+        minibatchSize: 64,
+        coefficient: 0.05,
+      },
+    }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      eliteReplay: {
+        trigger: "actor-recovery-target-entry",
+        scope: "complete-mission",
+        tailSteps: 0,
+        capacity: 4096,
+        minibatchSize: 64,
+        coefficient: 0.05,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
       progression: curriculum.progression.slice(0, 2),
     }).success).toBe(false);
   });

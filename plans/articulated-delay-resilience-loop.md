@@ -295,3 +295,28 @@ on the locked degraded Cases. Training v3 now publishes both ledgers:
 This keeps walking, disturbance response, recovery, and controlled stop inside
 one causal Mission while preventing exploration luck from masquerading as a
 deployable robot capability.
+
+## Elite replay consolidation
+
+The deterministic probe reproduced the stochastic-to-deployment gap exactly:
+six sampled actor target entries became zero actor-mean entries, all six probes
+timed out, and the locked score remained `39.984379`.
+
+Bounded elite replay then retained the 64 actor-authorized steps preceding the
+first Task-target entry in each admitted episode. With nine admitted episodes
+and 576 retained transitions:
+
+- the frozen actor mean produced its first target entry;
+- locked violations improved `43 → 42`;
+- normalized severity improved `87.786 → 81.735`;
+- aggregate score reached `59.449401`;
+- terminal height on degraded-right and both recovery-handoff score gates
+  still regressed, so the verdict remained `REVERT`.
+
+Restricting admissions to complete-Mission stages was semantically cleaner but
+yielded only one 64-transition episode. It produced one complete-probe target
+entry but regressed to 46 violations and `108.883` severity. The next
+experiment should increase diverse complete-Mission success collection or
+select an earlier deterministic checkpoint. It should not simply raise the
+distillation coefficient: the present evidence shows a data-coverage problem,
+not insufficient loss magnitude.
