@@ -888,3 +888,39 @@ Mujica therefore reports interleaving as data-collection provenance, never as
 evidence of integrated competence. A Candidate is useful only when the same
 continuous Mission produces bilateral recovery and downstream command
 evidence under the locked Judge.
+
+## Operating-condition authority coverage
+
+Domain randomization is not meaningful learning evidence when the actor is
+silently disabled for part of the sampled envelope. Training and deterministic
+Mission probes therefore publish `actuatorDelayCoverage`, grouped by the
+effective Scenario delay after Domain Profile jitter is applied. Each row
+records episode and complete-Mission counts, steps, active actor fraction,
+mean authority, actor-caused target entries, stable transitions, phase
+timeouts, and timeout-free Missions.
+
+The first use found that the recurrent recovery Policy observed effective
+actuator delay but its residual gate accepted only exactly one step. The
+declared randomized profile also produced two-step plants, and all five such
+training episodes had zero actor actions. A bounded follow-up may enumerate
+the explicitly trained values `{1, 2}` in `allowedTelemetry`; this is a typed
+authority change, not a wider Domain Profile or weaker Judge. Missing delay,
+zero delay, values outside the declared set, disallowed Program phases, and
+physical-envelope exits continue to fail closed.
+
+The governed comparison confirmed the coverage table is causal: two-step
+episodes moved from zero actor actions to 1,001 actor steps (`21.33%` active
+fraction). It did not produce a two-step target entry or any stable recovery.
+One-step stochastic target entries increased to five, but the selected actor
+mean reproduced only one left entry and zero right entries. The Mission Judge
+rejected Policy `articulated-inverted-escape-fc5bf55bd5a150e6` with score
+`41.056755`, violations `43 → 44`, and severity `87.786 → 109.435`.
+
+The right-degraded replay explains the downstream failure. Residual authority
+was bounded to `2.43 s` during the initial recovery and correctly closed at
+the Task deadline. Its changed rise state nevertheless diverged after the gate
+closed: the Program baseline recovered to `0.364 m`, while the Candidate
+entered inverted brace at `11.98 s` and ended at `0.060 m`. Fail-closed
+authority prevents later learned actions; it cannot erase momentum injected
+earlier. Mujica must therefore preserve continuous post-intervention evidence,
+not infer safety from the instant at which authority becomes zero.

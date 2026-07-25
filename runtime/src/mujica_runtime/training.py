@@ -74,6 +74,72 @@ def summarize_domain_samples(samples: list[dict[str, Any]]) -> dict[str, dict[st
     return summary
 
 
+def summarize_actuator_delay_coverage(
+    samples: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Expose whether a bounded delay envelope actually received actor authority."""
+    summary: dict[int, dict[str, Any]] = {}
+    for sample in samples:
+        delay_steps = int(sample["effectiveActuatorDelaySteps"])
+        outcome = summary.setdefault(delay_steps, {
+            "effectiveActuatorDelaySteps": delay_steps,
+            "episodesStarted": 0,
+            "episodesCompleted": 0,
+            "completeMissionEpisodes": 0,
+            "steps": 0,
+            "activePolicySteps": 0,
+            "actorAuthoritySum": 0.0,
+            "actorRecoveryTargetEntryCount": 0,
+            "episodesWithActorRecoveryTargetEntry": 0,
+            "recoveryStableTransitionCount": 0,
+            "episodesWithRecoveryStableTransition": 0,
+            "missionPhaseTimeoutEpisodes": 0,
+            "timeoutFreeMissionEpisodes": 0,
+        })
+        outcome["episodesStarted"] += 1
+        outcome["episodesCompleted"] += int(bool(sample.get("completed")))
+        outcome["completeMissionEpisodes"] += int(
+            bool(sample.get("completeMissionStage"))
+        )
+        outcome["steps"] += int(sample.get("steps", 0))
+        outcome["activePolicySteps"] += int(sample.get("activePolicySteps", 0))
+        outcome["actorAuthoritySum"] += float(
+            sample.get("actorAuthoritySum", 0.0)
+        )
+        actor_target_entries = int(
+            sample.get("actorRecoveryTargetEntryCount", 0)
+        )
+        stable_transitions = int(
+            sample.get("recoveryStableTransitionCount", 0)
+        )
+        phase_timeouts = int(sample.get("missionPhaseTimeoutCount", 0))
+        mission_completed = bool(sample.get("missionCompleted"))
+        outcome["actorRecoveryTargetEntryCount"] += actor_target_entries
+        outcome["episodesWithActorRecoveryTargetEntry"] += int(
+            actor_target_entries > 0
+        )
+        outcome["recoveryStableTransitionCount"] += stable_transitions
+        outcome["episodesWithRecoveryStableTransition"] += int(
+            stable_transitions > 0
+        )
+        outcome["missionPhaseTimeoutEpisodes"] += int(phase_timeouts > 0)
+        outcome["timeoutFreeMissionEpisodes"] += int(
+            mission_completed and phase_timeouts == 0
+        )
+    for outcome in summary.values():
+        steps = max(int(outcome["steps"]), 1)
+        outcome["activePolicyFraction"] = float(
+            outcome["activePolicySteps"] / steps
+        )
+        outcome["meanActorAuthority"] = float(
+            outcome.pop("actorAuthoritySum") / steps
+        )
+    return {
+        str(delay_steps): summary[delay_steps]
+        for delay_steps in sorted(summary)
+    }
+
+
 def summarize_mission_outcomes(
     samples: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
@@ -186,6 +252,10 @@ def mission_outcome_sample(
         "episodeEndPhase": entry.get("episodeEndPhase"),
         "domainProfileId": domain_profile.get("id") if domain_profile else None,
         "domainProfileHash": domain_profile_hash,
+        "effectiveActuatorDelaySteps": (
+            int(scenario.get("actuatorDelaySteps", 0))
+            + int(domain_sample.get("actuatorDelayJitterSteps", 0))
+        ),
         "steps": 0,
         "completed": False,
         "activePolicySteps": 0,
@@ -622,6 +692,7 @@ def run_deterministic_mission_probe(
         "actionMode": "deterministic-actor-mean",
         "trainingBudgetCharged": False,
         "episodes": samples,
+        "actuatorDelayCoverage": summarize_actuator_delay_coverage(samples),
         "missionOutcomeCoverage": summarize_mission_outcomes(samples),
     }
 
@@ -1321,6 +1392,9 @@ class PPOTrainer:
             } if request.get("domainProfile") else None,
             "domainSamples": domain_samples,
             "domainCoverage": summarize_domain_samples(domain_samples),
+            "actuatorDelayCoverage": summarize_actuator_delay_coverage(
+                domain_samples
+            ),
             "missionOutcomeActionMode": "stochastic-sampled",
             "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
             "deterministicMissionProbe": deterministic_mission_probe,

@@ -2313,7 +2313,10 @@ class RuntimeContractTest(unittest.TestCase):
         }
         randomized = {
             "id": "randomized",
-            "parameters": {"bodyMassScale": {"minimum": 1.1, "maximum": 1.1}},
+            "parameters": {
+                "bodyMassScale": {"minimum": 1.1, "maximum": 1.1},
+                "actuatorDelayJitterSteps": {"minimum": 1, "maximum": 1},
+            },
         }
         progression = [
             {
@@ -2406,6 +2409,16 @@ class RuntimeContractTest(unittest.TestCase):
                 sum(item["steps"] for item in outcomes.values()),
                 64,
             )
+            delay_coverage = metrics["actuatorDelayCoverage"]
+            self.assertEqual(set(delay_coverage), {"0", "1"})
+            self.assertEqual(
+                sum(item["episodesStarted"] for item in delay_coverage.values()),
+                len(metrics["domainSamples"]),
+            )
+            self.assertGreater(
+                delay_coverage["1"]["completeMissionEpisodes"], 0
+            )
+            self.assertEqual(delay_coverage["1"]["activePolicyFraction"], 1.0)
             probe = metrics["deterministicMissionProbe"]
             self.assertEqual(probe["actionMode"], "deterministic-actor-mean")
             self.assertFalse(probe["trainingBudgetCharged"])
@@ -2433,6 +2446,9 @@ class RuntimeContractTest(unittest.TestCase):
                     for item in probe["missionOutcomeCoverage"].values()
                 },
                 {"approach-prefix", "complete-mission"},
+            )
+            self.assertEqual(
+                set(probe["actuatorDelayCoverage"]), {"0", "1"}
             )
             self.assertTrue(
                 all(

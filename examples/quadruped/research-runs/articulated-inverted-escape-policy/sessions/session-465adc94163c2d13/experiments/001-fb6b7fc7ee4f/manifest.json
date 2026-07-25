@@ -1,0 +1,69 @@
+{
+  "version": 4,
+  "id": "001-fb6b7fc7ee4f",
+  "experimentHash": "fb6b7fc7ee4f857c36cb2a641a04a00c07fb5c8dd5b72a7a5f431932c5412e47",
+  "sequence": 1,
+  "sessionId": "session-465adc94163c2d13",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "09ce069d15e4bf90e819591a17086f88f3daf708b022fbf87a2c3ccb22a3f56b",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "da8a9ad801693cb582ace07fe2c2062499181870d5e064f7bd0c77a831939d53",
+  "historyHash": "547b0b10260238d2d89d57734bc6ebf5f531ad162c8d69d3a2306e8310df10b7",
+  "historyCount": 17,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "delay-conditioned-interleaved-complete-mission-recovery",
+    "hypothesis": "The interleaved run proved that Mission scheduling was no longer the blind spot, but its randomized complete-Mission ledger exposed a second contract mismatch: every episode with one sampled delay-jitter step had zero actor-authorized actions because the residual gate required measuredDelaySteps to equal exactly one, even though the Policy observes the effective delay and the declared Domain Profile intentionally produces one- or two-step plants. Preserve the complete Mission, quotas, replay, checkpoint selector, torque envelope, reward, seed, and Judge while authorizing the same ramped recovery residual at the two explicitly trained delay values.",
+    "expectedEffect": "Give both one- and two-step randomized plants nonzero recovery actor coverage, collect actor-caused target entries across both delay buckets and impact directions, and improve the worst-direction deterministic Mission rank without changing zero-delay exact Cases or any locked promotion gate."
+  },
+  "policyId": "articulated-inverted-escape-fc5bf55bd5a150e6",
+  "score": 41.05675536662247,
+  "delta": -21.66556930044804,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-degraded: self-righting regressed from passing to failing",
+      "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "impact-right-degraded: final-body-tilt regressed from passing to failing",
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "impact-right-degraded: score-regression regressed from passing to failing",
+      "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+      "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 44,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 109.43521748255041,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "be87140219e7206ad7407c6645987c11ade85769d14e7268f0744e83daf93771",
+    "acceptedRunId": "run-b04724d964ba3b4c",
+    "candidateRunId": "run-f57efbd86408cb10",
+    "caseId": "impact-right-degraded"
+  },
+  "durationMs": 190791,
+  "completed": true
+}

@@ -160,6 +160,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("safe envelope min");
     expect(html).toContain("reward base/mission/recovery/learned");
     expect(html).toContain("Mission phase learning evidence");
+    expect(html).toContain("Actuator-delay authority coverage");
+    expect(html).toContain("Frozen actuator-delay probe");
     expect(html).toContain("curriculum sampling");
     expect(html).toContain("Mission progression · every episode starts at Mission phase 1");
     expect(html).toContain("interleaved-step-share");

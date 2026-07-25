@@ -396,3 +396,50 @@ collection is required, but it is not itself a recovery algorithm. The next
 intervention must increase bilateral actor-authorized recovery signal in the
 complete Mission—by changing authority/credit or the recovery policy—not
 merely reschedule the same sparse trajectories.
+
+## Measured-delay authority coverage
+
+The interleaved episode ledger exposed a concrete training-contract mismatch.
+The randomized complete-Mission Domain Profile intentionally adds zero or one
+control step to each degraded Scenario's one-step actuator delay. The recurrent
+Policy observes the effective delay, but its safety gate required
+`measuredDelaySteps == 1`. All five sampled two-step episodes therefore
+received exactly zero actor actions and could not contribute target-entry or
+elite-replay evidence.
+
+The next governed comparison keeps the interleaved quotas, complete-Mission
+replay scope, checkpoint selector, network, reward, residual torque envelope,
+seed, Task, Scenarios, and locked Judge fixed. It changes only the enumerated
+gate condition from exact delay one to the Domain-declared set `{1, 2}`. Zero
+delay remains outside this learned recovery lane, missing telemetry still
+fails closed, and the existing `0.4 s` entry ramp plus all physical telemetry
+bounds remain unchanged.
+
+Training evidence now groups episode count, complete-Mission exposure, actor
+authority, actor target entry, stable recovery, phase timeout, and timeout-free
+completion by effective actuator delay. The frozen actor-mean probe publishes
+the same coverage. This lets Studio and headless inspection distinguish
+“robustness data existed” from “the Policy was actually authorized to learn
+from it.”
+
+Session `session-465adc94163c2d13` validated the diagnosis but rejected the
+learning hypothesis. Two-step delay received 1,001 actor steps across five
+complete Missions (`21.33%` active fraction) instead of zero, while one-step
+rollouts produced five actor target entries instead of one. The two-step bucket
+still produced zero target entries, every episode in both buckets timed out,
+and no stable recovery occurred. Checkpoint selection restored step 16,384,
+whose actor mean reproduced one left target entry but none on the right.
+
+The locked Judge returned `REVERT`: score `62.722325 → 41.056755`, violations
+`43 → 44`, and severity `87.786 → 109.435`. On the selected right-degraded
+Case, the Program baseline eventually self-righted with `1.08 s` stable dwell
+and finished at `0.364 m` height. The learned residual received `2.43 s` of
+authority during the first impulse/capture/rise, left the robot on a divergent
+rise trajectory after authority closed, and it inverted by `11.98 s`, ending
+at `0.060 m`.
+
+The next bounded ML question is therefore bilateral structure in the recovery
+policy, not further authority widening. Left-only exploration success and
+right-only deployment failure suggest testing a declared left/right symmetry
+contract or mirrored recovery data augmentation while keeping the same
+continuous Mission Judge.
