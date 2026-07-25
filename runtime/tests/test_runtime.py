@@ -2359,6 +2359,41 @@ class RuntimeContractTest(unittest.TestCase):
             "task": json.loads((PROJECT / "tasks" / "velocity-track.task.json").read_text()),
             "scenarios": [json.loads((PROJECT / "scenarios" / "nominal.scenario.json").read_text())],
             "seed": 7,
+            "reflexDistillation": {
+                "search": "reflex-search-test",
+                "evaluationHash": "evaluation-hash",
+                "demonstrationsHash": "demonstrations-hash",
+                "target": "pre-transform-actor-raw-action",
+                "coefficient": 0.05,
+                "minibatchSize": 2,
+                "untilStep": 128,
+                "dataPartition": {
+                    "search": {"authority": "training-only"},
+                    "judge": {"authority": "promotion-only"},
+                },
+                "demonstrations": [
+                    {
+                        "case": "training-case-a",
+                        "side": "positive-y",
+                        "role": "frozen-policy-anchor",
+                        "gateScale": 0.5,
+                        "observation": [0.0]
+                        * compiled["observationContract"]["size"],
+                        "rawAction": [0.25]
+                        * compiled["actionContract"]["size"],
+                    },
+                    {
+                        "case": "training-case-b",
+                        "side": "negative-y",
+                        "role": "counterfactual-teacher",
+                        "gateScale": 0.5,
+                        "observation": [0.1]
+                        * compiled["observationContract"]["size"],
+                        "rawAction": [-0.25]
+                        * compiled["actionContract"]["size"],
+                    },
+                ],
+            },
             "training": {
                 "totalSteps": 64,
                 "rolloutSteps": 32,
@@ -2413,6 +2448,28 @@ class RuntimeContractTest(unittest.TestCase):
                 metrics["eliteReplay"]["retainedTransitions"], 32
             )
             self.assertEqual(metrics["eliteReplay"]["admissionCoverage"], {})
+            self.assertEqual(
+                metrics["reflexDistillation"]["search"],
+                "reflex-search-test",
+            )
+            self.assertEqual(metrics["reflexDistillation"]["demonstrations"], 2)
+            self.assertEqual(
+                metrics["reflexDistillation"]["roles"],
+                {
+                    "counterfactual-teacher": 1,
+                    "frozen-policy-anchor": 1,
+                },
+            )
+            self.assertEqual(
+                metrics["reflexDistillation"]["searchAuthority"],
+                "training-only",
+            )
+            self.assertTrue(
+                all(
+                    update["meanReflexDistillationLoss"] is not None
+                    for update in metrics["updates"]
+                )
+            )
             self.assertTrue(
                 metrics["bilateralSymmetry"]["validatedInvolution"]
             )

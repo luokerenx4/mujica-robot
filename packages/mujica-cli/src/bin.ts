@@ -12,6 +12,7 @@ import { evidenceInspectCommand, observationInspectCommand, observationListComma
 import { projectCreateCommand, projectInspectCommand, projectListCommand, projectReviewCommand, projectWorkCommand, workspaceStudioCommand } from "./project";
 import { twinAuditCommand, twinInspectCommand, twinStudioCommand } from "./twin";
 import { authorityCounterfactualCommand, authorityCounterfactualStudioCommand } from "./authority";
+import { reflexSearchCommand } from "./reflex";
 
 const HELP = `mujica — AI-native robot development harness
 
@@ -59,6 +60,7 @@ USAGE
   mujica policy inspect <project> --policy ID [--json]
   mujica policy requalify <project> --policy ID --assembly ID [--json]
   mujica policy counterfactual <project> --assembly ID --controller ID --policy ID --benchmark ID --profile ID [--json]
+  mujica policy reflex-search <project> --assembly ID --controller ID --policy ID --benchmark ID --task ID --scenarios CSV --case-seed-base N --action-axes CSV [--seeds-per-scenario N] [--samples N] [--seed N] [--segments N] [--reflex-duration S] [--outcome-horizon S] [--maximum-delta X] [--json]
   mujica policy-revisions <project> [--json]
   mujica policy-revision inspect <project> --revision ID [--json]
   mujica benchmark lock <project> --benchmark ID [--json]
@@ -118,6 +120,7 @@ const CAPABILITIES = [
   { id: "policy.inspect", usage: "mujica policy inspect <project> --policy ID [--json]", effect: "read-only" },
   { id: "policy.requalify", usage: "mujica policy requalify <project> --policy ID --assembly ID [--json]", effect: "creates-artifact" },
   { id: "policy.counterfactual", usage: "mujica policy counterfactual <project> --assembly ID --controller ID --policy ID --benchmark ID --profile ID [--json]", effect: "creates-artifact" },
+  { id: "policy.reflex-search", usage: "mujica policy reflex-search <project> --assembly ID --controller ID --policy ID --benchmark ID --task ID --scenarios CSV --case-seed-base N --action-axes CSV [--seeds-per-scenario N] [--samples N] [--seed N] [--segments N] [--reflex-duration S] [--outcome-horizon S] [--maximum-delta X] [--json]", effect: "creates-artifact" },
   { id: "policy-revisions", usage: "mujica policy-revisions <project> [--json]", effect: "read-only" },
   { id: "policy-revision.inspect", usage: "mujica policy-revision inspect <project> --revision ID [--json]", effect: "read-only" },
   { id: "benchmark.lock", usage: "mujica benchmark lock <project> --benchmark ID [--json]", effect: "mutates-project" },
@@ -319,11 +322,11 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       const action = args.shift();
       commandId = `${command}.${action}`;
       const policyAction = command === "policy"
-        && ["inspect", "requalify", "counterfactual"].includes(action ?? "");
+        && ["inspect", "requalify", "counterfactual", "reflex-search"].includes(action ?? "");
       if (action !== "inspect" && !policyAction) {
         throw new Error(
           command === "policy"
-            ? "Usage: mujica policy inspect|requalify|counterfactual ..."
+            ? "Usage: mujica policy inspect|requalify|counterfactual|reflex-search ..."
             : `Usage: mujica ${command} inspect ...`,
         );
       }
@@ -334,6 +337,17 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
             controller: { type: "string" as const },
             benchmark: { type: "string" as const },
             profile: { type: "string" as const },
+            task: { type: "string" as const },
+            scenarios: { type: "string" as const },
+            "case-seed-base": { type: "string" as const },
+            "seeds-per-scenario": { type: "string" as const, default: "2" },
+            samples: { type: "string" as const, default: "64" },
+            seed: { type: "string" as const, default: "42" },
+            segments: { type: "string" as const, default: "2" },
+            "reflex-duration": { type: "string" as const, default: "0.48" },
+            "outcome-horizon": { type: "string" as const, default: "5" },
+            "maximum-delta": { type: "string" as const, default: "1" },
+            "action-axes": { type: "string" as const },
             json: { type: "boolean" as const, default: false },
             project: { type: "string" as const },
           }
@@ -360,6 +374,34 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           policy: required((values as any).policy, "policy"),
           benchmark: required((values as any).benchmark, "benchmark"),
           profile: required((values as any).profile, "profile"),
+        });
+      } else if (command === "policy" && action === "reflex-search") {
+        const axes = required(
+          (values as any)["action-axes"],
+          "action-axes",
+        ).split(",").map((value) => Number(value.trim()));
+        envelope = await reflexSearchCommand(project, {
+          assembly: required((values as any).assembly, "assembly"),
+          controller: required((values as any).controller, "controller"),
+          policy: required((values as any).policy, "policy"),
+          benchmark: required((values as any).benchmark, "benchmark"),
+          task: required((values as any).task, "task"),
+          scenarios: required(
+            (values as any).scenarios,
+            "scenarios",
+          ).split(",").map((value) => value.trim()).filter(Boolean),
+          caseSeedBase: Number(required(
+            (values as any)["case-seed-base"],
+            "case-seed-base",
+          )),
+          seedsPerScenario: Number((values as any)["seeds-per-scenario"]),
+          samples: Number((values as any).samples),
+          seed: Number((values as any).seed),
+          segments: Number((values as any).segments),
+          reflexDurationSeconds: Number((values as any)["reflex-duration"]),
+          outcomeHorizonSeconds: Number((values as any)["outcome-horizon"]),
+          maximumRawActionDelta: Number((values as any)["maximum-delta"]),
+          actionAxes: axes,
         });
       } else if (command === "policy") {
         envelope = await policyInspectCommand(

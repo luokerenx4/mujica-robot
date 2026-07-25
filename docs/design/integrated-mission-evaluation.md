@@ -1009,3 +1009,66 @@ counterfactual objective tied to physical post-impact state, followed by
 distillation and the unchanged complete-Mission Judge. The short-horizon
 objective is Training evidence only. It must never replace downstream
 recovery, resumption, redirection, traversal, stop, or regression Cases.
+
+### Local counterfactual courses do not split the Mission
+
+`mujica policy reflex-search` branches a frozen Policy at the physical impact
+trigger and observes only a bounded post-impact horizon. It is deliberately a
+Training-data operation, not a Benchmark mode:
+
+- search Cases use explicit seeds that must not overlap the locked Mission
+  Suite seeds;
+- Policy weights, normalizer, Program prior, Assembly, plant, Task, Scenario,
+  and pre-trigger state are hash checked;
+- candidate ranking first rejects safety regressions, then compares the
+  worst-case terminal recovery basin across repeated seeds;
+- unequal opposite-direction loads may select different state-conditioned
+  actions; the bilateral ABI is audited but exact action reflection is not
+  fabricated;
+- the immutable artifact records `training-only` search authority,
+  `promotion-only` Judge authority, and a null promotion verdict.
+
+Training may consume an eligible artifact through `reflexDistillation`.
+Counterfactual teacher frames target the actor's pre-transform raw Action.
+States on a direction where search found no safe improvement may instead
+carry frozen-policy anchors. The supervised coefficient is explicit and
+linearly retires at `untilStep`; it cannot add Training steps, widen residual
+authority, change Mission progression, or change the Judge. Studio and
+`policy inspect` expose the search identity, hashes, teacher/anchor counts,
+side coverage, schedule, and authority boundary.
+
+This is still one deployed Policy and one integrated task. “Local course”
+describes where a learning signal came from, not a separately trained walking,
+collision, or self-righting controller.
+
+### First counterfactual result
+
+Search `reflex-search-7e950b1350b261dd` used four independent Training seeds
+(`17203`–`17206`) and excluded Judge seeds `7201`–`7204`. The 60 N positive-y
+side found no safe proxy improvement and produced 38 frozen-policy anchors.
+The 49 N negative-y side selected one reflex that improved terminal recovery
+progress on both search seeds by approximately `+0.345` and `+0.119`, removed
+the observed disallowed self contacts, and produced 24 counterfactual teacher
+frames. The artifact was correctly labelled `IMPROVED_PROXY`, never KEEP.
+
+Two governed 65,536-step experiments then tested whether the local signal
+survived the complete Mission:
+
+- always-on 24-frame distillation produced Policy
+  `articulated-inverted-escape-2bafab9f68460ff7`; the locked aggregate fell
+  from `62.722325` to `40.168929`;
+- 24 teacher frames plus 38 opposite-side anchors, coefficient `0.01`, and
+  linear retirement at step `8,192` produced Policy
+  `articulated-inverted-escape-f319aeffab0d482d`; the locked aggregate was
+  `40.486566`.
+
+Both candidates ended the previously passing degraded-right complete Mission
+inverted and regressed recovery handoff and lateral command tracking. Both
+were `REVERT`. This is the intended evidence hierarchy working: a locally
+better impact basin did not become a robot-level claim.
+
+The next supported ML intervention is a bounded update around the already
+qualified frozen Policy—warm-start fine-tuning, a trust region, or an
+equivalent weight-preservation contract—not another from-scratch run or a
+larger distillation coefficient. It must still pass the same complete Mission
+and regression suite.

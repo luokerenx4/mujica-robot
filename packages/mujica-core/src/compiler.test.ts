@@ -581,6 +581,33 @@ describe("Robot Assembly compiler", () => {
     }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
+      reflexDistillation: {
+        search: "reflex-search-14bfde9424ff7831",
+        minibatchSize: 24,
+        coefficient: 0.05,
+        untilStep: 8192,
+      },
+    }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      reflexDistillation: {
+        search: "reflex-search-14bfde9424ff7831",
+        minibatchSize: 0,
+        coefficient: 0.05,
+        untilStep: 8192,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      reflexDistillation: {
+        search: "reflex-search-14bfde9424ff7831",
+        minibatchSize: 24,
+        coefficient: 0.05,
+        untilStep: curriculum.totalSteps + 1,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
       deterministicCheckpoint: {
         scope: "complete-mission",
         everySteps: 2048,

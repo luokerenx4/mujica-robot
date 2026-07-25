@@ -569,6 +569,12 @@ const trainingOptimizationFields = {
     minibatchSize: z.number().int().min(1).max(1024),
     coefficient: z.number().finite().positive().max(10),
   }).strict().optional(),
+  reflexDistillation: z.object({
+    search: idSchema,
+    minibatchSize: z.number().int().min(1).max(1024),
+    coefficient: z.number().finite().positive().max(10),
+    untilStep: z.number().int().positive(),
+  }).strict().optional(),
   qualityReward: z.object({
     jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
     actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),
@@ -600,12 +606,31 @@ const deterministicCheckpointSchema = z.object({
   minimumSteps: z.number().int().nonnegative().optional(),
 }).strict();
 
+function validateTrainingOptimization(
+  training: {
+    totalSteps: number;
+    reflexDistillation?: { untilStep: number } | undefined;
+  },
+  context: z.RefinementCtx,
+): void {
+  if (
+    training.reflexDistillation
+    && training.reflexDistillation.untilStep > training.totalSteps
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["reflexDistillation", "untilStep"],
+      message: "Reflex Distillation must retire within the declared Training budget",
+    });
+  }
+}
+
 export const trainingSchema = z.union([
   z.object({
     version: z.literal(1), ...trainingOptimizationFields,
     task: idSchema,
     scenarios: z.array(idSchema).min(1),
-  }).strict(),
+  }).strict().superRefine(validateTrainingOptimization),
   z.object({
     version: z.literal(2), ...trainingOptimizationFields,
     curriculumSampling: z.enum(["episode-probability", "step-share"]).optional(),
@@ -618,6 +643,7 @@ export const trainingSchema = z.union([
     }).strict()).min(2).max(16),
     promotionBenchmark: idSchema,
   }).strict().superRefine((training, context) => {
+    validateTrainingOptimization(training, context);
     if (new Set(training.curriculum.map((item) => item.id)).size !== training.curriculum.length) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculum"], message: "curriculum ids must be unique" });
     }
@@ -644,6 +670,7 @@ export const trainingSchema = z.union([
     }).strict()).min(2).max(8),
     promotionBenchmark: idSchema,
   }).strict().superRefine((training, context) => {
+    validateTrainingOptimization(training, context);
     if (new Set(training.progression.map((item) => item.id)).size !== training.progression.length) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["progression"], message: "progression ids must be unique" });
     }

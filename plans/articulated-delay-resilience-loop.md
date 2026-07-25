@@ -215,8 +215,20 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
   Task-authored height, tilt, linear-speed, and angular-speed target.
 - [x] Train and judge one balanced left/right continuous-Mission Policy using
   the conjunctive Task-target signal.
-- [ ] Declare the exact lateral Observation/Action involution, mirror bounded
+- [x] Declare the exact lateral Observation/Action involution, mirror bounded
   successful recovery evidence, and judge one same-budget bilateral Policy.
+- [x] Add a Training-only frozen-policy impact counterfactual with independent
+  seeds, repeated worst-case selection, byte-identical pre-trigger state, and
+  no promotion authority.
+- [x] Preserve load asymmetry: audit bilateral coordinates without forcing the
+  60 N and 49 N sides to share an exact reflected Action.
+- [x] Distill one proxy-improving reflex into the same continuous-Mission
+  Policy and preserve its locked `REVERT` evidence.
+- [x] Add opposite-side frozen-policy anchors and an early linear retirement
+  schedule; preserve the second locked `REVERT` instead of weakening the
+  Mission Judge.
+- [ ] Add a warm-start/trust-region Policy update contract around the accepted
+  frozen weights before running another counterfactual-reflex experiment.
 
 ## Frozen-weight authority result
 
@@ -569,3 +581,38 @@ state, and then distill only Judge-compatible reflexes into a small bilateral
 Policy. The uninterrupted Mission and all downstream regressions must remain
 the final selector so the short-horizon proxy cannot promote a locally neat
 but globally unrecoverable brace.
+
+## Frozen-policy reflex search and continuous-Judge result
+
+The new `policy reflex-search` lane branched the accepted frozen Policy from
+hash-identical impact states on four Training-only Cases. Search seeds
+`17203`–`17206` do not overlap locked Judge seeds `7201`–`7204`. The proxy
+rank rejects joint/contact regressions first, then compares worst-case terminal
+Task-target progress over a five-second post-impact horizon. It cannot emit a
+promotion verdict.
+
+The load-aware result was intentionally asymmetric:
+
+- positive-y / 60 N: keep the frozen actor; no safe candidate improved the
+  repeated-seed proxy;
+- negative-y / 49 N: one reflex improved terminal Task-target progress on both
+  seeds and removed observed disallowed self contact.
+
+Artifact `reflex-search-7e950b1350b261dd` therefore contains 24 negative-y
+counterfactual teacher frames and 38 positive-y frozen-policy anchors. Its
+bilateral contract reports the deviation from exact coordinate reflection
+because opposite directions with unequal impulse magnitudes are not the same
+physical experiment.
+
+The first distillation kept the 24 teacher frames active throughout Training.
+Policy `articulated-inverted-escape-2bafab9f68460ff7` was rejected at
+`40.168929` versus the accepted `62.722325`. The second used all 62 contrastive
+frames, coefficient `0.01`, and linear retirement at step `8,192`; Policy
+`articulated-inverted-escape-f319aeffab0d482d` was rejected at `40.486566`.
+Both lost the previously passing degraded-right self-righting, stable dwell,
+final tilt, and final height gates and regressed downstream handoff/tracking.
+
+This falsifies direct from-scratch distillation as the missing algorithm.
+Local counterfactuals are retained as useful data discovery, but a future
+experiment must preserve the accepted frozen solution with a warm-start or
+trust-region update. The complete no-reset Mission remains unchanged.

@@ -8,6 +8,7 @@ from pathlib import Path
 from .calibration import calibrate
 from .hardware_capture import capture_hardware
 from .replay import render_replay
+from .reflex_search import search_reflex
 from .simulation import simulate, validate_model
 from .state_abi import describe_state
 from .training import train
@@ -16,7 +17,7 @@ from .twin_audit import audit_twin
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m mujica_runtime.cli")
-    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay", "audit-twin", "describe-state"])
+    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay", "audit-twin", "describe-state", "search-reflex"])
     parser.add_argument("--request", required=True)
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text())
@@ -28,6 +29,7 @@ def main() -> None:
     elif args.operation == "hardware-capture": result = capture_hardware(request)
     elif args.operation == "render-replay": result = render_replay(request)
     elif args.operation == "audit-twin": result = audit_twin(request)
+    elif args.operation == "search-reflex": result = search_reflex(request)
     else: result = describe_state(request)
     sys.stdout.write(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
 

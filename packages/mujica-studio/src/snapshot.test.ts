@@ -97,6 +97,20 @@ describe("read-only Studio snapshot", () => {
         },
       },
     });
+    expect(first.snapshot.policies.find((item) => item.id === "articulated-inverted-escape-f319aeffab0d482d")).toMatchObject({
+      training: {
+        reflexDistillation: {
+          search: "reflex-search-7e950b1350b261dd",
+          demonstrations: 62,
+          roles: {
+            "counterfactual-teacher": 24,
+            "frozen-policy-anchor": 38,
+          },
+          searchAuthority: "training-only",
+          judgeAuthority: "promotion-only",
+        },
+      },
+    });
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
         status: "READY",
@@ -179,6 +193,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Policy consolidation");
     expect(html).toContain("Elite recovery replay");
     expect(html).toContain("exploration-to-mean consolidation");
+    expect(html).toContain("Local reflex course");
+    expect(html).toContain("Training-only physical proxy, continuous-Mission Judge");
+    expect(html).toContain("frozen-policy-anchor");
     expect(html).toContain("diagnostic prefix");
     expect(html).toContain("Frozen checkpoint");
     expect(html).toContain("Deterministic checkpoint selection");

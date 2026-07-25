@@ -79,6 +79,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "capture.run")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.requalify")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.counterfactual")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.reflex-search")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);

@@ -10,6 +10,7 @@ import { success, type Artifact } from "./contract";
 import { verifyHardwareBundleIntegrity, verifyHardwareCaptureIntegrity } from "./hardware";
 import { dependencyLockHash, harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeCompiled, runtimeSourceHash, runtimeVersion } from "./runtime";
 import { writeStudioSnapshot, type ResearchTimelineInput } from "@mujica/studio";
+import { loadReflexSearch } from "./reflex-artifact";
 
 function projectArtifact(kind: Artifact["kind"], id: string, path: string, immutable: boolean): Artifact { return { kind, id, path, immutable }; }
 async function exists(path: string): Promise<boolean> {
@@ -536,6 +537,76 @@ export async function executeTraining(project: ProjectContext, training: Trainin
     const prior = await loadController(project.rootDir, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training prior '${training.priorController}' must be a program Controller`);
     assertProgramControllerCompatible(prior.definition, assembly); priorController = { definition: prior.definition, rootDir: prior.rootDir, hash: await hashDirectory(prior.rootDir) };
   }
+  let reflexDistillation: Record<string, any> | null = null;
+  if (training.reflexDistillation) {
+    const artifact = await loadReflexSearch(
+      project.rootDir,
+      training.reflexDistillation.search,
+    );
+    const evaluation = artifact.evaluation;
+    const trainingCases = evaluation.dataPartition?.search?.cases;
+    const judgeCases = evaluation.dataPartition?.judge?.cases;
+    const trainingSeeds = new Set(
+      Array.isArray(trainingCases) ? trainingCases.map((item: any) => item.seed) : [],
+    );
+    const judgeSeeds = new Set(
+      Array.isArray(judgeCases) ? judgeCases.map((item: any) => item.seed) : [],
+    );
+    if (
+      evaluation.assessment?.demonstrationEligible !== true
+      || evaluation.assessment?.promotionVerdict !== null
+      || evaluation.assessment?.judgeRequired !== true
+      || evaluation.authorityBoundary?.trainingClaim !== "demonstration-source-only"
+      || evaluation.authorityBoundary?.promotion
+        !== "locked-continuous-mission-judge-required"
+      || evaluation.dataPartition?.search?.authority !== "training-only"
+      || evaluation.dataPartition?.judge?.authority !== "promotion-only"
+      || evaluation.dataPartition?.seedOverlap !== false
+      || !Array.isArray(trainingCases)
+      || !Array.isArray(judgeCases)
+      || [...trainingSeeds].some((seed) => judgeSeeds.has(seed))
+    ) {
+      throw new Error(
+        `Reflex Search '${training.reflexDistillation.search}' does not preserve the Training/Judge authority boundary`,
+      );
+    }
+    if (
+      evaluation.subject?.assembly !== assembly.id
+      || evaluation.subject?.executionHash !== assembly.executionHash
+      || evaluation.subject?.frozenPolicy?.observationContractHash
+        !== hashJson(assembly.observationContract)
+      || evaluation.subject?.frozenPolicy?.actionContractHash
+        !== hashJson(assembly.actionContract)
+      || evaluation.subject?.frozenPolicy?.priorControllerHash
+        !== priorController?.hash
+    ) {
+      throw new Error(
+        `Reflex Search '${training.reflexDistillation.search}' is incompatible with this Training execution closure`,
+      );
+    }
+    const searchCaseIds = new Set(trainingCases.map((item: any) => item.id));
+    if (
+      artifact.demonstrations.length === 0
+      || artifact.demonstrations.some(
+        (item: any) => !searchCaseIds.has(item.case),
+      )
+    ) {
+      throw new Error(
+        `Reflex Search '${training.reflexDistillation.search}' has no valid Training demonstrations`,
+      );
+    }
+    reflexDistillation = {
+      search: training.reflexDistillation.search,
+      coefficient: training.reflexDistillation.coefficient,
+      minibatchSize: training.reflexDistillation.minibatchSize,
+      untilStep: training.reflexDistillation.untilStep,
+      evaluationHash: artifact.manifest.evaluationHash,
+      demonstrationsHash: artifact.manifest.demonstrationsHash,
+      demonstrations: artifact.demonstrations,
+      target: evaluation.demonstrations.target,
+      dataPartition: evaluation.dataPartition,
+    };
+  }
   const domainProfileIdentityValue = training.domainProfile ? await domainProfileIdentity(project.rootDir, training.domainProfile) : null;
   const domainProfile = domainProfileIdentityValue?.definition ?? null;
   const domainProfileEvidenceHash = domainProfileIdentityValue?.evidenceHash ?? null;
@@ -546,11 +617,19 @@ export async function executeTraining(project: ProjectContext, training: Trainin
   return await invokeRuntime("train", {
     runtimeVersion, runtimeSourceHash: sourceHash, harnessSourceHash: harnessHash, harnessDependencyLockHash: harnessDependencyHash, projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), training, trainer: trainer.definition, trainerRoot: trainer.rootDir, trainerHash,
     priorController: priorController?.definition ?? null, priorControllerRoot: priorController?.rootDir ?? null, priorControllerHash: priorController?.hash ?? null,
+    reflexDistillation,
     domainProfile, domainProfileHash, domainProfileEvidenceHash,
     task, scenarios, curriculum, progression, seed, dependencyLockHash: await dependencyLockHash(),
     sourceHashes: {
       runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash,
       priorController: priorController?.hash ?? null, domainProfile: domainProfileHash,
+      reflexSearch: reflexDistillation
+        ? {
+          id: reflexDistillation.search,
+          evaluationHash: reflexDistillation.evaluationHash,
+          demonstrationsHash: reflexDistillation.demonstrationsHash,
+        }
+        : null,
       progressionDomainProfiles: progression?.map((stage) => ({ id: stage.id, hash: stage.domainProfileHash })) ?? null,
       assembly: assembly.assemblyHash, catalog: assembly.catalogHash, training: hashJson(training),
     },

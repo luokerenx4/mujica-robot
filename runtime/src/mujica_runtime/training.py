@@ -1264,6 +1264,7 @@ class PPOTrainer:
         config = request["training"]
         action_transform = effective_action_transform(self.action_transform, config)
         elite_replay_config = config.get("eliteReplay")
+        reflex_distillation_config = request.get("reflexDistillation")
         deterministic_checkpoint_config = config.get("deterministicCheckpoint")
         if (
             deterministic_checkpoint_config
@@ -1398,6 +1399,47 @@ class PPOTrainer:
         observation_map = environment.reset(); observation = environment.vector(observation_map)
         episode_recovery_target_satisfied = environment.recovery_target_satisfied()
         observation_size = observation.size; action_size = environment.model.nu
+        reflex_distillation_observations: np.ndarray | None = None
+        reflex_distillation_actions: np.ndarray | None = None
+        reflex_distillation_rng = np.random.default_rng(seed + 60_000_000)
+        if reflex_distillation_config:
+            demonstrations = reflex_distillation_config.get("demonstrations")
+            if (
+                reflex_distillation_config.get("target")
+                != "pre-transform-actor-raw-action"
+                or not isinstance(demonstrations, list)
+                or not demonstrations
+            ):
+                raise RuntimeError(
+                    "Reflex Distillation requires nonempty pre-transform actor targets"
+                )
+            reflex_distillation_observations = np.asarray(
+                [item.get("observation") for item in demonstrations],
+                dtype=np.float32,
+            )
+            reflex_distillation_actions = np.asarray(
+                [item.get("rawAction") for item in demonstrations],
+                dtype=np.float32,
+            )
+            gate_scales = np.asarray(
+                [item.get("gateScale") for item in demonstrations],
+                dtype=np.float32,
+            )
+            if (
+                reflex_distillation_observations.shape
+                != (len(demonstrations), observation_size)
+                or reflex_distillation_actions.shape
+                != (len(demonstrations), action_size)
+                or gate_scales.shape != (len(demonstrations),)
+                or not np.all(np.isfinite(reflex_distillation_observations))
+                or not np.all(np.isfinite(reflex_distillation_actions))
+                or not np.all(np.isfinite(gate_scales))
+                or np.any(gate_scales <= 0.0)
+                or np.any(gate_scales > 1.0)
+            ):
+                raise RuntimeError(
+                    "Reflex Distillation demonstrations violate the compiled contracts"
+                )
         bilateral_symmetry = compile_bilateral_symmetry(
             self.bilateral_symmetry,
             request["compiled"]["observationContract"],
@@ -1543,6 +1585,7 @@ class PPOTrainer:
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
             batch_elite_replay_losses: list[float] = []
+            batch_reflex_distillation_losses: list[float] = []
             batch_symmetry_losses: list[float] = []
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
                 normalizer.update(observation)
@@ -1814,6 +1857,9 @@ class PPOTrainer:
                     policy_loss = -masked_mean(torch.min(ratio * advantage_t, clipped * advantage_t), policy_mask_t); value_loss = 0.5 * torch.square(value - return_t).mean()
                     residual_penalty = float(config.get("residualPenalty", 0.0)) * masked_mean(torch.square(mean).mean(dim=-1), policy_mask_t)
                     elite_replay_loss = torch.zeros((), dtype=mean.dtype)
+                    reflex_distillation_loss = torch.zeros(
+                        (), dtype=mean.dtype
+                    )
                     symmetry_loss = torch.zeros((), dtype=mean.dtype)
                     if bilateral_symmetry and mirrored_observation_tensor is not None:
                         mirrored_mean, _, _ = network(
@@ -1860,7 +1906,46 @@ class PPOTrainer:
                         batch_elite_replay_losses.append(
                             float(elite_replay_loss.detach().item())
                         )
-                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + symmetry_loss - float(config["entropyCoefficient"]) * entropy
+                    if (
+                        reflex_distillation_config
+                        and reflex_distillation_observations is not None
+                        and reflex_distillation_actions is not None
+                        and completed_steps
+                        < int(reflex_distillation_config["untilStep"])
+                    ):
+                        reflex_batch_size = min(
+                            int(reflex_distillation_config["minibatchSize"]),
+                            len(reflex_distillation_observations),
+                        )
+                        reflex_indices = reflex_distillation_rng.integers(
+                            0,
+                            len(reflex_distillation_observations),
+                            size=reflex_batch_size,
+                        )
+                        reflex_observations = normalizer.normalize(
+                            reflex_distillation_observations[reflex_indices]
+                        )
+                        reflex_actions = reflex_distillation_actions[
+                            reflex_indices
+                        ]
+                        reflex_mean, _, _ = network(
+                            torch.tensor(reflex_observations)
+                        )
+                        reflex_coefficient = float(
+                            reflex_distillation_config["coefficient"]
+                        ) * max(
+                            0.0,
+                            1.0
+                            - completed_steps
+                            / float(reflex_distillation_config["untilStep"]),
+                        )
+                        reflex_distillation_loss = reflex_coefficient * torch.square(
+                            reflex_mean - torch.tensor(reflex_actions)
+                        ).mean()
+                        batch_reflex_distillation_losses.append(
+                            float(reflex_distillation_loss.detach().item())
+                        )
+                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + reflex_distillation_loss + symmetry_loss - float(config["entropyCoefficient"]) * entropy
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
             metrics.append({
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
@@ -1874,6 +1959,18 @@ class PPOTrainer:
                 "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
                 "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
                 "meanEliteReplayLoss": float(np.mean(batch_elite_replay_losses)) if batch_elite_replay_losses else None,
+                "meanReflexDistillationLoss": float(np.mean(batch_reflex_distillation_losses)) if batch_reflex_distillation_losses else None,
+                "reflexDistillationCoefficient": (
+                    float(reflex_distillation_config["coefficient"])
+                    * max(
+                        0.0,
+                        1.0
+                        - completed_steps
+                        / float(reflex_distillation_config["untilStep"]),
+                    )
+                    if reflex_distillation_config
+                    else None
+                ),
                 "meanBilateralSymmetryLoss": float(np.mean(batch_symmetry_losses)) if batch_symmetry_losses else None,
                 "eliteReplayTransitions": len(elite_replay_observations),
                 "eliteReplayEpisodeAdmissions": elite_replay_episode_admissions,
@@ -2009,6 +2106,53 @@ class PPOTrainer:
                     sorted(elite_replay_admission_coverage.items())
                 ),
             } if elite_replay_config else None,
+            "reflexDistillation": {
+                "search": reflex_distillation_config["search"],
+                "evaluationHash": reflex_distillation_config["evaluationHash"],
+                "demonstrationsHash": reflex_distillation_config[
+                    "demonstrationsHash"
+                ],
+                "target": reflex_distillation_config["target"],
+                "coefficient": float(
+                    reflex_distillation_config["coefficient"]
+                ),
+                "minibatchSize": int(
+                    reflex_distillation_config["minibatchSize"]
+                ),
+                "untilStep": int(reflex_distillation_config["untilStep"]),
+                "schedule": "linear-to-zero",
+                "demonstrations": len(
+                    reflex_distillation_config["demonstrations"]
+                ),
+                "cases": sorted({
+                    str(item["case"])
+                    for item in reflex_distillation_config["demonstrations"]
+                }),
+                "sides": sorted({
+                    str(item["side"])
+                    for item in reflex_distillation_config["demonstrations"]
+                }),
+                "roles": {
+                    role: sum(
+                        int(item.get("role") == role)
+                        for item in reflex_distillation_config[
+                            "demonstrations"
+                        ]
+                    )
+                    for role in sorted({
+                        str(item.get("role"))
+                        for item in reflex_distillation_config[
+                            "demonstrations"
+                        ]
+                    })
+                },
+                "searchAuthority": reflex_distillation_config[
+                    "dataPartition"
+                ]["search"]["authority"],
+                "judgeAuthority": reflex_distillation_config[
+                    "dataPartition"
+                ]["judge"]["authority"],
+            } if reflex_distillation_config else None,
             "progressionSampling": progression_sampling,
             "curriculumCoverage": {
                 str(entry["id"]): {

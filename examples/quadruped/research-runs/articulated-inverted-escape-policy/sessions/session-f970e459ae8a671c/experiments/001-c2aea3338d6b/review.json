@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "56a18a267c20d8edf48d5419c781ea5dc904185651d80c50943b3eca7fd21d75",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-f970e459ae8a671c",
+    "experimentId": "001-c2aea3338d6b",
+    "experimentHash": "c2aea3338d6b0679626c4353b25ea0bd9824a1066ae8932f0bd8fc4ac3f4fbb1"
+  },
+  "proposal": {
+    "strategy": "continuous-mission-counterfactual-reflex-distillation",
+    "hypothesis": "A frozen-policy short-horizon search on four Training-only seeds found no safe improvement for the 60 N positive-y impact, but found one negative-y intervention that improved terminal recovery-target progress on both independent 49 N cases while reducing disallowed self-contact steps from two to zero. Distill its 24 pre-transform actor targets into the same state-conditioned Policy while preserving the complete no-reset Mission progression, Program prior, lateral-only authority, bilateral consistency regularizer, seed, budget, and locked Judge.",
+    "expectedEffect": "Teach the actor a physically screened early brace without splitting locomotion, impact, and recovery into separate deployed policies. The short proxy remains Training-only; promotion still requires the unchanged walk→impact→recover→resume→redirect→traverse→stop Mission Suite to improve without regressions."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 47,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 99.09769440188333,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "0a4956615a62becbfc3cec2befe05fa4eed790facff7e73a4527868a8b359d67"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: self-righting regressed from passing to failing",
+    "candidateScoreDelta": -81.08955250538989,
+    "weightedScoreDelta": -81.08955250538989
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-ff24264aa0c11d58",
+    "runKey": "ff24264aa0c11d581df2e851c389a3f5226cc54ca0f76ae3d1c7e2b7f9e1a44d",
+    "resultHash": "d3b1d746cee1751221ea5f34f234ce480994e312bccfee0a20dacc7eede8f47c",
+    "artifactHash": "bff2f37183d455f6ce64fdceb39436f5b991b85c2f90c14241635dd131e3e849",
+    "manifestHash": "d56924190737e33af590c67a702dd89d69e5745093348169956368c120d44dbc",
+    "metricsHash": "4852e8e6fca12738428082117baedae3c9d1fd35b2a58352adade2ab074783df",
+    "scoreHash": "0d346c861fef2156fcf6ad66a202b5a2f7ac14922e371f1e4d1ad09a6269e6d3",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 52.090808559699596
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-5891f7205603535c",
+    "runKey": "5891f7205603535c13fa6607c4cd51f3207637473031ff2a7c56ce0e23634831",
+    "resultHash": "86d089c36d2f139ed47b2bc4021afeee9ace5e3f63adc06deebb07835d3fe193",
+    "artifactHash": "05ad9997c5668478bb58d62bf3b4352f00d4a8a0712eceec61e4409e1765fd2e",
+    "manifestHash": "827b70c2e2e7071556f920633bc18e3d74e52da16d0c4c33aaaa519b338867b9",
+    "metricsHash": "a47c561310f5122c923f2a0419fd7a56159d34ae3d03a9e23b5a98c5f799b818",
+    "scoreHash": "77290fe698354d66479ca0476986195838ac80991f0575f770905df6edda98ae",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -28.998743945690293
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

@@ -396,6 +396,8 @@ class FrozenPolicyController:
     residual_gate_target_scale: float = 0.0
     last_action_time_seconds: float | None = None
     runtime_state: dict[str, float] | None = None
+    last_actor_mean: np.ndarray | None = None
+    last_raw_action: np.ndarray | None = None
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
@@ -404,20 +406,61 @@ class FrozenPolicyController:
         self.residual_gate_target_scale = 0.0
         self.last_action_time_seconds = None
         self.runtime_state = None
+        self.last_actor_mean = None
+        self.last_raw_action = None
 
     def set_runtime_state(self, state: dict[str, float]) -> None:
         """Receive Runtime-owned supervisor facts outside the neural input ABI."""
         self.runtime_state = dict(state)
 
-    def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
+    def actor_mean(self, observation: dict[str, np.ndarray]) -> np.ndarray:
+        """Return the frozen deterministic actor mean before Action transform."""
         vector = np.concatenate([observation[channel["name"]] for channel in self.observation_channels]).astype(np.float32)
         normalized = (vector - self.mean) / np.sqrt(self.variance + 1e-8)
         with torch.no_grad():
-            mean, _, log_std = self.network(torch.from_numpy(normalized).unsqueeze(0))
+            mean, _, _ = self.network(torch.from_numpy(normalized).unsqueeze(0))
+        return mean[0].numpy().copy()
+
+    def act_with_raw_delta(
+        self,
+        observation: dict[str, np.ndarray],
+        time_seconds: float,
+        raw_delta: np.ndarray | None,
+    ) -> np.ndarray:
+        """Execute the frozen Policy while changing only its pre-transform actor Action."""
+        actor_mean = self.actor_mean(observation)
+        with torch.no_grad():
             if self.deterministic:
-                raw_action = mean[0]
+                raw_action = actor_mean
             else:
-                raw_action = torch.distributions.Normal(mean, log_std.exp()).sample()[0]
+                vector = np.concatenate([
+                    observation[channel["name"]]
+                    for channel in self.observation_channels
+                ]).astype(np.float32)
+                normalized = (vector - self.mean) / np.sqrt(self.variance + 1e-8)
+                mean, _, log_std = self.network(
+                    torch.from_numpy(normalized).unsqueeze(0)
+                )
+                raw_action = torch.distributions.Normal(
+                    mean, log_std.exp()
+                ).sample()[0].numpy()
+        if raw_delta is not None:
+            delta = np.asarray(raw_delta, dtype=np.float64).reshape(-1)
+            if delta.size != actor_mean.size:
+                raise RuntimeError(
+                    f"Actor raw delta expected {actor_mean.size} values, got {delta.size}"
+                )
+            if not np.isfinite(delta).all():
+                raise RuntimeError("Actor raw delta contains non-finite values")
+            raw_action = np.clip(
+                np.asarray(raw_action, dtype=np.float64) + delta,
+                -4.0,
+                4.0,
+            )
+        else:
+            raw_action = np.asarray(raw_action, dtype=np.float64)
+        self.last_actor_mean = actor_mean
+        self.last_raw_action = raw_action.copy()
         if self.action_transform and self.action_transform.get("kind") == "program-controller-residual":
             if self.program_prior is None: raise RuntimeError("Frozen Policy is missing its serialized program prior")
             prior_action = self.program_prior.act(observation, time_seconds)
@@ -442,16 +485,19 @@ class FrozenPolicyController:
                 + self.last_residual_gate_scale
                 * program_residual_scale_vector(
                     self.action_transform,
-                    raw_action.numel(),
+                    raw_action.size,
                 )
-                * raw_action.numpy()
+                * raw_action
             )
         else:
             self.last_residual_gate_scale = 1.0
             self.residual_gate_target_scale = 1.0
-            action = transform_policy_action(raw_action.numpy(), observation, self.action_transform, time_seconds)
+            action = transform_policy_action(raw_action, observation, self.action_transform, time_seconds)
         self.last_action_time_seconds = time_seconds
         return np.clip(action, self.action_low, self.action_high)
+
+    def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
+        return self.act_with_raw_delta(observation, time_seconds, None)
 
     def telemetry(self) -> dict[str, Any]:
         telemetry: dict[str, Any] = {}
@@ -463,6 +509,16 @@ class FrozenPolicyController:
                     telemetry.update(prior_telemetry)
         telemetry["policyResidualGateScale"] = self.last_residual_gate_scale
         telemetry["policyResidualGateTargetScale"] = self.residual_gate_target_scale
+        telemetry["policyActorMeanL2"] = (
+            float(np.linalg.norm(self.last_actor_mean))
+            if self.last_actor_mean is not None
+            else 0.0
+        )
+        telemetry["policyRawActionL2"] = (
+            float(np.linalg.norm(self.last_raw_action))
+            if self.last_raw_action is not None
+            else 0.0
+        )
         return telemetry
 
 
