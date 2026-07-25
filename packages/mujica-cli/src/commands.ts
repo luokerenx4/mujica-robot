@@ -11,6 +11,7 @@ import { verifyHardwareBundleIntegrity, verifyHardwareCaptureIntegrity } from ".
 import { dependencyLockHash, harnessDependencyLockHash, harnessSourceHash, invokeRuntime, runtimeCompiled, runtimeSourceHash, runtimeVersion } from "./runtime";
 import { writeStudioSnapshot, type ResearchTimelineInput } from "@mujica/studio";
 import { loadReflexSearch } from "./reflex-artifact";
+import { loadFrozenPolicyArtifact } from "./policy-artifact";
 
 function projectArtifact(kind: Artifact["kind"], id: string, path: string, immutable: boolean): Artifact { return { kind, id, path, immutable }; }
 async function exists(path: string): Promise<boolean> {
@@ -537,6 +538,47 @@ export async function executeTraining(project: ProjectContext, training: Trainin
     const prior = await loadController(project.rootDir, training.priorController); if (prior.definition.kind !== "program") throw new Error(`Training prior '${training.priorController}' must be a program Controller`);
     assertProgramControllerCompatible(prior.definition, assembly); priorController = { definition: prior.definition, rootDir: prior.rootDir, hash: await hashDirectory(prior.rootDir) };
   }
+  let warmStart: Record<string, any> | null = null;
+  if (training.warmStart) {
+    const parent = await loadFrozenPolicyArtifact(
+      project.rootDir,
+      training.warmStart.policy,
+    );
+    if (
+      parent.manifest.executionHash !== assembly.executionHash
+      || parent.manifest.observationContractHash
+        !== hashJson(assembly.observationContract)
+      || parent.manifest.actionContractHash !== hashJson(assembly.actionContract)
+      || parent.manifest.priorControllerHash !== priorController?.hash
+    ) {
+      throw new Error(
+        `Warm-start Policy '${training.warmStart.policy}' is incompatible with this Training execution closure`,
+      );
+    }
+    if (
+      parent.architecture.actionTransform?.kind
+        === "program-controller-residual"
+      && parent.architecture.actionTransform.controllerHash
+        !== priorController?.hash
+    ) {
+      throw new Error(
+        `Warm-start Policy '${training.warmStart.policy}' does not preserve the frozen Program prior`,
+      );
+    }
+    warmStart = {
+      policy: training.warmStart.policy,
+      root: parent.root,
+      policyHash: parent.policyHash,
+      modelHash: parent.modelHash,
+      architectureHash: parent.architectureHash,
+      normalizerHash: parent.normalizerHash,
+      architecture: parent.architecture,
+      normalizer: parent.normalizer,
+      normalizerMode: training.warmStart.normalizer,
+      trustRegion: training.warmStart.trustRegion,
+      createdByTrainingRun: parent.trainingRunId,
+    };
+  }
   let reflexDistillation: Record<string, any> | null = null;
   if (training.reflexDistillation) {
     const artifact = await loadReflexSearch(
@@ -584,6 +626,24 @@ export async function executeTraining(project: ProjectContext, training: Trainin
         `Reflex Search '${training.reflexDistillation.search}' is incompatible with this Training execution closure`,
       );
     }
+    if (
+      warmStart
+      && (
+        evaluation.subject?.frozenPolicy?.id !== warmStart.policy
+        || evaluation.subject?.frozenPolicy?.policyHash
+          !== warmStart.policyHash
+        || evaluation.subject?.frozenPolicy?.modelHash
+          !== warmStart.modelHash
+        || evaluation.subject?.frozenPolicy?.normalizerHash
+          !== warmStart.normalizerHash
+        || evaluation.subject?.frozenPolicy?.architectureHash
+          !== warmStart.architectureHash
+      )
+    ) {
+      throw new Error(
+        `Reflex Search '${training.reflexDistillation.search}' does not originate from warm-start Policy '${warmStart.policy}'`,
+      );
+    }
     const searchCaseIds = new Set(trainingCases.map((item: any) => item.id));
     if (
       artifact.demonstrations.length === 0
@@ -617,12 +677,24 @@ export async function executeTraining(project: ProjectContext, training: Trainin
   return await invokeRuntime("train", {
     runtimeVersion, runtimeSourceHash: sourceHash, harnessSourceHash: harnessHash, harnessDependencyLockHash: harnessDependencyHash, projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), training, trainer: trainer.definition, trainerRoot: trainer.rootDir, trainerHash,
     priorController: priorController?.definition ?? null, priorControllerRoot: priorController?.rootDir ?? null, priorControllerHash: priorController?.hash ?? null,
+    warmStart,
     reflexDistillation,
     domainProfile, domainProfileHash, domainProfileEvidenceHash,
     task, scenarios, curriculum, progression, seed, dependencyLockHash: await dependencyLockHash(),
     sourceHashes: {
       runtime: sourceHash, harness: harnessHash, harnessDependencies: harnessDependencyHash, trainer: trainerHash,
       priorController: priorController?.hash ?? null, domainProfile: domainProfileHash,
+      warmStart: warmStart
+        ? {
+          policy: warmStart.policy,
+          policyHash: warmStart.policyHash,
+          modelHash: warmStart.modelHash,
+          architectureHash: warmStart.architectureHash,
+          normalizerHash: warmStart.normalizerHash,
+          normalizerMode: warmStart.normalizerMode,
+          trustRegion: warmStart.trustRegion,
+        }
+        : null,
       reflexSearch: reflexDistillation
         ? {
           id: reflexDistillation.search,

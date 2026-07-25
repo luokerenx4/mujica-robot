@@ -659,6 +659,38 @@ async function importTrainingArtifacts(stagedRoot: string, projectRoot: string, 
   return { trainingRunPath, policyPath };
 }
 
+async function stageWarmStartLineage(
+  projectRoot: string,
+  stagedRoot: string,
+  training: { warmStart?: { policy: string } | undefined },
+): Promise<void> {
+  if (!training.warmStart) return;
+  const policyId = training.warmStart.policy;
+  const sourcePolicy = confined(projectRoot, `policies/${policyId}`);
+  const stagedPolicy = confined(stagedRoot, `policies/${policyId}`);
+  if (
+    await hashDirectory(sourcePolicy)
+    !== await hashDirectory(stagedPolicy)
+  ) {
+    throw new Error(
+      `Warm-start Policy '${policyId}' changed inside the isolated Research workspace`,
+    );
+  }
+  const manifest = JSON.parse(
+    await readFile(join(sourcePolicy, "manifest.json"), "utf8"),
+  );
+  const trainingRunId = String(manifest.createdByTrainingRun ?? "");
+  if (!trainingRunId) {
+    throw new Error(
+      `Warm-start Policy '${policyId}' has no immutable Training lineage`,
+    );
+  }
+  await importImmutableDirectory(
+    confined(projectRoot, `training-runs/${trainingRunId}`),
+    confined(stagedRoot, `training-runs/${trainingRunId}`),
+  );
+}
+
 async function applySourceTransaction(projectRoot: string, stagedRoot: string, before: SourceHashes, after: SourceHashes, paths: string[]): Promise<() => Promise<void>> {
   const current = await snapshotFiles(projectRoot, true);
   for (const path of paths) if (current[path] !== before[path]) throw new Error(`Research KEEP is stale because '${path}' changed during evaluation`);
@@ -1374,6 +1406,7 @@ export async function researchLabRunCommand(projectDir: string, id: string, requ
       } else if (lab.execution.kind === "policy") {
         const training = await loadTraining(workspace, lab.execution.training);
         if (training.totalSteps > lab.budget.maximumTrainingSteps!) throw new Error(`Training totalSteps ${training.totalSteps} exceeds Lab maximum ${lab.budget.maximumTrainingSteps}`);
+        await stageWarmStartLineage(project.rootDir, workspace, training);
         const loaded = await loadController(workspace, lab.execution.controller); if (loaded.definition.kind !== "policy") throw new Error("Policy Lab target is no longer a policy Controller");
         const trainingResult = await executeTraining(stagedProject, training, lab.execution.seed, deadlineMs); policyId = trainingResult.policyId;
         const imported = await importTrainingArtifacts(workspace, project.rootDir, trainingResult); const candidateController: ControllerDefinition = { ...loaded.definition, policy: trainingResult.policyId };

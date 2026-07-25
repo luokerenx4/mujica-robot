@@ -774,6 +774,77 @@ def masked_mean(values: torch.Tensor, masks: torch.Tensor) -> torch.Tensor:
     return (values * masks).sum() / denominator
 
 
+def diagonal_gaussian_reverse_kl(
+    reference_mean: torch.Tensor,
+    reference_log_std: torch.Tensor,
+    current_mean: torch.Tensor,
+    current_log_std: torch.Tensor,
+) -> torch.Tensor:
+    """KL(reference || current) for each sample of a diagonal Gaussian."""
+    reference_variance = torch.exp(2.0 * reference_log_std)
+    current_variance = torch.exp(2.0 * current_log_std)
+    return (
+        current_log_std
+        - reference_log_std
+        + (
+            reference_variance
+            + torch.square(reference_mean - current_mean)
+        )
+        / (2.0 * current_variance)
+        - 0.5
+    ).mean(dim=-1)
+
+
+def structured_differences(
+    left: Any,
+    right: Any,
+    path: str = "$",
+    limit: int = 8,
+) -> list[str]:
+    differences: list[str] = []
+    if isinstance(left, dict) and isinstance(right, dict):
+        for key in sorted(set(left) | set(right)):
+            if len(differences) >= limit:
+                break
+            if key not in left:
+                differences.append(f"{path}.{key}: missing in parent")
+            elif key not in right:
+                differences.append(f"{path}.{key}: missing in trainer")
+            else:
+                differences.extend(structured_differences(
+                    left[key],
+                    right[key],
+                    f"{path}.{key}",
+                    limit - len(differences),
+                ))
+    elif isinstance(left, list) and isinstance(right, list):
+        if len(left) != len(right):
+            differences.append(
+                f"{path}: length parent={len(left)} trainer={len(right)}"
+            )
+        else:
+            for index, (left_item, right_item) in enumerate(zip(left, right)):
+                if len(differences) >= limit:
+                    break
+                differences.extend(structured_differences(
+                    left_item,
+                    right_item,
+                    f"{path}[{index}]",
+                    limit - len(differences),
+                ))
+    elif (
+        type(left) is not type(right)
+        and not (
+            isinstance(left, (int, float))
+            and not isinstance(left, bool)
+            and isinstance(right, (int, float))
+            and not isinstance(right, bool)
+        )
+    ) or left != right:
+        differences.append(f"{path}: parent={left!r} trainer={right!r}")
+    return differences[:limit]
+
+
 @dataclass(frozen=True)
 class BilateralSymmetry:
     """A declared involution over one compiled Observation/Action ABI."""
@@ -1016,6 +1087,7 @@ def run_deterministic_mission_probe(
     lows: np.ndarray,
     highs: np.ndarray,
     seed: int,
+    active_observation_sink: list[np.ndarray] | None = None,
 ) -> dict[str, Any]:
     """Replay each Mission stage and Scenario with the frozen actor mean.
 
@@ -1127,6 +1199,11 @@ def run_deterministic_mission_probe(
                         float(environment.data.time),
                     )
                     actor_authority = 1.0
+                if (
+                    active_observation_sink is not None
+                    and actor_authority > 0.0
+                ):
+                    active_observation_sink.append(normalized.copy())
                 result = environment.step(np.clip(transformed, lows, highs))
                 sample["steps"] += 1
                 sample["activePolicySteps"] += int(actor_authority > 0.0)
@@ -1265,6 +1342,7 @@ class PPOTrainer:
         action_transform = effective_action_transform(self.action_transform, config)
         elite_replay_config = config.get("eliteReplay")
         reflex_distillation_config = request.get("reflexDistillation")
+        warm_start_config = request.get("warmStart")
         deterministic_checkpoint_config = config.get("deterministicCheckpoint")
         if (
             deterministic_checkpoint_config
@@ -1480,17 +1558,155 @@ class PPOTrainer:
                     "actionSize": action_size,
                     "recurrentSize": int(self.history_encoder["recurrentSize"]),
                 }
+        artifact_action_transform = action_transform
+        if (
+            artifact_action_transform
+            and artifact_action_transform.get("kind")
+            == "program-controller-residual"
+        ):
+            artifact_action_transform = {
+                **artifact_action_transform,
+                "controllerId": request["priorController"]["id"],
+                "controllerHash": request["priorControllerHash"],
+            }
+        artifact_architecture = {
+            **architecture,
+            "actionTransform": artifact_action_transform,
+        }
         network = create_policy_network(architecture)
-        if self.action_transform:
-            torch.nn.init.zeros_(network.actor.weight); torch.nn.init.zeros_(network.actor.bias)
-        with torch.no_grad(): network.log_std.fill_(self.initial_log_std)
-        optimizer = torch.optim.Adam(network.parameters(), lr=float(config["learningRate"]))
+        frozen_policy_anchor: torch.nn.Module | None = None
         normalizer = RunningNormalizer(observation_size)
+        normalizer_frozen = False
+        if warm_start_config:
+            parent_architecture_hash = hash_json(
+                warm_start_config.get("architecture")
+            )
+            trainer_architecture_hash = hash_json(artifact_architecture)
+            architecture_differences = structured_differences(
+                warm_start_config.get("architecture"),
+                artifact_architecture,
+            )
+            if (
+                warm_start_config.get("normalizerMode") != "frozen"
+                or warm_start_config.get("trustRegion", {}).get("kind")
+                != "reverse-kl-to-frozen-policy"
+                or architecture_differences
+            ):
+                raise RuntimeError(
+                    "Warm-start Policy architecture or trust-region contract does not match this Trainer "
+                    f"(parent={parent_architecture_hash}, trainer={trainer_architecture_hash}; "
+                    f"differences={architecture_differences})"
+                )
+            policy_root = Path(str(warm_start_config["root"])).resolve()
+            policies_root = (Path(request["projectDir"]) / "policies").resolve()
+            if policies_root not in policy_root.parents:
+                raise RuntimeError("Warm-start Policy path escapes the project")
+            if hash_file(policy_root / "model.pt") != warm_start_config["modelHash"]:
+                raise RuntimeError("Warm-start Policy model bytes changed")
+            parent_normalizer = json.loads(
+                (policy_root / "normalizer.json").read_text()
+            )
+            if structured_differences(
+                parent_normalizer,
+                warm_start_config["normalizer"],
+            ):
+                raise RuntimeError("Warm-start Policy normalizer changed")
+            parent_state = torch.load(
+                policy_root / "model.pt",
+                map_location="cpu",
+                weights_only=True,
+            )
+            network.load_state_dict(parent_state)
+            frozen_policy_anchor = create_policy_network(architecture)
+            frozen_policy_anchor.load_state_dict(parent_state)
+            frozen_policy_anchor.eval()
+            for parameter in frozen_policy_anchor.parameters():
+                parameter.requires_grad_(False)
+            count = float(parent_normalizer["count"])
+            mean = np.asarray(parent_normalizer["mean"], dtype=np.float64)
+            variance = np.asarray(
+                parent_normalizer["variance"], dtype=np.float64
+            )
+            if (
+                not np.isfinite(count)
+                or count <= 0.0
+                or mean.shape != (observation_size,)
+                or variance.shape != (observation_size,)
+                or not np.all(np.isfinite(mean))
+                or not np.all(np.isfinite(variance))
+                or np.any(variance <= 0.0)
+            ):
+                raise RuntimeError(
+                    "Warm-start Policy normalizer violates the Observation contract"
+                )
+            normalizer.count = count
+            normalizer.mean = mean
+            normalizer.m2 = variance * count
+            normalizer_frozen = True
+        else:
+            if self.action_transform:
+                torch.nn.init.zeros_(network.actor.weight)
+                torch.nn.init.zeros_(network.actor.bias)
+            with torch.no_grad():
+                network.log_std.fill_(self.initial_log_std)
+        optimizer = torch.optim.Adam(
+            network.parameters(), lr=float(config["learningRate"])
+        )
         total_steps = int(config["totalSteps"]); rollout_steps = int(config["rolloutSteps"])
         metrics: list[dict[str, Any]] = []
         episode_reward = 0.0; completed_rewards: list[float] = []
         mission_phase_samples: dict[str, dict[str, Any]] = {}
         lows = np.asarray(request["compiled"]["actionLow"], dtype=np.float32); highs = np.asarray(request["compiled"]["actionHigh"], dtype=np.float32)
+        policy_anchor_observation_tensor: torch.Tensor | None = None
+        policy_anchor_reference_mean: torch.Tensor | None = None
+        policy_anchor_reference_log_std: torch.Tensor | None = None
+        policy_anchor_observation_count = 0
+        if frozen_policy_anchor is not None:
+            policy_anchor_observations: list[np.ndarray] = []
+            run_deterministic_mission_probe(
+                request=request,
+                curriculum=curriculum,
+                network=frozen_policy_anchor,
+                normalizer=normalizer,
+                action_transform=action_transform,
+                residual_scale_vector=residual_scale_vector,
+                lows=lows,
+                highs=highs,
+                seed=seed,
+                active_observation_sink=policy_anchor_observations,
+            )
+            if not policy_anchor_observations:
+                raise RuntimeError(
+                    "Warm-start trust region found no active parent-policy states "
+                    "in the deterministic complete-Mission probe"
+                )
+            anchor_indices = np.arange(len(policy_anchor_observations))
+            if len(anchor_indices) > 512:
+                anchor_indices = np.linspace(
+                    0,
+                    len(anchor_indices) - 1,
+                    num=512,
+                    dtype=np.int64,
+                )
+            policy_anchor_observation_tensor = torch.tensor(
+                np.asarray(
+                    [
+                        policy_anchor_observations[int(index)]
+                        for index in anchor_indices
+                    ]
+                ),
+                dtype=torch.float32,
+            )
+            policy_anchor_observation_count = len(
+                policy_anchor_observation_tensor
+            )
+            with torch.no_grad():
+                (
+                    policy_anchor_reference_mean,
+                    _,
+                    policy_anchor_reference_log_std,
+                ) = frozen_policy_anchor(policy_anchor_observation_tensor)
+            network.train()
         elite_replay_observations: deque[np.ndarray] = deque(
             maxlen=int(elite_replay_config["capacity"])
             if elite_replay_config
@@ -1587,17 +1803,23 @@ class PPOTrainer:
             batch_elite_replay_losses: list[float] = []
             batch_reflex_distillation_losses: list[float] = []
             batch_symmetry_losses: list[float] = []
+            batch_frozen_policy_kls: list[float] = []
+            batch_attempted_frozen_policy_kls: list[float] = []
+            batch_policy_anchor_losses: list[float] = []
+            trust_region_rollback_count = 0
+            trust_region_accepted_steps = 0
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
-                normalizer.update(observation)
-                if (
-                    bilateral_symmetry
-                    and bilateral_symmetry.contract.get(
-                        "augmentNormalizer", False
-                    )
-                ):
-                    normalizer.update(
-                        bilateral_symmetry.mirror_observation(observation)
-                    )
+                if not normalizer_frozen:
+                    normalizer.update(observation)
+                    if (
+                        bilateral_symmetry
+                        and bilateral_symmetry.contract.get(
+                            "augmentNormalizer", False
+                        )
+                    ):
+                        normalizer.update(
+                            bilateral_symmetry.mirror_observation(observation)
+                        )
                 normalized = normalizer.normalize(observation)
                 mirrored_normalized = (
                     normalizer.normalize(
@@ -1861,6 +2083,30 @@ class PPOTrainer:
                         (), dtype=mean.dtype
                     )
                     symmetry_loss = torch.zeros((), dtype=mean.dtype)
+                    policy_anchor_loss = torch.zeros((), dtype=mean.dtype)
+                    frozen_policy_kl = torch.zeros((), dtype=mean.dtype)
+                    if (
+                        policy_anchor_observation_tensor is not None
+                        and policy_anchor_reference_mean is not None
+                        and policy_anchor_reference_log_std is not None
+                    ):
+                        anchor_mean, _, anchor_log_std = network(
+                            policy_anchor_observation_tensor
+                        )
+                        frozen_policy_kl = (
+                            diagonal_gaussian_reverse_kl(
+                                policy_anchor_reference_mean,
+                                policy_anchor_reference_log_std,
+                                anchor_mean,
+                                anchor_log_std,
+                            ).mean()
+                        )
+                        policy_anchor_loss = float(
+                            warm_start_config["trustRegion"]["coefficient"]
+                        ) * frozen_policy_kl
+                        batch_policy_anchor_losses.append(
+                            float(policy_anchor_loss.detach().item())
+                        )
                     if bilateral_symmetry and mirrored_observation_tensor is not None:
                         mirrored_mean, _, _ = network(
                             mirrored_observation_tensor[selected]
@@ -1945,8 +2191,61 @@ class PPOTrainer:
                         batch_reflex_distillation_losses.append(
                             float(reflex_distillation_loss.detach().item())
                         )
-                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + reflex_distillation_loss + symmetry_loss - float(config["entropyCoefficient"]) * entropy
+                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + reflex_distillation_loss + symmetry_loss + policy_anchor_loss - float(config["entropyCoefficient"]) * entropy
+                    network_state_before_step = (
+                        {
+                            name: tensor.detach().clone()
+                            for name, tensor in network.state_dict().items()
+                        }
+                        if frozen_policy_anchor is not None
+                        else None
+                    )
+                    optimizer_state_before_step = (
+                        deepcopy(optimizer.state_dict())
+                        if frozen_policy_anchor is not None
+                        else None
+                    )
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
+                    if (
+                        frozen_policy_anchor is not None
+                        and policy_anchor_observation_tensor is not None
+                        and policy_anchor_reference_mean is not None
+                        and policy_anchor_reference_log_std is not None
+                        and network_state_before_step is not None
+                        and optimizer_state_before_step is not None
+                    ):
+                        with torch.no_grad():
+                            candidate_mean, _, candidate_log_std = network(
+                                policy_anchor_observation_tensor
+                            )
+                            attempted_kl = (
+                                diagonal_gaussian_reverse_kl(
+                                    policy_anchor_reference_mean,
+                                    policy_anchor_reference_log_std,
+                                    candidate_mean,
+                                    candidate_log_std,
+                                ).mean()
+                            )
+                        attempted_kl_value = float(attempted_kl.item())
+                        batch_attempted_frozen_policy_kls.append(
+                            attempted_kl_value
+                        )
+                        if attempted_kl_value > float(
+                            warm_start_config["trustRegion"]["maximumMeanKl"]
+                        ):
+                            network.load_state_dict(network_state_before_step)
+                            optimizer.load_state_dict(
+                                optimizer_state_before_step
+                            )
+                            trust_region_rollback_count += 1
+                            batch_frozen_policy_kls.append(
+                                float(frozen_policy_kl.detach().item())
+                            )
+                        else:
+                            trust_region_accepted_steps += 1
+                            batch_frozen_policy_kls.append(
+                                attempted_kl_value
+                            )
             metrics.append({
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
                 "meanBaseReward": float(np.mean(batch_base_rewards)), "meanQualityPenalty": float(np.mean(batch_quality_penalties)),
@@ -1972,6 +2271,12 @@ class PPOTrainer:
                     else None
                 ),
                 "meanBilateralSymmetryLoss": float(np.mean(batch_symmetry_losses)) if batch_symmetry_losses else None,
+                "meanFrozenPolicyKl": float(np.mean(batch_frozen_policy_kls)) if batch_frozen_policy_kls else None,
+                "maximumFrozenPolicyKl": float(np.max(batch_frozen_policy_kls)) if batch_frozen_policy_kls else None,
+                "maximumAttemptedFrozenPolicyKl": float(np.max(batch_attempted_frozen_policy_kls)) if batch_attempted_frozen_policy_kls else None,
+                "meanPolicyAnchorLoss": float(np.mean(batch_policy_anchor_losses)) if batch_policy_anchor_losses else None,
+                "trustRegionRollbackCount": trust_region_rollback_count,
+                "trustRegionAcceptedOptimizerSteps": trust_region_accepted_steps,
                 "eliteReplayTransitions": len(elite_replay_observations),
                 "eliteReplayEpisodeAdmissions": elite_replay_episode_admissions,
             })
@@ -2050,10 +2355,9 @@ class PPOTrainer:
         )
         torch.save(network.state_dict(), output_dir / "model.pt")
         if action_transform and action_transform.get("kind") == "program-controller-residual":
-            prior_dir = output_dir / "prior"; prior_definition = request["priorController"]
+            prior_dir = output_dir / "prior"
             shutil.copytree(Path(request["priorControllerRoot"]), prior_dir, ignore=shutil.ignore_patterns(".DS_Store", "__pycache__"))
-            action_transform = {**action_transform, "controllerId": prior_definition["id"], "controllerHash": request["priorControllerHash"]}
-        write_json(output_dir / "architecture.json", {**architecture, "actionTransform": action_transform})
+        write_json(output_dir / "architecture.json", artifact_architecture)
         write_json(output_dir / "normalizer.json", {"count": normalizer.count, "mean": normalizer.mean.tolist(), "variance": normalizer.variance.tolist()})
         write_json(output_dir / "training-metrics.json", {
             "updates": metrics, "totalSteps": completed_steps, "episodes": len(completed_rewards),
@@ -2096,6 +2400,47 @@ class PPOTrainer:
             "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
             "deterministicMissionProbe": deterministic_mission_probe,
             "deterministicCheckpointSelection": deterministic_checkpoint_selection,
+            "warmStart": {
+                "policy": warm_start_config["policy"],
+                "policyHash": warm_start_config["policyHash"],
+                "modelHash": warm_start_config["modelHash"],
+                "architectureHash": warm_start_config["architectureHash"],
+                "normalizerHash": warm_start_config["normalizerHash"],
+                "createdByTrainingRun": warm_start_config[
+                    "createdByTrainingRun"
+                ],
+                "normalizerMode": warm_start_config["normalizerMode"],
+                "initialWeightsByteIdentical": True,
+                "anchorDistribution": (
+                    "frozen-parent-deterministic-complete-mission-active-states"
+                ),
+                "anchorObservationCount": policy_anchor_observation_count,
+                "trustRegion": warm_start_config["trustRegion"],
+                "maximumObservedMeanKl": max(
+                    (
+                        float(update["maximumFrozenPolicyKl"])
+                        for update in metrics
+                        if update["maximumFrozenPolicyKl"] is not None
+                    ),
+                    default=0.0,
+                ),
+                "maximumAttemptedMeanKl": max(
+                    (
+                        float(update["maximumAttemptedFrozenPolicyKl"])
+                        for update in metrics
+                        if update["maximumAttemptedFrozenPolicyKl"] is not None
+                    ),
+                    default=0.0,
+                ),
+                "acceptedOptimizerSteps": sum(
+                    int(update["trustRegionAcceptedOptimizerSteps"])
+                    for update in metrics
+                ),
+                "rolledBackOptimizerSteps": sum(
+                    int(update["trustRegionRollbackCount"])
+                    for update in metrics
+                ),
+            } if warm_start_config else None,
             "eliteReplay": {
                 **elite_replay_config,
                 "admittedTransitions": elite_replay_admissions,
@@ -2258,6 +2603,23 @@ class PPOTrainer:
                     "restoredEarlierCheckpoint"
                 ]
             ),
+            "warmStartPolicy": (
+                str(warm_start_config["policy"])
+                if warm_start_config
+                else None
+            ),
+            "maximumObservedMeanKl": (
+                max(
+                    (
+                        float(update["maximumFrozenPolicyKl"])
+                        for update in metrics
+                        if update["maximumFrozenPolicyKl"] is not None
+                    ),
+                    default=0.0,
+                )
+                if warm_start_config
+                else None
+            ),
         }
 
 
@@ -2274,7 +2636,16 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
     assert_domain_profile_plant_compatible(request)
     module = load_python_module((trainer_root / definition["entry"]).resolve(), f"mujica_trainer_{definition['id'].replace('-', '_')}")
     trainer = module.create_trainer()
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "plantHash": request["compiled"]["plantHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request.get("task"), "scenarios": request.get("scenarios"), "curriculum": request.get("curriculum"), "progression": request.get("progression"), "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
+    warm_start_identity = (
+        {
+            key: value
+            for key, value in request["warmStart"].items()
+            if key not in {"root", "architecture", "normalizer"}
+        }
+        if request.get("warmStart")
+        else None
+    )
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "assemblyHash": request["compiled"]["assemblyHash"], "plantHash": request["compiled"]["plantHash"], "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "warmStart": warm_start_identity, "domainProfile": request.get("domainProfile"), "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "training": request["training"], "task": request.get("task"), "scenarios": request.get("scenarios"), "curriculum": request.get("curriculum"), "progression": request.get("progression"), "seed": request["seed"], "dependencyLockHash": request["dependencyLockHash"]})
     training_run_id = f"training-{run_key[:16]}"; training_run = project_dir / "training-runs" / training_run_id
     if (training_run / "manifest.json").exists(): return {**json.loads((training_run / "result.json").read_text()), "artifactPath": str(training_run), "cached": True}
     policy_result: dict[str, Any] = {}
@@ -2285,7 +2656,8 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
         started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time() - started
         model_hash = hash_file(work / "model.pt")
         observation_hash = hash_json(request["compiled"]["observationContract"]); action_hash = hash_json(request["compiled"]["actionContract"])
-        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "plantHash": request["compiled"]["plantHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]) if request.get("task") else None, "scenarioHashes": [hash_json(item) for item in request.get("scenarios", [])], "curriculumHash": hash_json(request["curriculum"]) if request.get("curriculum") else None, "progressionHash": hash_json(request["progression"]) if request.get("progression") else None, "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
+        warm_start = request.get("warmStart") or {}
+        policy_identity = {"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "harnessDependencyLockHash": request["harnessDependencyLockHash"], "mujocoVersion": mujoco.__version__, "torchVersion": torch.__version__, "trainerHash": request["trainerHash"], "priorControllerHash": request.get("priorControllerHash"), "warmStartPolicyId": warm_start.get("policy"), "warmStartPolicyHash": warm_start.get("policyHash"), "warmStartModelHash": warm_start.get("modelHash"), "warmStartNormalizerHash": warm_start.get("normalizerHash"), "domainProfileId": request["domainProfile"]["id"] if request.get("domainProfile") else None, "domainProfileHash": request.get("domainProfileHash"), "domainProfileEvidenceHash": request.get("domainProfileEvidenceHash"), "trainingHash": hash_json(request["training"]), "assemblyHash": request["compiled"]["assemblyHash"], "executionHash": request["compiled"]["executionHash"], "modelXmlHash": request["compiled"]["modelHash"], "plantHash": request["compiled"]["plantHash"], "catalogHash": request["compiled"]["catalogHash"], "observationContractHash": observation_hash, "actionContractHash": action_hash, "taskHash": hash_json(request["task"]) if request.get("task") else None, "scenarioHashes": [hash_json(item) for item in request.get("scenarios", [])], "curriculumHash": hash_json(request["curriculum"]) if request.get("curriculum") else None, "progressionHash": hash_json(request["progression"]) if request.get("progression") else None, "seed": request["seed"], "budget": request["training"]["totalSteps"], "dependencyLockHash": request["dependencyLockHash"], "modelHash": model_hash}
         policy_id = f"{request['training']['id']}-{hash_json(policy_identity)[:16]}"; policy_dir = project_dir / "policies" / policy_id
         reuse_policy = False
         if policy_dir.exists():
@@ -2313,7 +2685,7 @@ def train(request: dict[str, Any]) -> dict[str, Any]:
                     "domainProfileEvidenceHash": stage.get("domainProfileEvidenceHash"),
                     "domainProfileHash": stage.get("domainProfileHash"),
                 } for stage in request["progression"]])
-            write_json(target / "manifest.json", {"version": 1, "id": policy_id, **policy_identity, "hardware": hardware_info(), "trainingDeterminism": "best-effort", "evaluationDeterminism": "same-environment-bitwise-intended", "createdByTrainingRun": training_run_id})
+            write_json(target / "manifest.json", {"version": 1, "id": policy_id, **policy_identity, "parentPolicy": warm_start_identity, "hardware": hardware_info(), "trainingDeterminism": "best-effort", "evaluationDeterminism": "same-environment-bitwise-intended", "createdByTrainingRun": training_run_id})
         if not reuse_policy: atomic_directory(policy_dir, policy_writer)
         policy_result = {"trainingRunId": training_run_id, "policyId": policy_id, "policyPath": str(policy_dir), "modelHash": model_hash, "trainingMetrics": training_metrics, "elapsedSeconds": elapsed}
         write_json(directory / "request.json", request); write_json(directory / "result.json", policy_result)

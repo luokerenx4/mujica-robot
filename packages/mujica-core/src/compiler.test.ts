@@ -608,6 +608,42 @@ describe("Robot Assembly compiler", () => {
     }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
+      warmStart: {
+        policy: "accepted-policy-0123456789abcdef",
+        normalizer: "frozen",
+        trustRegion: {
+          kind: "reverse-kl-to-frozen-policy",
+          coefficient: 0.1,
+          maximumMeanKl: 0.01,
+        },
+      },
+    }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      warmStart: {
+        policy: "accepted-policy-0123456789abcdef",
+        normalizer: "updating",
+        trustRegion: {
+          kind: "reverse-kl-to-frozen-policy",
+          coefficient: 0.1,
+          maximumMeanKl: 0.01,
+        },
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      warmStart: {
+        policy: "accepted-policy-0123456789abcdef",
+        normalizer: "frozen",
+        trustRegion: {
+          kind: "reverse-kl-to-frozen-policy",
+          coefficient: 0.1,
+          maximumMeanKl: 0,
+        },
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
       deterministicCheckpoint: {
         scope: "complete-mission",
         everySteps: 2048,

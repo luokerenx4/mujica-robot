@@ -1,0 +1,368 @@
+{
+  "kind": "history-gru-actor-critic",
+  "observationSize": 185,
+  "actionSize": 14,
+  "hiddenSizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "distribution": "diagonal-normal",
+  "bilateralSymmetry": {
+    "kind": "lateral-reflection-v1",
+    "policyConsistencyCoefficient": 0.05,
+    "augmentNormalizer": true,
+    "mirrorEliteReplay": true,
+    "identityObservationChannels": [
+      "base-height",
+      "actuator-delay-steps",
+      "recovery-target-satisfied",
+      "recovery-stable-progress",
+      "recovery-stable-latched",
+      "recovery-deadline-expired"
+    ],
+    "observationTransforms": {
+      "joint-position": {
+        "permutation": [
+          3,
+          4,
+          5,
+          0,
+          1,
+          2,
+          6,
+          7,
+          11,
+          12,
+          13,
+          8,
+          9,
+          10
+        ],
+        "signs": [
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1
+        ]
+      },
+      "joint-velocity": {
+        "permutation": [
+          3,
+          4,
+          5,
+          0,
+          1,
+          2,
+          6,
+          7,
+          11,
+          12,
+          13,
+          8,
+          9,
+          10
+        ],
+        "signs": [
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1
+        ]
+      },
+      "base-orientation": {
+        "permutation": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "signs": [
+          1,
+          -1,
+          1,
+          -1
+        ]
+      },
+      "base-velocity": {
+        "permutation": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "signs": [
+          1,
+          -1,
+          1,
+          -1,
+          1,
+          -1
+        ]
+      },
+      "imu-angular-velocity": {
+        "permutation": [
+          0,
+          1,
+          2
+        ],
+        "signs": [
+          -1,
+          1,
+          -1
+        ]
+      },
+      "imu-linear-acceleration": {
+        "permutation": [
+          0,
+          1,
+          2
+        ],
+        "signs": [
+          1,
+          -1,
+          1
+        ]
+      },
+      "command-action-history": {
+        "blockSize": 14,
+        "permutation": [
+          3,
+          4,
+          5,
+          0,
+          1,
+          2,
+          9,
+          10,
+          11,
+          6,
+          7,
+          8,
+          12,
+          13
+        ],
+        "signs": [
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1
+        ]
+      },
+      "applied-action-history": {
+        "blockSize": 14,
+        "permutation": [
+          3,
+          4,
+          5,
+          0,
+          1,
+          2,
+          9,
+          10,
+          11,
+          6,
+          7,
+          8,
+          12,
+          13
+        ],
+        "signs": [
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1,
+          1,
+          -1,
+          1
+        ]
+      },
+      "foot-contact-history": {
+        "blockSize": 4,
+        "permutation": [
+          1,
+          0,
+          3,
+          2
+        ],
+        "signs": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "motion-command": {
+        "permutation": [
+          0,
+          1,
+          2
+        ],
+        "signs": [
+          1,
+          -1,
+          -1
+        ]
+      },
+      "foot-contact-force": {
+        "permutation": [
+          1,
+          0,
+          3,
+          2
+        ],
+        "signs": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    "actionTransform": {
+      "permutation": [
+        3,
+        4,
+        5,
+        0,
+        1,
+        2,
+        9,
+        10,
+        11,
+        6,
+        7,
+        8,
+        12,
+        13
+      ],
+      "signs": [
+        -1,
+        1,
+        1,
+        -1,
+        1,
+        1,
+        -1,
+        1,
+        1,
+        -1,
+        1,
+        1,
+        -1,
+        1
+      ]
+    },
+    "observationSize": 185,
+    "actionSize": 14,
+    "validatedInvolution": true
+  },
+  "history": {
+    "channels": [
+      {
+        "start": 45,
+        "steps": 4,
+        "size": 14
+      },
+      {
+        "start": 101,
+        "steps": 4,
+        "size": 14
+      },
+      {
+        "start": 157,
+        "steps": 4,
+        "size": 4
+      }
+    ],
+    "recurrentSize": 32
+  },
+  "actionTransform": {
+    "kind": "program-controller-residual",
+    "residualScaleByAction": [
+      0.3,
+      0.0,
+      0.0,
+      0.3,
+      0.0,
+      0.0,
+      0.3,
+      0.0,
+      0.0,
+      0.3,
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    "residualGate": {
+      "kind": "prior-telemetry-mode",
+      "allowedModes": [
+        "locomotion"
+      ],
+      "requiredObservation": {
+        "recovery-target-satisfied": 0.0,
+        "recovery-stable-latched": 0.0
+      },
+      "requiredRuntimeState": {
+        "recoveryDeadlineExpired": 0.0
+      },
+      "allowedTelemetry": {
+        "measuredDelaySteps": [
+          1,
+          2
+        ]
+      },
+      "minimumTelemetry": {
+        "modeDwellSeconds": 1.0,
+        "absoluteLateralVelocityMps": 0.4
+      },
+      "maximumTelemetry": {
+        "bodyTiltRad": 0.8
+      },
+      "rampSeconds": 0,
+      "entryRampSeconds": 0.4
+    },
+    "controllerId": "articulated-behavior-supervisor",
+    "controllerHash": "a13538606f2fd9fabe2501f345068d0fdc1efd7b567bfebb4fbcf5a783ac4981"
+  }
+}

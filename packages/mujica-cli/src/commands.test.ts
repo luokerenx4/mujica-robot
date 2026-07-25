@@ -7,6 +7,7 @@ import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, 
 import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertDevelopmentPromotionEvidence, assertResearchLabEditableChanges, loadResearchLabHistory, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
+import { loadFrozenPolicyArtifact } from "./policy-artifact";
 
 const root = resolve(import.meta.dir, "../../..");
 const binary = resolve(root, "packages/mujica-cli/src/bin.ts");
@@ -17,6 +18,24 @@ function invoke(args: string[]) {
 }
 
 describe("agent CLI contract", () => {
+  test("Warm-start policy loading verifies immutable model and Training lineage", async () => {
+    const artifact = await loadFrozenPolicyArtifact(
+      resolve(root, "examples/quadruped"),
+      "articulated-inverted-escape-64872c025769000b",
+    );
+    expect(artifact.manifest.id).toBe(
+      "articulated-inverted-escape-64872c025769000b",
+    );
+    expect(artifact.architecture.observationSize).toBe(
+      artifact.observationContract.size,
+    );
+    expect(artifact.architecture.actionSize).toBe(
+      artifact.actionContract.size,
+    );
+    expect(artifact.policyHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(artifact.modelHash).toBe(artifact.manifest.modelHash);
+  });
+
   test("Training rejects a Domain Profile bound to another physical plant", () => {
     const assembly = { id: "history-assembly", plantHash: "a".repeat(64) };
     expect(() => assertDomainProfilePlantCompatible({ id: "legacy-profile" }, assembly)).not.toThrow();

@@ -160,12 +160,9 @@ export async function reflexSearchCommand(
       `Frozen Policy '${options.policy}' is not executable on Assembly '${options.assembly}'`,
     );
   }
-  if (
-    architecture.actionTransform?.kind !== "program-controller-residual"
-    || architecture.bilateralSymmetry?.kind !== "lateral-reflection-v1"
-  ) {
+  if (architecture.actionTransform?.kind !== "program-controller-residual") {
     throw new Error(
-      "Reflex Search requires a residual Policy with validated lateral reflection",
+      "Reflex Search requires a program-controller-residual Policy",
     );
   }
   if (
@@ -281,7 +278,9 @@ export async function reflexSearchCommand(
       judgeSeedsExcludedFromSearch: true,
       preTriggerStatePerCase: "hash-identical",
       candidateMapping: "state-conditioned-load-aware",
-      bilateralSymmetry: "audited-not-forced-for-load-asymmetric-cases",
+      bilateralSymmetry: architecture.bilateralSymmetry
+        ? "audited-not-forced-for-load-asymmetric-cases"
+        : "undeclared-separate-load-aware-search",
     },
     search: runtimeResult.contract,
     preTriggerStateHashes: runtimeResult.preTriggerStateHashes,

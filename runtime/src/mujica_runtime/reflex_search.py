@@ -443,10 +443,6 @@ def search_reflex(request: dict[str, Any]) -> dict[str, Any]:
         request["compiled"]["observationContract"],
         action_size,
     )
-    if symmetry is None:
-        raise RuntimeError(
-            "Reflex Search requires a validated bilateral Policy symmetry contract"
-        )
     cases = request["cases"]
     if not isinstance(cases, list) or len(cases) < 2:
         raise RuntimeError("Reflex Search requires at least two locked Cases")
@@ -623,7 +619,11 @@ def search_reflex(request: dict[str, Any]) -> dict[str, Any]:
     selected_rank = _candidate_rank(selected_cases, baseline_cases)
     selected_key = tuple(selected_rank["comparisonKey"])
     selected = {
-        "kind": "state-conditioned-load-aware-bilateral-reflex",
+        "kind": (
+            "state-conditioned-load-aware-bilateral-reflex"
+            if symmetry is not None
+            else "state-conditioned-load-aware-reflex"
+        ),
         "positiveSelectionIndex": positive_index,
         "negativeSelectionIndex": negative_index,
         "positiveRawActionDelta": positive_delta.tolist(),
@@ -633,18 +633,29 @@ def search_reflex(request: dict[str, Any]) -> dict[str, Any]:
             {key: value for key, value in case.items() if key != "demonstrations"}
             for case in selected_cases
         ],
-        "symmetryAudit": {
-            "mirroredPositiveRawActionDelta": symmetry.mirror_action(
-                positive_delta
-            ).tolist(),
-            "meanAbsoluteDeviationFromExactReflection": float(
-                np.mean(np.abs(
-                    negative_delta - symmetry.mirror_action(positive_delta)
-                ))
-            ),
-            "exactReflectionRequired": False,
-            "reason": "search loads are direction-opposed but magnitude-asymmetric",
-        },
+        "symmetryAudit": (
+            {
+                "status": "AUDITED",
+                "mirroredPositiveRawActionDelta": symmetry.mirror_action(
+                    positive_delta
+                ).tolist(),
+                "meanAbsoluteDeviationFromExactReflection": float(
+                    np.mean(np.abs(
+                        negative_delta - symmetry.mirror_action(positive_delta)
+                    ))
+                ),
+                "exactReflectionRequired": False,
+                "reason": "search loads are direction-opposed but magnitude-asymmetric",
+            }
+            if symmetry is not None
+            else {
+                "status": "UNDECLARED",
+                "mirroredPositiveRawActionDelta": None,
+                "meanAbsoluteDeviationFromExactReflection": None,
+                "exactReflectionRequired": False,
+                "reason": "parent Policy predates a bilateral ABI; opposite loads were searched and ranked separately",
+            }
+        ),
     }
     selected_index = {
         "positiveY": positive_index,
@@ -669,8 +680,16 @@ def search_reflex(request: dict[str, Any]) -> dict[str, Any]:
             "selection": "worst-case-physical-proxy-first",
             "baseline": "frozen-deterministic-actor",
             "intervention": "pre-transform-actor-raw-action-delta",
-            "bilateralMapping": "state-conditioned-load-aware",
-            "symmetryContract": "policy-lateral-reflection-v1-audited-not-forced",
+            "bilateralMapping": (
+                "state-conditioned-load-aware"
+                if symmetry is not None
+                else "separate-direction-load-aware"
+            ),
+            "symmetryContract": (
+                "policy-lateral-reflection-v1-audited-not-forced"
+                if symmetry is not None
+                else "parent-policy-bilateral-abi-undeclared"
+            ),
             "promotionAuthority": "none",
         },
         "preTriggerStateHashes": baseline_hashes,

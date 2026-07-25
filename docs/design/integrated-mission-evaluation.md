@@ -233,6 +233,31 @@ tail, capacity, minibatch, coefficient, and stage-scope limits. It never admits
 physical target crossings caused only by the Program, never expands Policy
 authority, never adds Training steps, and never changes promotion authority.
 
+### Warm-start and fixed-distribution trust region
+
+Training may name one immutable parent Policy through `warmStart`. Mujica
+fails before Runtime execution unless the parent directory, model bytes,
+architecture, Observation and Action contracts, normalizer, integrity, and
+originating Training Run all verify. The parent must be executable on the
+current Assembly. Executability does not imply acceptance: a rejected Policy
+may be used as an explicitly labelled research parent, but it cannot become a
+release baseline or inherit promotion status.
+
+The initial network state is byte-identical to the parent, its Observation
+normalizer is frozen, and the optimizer starts fresh. Before the first update,
+Runtime executes the frozen parent mean over the same complete-Mission
+progression and collects only states where the actor has non-zero authority.
+It deterministically retains at most 512 normalized states as one frozen
+anchor distribution.
+
+Every optimizer update pays reverse-KL loss to the frozen parent on that same
+distribution. After the update, Runtime measures the distribution again. If
+the configured mean-KL limit is exceeded, both network and optimizer state are
+rolled back. Immutable Training evidence records the anchor definition and
+count, accepted and rolled-back updates, maximum attempted KL, and maximum
+accepted KL. This is a hard bound on the declared fixed Mission anchor, not a
+claim about unobserved states or a substitute for the locked Mission Suite.
+
 Legacy Training v2 still supports `episode-probability` and `step-share` for
 reproducing existing Policies. It is not the main integrated-robot
 development contract. Training v3 advances monotonically by cumulative global

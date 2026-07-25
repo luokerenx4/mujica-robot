@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, authored_lateral_impact, compile_bilateral_symmetry, deterministic_checkpoint_rank, effective_action_transform, masked_mean, mission_outcome_sample, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, record_mission_outcome_step, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_intervention_timing, summarize_lateral_impact_pairs, summarize_mission_outcomes
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, authored_lateral_impact, compile_bilateral_symmetry, deterministic_checkpoint_rank, diagonal_gaussian_reverse_kl, effective_action_transform, masked_mean, mission_outcome_sample, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, record_mission_outcome_step, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_intervention_timing, summarize_lateral_impact_pairs, summarize_mission_outcomes
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -2489,6 +2489,122 @@ class RuntimeContractTest(unittest.TestCase):
                 metrics["missionOutcomeActionMode"], "stochastic-sampled"
             )
             self.assertIsNone(metrics["deterministicMissionProbe"])
+
+    def test_ppo_warm_start_preserves_parent_and_enforces_hard_kl_region(self):
+        reference_mean = torch.tensor([[0.0, 0.5]], dtype=torch.float32)
+        reference_log_std = torch.tensor([[0.0, -0.2]], dtype=torch.float32)
+        self.assertTrue(torch.equal(
+            diagonal_gaussian_reverse_kl(
+                reference_mean,
+                reference_log_std,
+                reference_mean,
+                reference_log_std,
+            ),
+            torch.zeros(1),
+        ))
+        self.assertGreater(float(diagonal_gaussian_reverse_kl(
+            reference_mean,
+            reference_log_std,
+            reference_mean + 0.5,
+            reference_log_std,
+        ).item()), 0.0)
+
+        model, compiled = compiled_assembly("baseline")
+        base_request = {
+            "modelPath": str(model),
+            "compiled": compiled,
+            "task": json.loads(
+                (PROJECT / "tasks" / "velocity-track.task.json").read_text()
+            ),
+            "scenarios": [json.loads(
+                (PROJECT / "scenarios" / "nominal.scenario.json").read_text()
+            )],
+            "seed": 71,
+            "training": {
+                "totalSteps": 64,
+                "rolloutSteps": 32,
+                "epochs": 1,
+                "minibatchSize": 16,
+                "learningRate": 0.001,
+                "gamma": 0.99,
+                "gaeLambda": 0.95,
+                "clipRatio": 0.2,
+                "entropyCoefficient": 0.01,
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            parent = project / "policies" / "parent-policy"
+            parent.mkdir(parents=True)
+            PPOTrainer(hidden_sizes=[16]).train(base_request, parent)
+            architecture = json.loads(
+                (parent / "architecture.json").read_text()
+            )
+            normalizer = json.loads((parent / "normalizer.json").read_text())
+            maximum_mean_kl = 0.0001
+            warm_request = json.loads(json.dumps(base_request))
+            warm_request["projectDir"] = str(project)
+            warm_request["seed"] = 72
+            warm_request["warmStart"] = {
+                "policy": "parent-policy",
+                "root": str(parent),
+                "policyHash": hash_directory(parent),
+                "modelHash": hash_file(parent / "model.pt"),
+                "architectureHash": hash_json(architecture),
+                "normalizerHash": hash_json(normalizer),
+                "architecture": architecture,
+                "normalizer": normalizer,
+                "normalizerMode": "frozen",
+                "trustRegion": {
+                    "kind": "reverse-kl-to-frozen-policy",
+                    "coefficient": 0.1,
+                    "maximumMeanKl": maximum_mean_kl,
+                },
+                "createdByTrainingRun": "training-parent",
+            }
+            output = project / "warm-output"
+            output.mkdir()
+            result = PPOTrainer(hidden_sizes=[16]).train(
+                warm_request, output
+            )
+            metrics = json.loads(
+                (output / "training-metrics.json").read_text()
+            )
+            self.assertEqual(result["warmStartPolicy"], "parent-policy")
+            self.assertTrue(metrics["warmStart"]["initialWeightsByteIdentical"])
+            self.assertEqual(metrics["warmStart"]["normalizerMode"], "frozen")
+            self.assertEqual(
+                metrics["warmStart"]["trustRegion"]["kind"],
+                "reverse-kl-to-frozen-policy",
+            )
+            self.assertEqual(
+                metrics["warmStart"]["anchorDistribution"],
+                "frozen-parent-deterministic-complete-mission-active-states",
+            )
+            self.assertGreater(
+                metrics["warmStart"]["anchorObservationCount"],
+                0,
+            )
+            self.assertLessEqual(
+                metrics["warmStart"]["maximumObservedMeanKl"],
+                maximum_mean_kl + 1e-9,
+            )
+            self.assertGreater(
+                metrics["warmStart"]["acceptedOptimizerSteps"]
+                + metrics["warmStart"]["rolledBackOptimizerSteps"],
+                0,
+            )
+            self.assertEqual(
+                hash_json(json.loads(
+                    (output / "normalizer.json").read_text()
+                )),
+                hash_json(normalizer),
+            )
+            self.assertTrue(all(
+                update["meanFrozenPolicyKl"] is not None
+                and update["meanPolicyAnchorLoss"] is not None
+                for update in metrics["updates"]
+            ))
 
     def test_ppo_curriculum_records_skill_and_mission_exposure(self):
         model, compiled = compiled_assembly("baseline")

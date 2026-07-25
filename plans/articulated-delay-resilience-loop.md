@@ -227,8 +227,10 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
 - [x] Add opposite-side frozen-policy anchors and an early linear retirement
   schedule; preserve the second locked `REVERT` instead of weakening the
   Mission Judge.
-- [ ] Add a warm-start/trust-region Policy update contract around the accepted
-  frozen weights before running another counterfactual-reflex experiment.
+- [x] Add a warm-start/fixed-distribution trust-region Policy update contract,
+  run one counterfactual-reflex experiment from the executable parent
+  Candidate, and preserve its locked `REVERT` result without treating that
+  parent as accepted.
 
 ## Frozen-weight authority result
 
@@ -616,3 +618,45 @@ This falsifies direct from-scratch distillation as the missing algorithm.
 Local counterfactuals are retained as useful data discovery, but a future
 experiment must preserve the accepted frozen solution with a warm-start or
 trust-region update. The complete no-reset Mission remains unchanged.
+
+## Warm-start trust-region result
+
+The follow-up first exposed an artifact-lineage fact hidden by the old
+from-scratch path. The Controller's nominal promoted Policy
+`articulated-inverted-escape-64872c025769000b` belongs to an older plant and
+cannot execute on the current Assembly. The current compatible frozen parent
+`articulated-inverted-escape-dcff66d30460b6e1` is an immutable, executable
+Candidate from the narrowed early-reflex experiment, but it was itself
+rejected at `39.892361`. Research therefore labels the Program Controller
+score `62.722325` as the release baseline and the Policy only as a warm-start
+parent.
+
+Training now starts byte-identically from that parent, freezes its Observation
+normalizer, and constructs the trust distribution from the parent's active
+states in a deterministic complete-Mission probe. Each optimizer update is
+measured against the same fixed distribution; model and optimizer state are
+both rolled back on violation.
+
+Session `session-c20b30f82bf6222f` ran the unchanged 65,536-step continuous
+Mission experiment with the same 62-frame contrastive reflex course:
+
+- the fixed anchor contained `117` active complete-Mission states;
+- maximum accepted reverse KL was `0.004999985` against the `0.005` limit;
+- `311` optimizer steps were accepted and `3,785` were rolled back;
+- deterministic checkpoint selection restored step `16,384`;
+- the candidate reached `40.377414`, a small gain over its rejected parent but
+  far below the Program's `62.722325`;
+- violations regressed `43 → 48` and normalized severity
+  `87.786 → 119.356`;
+- degraded left lost displacement/transition gates, degraded right lost
+  self-righting, stable dwell, final tilt/height, and downstream handoff and
+  disturbed-lateral tracking also regressed;
+- verdict: `REVERT`.
+
+The trust-region mechanism works, but the learning hypothesis is falsified.
+Bounded local correction cannot turn this rejected parent into the complete
+robot. The next ML lane should first produce a current-Assembly neural parent
+that reproduces the Program across the whole Mission—using Program
+demonstration/DAgger-style coverage and the same end-to-end Judge—before
+reintroducing local counterfactual reflex optimization. No isolated Skill or
+proxy gains promotion authority.

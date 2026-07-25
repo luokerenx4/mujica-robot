@@ -111,6 +111,24 @@ describe("read-only Studio snapshot", () => {
         },
       },
     });
+    expect(first.snapshot.policies.find((item) => item.id === "articulated-inverted-escape-033188bcc69cd7cc")).toMatchObject({
+      training: {
+        warmStart: {
+          policy: "articulated-inverted-escape-dcff66d30460b6e1",
+          initialWeightsByteIdentical: true,
+          normalizerMode: "frozen",
+          anchorDistribution: "frozen-parent-deterministic-complete-mission-active-states",
+          anchorObservationCount: 117,
+          trustRegion: {
+            kind: "reverse-kl-to-frozen-policy",
+            maximumMeanKl: 0.005,
+          },
+          maximumObservedMeanKl: 0.004999984987080097,
+          acceptedOptimizerSteps: 311,
+          rolledBackOptimizerSteps: 3785,
+        },
+      },
+    });
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
         status: "READY",
@@ -196,6 +214,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Local reflex course");
     expect(html).toContain("Training-only physical proxy, continuous-Mission Judge");
     expect(html).toContain("frozen-policy-anchor");
+    expect(html).toContain("Warm-start trust region");
+    expect(html).toContain("hard fixed-anchor mean KL");
+    expect(html).toContain("frozen-parent-deterministic-complete-mission-active-states");
     expect(html).toContain("diagnostic prefix");
     expect(html).toContain("Frozen checkpoint");
     expect(html).toContain("Deterministic checkpoint selection");

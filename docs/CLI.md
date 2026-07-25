@@ -304,3 +304,16 @@ episode from a dedicated seed stream and records its exact parameters, consumed
 steps, completion state, and aggregate coverage. The Policy freezes the Profile,
 evidence hash, combined identity, and Training metrics. Omitting the field
 preserves the existing fixed-Scenario behavior.
+
+Training may declare `warmStart` with an immutable parent Policy, a frozen
+normalizer, and a `reverse-kl-to-frozen-policy` trust region. The CLI verifies
+the parent model, contracts, architecture, normalizer, integrity, and
+originating Training Run before invoking Runtime; a Research Lab stages that
+lineage into its isolated workspace. Runtime begins from byte-identical parent
+weights, collects a fixed set of active parent states from the deterministic
+complete-Mission progression, and rolls back both model and optimizer after
+any update whose mean reverse KL on that set exceeds `maximumMeanKl`. `train`
+reports the parent Policy and maximum accepted KL. Frozen Policy metrics retain
+the anchor distribution/count, maximum attempted KL, and accepted/rolled-back
+optimizer-step counts. This bound applies only to the declared Mission anchor;
+the unchanged locked Judge remains the promotion authority.

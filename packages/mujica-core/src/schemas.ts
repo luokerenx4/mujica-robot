@@ -575,6 +575,15 @@ const trainingOptimizationFields = {
     coefficient: z.number().finite().positive().max(10),
     untilStep: z.number().int().positive(),
   }).strict().optional(),
+  warmStart: z.object({
+    policy: idSchema,
+    normalizer: z.literal("frozen"),
+    trustRegion: z.object({
+      kind: z.literal("reverse-kl-to-frozen-policy"),
+      coefficient: z.number().finite().positive().max(10),
+      maximumMeanKl: z.number().finite().positive().max(1),
+    }).strict(),
+  }).strict().optional(),
   qualityReward: z.object({
     jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
     actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),
