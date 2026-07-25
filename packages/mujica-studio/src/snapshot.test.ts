@@ -162,6 +162,10 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Mission phase learning evidence");
     expect(html).toContain("curriculum sampling");
     expect(html).toContain("Mission progression · every episode starts at Mission phase 1");
+    expect(html).toContain("Stochastic training rollout ledger");
+    expect(html).toContain("exploration evidence, not deployable Policy proof");
+    expect(html).toContain("Frozen deterministic Policy probe");
+    expect(html).toContain("zero Training-budget steps");
     expect(html).toContain("Frozen-weight Authority Counterfactual");
     expect(html).toContain("byte-identical Policy weights");
     expect(html).toContain("mujica-frozen-policy-authority-counterfactual");

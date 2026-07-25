@@ -2097,6 +2097,10 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertTrue((Path(directory) / "model.pt").exists())
             metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
             self.assertEqual(metrics["totalSteps"], 64)
+            self.assertEqual(
+                metrics["missionOutcomeActionMode"], "stochastic-sampled"
+            )
+            self.assertIsNone(metrics["deterministicMissionProbe"])
 
     def test_ppo_curriculum_records_skill_and_mission_exposure(self):
         model, compiled = compiled_assembly("baseline")
@@ -2191,6 +2195,7 @@ class RuntimeContractTest(unittest.TestCase):
                 sum(item["steps"] for item in outcomes.values()),
                 64,
             )
+            self.assertIsNone(metrics["deterministicMissionProbe"])
 
     def test_step_share_curriculum_corrects_for_unequal_episode_lengths(self):
         weights = np.asarray([0.35, 0.65], dtype=np.float64)
@@ -2327,6 +2332,32 @@ class RuntimeContractTest(unittest.TestCase):
                 sum(item["steps"] for item in outcomes.values()),
                 64,
             )
+            probe = metrics["deterministicMissionProbe"]
+            self.assertEqual(probe["actionMode"], "deterministic-actor-mean")
+            self.assertFalse(probe["trainingBudgetCharged"])
+            self.assertEqual(len(probe["episodes"]), 2)
+            self.assertEqual(
+                {
+                    sample["curriculum"]
+                    for sample in probe["episodes"]
+                },
+                {"approach-prefix", "complete-mission"},
+            )
+            self.assertEqual(
+                {
+                    item["curriculum"]
+                    for item in probe["missionOutcomeCoverage"].values()
+                },
+                {"approach-prefix", "complete-mission"},
+            )
+            self.assertTrue(
+                all(
+                    sample["environmentSeed"] >= 30_000_000
+                    and sample["globalStepStart"] is None
+                    for sample in probe["episodes"]
+                )
+            )
+            self.assertEqual(metrics["totalSteps"], 64)
 
 
 if __name__ == "__main__":

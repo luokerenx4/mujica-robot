@@ -212,6 +212,17 @@ Scenario remains a disturbance/plant label inside the continuous task. The
 ledger is a directional diagnostic for humans and Agents; it does not create
 separate promotion authority for walking, impact response, or self-righting.
 
+PPO rollout actions are sampled from the learned distribution. Those rows are
+therefore labelled stochastic exploration evidence, not proof that the frozen
+Policy can reproduce the result. At the end of Training v3, the Harness runs
+one evaluation-only episode for every progression-stage × Scenario pair using
+the frozen actor mean, frozen observation normalizer, identical Program prior,
+and reproducibly sampled Domain Profile. The resulting
+`deterministicMissionProbe` is stored beside the rollout ledger. Probe steps do
+not update weights or normalization statistics and are not charged to the
+declared Training budget. This probe is a deployability diagnostic below the
+locked Mission Suite Judge; it does not promote a Policy.
+
 Legacy Training v2 still supports `episode-probability` and `step-share` for
 reproducing existing Policies. It is not the main integrated-robot
 development contract. Training v3 advances monotonically by cumulative global
@@ -747,8 +758,13 @@ The locked Judge rejected Policy
 severity regressed `87.786 → 106.691`, degraded-right lost self-righting,
 stable dwell, final posture, and final height, and both handoff regressions
 lost score. This rules out independent Skill sampling and an additive reward
-blind spot as sufficient explanations. The measured boundary is now the
-instantaneous recovery-target handoff: learned authority closes at target
-entry, while the Program fails to preserve the target for the authored dwell.
-Any next intervention must change that shared handoff contract and still be
-judged by the uninterrupted Mission.
+blind spot as sufficient explanations.
+
+A subsequent frozen-weight counterfactual kept residual authority active
+through target dwell and produced byte-equivalent behavior on all four locked
+Cases. The six actor-caused target entries occurred in stochastic Training
+rollouts; the deployed deterministic actor mean did not reproduce them on the
+locked degraded Cases. The evidence-backed next problem is therefore
+stochastic-to-deterministic policy consolidation, not a speculative authority
+handoff change. The deterministic post-Training probe makes that gap explicit
+before a Candidate reaches the uninterrupted Mission Judge.

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "target-dwell-handoff-recovery",
+  "name": "Target-dwell recovery handoff authority",
+  "policy": "articulated-inverted-escape-f5d2e2cbb4ede888",
+  "intervention": "residual-gate",
+  "rationale": "Hold the frozen bounded residual through Program rise and stand after instantaneous Task-target entry, then fail closed at the Task stable latch, recovery deadline, or any physical telemetry envelope exit.",
+  "residualGate": {
+    "kind": "prior-telemetry-mode",
+    "allowedModes": [
+      "recovery"
+    ],
+    "requiredObservation": {
+      "recovery-stable-latched": 0
+    },
+    "requiredRuntimeState": {
+      "recoveryDeadlineExpired": 0
+    },
+    "allowedTelemetry": {
+      "phase": [
+        "recovery.impulse",
+        "recovery.capture",
+        "recovery.rise",
+        "recovery.stand"
+      ]
+    },
+    "requiredTelemetry": {
+      "dynamicRecovery": true
+    },
+    "minimumTelemetry": {
+      "measuredDelaySteps": 1,
+      "bodyTiltRad": 0
+    },
+    "maximumTelemetry": {
+      "measuredDelaySteps": 1,
+      "recoveryRetryCount": 1,
+      "baseHeightM": 0.45,
+      "supportFeet": 3,
+      "modeDwellSeconds": 4.5
+    },
+    "rampSeconds": 0,
+    "entryRampSeconds": 0.4
+  }
+}

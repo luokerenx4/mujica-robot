@@ -148,6 +148,90 @@ def summarize_mission_outcomes(
     return summary
 
 
+def mission_outcome_sample(
+    *,
+    episode: int,
+    curriculum_index: int,
+    entry: dict[str, Any],
+    scenario: dict[str, Any],
+    environment_seed: int,
+    domain_seed: int,
+    domain_profile: dict[str, Any] | None,
+    domain_profile_hash: str | None,
+    domain_sample: dict[str, float | int],
+    global_step_start: int | None,
+) -> dict[str, Any]:
+    """Create one lossless episode ledger row for training or frozen probing."""
+    return {
+        "episode": episode,
+        "curriculum": str(entry["id"]),
+        "curriculumIndex": curriculum_index,
+        "role": entry["role"],
+        "task": entry["task"]["id"],
+        "scenario": scenario["id"],
+        "environmentSeed": environment_seed,
+        "domainSeed": domain_seed,
+        "globalStepStart": global_step_start,
+        "throughPhase": entry.get("throughPhase"),
+        "episodeEndSeconds": entry.get(
+            "episodeEndSeconds", float(entry["task"]["durationSeconds"])
+        ),
+        "episodeEndPhase": entry.get("episodeEndPhase"),
+        "domainProfileId": domain_profile.get("id") if domain_profile else None,
+        "domainProfileHash": domain_profile_hash,
+        "steps": 0,
+        "completed": False,
+        "activePolicySteps": 0,
+        "actorAuthoritySum": 0.0,
+        "recoveryTargetEntryCount": 0,
+        "actorRecoveryTargetEntryCount": 0,
+        "recoveryStableTransitionCount": 0,
+        "recoveryRelapseCount": 0,
+        "recoveryDeadlineExpired": False,
+        "missionPhaseTimeoutCount": 0,
+        "missionCompleted": False,
+        "maximumRecoveryStableProgress": 0.0,
+        "parameters": domain_sample,
+    }
+
+
+def record_mission_outcome_step(
+    sample: dict[str, Any],
+    info: dict[str, Any],
+    actor_authority: float,
+    previous_target_satisfied: bool,
+) -> bool:
+    """Advance an episode ledger row and return the current target state."""
+    target_satisfied = bool(info.get("recoveryTargetSatisfied"))
+    if target_satisfied and not previous_target_satisfied:
+        sample["recoveryTargetEntryCount"] += 1
+        sample["actorRecoveryTargetEntryCount"] += int(actor_authority > 0.0)
+    mission_transition = info.get("missionTransition")
+    if isinstance(mission_transition, dict):
+        sample["recoveryStableTransitionCount"] += int(
+            mission_transition.get("condition") == "recovery-stable"
+            and mission_transition.get("conditionMet") is True
+        )
+        sample["missionPhaseTimeoutCount"] += int(
+            mission_transition.get("timedOut") is True
+        )
+    sample["recoveryRelapseCount"] += int(
+        info.get("recoveryRelapseEntered") is True
+    )
+    sample["recoveryDeadlineExpired"] = bool(
+        sample["recoveryDeadlineExpired"]
+        or info.get("recoveryDeadlineExpired")
+    )
+    sample["missionCompleted"] = bool(
+        sample["missionCompleted"] or info.get("missionCompleted")
+    )
+    sample["maximumRecoveryStableProgress"] = max(
+        float(sample["maximumRecoveryStableProgress"]),
+        float(info.get("recoveryStableProgress", 0.0)),
+    )
+    return target_satisfied
+
+
 def quality_reward_penalty(info: dict[str, Any], weights: dict[str, Any] | None) -> tuple[float, dict[str, float]]:
     quality = info.get("motionQuality", {})
     terms = {
@@ -389,6 +473,152 @@ def mission_progression_episode_limit(
     raise RuntimeError("Mission progression requires an integrated Mission Task")
 
 
+def run_deterministic_mission_probe(
+    *,
+    request: dict[str, Any],
+    curriculum: list[dict[str, Any]],
+    network: PolicyNetwork,
+    normalizer: RunningNormalizer,
+    action_transform: dict[str, Any] | None,
+    residual_scale_vector: np.ndarray | None,
+    lows: np.ndarray,
+    highs: np.ndarray,
+    seed: int,
+) -> dict[str, Any]:
+    """Replay each Mission stage and Scenario with the frozen actor mean.
+
+    Probe steps are evaluation-only: they neither update the normalizer/network
+    nor consume the declared Training budget.
+    """
+    samples: list[dict[str, Any]] = []
+    probe_index = 0
+    network.eval()
+    for curriculum_index, entry in enumerate(curriculum):
+        for scenario in entry["scenarios"]:
+            probe_index += 1
+            environment_seed = seed + 30_000_000 + probe_index
+            domain_seed = seed + 40_000_000 + probe_index
+            effective_domain_profile = (
+                entry.get("domainProfile") or request.get("domainProfile")
+            )
+            domain_sample = sample_domain_profile(
+                effective_domain_profile, domain_seed
+            )
+            sample = mission_outcome_sample(
+                episode=probe_index,
+                curriculum_index=curriculum_index,
+                entry=entry,
+                scenario=scenario,
+                environment_seed=environment_seed,
+                domain_seed=domain_seed,
+                domain_profile=effective_domain_profile,
+                domain_profile_hash=entry.get("domainProfileHash")
+                or request.get("domainProfileHash"),
+                domain_sample=domain_sample,
+                global_step_start=None,
+            )
+            environment = RobotEnvironment(
+                Path(request["modelPath"]),
+                request["compiled"],
+                entry["task"],
+                scenario,
+                environment_seed,
+                domain_sample,
+                entry.get("episodeEndSeconds"),
+                entry.get("episodeEndPhase"),
+            )
+            program_prior: Controller | None = None
+            if (
+                action_transform
+                and action_transform.get("kind") == "program-controller-residual"
+            ):
+                program_prior = load_program_controller(
+                    Path(request["priorControllerRoot"]),
+                    request["priorController"],
+                )
+                program_prior.reset(environment_seed)
+            observation_map = environment.reset()
+            observation = environment.vector(observation_map)
+            previous_target_satisfied = environment.recovery_target_satisfied()
+            residual_gate_scale_state = 0.0
+            while True:
+                normalized = normalizer.normalize(observation)
+                with torch.no_grad():
+                    mean, _, _ = network(
+                        torch.from_numpy(normalized).unsqueeze(0)
+                    )
+                raw_action = mean[0].numpy()
+                if (
+                    action_transform
+                    and action_transform.get("kind")
+                    == "program-controller-residual"
+                ):
+                    if program_prior is None or residual_scale_vector is None:
+                        raise RuntimeError(
+                            "Program residual deterministic probe has no prior"
+                        )
+                    prior_action = program_prior.act(
+                        observation_map, float(environment.data.time)
+                    )
+                    residual_gate_scale, _ = advance_program_residual_gate_scale(
+                        action_transform,
+                        program_prior,
+                        observation_map,
+                        residual_gate_scale_state,
+                        environment.control_dt,
+                        environment.runtime_state(),
+                    )
+                    residual_gate_scale_state = residual_gate_scale
+                    transformed = (
+                        prior_action
+                        + residual_gate_scale
+                        * residual_scale_vector
+                        * raw_action
+                    )
+                    actor_authority = residual_gate_scale * float(
+                        np.max(residual_scale_vector)
+                    )
+                else:
+                    transformed = transform_policy_action(
+                        raw_action,
+                        observation_map,
+                        action_transform,
+                        float(environment.data.time),
+                    )
+                    actor_authority = 1.0
+                result = environment.step(np.clip(transformed, lows, highs))
+                sample["steps"] += 1
+                sample["activePolicySteps"] += int(actor_authority > 0.0)
+                sample["actorAuthoritySum"] += actor_authority
+                previous_target_satisfied = record_mission_outcome_step(
+                    sample,
+                    result.info,
+                    actor_authority,
+                    previous_target_satisfied,
+                )
+                observation_map = result.observation
+                observation = environment.vector(observation_map)
+                if result.terminated or result.truncated:
+                    sample["completed"] = True
+                    sample["observedDurationSeconds"] = float(
+                        environment.data.time
+                    )
+                    sample["missionCompleted"] = bool(
+                        environment.mission_completed
+                    )
+                    sample["missionPrefixCompleted"] = bool(
+                        environment.mission_prefix_completed
+                    )
+                    break
+            samples.append(sample)
+    return {
+        "actionMode": "deterministic-actor-mean",
+        "trainingBudgetCharged": False,
+        "episodes": samples,
+        "missionOutcomeCoverage": summarize_mission_outcomes(samples),
+    }
+
+
 @dataclass
 class PPOTrainer:
     hidden_sizes: list[int]
@@ -465,35 +695,18 @@ class PPOTrainer:
             domain_seed = seed + 10_000_000 + episode_index
             effective_domain_profile = entry.get("domainProfile") or request.get("domainProfile")
             domain_sample = sample_domain_profile(effective_domain_profile, domain_seed)
-            domain_samples.append({
-                "episode": episode_index,
-                "curriculum": entry_id,
-                "curriculumIndex": curriculum_index,
-                "role": entry["role"],
-                "task": entry["task"]["id"],
-                "scenario": scenario["id"],
-                "environmentSeed": episode_seed,
-                "domainSeed": domain_seed,
-                "globalStepStart": completed_steps,
-                "throughPhase": entry.get("throughPhase"),
-                "episodeEndSeconds": entry.get("episodeEndSeconds", float(entry["task"]["durationSeconds"])),
-                "episodeEndPhase": entry.get("episodeEndPhase"),
-                "domainProfileId": effective_domain_profile.get("id") if effective_domain_profile else None,
-                "domainProfileHash": entry.get("domainProfileHash") or request.get("domainProfileHash"),
-                "steps": 0,
-                "completed": False,
-                "activePolicySteps": 0,
-                "actorAuthoritySum": 0.0,
-                "recoveryTargetEntryCount": 0,
-                "actorRecoveryTargetEntryCount": 0,
-                "recoveryStableTransitionCount": 0,
-                "recoveryRelapseCount": 0,
-                "recoveryDeadlineExpired": False,
-                "missionPhaseTimeoutCount": 0,
-                "missionCompleted": False,
-                "maximumRecoveryStableProgress": 0.0,
-                "parameters": domain_sample,
-            })
+            domain_samples.append(mission_outcome_sample(
+                episode=episode_index,
+                curriculum_index=curriculum_index,
+                entry=entry,
+                scenario=scenario,
+                environment_seed=episode_seed,
+                domain_seed=domain_seed,
+                domain_profile=effective_domain_profile,
+                domain_profile_hash=entry.get("domainProfileHash") or request.get("domainProfileHash"),
+                domain_sample=domain_sample,
+                global_step_start=completed_steps,
+            ))
             return RobotEnvironment(
                 Path(request["modelPath"]),
                 request["compiled"],
@@ -630,36 +843,11 @@ class PPOTrainer:
                 episode_sample = domain_samples[-1]
                 episode_sample["activePolicySteps"] += int(actor_authority > 0.0)
                 episode_sample["actorAuthoritySum"] += actor_authority
-                target_satisfied = bool(result.info.get("recoveryTargetSatisfied"))
-                if target_satisfied and not episode_recovery_target_satisfied:
-                    episode_sample["recoveryTargetEntryCount"] += 1
-                    episode_sample["actorRecoveryTargetEntryCount"] += int(
-                        actor_authority > 0.0
-                    )
-                episode_recovery_target_satisfied = target_satisfied
-                mission_transition = result.info.get("missionTransition")
-                if isinstance(mission_transition, dict):
-                    episode_sample["recoveryStableTransitionCount"] += int(
-                        mission_transition.get("condition") == "recovery-stable"
-                        and mission_transition.get("conditionMet") is True
-                    )
-                    episode_sample["missionPhaseTimeoutCount"] += int(
-                        mission_transition.get("timedOut") is True
-                    )
-                episode_sample["recoveryRelapseCount"] += int(
-                    result.info.get("recoveryRelapseEntered") is True
-                )
-                episode_sample["recoveryDeadlineExpired"] = bool(
-                    episode_sample["recoveryDeadlineExpired"]
-                    or result.info.get("recoveryDeadlineExpired")
-                )
-                episode_sample["missionCompleted"] = bool(
-                    episode_sample["missionCompleted"]
-                    or result.info.get("missionCompleted")
-                )
-                episode_sample["maximumRecoveryStableProgress"] = max(
-                    float(episode_sample["maximumRecoveryStableProgress"]),
-                    float(result.info.get("recoveryStableProgress", 0.0)),
+                episode_recovery_target_satisfied = record_mission_outcome_step(
+                    episode_sample,
+                    result.info,
+                    actor_authority,
+                    episode_recovery_target_satisfied,
                 )
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
@@ -753,6 +941,21 @@ class PPOTrainer:
                 "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
             })
 
+        deterministic_mission_probe = (
+            run_deterministic_mission_probe(
+                request=request,
+                curriculum=curriculum,
+                network=network,
+                normalizer=normalizer,
+                action_transform=action_transform,
+                residual_scale_vector=residual_scale_vector,
+                lows=lows,
+                highs=highs,
+                seed=seed,
+            )
+            if progression
+            else None
+        )
         torch.save(network.state_dict(), output_dir / "model.pt")
         if action_transform and action_transform.get("kind") == "program-controller-residual":
             prior_dir = output_dir / "prior"; prior_definition = request["priorController"]
@@ -774,7 +977,9 @@ class PPOTrainer:
             } if request.get("domainProfile") else None,
             "domainSamples": domain_samples,
             "domainCoverage": summarize_domain_samples(domain_samples),
+            "missionOutcomeActionMode": "stochastic-sampled",
             "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
+            "deterministicMissionProbe": deterministic_mission_probe,
             "curriculumCoverage": {
                 str(entry["id"]): {
                     "role": entry["role"],

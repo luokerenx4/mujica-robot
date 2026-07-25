@@ -279,8 +279,19 @@ The outcome ledger exposed the handoff failure directly:
 
 The locked Judge therefore returned `REVERT`: violations regressed `43 → 45`,
 severity regressed `87.786 → 106.691`, degraded-right lost self-righting and
-stable dwell, and both atomic handoff directions lost score. The next bounded
-problem is no longer Scenario sampling or independent Skill training. It is
-the Policy-to-Program recovery-target handoff: instantaneous target entry
-causes learned authority to close, but the deterministic Program does not
-preserve the target for the authored dwell.
+stable dwell, and both atomic handoff directions lost score.
+
+The frozen-weight target-dwell authority counterfactual then produced
+byte-equivalent behavior on every locked Case, disproving that handoff as the
+current causal bottleneck. The six actor-caused target entries came from
+stochastic PPO rollouts; the deterministic actor mean did not reproduce them
+on the locked degraded Cases. Training v3 now publishes both ledgers:
+
+- stochastic sampled rollouts remain exploration evidence;
+- a frozen actor-mean probe replays every Mission-stage × Scenario pair with
+  zero Training-budget charge;
+- only the locked Mission Suite Judge retains promotion authority.
+
+This keeps walking, disturbance response, recovery, and controlled stop inside
+one causal Mission while preventing exploration luck from masquerading as a
+deployable robot capability.
