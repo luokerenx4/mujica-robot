@@ -173,9 +173,11 @@ Training may add a bounded `missionReward` with three explicit terms:
 - velocity tracking for those commanded-motion phases;
 - zero-command stability during `stop`.
 
-Task v8 additionally permits three sparse, Judge-aligned causal terms:
+Task v8 additionally permits four sparse, Judge-aligned causal terms:
 
 - a terminal bonus when the `recovery-stable` condition is actually met;
+- a penalty when a physically completed recovery later enters the relapse
+  envelope;
 - a terminal penalty when any phase exits by timeout;
 - a terminal bonus when the full Mission completes with zero phase timeouts.
 
@@ -185,9 +187,13 @@ remain masked to steps where the actor had non-zero authority, so the terminal
 signal can assign credit to an earlier learned approach or impact action
 without training the Policy on Program-only recovery Actions.
 
-The extra terms are applied only while the learned actor has non-zero
-authority. They do not reward the Policy for recovery work performed entirely
-by the Program Controller, and they do not change Benchmark scores or gates.
+Dense command/recovery shaping is applied only while the learned actor has
+non-zero authority. Recovery shaping may include `taskTargetEntry`: a bounded
+bonus on the actor-authorized action whose resulting state first satisfies the
+Task-authored recovery target. The authority gate observes that target before
+the next action and fails closed, so the Policy cannot farm target occupancy.
+Sparse Mission outcomes remain in the return for earlier causal credit. None
+of these terms change Benchmark scores or gates.
 The frozen Policy records, per Mission phase, step exposure, active-actor
 fraction, effective residual authority, signed progress, base reward, shaped
 reward, quality penalty, and final learning reward.
@@ -672,3 +678,37 @@ The experiment therefore answers the narrow gate question without claiming a
 successful robot: deadline reactivation can reduce violation severity for the
 frozen network, but it neither clears the Mission gates nor improves aggregate
 score.
+
+## Target-seeking rise: combined Mission verdict
+
+`authority-counterfactual-7a106315bc7d4e55` extended the frozen Policy through
+Program rise. Degraded-left changed from terminal inversion to successful
+self-righting, reached stable stand at `7.86 s` instead of `17.32 s`, and
+improved signed progress from `-0.069 m` to `0.310 m`. The same change also
+introduced two recovery relapses and failed downstream planar/yaw transition
+gates; degraded-right remained inverted. This is the measured example of why
+walking, collision response, recovery, and resumption cannot be independently
+promoted.
+
+Session `session-9e9d909f7dc6bfdb` then trained the exact pre-deadline
+impulse/capture/rise authority envelope for `65,536` steps. The progression
+used `32,984` recovery-prefix samples for efficient skill acquisition, then
+`32,552` complete-Mission samples across exact and randomized plants. Every
+episode still began at approach and experienced the authored impact; no fallen
+state was synthesized.
+
+The new `taskTargetEntry` credit fired during six PPO updates, so the candidate
+did receive direct evidence for entering the Task target. The locked combined
+Judge nevertheless returned `REVERT`:
+
+- aggregate violations improved `43 → 40`;
+- violation severity improved `87.786 → 81.573`;
+- degraded-right self-righting and stable-standing dwell regressed from pass
+  to fail;
+- both recovery-handoff directions regressed on score.
+
+This is not a failed evaluation design; it is the intended safety result.
+Prefix curricula improve sampling efficiency, but they have no promotion
+authority. A candidate is selected only if the same uninterrupted trajectory
+survives impact, recovers, avoids relapse, resumes locomotion, redirects,
+traverses, and stops across the complete Mission Suite.

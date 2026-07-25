@@ -19,6 +19,7 @@ const strategies = [
   "task-target-closed-loop-history-recovery",
   "phase-bounded-ramped-history-recovery",
   "deadline-closed-phase-bounded-history-recovery",
+  "predeadline-target-seeking-rise-recovery",
 ];
 const strategy = strategies.find((candidate) => !triedStrategies.has(candidate));
 if (!strategy) {
@@ -29,9 +30,12 @@ const firstRecoveryOnly =
   strategy === "first-recovery-only-delay-one-residual";
 const deadlineClosed =
   strategy === "deadline-closed-phase-bounded-history-recovery";
+const targetSeekingRise =
+  strategy === "predeadline-target-seeking-rise-recovery";
 const phaseBoundedRamp =
   strategy === "phase-bounded-ramped-history-recovery" ||
-  deadlineClosed;
+  deadlineClosed ||
+  targetSeekingRise;
 const taskTargetClosedLoop =
   strategy === "task-target-closed-loop-history-recovery" ||
   phaseBoundedRamp;
@@ -145,7 +149,7 @@ if (phaseBoundedRamp) {
       '                    "recovery-stable-latched": 0.0,\n' +
       "                },\n" +
       '                "allowedTelemetry": {\n' +
-      '                    "phase": ["recovery.impulse", "recovery.capture"],\n' +
+      `                    "phase": ["recovery.impulse", "recovery.capture"${targetSeekingRise ? ', "recovery.rise"' : ""}],\n` +
       "                },\n",
     "phase-bounded recovery authority",
   );
@@ -164,6 +168,27 @@ if (deadlineClosed) {
     "Task recovery deadline authority boundary",
   );
 }
+if (targetSeekingRise) {
+  replaceOnce(
+    '                    "bodyTiltRad": 0.3,\n',
+    '                    "bodyTiltRad": 0.0,\n',
+    "target-seeking rise authority tilt floor",
+  );
+  replaceOnce(
+    '                "requiredObservation": {\n' +
+      '                    "recovery-target-satisfied": 0.0,\n' +
+      '                    "recovery-stable-latched": 0.0,\n' +
+      "                },\n",
+    '                "requiredObservation": {\n' +
+      '                    "recovery-target-satisfied": 0.0,\n' +
+      '                    "recovery-stable-latched": 0.0,\n' +
+      "                },\n" +
+      '                "requiredRuntimeState": {\n' +
+      '                    "recoveryDeadlineExpired": 0.0,\n' +
+      "                },\n",
+    "Runtime-owned recovery deadline authority boundary",
+  );
+}
 
 training.totalSteps = 65536;
 training.progression[0].untilStep = 32768;
@@ -178,6 +203,7 @@ training.recoveryReward = {
   stillness: 1,
   support: 5,
   tiltEscape: 8,
+  ...(targetSeekingRise ? { taskTargetEntry: 80 } : {}),
   stillnessMaximumTiltRad: 0.5,
 };
 if (taskTargetClosedLoop) {
@@ -199,7 +225,9 @@ await writeFile(trainingPath, `${JSON.stringify(training, null, 2)}\n`);
 process.stdout.write(
   JSON.stringify({
     strategy,
-    hypothesis: deadlineClosed
+    hypothesis: targetSeekingRise
+      ? "A frozen-weight authority counterfactual proved that extending the bounded residual through Program rise can turn degraded-left from terminal inversion into a stable target entry, but the untrained rise actions also caused two relapses and degraded transition tracking. Train that exact pre-deadline rise envelope inside the continuous no-reset Mission, credit only actor-authorized entry into the Task-authored recovery target, and retain sparse relapse, timeout, and Mission-completion terms so local self-righting cannot win by breaking the later traverse and stop phases."
+      : deadlineClosed
       ? "The phase-bounded ramped Policy restored degraded-right self-righting and improved the Mission violation tier, but the Task recovery phase had already timed out before self-righting. Because no success latch can exist after that failed transition, the Policy reactivated on later falls and ended below the final-height gate. Preserve the learned initial impulse/capture correction, and additionally require the Task-derived recovery-deadline-expired latch to remain false. This closes authority permanently at the six-second recovery timeout even when the Program later enters recovery again."
       : phaseBoundedRamp
       ? "The prior closed-loop Policy did not fail at the Task dwell boundary; it re-entered with full authority during Program rise/stand as tilt oscillated around the 0.3 rad gate, then drove the degraded-right robot from 0.34 metres and moderate tilt into inversion. Preserve the same Task-state boundary, history, reward, and torque envelope, but restrict learned authority to the Program's observable impulse/capture phases and ramp every gate entry over 0.4 seconds. Unsafe exits remain immediate, so the deterministic Program exclusively owns rise, stand, and stable dwell."
@@ -208,7 +236,9 @@ process.stdout.write(
       : firstRecoveryOnly
       ? "The first delay-one residual improved degraded-right progress, tilt, collisions, and joint margin, but the complete Mission exposed a second fall during traverse/stop. The residual reactivated for that later recovery and the Mission ended mid-rise. Requiring observable Program telemetry recoveryCompleted=false preserves learned authority for the initial impact recovery while returning all later falls to the deterministic Program."
       : "Controller experiments improved trigger timing and entry classification but proved that one fixed recovery trajectory cannot absorb the delay-one impact-state distribution. A residual restricted to observable delay-one dynamic recovery can adapt the initial recovery and first retry while static recovery and locomotion remain Program-only; complete exact and degraded Cases must still judge any state that causally enters the same gate.",
-    expectedEffect: deadlineClosed
+    expectedEffect: targetSeekingRise
+      ? "Complete stable recovery before the six-second deadline in both degraded directions, then traverse and stop without relapse; preserve all exact-plant gates and keep Policy authority at zero after target entry, stable latch, or recovery timeout."
+      : deadlineClosed
       ? "Keep the first recovery correction unchanged until the Task deadline, guarantee zero learned authority afterward, retain degraded-right self-righting, and restore terminal height by leaving every post-timeout recovery to the Program."
       : phaseBoundedRamp
       ? "Retain any learned impact-momentum correction before recovery.rise, eliminate gate flapping and all learned action during rise/stand, and restore the Program's degraded-right self-righting result without changing exact Cases."

@@ -573,6 +573,7 @@ const trainingOptimizationFields = {
     stillness: z.number().finite().min(0).max(20),
     support: z.number().finite().min(0).max(20),
     tiltEscape: z.number().finite().min(0).max(20).optional(),
+    taskTargetEntry: z.number().finite().min(0).max(500).optional(),
     stillnessMaximumTiltRad: z.number().finite().min(0).max(Math.PI).optional(),
   }).strict().optional(),
 };

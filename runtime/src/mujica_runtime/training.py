@@ -139,6 +139,7 @@ def recovery_reward_bonus(
         "stillness": 0.0,
         "support": 0.0,
         "tiltEscape": 0.0,
+        "taskTargetEntry": 0.0,
     }
     if (
         not weights
@@ -190,6 +191,12 @@ def recovery_reward_bonus(
     terms["support"] = float(weights.get("support", 0.0)) * float(
         np.clip(support_feet / 4.0, 0.0, 1.0)
     )
+    # The gate is evaluated before this action and the Task target afterward.
+    # This therefore credits only an actor-authorized action that causally enters
+    # the authored target. The next step fails closed because target-satisfied is
+    # a Runtime authority predicate, preventing target-occupancy reward farming.
+    if info.get("recoveryTargetSatisfied") is True:
+        terms["taskTargetEntry"] = float(weights.get("taskTargetEntry", 0.0))
     return float(sum(terms.values())), terms
 
 
@@ -466,7 +473,7 @@ class PPOTrainer:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability", "recoverySuccess", "recoveryRelapsePenalty", "phaseTimeoutPenalty", "timeoutFreeCompletion")}
-            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape")}
+            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape", "taskTargetEntry")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []

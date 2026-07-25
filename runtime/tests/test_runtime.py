@@ -687,7 +687,10 @@ class RuntimeContractTest(unittest.TestCase):
         }
         bonus, terms = recovery_reward_bonus(info, telemetry, weights, 0.08)
         self.assertAlmostEqual(bonus, 10.0)
-        self.assertEqual(terms, {**weights, "tiltEscape": 0.0})
+        self.assertEqual(
+            terms,
+            {**weights, "tiltEscape": 0.0, "taskTargetEntry": 0.0},
+        )
         self.assertEqual(recovery_reward_bonus(info, telemetry, weights, 0.0)[0], 0.0)
         self.assertEqual(
             recovery_reward_bonus(
@@ -736,6 +739,24 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(half_escaped_terms["tiltEscape"], 4.0)
         self.assertEqual(half_escaped_terms["stillness"], 0.0)
         self.assertGreater(half_escaped, inverted)
+
+        target_bonus, target_terms = recovery_reward_bonus(
+            {**info, "recoveryTargetSatisfied": True},
+            telemetry,
+            {**weights, "taskTargetEntry": 80.0},
+            0.08,
+        )
+        self.assertAlmostEqual(target_bonus, bonus + 80.0)
+        self.assertEqual(target_terms["taskTargetEntry"], 80.0)
+        self.assertEqual(
+            recovery_reward_bonus(
+                {**info, "recoveryTargetSatisfied": True},
+                telemetry,
+                {**weights, "taskTargetEntry": 80.0},
+                0.0,
+            )[0],
+            0.0,
+        )
 
     def test_residual_policy_updates_ignore_steps_without_action_authority(self):
         advantages = np.asarray([100.0, 2.0, 4.0, -100.0], dtype=np.float32)

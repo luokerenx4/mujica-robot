@@ -1247,7 +1247,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
     expect(envelope.data.definitions.driverPackages).toBe(1);
-    expect(envelope.data.definitions.authorityProfiles).toBe(2);
+    expect(envelope.data.definitions.authorityProfiles).toBe(3);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);

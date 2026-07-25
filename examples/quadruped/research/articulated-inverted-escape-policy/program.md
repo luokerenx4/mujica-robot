@@ -94,6 +94,31 @@ Do not infer a gate improvement from a separately retrained network. A clean
 authority counterfactual must hold frozen Policy weights, normalization, plant,
 Task, Scenario, and seed constant while changing only the declared gate.
 
+The frozen-weight `target-seeking-rise-recovery` counterfactual supplied the
+next causal boundary. On degraded-left, extending the same Policy through
+observable Program `recovery.rise` changed self-righting from failure to
+success, shortened stable stand from `17.32 s` to `7.86 s`, reduced final tilt
+from `3.128 rad` to `0.201 rad`, and improved signed progress from `-0.069 m` to
+`0.310 m`. It also introduced two recovery relapses and failed terminal planar
+and yaw tracking; degraded-right still ended inverted. This is not a promotable
+controller. It proves that rise is a valuable learnable envelope and that
+optimizing recovery as an isolated episode would select the wrong result.
+
+The next experiment may therefore train through impulse, capture, and rise, but
+it must remain a continuous-Mission experiment:
+
+- early episodes may terminate after `recover` only as curriculum sampling;
+- later episodes must continue through traverse and stop without reset;
+- the Runtime recovery deadline, target, and stable latch bound authority;
+- entering the Task-authored recovery target may receive dense causal credit
+  only on the actor-authorized action that enters it;
+- relapse, phase timeout, complete-Mission success, and every locked downstream
+  gate remain part of the same return and promotion decision.
+
+The word “scenario” here denotes a controlled disturbance or plant variant
+inside a complete Mission Case. It is not an independently promotable skill
+test. The locked four-Case benchmark is the sole promotion authority.
+
 Edit the isolated workspace directly, then print exactly one proposal object:
 
 ```json
