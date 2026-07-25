@@ -215,6 +215,8 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
   Task-authored height, tilt, linear-speed, and angular-speed target.
 - [x] Train and judge one balanced left/right continuous-Mission Policy using
   the conjunctive Task-target signal.
+- [ ] Declare the exact lateral Observation/Action involution, mirror bounded
+  successful recovery evidence, and judge one same-budget bilateral Policy.
 
 ## Frozen-weight authority result
 
@@ -443,3 +445,127 @@ policy, not further authority widening. Left-only exploration success and
 right-only deployment failure suggest testing a declared left/right symmetry
 contract or mirrored recovery data augmentation while keeping the same
 continuous Mission Judge.
+
+## Declared bilateral Policy contract
+
+A left/right label is not a coordinate transform. The articulated history
+Assembly has a 185-element Observation ABI and a 14-element Action ABI whose
+lateral reflection must swap front-left/front-right and rear-left/rear-right
+legs, negate abduction and waist-roll coordinates, reflect quaternion,
+linear/angular velocity, IMU, command, four-step Action history, and foot
+contact history, and leave six Task/plant scalars invariant.
+
+Runtime now validates that every compiled Observation channel is classified,
+every permutation/sign transform is dimensionally valid, and applying the
+declared transform twice returns the exact original coordinate. The same
+contract can symmetrize normalizer statistics, add an actor-mean equivariance
+loss only while the residual has authority, and mirror a complete-Mission
+elite tail without pretending that a synthetic mirror is another physical
+rollout.
+
+The Scenario audit is deliberately separate. The two degraded authored plants
+share friction, payload, observation noise, delay, and opposite lateral
+directions, but their impulse magnitudes are `9.60 N·s` and `7.84 N·s`
+(`60 N` versus `49 N` for `0.16 s`). They are therefore reported as
+`LOAD-MAGNITUDE-ASYMMETRIC`, not physically mirrored. The governed experiment
+will preserve those unequal loads and every locked Mission input; only the
+Policy's declared bilateral inductive bias changes.
+
+Session `session-c5fe02f9bffa4749` falsified bilateral regularization as the
+missing algorithm by itself. The selected step-32,768 Policy mirrored 128
+complete-Mission elite transitions, but every complete Mission still timed
+out. The locked Judge returned `REVERT`: aggregate score
+`62.722325 → 40.154612`, violations `43 → 46`, and severity
+`87.786 → 114.878`. Degraded-right lost self-righting, stable dwell, final
+tilt, and final height. The physical pair audit correctly remained
+`LOAD-MAGNITUDE-ASYMMETRIC`; mirrored coordinates did not become synthetic
+plant evidence.
+
+## Intervention timing and pre-fall authority
+
+The bilateral replay exposed a deeper causal mismatch. On the accepted
+degraded-right Run, the physical impact ends at `2.68 s`, but the Program waits
+until `6.06 s` to enter `recovery`. The Task deadline is `8.68 s`, so active
+self-righting starts with only `2.62 s` of the six-second recovery budget
+remaining. PPO had been authorized only after this late Program transition.
+
+Training and deterministic probes now publish an intervention-timing ledger by
+Mission stage and physical Scenario:
+
+- impact-end, recovery-entry, first Program-recovery, and first actor-authority
+  times;
+- Program and actor response latency relative to the physical impact end;
+- remaining Task recovery budget at each intervention;
+- episodes in which learned authority preceded Program recovery.
+
+The residual gate can also declare up to eight typed `additionalRoutes`.
+Every route independently names Program modes, exact/allowed telemetry,
+Observation and Runtime latches, and numeric physical bounds. Routes are ORed,
+their predicates remain conjunctive, malformed telemetry fails closed, exit is
+immediate, and the existing entry ramp remains global. This supports an
+auditable pre-fall reflex and a later recovery residual without merging their
+physical envelopes or reading Scenario labels.
+
+Both quadruped Supervisors now expose absolute lateral velocity, absolute roll
+rate, and total base angular speed as physical telemetry. The first pre-fall
+route required:
+
+- Program mode `locomotion`;
+- measured delay in the trained set `{1, 2}`;
+- at least one second of mode dwell;
+- absolute lateral velocity at least `0.4 m/s`;
+- body tilt below the Program's `0.8 rad` fall threshold; and
+- open Task target/stable/deadline latches.
+
+The deterministic actor received authority before Program recovery on both
+impact directions. This proved that the new route closed the timing blind spot,
+but not that the learned action was useful.
+
+## Early-reflex experiments and objective mismatch
+
+Three governed, same-Mission comparisons isolated the early-reflex hypothesis:
+
+1. Session `session-b7c038185d3cdd43` combined the new reflex route with the
+   prior recovery route. Program recovery advanced on degraded-right from
+   `6.06 s` to `5.00 s`, but learned recovery authority then remained active
+   until `8.70 s` and the robot ended inverted. Judge: `REVERT`, score
+   `40.263473`, violations `43 → 43`, severity `87.786 → 92.780`.
+2. Session `session-ad873f49486690a2` removed all learned authority after
+   Program recovery. A deterministic complete-Mission probe recorded a later
+   Task-target entry after actor intervention on both exact directions, and the
+   selected degraded-left replay self-righted in `7.30 s`. Degraded-right still
+   became unrecoverable after only 12 actor steps. Judge: `REVERT`, score
+   `60.376779`, violations `43 → 44`, severity `87.786 → 109.429`.
+3. Session `session-7a808fd87e77c7ad` restricted learned torque to the four
+   lateral abduction motors and waist roll while Program retained every
+   sagittal and waist-pitch Action. The right-side failure remained and overall
+   evidence worsened. Judge: `REVERT`, score `39.892361`, violations `43 → 48`,
+   severity `87.786 → 125.554`.
+
+These results falsify “open authority earlier” and “reduce the residual Action
+axes” as sufficient fixes. The current on-policy PPO receives ordinary
+locomotion reward during a sparse 12–21-step reflex window, while the relevant
+consequence is which recovery basin the robot reaches seconds later. It can
+improve an immediate posture proxy while making the deterministic Program's
+later job impossible.
+
+The ledger therefore distinguishes two attribution claims:
+
+- `actorRecoveryTargetEntryCount`: the actor still had authority on the exact
+  physical target-crossing step;
+- `actorContributedRecoveryTargetEntryCount`: an earlier actor intervention in
+  the same uninterrupted episode preceded the later target entry.
+
+Elite replay and deterministic checkpoint selection may opt into the second
+claim, but it remains contribution evidence rather than proof of stable
+recovery. Stable Task dwell, timeout-free Mission completion, and the locked
+Judge stay ahead of both counts.
+
+The next algorithmic lane should not be another PPO gate/threshold sweep. It
+should define a short-horizon impact objective over physical post-impact state
+(angular momentum, tilt growth, support/contact, base height, and recovery
+basin), search or optimize counterfactual reflex Actions over the same MuJoCo
+state, and then distill only Judge-compatible reflexes into a small bilateral
+Policy. The uninterrupted Mission and all downstream regressions must remain
+the final selector so the short-horizon proxy cannot promote a locally neat
+but globally unrecoverable brace.

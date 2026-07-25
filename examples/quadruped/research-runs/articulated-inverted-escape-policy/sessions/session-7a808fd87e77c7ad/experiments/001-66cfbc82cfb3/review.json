@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "7fb761770721f5326b1784ab467069235acb54a31f1420c44fab2881817c5058",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-7a808fd87e77c7ad",
+    "experimentId": "001-66cfbc82cfb3",
+    "experimentHash": "66cfbc82cfb34eddec7e40295af73f312f8c1141d45913937165553de1d1ab63"
+  },
+  "proposal": {
+    "strategy": "lateral-dof-causally-credited-reflex",
+    "hypothesis": "The isolated early-reflex checkpoint produced Task-target entries after actor intervention on both exact impact directions and improved degraded-left self-righting to 7.30 seconds, but only 12 actor steps made degraded-right unrecoverable. The 14-DOF residual was allowed to perturb sagittal hip/knee torques and waist pitch even though its trigger is a lateral momentum excursion. Preserve the same continuous Mission, timing gate, causal replay, bilateral contract, reward, and budget, but restrict learned authority to the four leg abduction motors and waist roll; the Program retains every sagittal and pitch action.",
+    "expectedEffect": "Keep the useful signed lateral brace while preventing the short Policy window from moving the robot into a sagittally unrecoverable basin, preserve degraded-right Program self-righting, and remove command-tracking and recovery-handoff regressions without changing the physical scenarios or Judge."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 48,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 125.55443294320604,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "1fd670f5c12582a947f429477662a9764aca349e3374805a29c3a86c27b0d76e"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left-degraded",
+    "seed": 7203,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-left-degraded: backward-displacement regressed from passing to failing",
+    "candidateScoreDelta": -4.005324479910698,
+    "weightedScoreDelta": -4.005324479910698
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-a8fbfebac28c8940",
+    "runKey": "a8fbfebac28c89404196c231322aeaf205b0b43450683e9917c1c40622a490c3",
+    "resultHash": "221c429dff7be5da2df41d6b5e09a99bf4f37b2441161e3383d9dcbaa8268e92",
+    "artifactHash": "82fb30b4f07dd1c7a994a88a90ba9505dff59f8eee5c100bbf1284484c99ffd6",
+    "manifestHash": "e051cc304c560ab88717241981da88d54f68bc2a46efca50652b0a0a0df3c9da",
+    "metricsHash": "e06f076c28b9872a3d7c0e53292476ee94593fd0f6efef6b50d58cd0bf72f2b5",
+    "scoreHash": "0c8b2f57937626668e8efe986e07f8276d3a6edbf9e71bf729d83221d33bcdfc",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": -25.021343429279153
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-fe89e90af2908376",
+    "runKey": "fe89e90af29083760a8830f5b9a83b499e3f1db31d7697c38b0d53689d4e65fb",
+    "resultHash": "681e2d7aeb1576b2cb97f20515d0da51e9f8335e34f5d97a7446031445ae6fe6",
+    "artifactHash": "6fd402cb73d94eb952bfa2ffaf7d7b9c921ebaf2ded16fecba88a5e59cf66468",
+    "manifestHash": "63a1899edb242c9f8d53be4ea3acec09f4bf4f2273ef0f6ef9649e059ac03277",
+    "metricsHash": "58efa5c3b1bc6d64debdb9dd5fb6706db15b4e912b4ca4b8826e113001f03c25",
+    "scoreHash": "0262c6eda680b4d9e33280ee1edcd9b7411beeca46e3d8b0e12f65775bc229d2",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -29.02666790918985
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

@@ -26,6 +26,27 @@ describe("Robot Assembly compiler", () => {
         requiredRuntimeState: { recoveryDeadlineExpired: Number.NaN },
       },
     })).toThrow();
+    expect(authorityProfileSchema.parse({
+      ...profile,
+      residualGate: {
+        ...profile.residualGate,
+        additionalRoutes: [{
+          allowedModes: ["locomotion"],
+          minimumTelemetry: {
+            absoluteLateralVelocityMps: 0.25,
+            absoluteRollRateRadPerSec: 1.5,
+            modeDwellSeconds: 1,
+          },
+        }],
+      },
+    }).residualGate.additionalRoutes).toHaveLength(1);
+    expect(() => authorityProfileSchema.parse({
+      ...profile,
+      residualGate: {
+        ...profile.residualGate,
+        additionalRoutes: [{ allowedModes: [] }],
+      },
+    })).toThrow();
   });
 
   test("Development Reviews and Work Orders preserve typed requirement-to-lane evidence", async () => {
@@ -525,6 +546,17 @@ describe("Robot Assembly compiler", () => {
       ...curriculum,
       missionReward: { ...curriculum.missionReward, recoveryRelapsePenalty: 501 },
     }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      eliteReplay: {
+        trigger: "actor-contributed-recovery-target-entry",
+        scope: "complete-mission",
+        tailSteps: 64,
+        capacity: 4096,
+        minibatchSize: 64,
+        coefficient: 0.05,
+      },
+    }).success).toBe(true);
     expect(trainingSchema.safeParse({
       ...curriculum,
       eliteReplay: {

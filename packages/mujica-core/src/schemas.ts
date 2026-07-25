@@ -126,8 +126,7 @@ const residualGateScalarSchema = z.union([
   z.boolean(),
 ]);
 
-export const residualGateSchema = z.object({
-  kind: z.literal("prior-telemetry-mode"),
+const residualGateRouteSchema = z.object({
   allowedModes: z.array(z.string().min(1)).min(1),
   requiredTelemetry: z.record(residualGateScalarSchema).default({}),
   allowedTelemetry: z.record(z.array(residualGateScalarSchema).min(1)).default({}),
@@ -135,6 +134,11 @@ export const residualGateSchema = z.object({
   requiredRuntimeState: z.record(z.number().finite()).default({}),
   minimumTelemetry: z.record(z.number().finite()).default({}),
   maximumTelemetry: z.record(z.number().finite()).default({}),
+}).strict();
+
+export const residualGateSchema = residualGateRouteSchema.extend({
+  kind: z.literal("prior-telemetry-mode"),
+  additionalRoutes: z.array(residualGateRouteSchema).max(8).default([]),
   rampSeconds: z.number().finite().nonnegative().default(0),
   entryRampSeconds: z.number().finite().nonnegative().default(0),
 }).strict();
@@ -555,7 +559,10 @@ const trainingOptimizationFields = {
   residualScale: z.number().min(0).max(1).optional(),
   residualPenalty: z.number().nonnegative().optional(),
   eliteReplay: z.object({
-    trigger: z.literal("actor-recovery-target-entry"),
+    trigger: z.enum([
+      "actor-recovery-target-entry",
+      "actor-contributed-recovery-target-entry",
+    ]),
     scope: z.enum(["all-progression", "complete-mission"]).optional(),
     tailSteps: z.number().int().min(1).max(256),
     capacity: z.number().int().min(1).max(8192),

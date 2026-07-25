@@ -162,6 +162,13 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Mission phase learning evidence");
     expect(html).toContain("Actuator-delay authority coverage");
     expect(html).toContain("Frozen actuator-delay probe");
+    expect(html).toContain("Bilateral Policy contract");
+    expect(html).toContain("declared coordinate reflection, not Scenario relabelling");
+    expect(html).toContain("Authored lateral-impact pair audit");
+    expect(html).toContain("physical load remains evidence");
+    expect(html).toContain("Intervention timing");
+    expect(html).toContain("impact end → authority, inside the same recovery budget");
+    expect(html).toContain("Frozen intervention timing");
     expect(html).toContain("curriculum sampling");
     expect(html).toContain("Mission progression · every episode starts at Mission phase 1");
     expect(html).toContain("interleaved-step-share");

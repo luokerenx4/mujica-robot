@@ -924,3 +924,88 @@ entered inverted brace at `11.98 s` and ended at `0.060 m`. Fail-closed
 authority prevents later learned actions; it cannot erase momentum injected
 earlier. Mujica must therefore preserve continuous post-intervention evidence,
 not infer safety from the instant at which authority becomes zero.
+
+## Bilateral Policy symmetry is an ABI contract
+
+Robot bilateral symmetry is meaningful only when declared over the frozen
+compiled coordinates. A Trainer may provide a `lateral-reflection-v1`
+contract that:
+
+- classifies every Observation channel as explicitly transformed or invariant;
+- defines permutation and sign transforms, including repeated history blocks;
+- defines the corresponding Action permutation and signs;
+- is dimension checked against the compiled Observation/Action ABI; and
+- is proven involutive before Training begins.
+
+For a declared contract, Runtime may update normalization with both each
+physical observation and its coordinate reflection, penalize deterministic
+actor-mean equivariance error on actor-authorized samples, and mirror admitted
+elite observation/action tails. Mirrored data is an optimization prior, not a
+second physical episode: episode counts, plant coverage, Mission events, and
+Judge evidence continue to count only Runtime executions.
+
+Scenario symmetry is audited independently. Opposite push directions do not
+establish a mirror pair when force, duration, friction, payload, noise, delay,
+or other authored plant conditions differ. Training metrics and Studio publish
+the authored lateral impulse and a pair status for each progression stage.
+This prevents a useful Policy prior from laundering unequal test loads into a
+false claim of balanced physical evidence.
+
+The first quadruped contract reflects all 185 Observation coordinates and all
+14 Actions. Its degraded Mission pair is intentionally preserved as
+load-magnitude-asymmetric: positive-y impact is `9.60 N·s`, while negative-y
+impact is `7.84 N·s`. Only the unchanged complete Mission Suite may decide
+whether the bilateral Policy improves the robot.
+
+## Temporal authority is part of the experiment contract
+
+A bounded learned residual can be safe at each active frame and still be
+useless because it receives authority after the controllable event. Mission
+Training therefore records the first physical impact end, causal recovery-phase
+entry, Program recovery entry, learned-authority entry, and Task recovery
+deadline. Studio and headless Policy inspection report response latency and
+remaining recovery budget by progression stage and Scenario.
+
+Program residual gates may declare a primary route plus bounded
+`additionalRoutes`. Each route is a complete fail-closed conjunction over
+Program mode, exact/allowed telemetry, scalar Observation and Runtime latches,
+and numeric telemetry limits. A learned controller is authorized when at least
+one declared route matches; a missing or malformed value matches none. Route
+identity must remain physical and observable. Scenario id, benchmark Case id,
+research verdict, or hidden Task labels are not authority inputs.
+
+This makes “impact reflex while still locomoting” and “recovery correction
+after fall detection” separate auditable surfaces. It also prevents a Studio
+label such as `recover` from silently becoming a privileged controller signal.
+
+## Delayed contribution is not same-step authority
+
+For short interventions, a useful action may occur seconds before the Task
+target is crossed. Mujica reports two distinct counters:
+
+- contemporaneous target entry means actor authority was nonzero on the
+  crossing step;
+- contributed target entry means at least one actor-authorized action since the
+  prior target entry preceded the crossing in the same uninterrupted episode.
+
+The contributed counter can trigger bounded replay and participate in
+checkpoint evidence, but it is not a causal proof and is never a promotion
+gate. Multiple crossings after one intervention do not receive repeated
+credit unless new actor authority occurs. Stable dwell, phase timeout,
+relapse, Mission completion, and the locked Judge remain authoritative.
+
+## A short reflex needs a temporally matched learning objective
+
+The quadruped experiments showed why authority timing and objective timing are
+different. Opening a physical lateral-momentum route before Program recovery
+successfully recovered several seconds of potential response budget. PPO
+nevertheless learned reflexes that improved some immediate or one-sided
+signals while moving the opposite side into a recovery basin from which the
+deterministic Program could not self-right. Restricting the residual from all
+14 actuators to only lateral abduction and waist roll did not fix the outcome.
+
+For such a surface, the next supported research pattern is a short-horizon
+counterfactual objective tied to physical post-impact state, followed by
+distillation and the unchanged complete-Mission Judge. The short-horizon
+objective is Training evidence only. It must never replace downstream
+recovery, resumption, redirection, traversal, stop, or regression Cases.

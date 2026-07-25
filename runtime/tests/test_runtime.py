@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, deterministic_checkpoint_rank, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_mission_outcomes
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, authored_lateral_impact, compile_bilateral_symmetry, deterministic_checkpoint_rank, effective_action_transform, masked_mean, mission_outcome_sample, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, record_mission_outcome_step, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_intervention_timing, summarize_lateral_impact_pairs, summarize_mission_outcomes
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -504,6 +504,59 @@ class RuntimeContractTest(unittest.TestCase):
             0.0,
         )
 
+    def test_program_residual_gate_supports_auditable_alternative_routes(self):
+        class Prior:
+            def __init__(self, telemetry):
+                self.value = telemetry
+
+            def telemetry(self):
+                return self.value
+
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["recovery"],
+                "requiredTelemetry": {"dynamicRecovery": True},
+                "additionalRoutes": [{
+                    "allowedModes": ["locomotion"],
+                    "minimumTelemetry": {
+                        "modeDwellSeconds": 1.0,
+                        "absoluteLateralVelocityMps": 0.25,
+                        "absoluteRollRateRadPerSec": 1.5,
+                    },
+                }],
+            },
+        }
+        self.assertEqual(program_residual_gate_scale(
+            transform,
+            Prior({"mode": "recovery", "dynamicRecovery": True}),
+        ), 1.0)
+        self.assertEqual(program_residual_gate_scale(
+            transform,
+            Prior({
+                "mode": "locomotion",
+                "modeDwellSeconds": 2.5,
+                "absoluteLateralVelocityMps": 0.42,
+                "absoluteRollRateRadPerSec": 2.4,
+            }),
+        ), 1.0)
+        self.assertEqual(program_residual_gate_scale(
+            transform,
+            Prior({
+                "mode": "locomotion",
+                "modeDwellSeconds": 2.5,
+                "absoluteLateralVelocityMps": 0.10,
+                "absoluteRollRateRadPerSec": 2.4,
+            }),
+        ), 0.0)
+        self.assertEqual(program_residual_gate_scale(
+            {"residualGate": {
+                **transform["residualGate"],
+                "additionalRoutes": "unsafe",
+            }},
+            Prior({"mode": "recovery", "dynamicRecovery": True}),
+        ), 0.0)
+
     def test_program_residual_gate_requires_scalar_runtime_observation(self):
         class Prior:
             def telemetry(self):
@@ -784,6 +837,95 @@ class RuntimeContractTest(unittest.TestCase):
         inactive_mean = masked_mean(inactive, torch.zeros(2))
         inactive_mean.backward()
         np.testing.assert_allclose(inactive.grad.numpy(), [0.0, 0.0])
+
+    def test_mission_ledger_exposes_response_latency_and_remaining_budget(self):
+        task = {
+            "id": "continuous-resilience",
+            "durationSeconds": 20,
+            "missionPhases": [
+                {
+                    "id": "impact",
+                    "intent": "disturbance",
+                    "exit": {"kind": "external-push-end", "timeoutSeconds": 0.5},
+                },
+                {
+                    "id": "recover",
+                    "intent": "recover",
+                    "exit": {"kind": "recovery-stable", "timeoutSeconds": 6.0},
+                },
+            ],
+        }
+        sample = mission_outcome_sample(
+            episode=1,
+            curriculum_index=0,
+            entry={
+                "id": "complete",
+                "role": "mission-progression",
+                "task": task,
+                "throughPhase": "recover",
+            },
+            scenario={"id": "impact-right", "actuatorDelaySteps": 1},
+            environment_seed=1,
+            domain_seed=2,
+            domain_profile=None,
+            domain_profile_hash=None,
+            domain_sample={},
+            global_step_start=0,
+        )
+        previous = record_mission_outcome_step(
+            sample,
+            {
+                "missionIntent": "impact",
+                "missionTransition": {"condition": "external-push-end"},
+                "recoveryTargetSatisfied": False,
+            },
+            0.0,
+            False,
+            time_seconds=2.68,
+            program_telemetry={"mode": "locomotion"},
+        )
+        previous = record_mission_outcome_step(
+            sample,
+            {
+                "missionIntent": "recover",
+                "missionPhaseEnteredAtSeconds": 2.68,
+                "recoveryTargetSatisfied": False,
+            },
+            0.08,
+            previous,
+            time_seconds=6.06,
+            program_telemetry={"mode": "recovery"},
+        )
+        record_mission_outcome_step(
+            sample,
+            {
+                "missionIntent": "recover",
+                "missionPhaseEnteredAtSeconds": 2.68,
+                "recoveryTargetSatisfied": True,
+            },
+            0.0,
+            previous,
+            time_seconds=7.0,
+            program_telemetry={"mode": "recovery"},
+        )
+        timing = summarize_intervention_timing([sample])[
+            "complete:impact-right"
+        ]
+        self.assertAlmostEqual(sample["recoveryDeadlineAtSeconds"], 8.68)
+        self.assertAlmostEqual(
+            timing["programResponseLatencySeconds"]["mean"], 3.38
+        )
+        self.assertAlmostEqual(
+            timing["actorResponseLatencySeconds"]["mean"], 3.38
+        )
+        self.assertAlmostEqual(
+            timing["actorRecoveryBudgetRemainingSeconds"]["mean"], 2.62
+        )
+        self.assertEqual(timing["actorBeforeProgramEpisodes"], 0)
+        self.assertEqual(
+            sample["actorContributedRecoveryTargetEntryCount"], 1
+        )
+        self.assertEqual(sample["actorRecoveryTargetEntryCount"], 0)
 
     def test_domain_profile_sampling_is_separate_reproducible_and_applied_to_mujoco(self):
         profile = {"parameters": {
@@ -1487,10 +1629,20 @@ class RuntimeContractTest(unittest.TestCase):
         observation["motion-command"] = np.zeros(3)
         controller.act(observation, 0.02)
         observation["motion-command"] = np.array([0.2, 0.0, 0.0])
+        observation["base-velocity"] = np.array(
+            [0.0, -0.42, 0.0, 0.0, 0.0, 0.0]
+        )
+        observation["imu-angular-velocity"] = np.array([2.4, -1.2, 0.3])
         controller.act(observation, 0.04)
         telemetry = read_controller_telemetry(controller)
         self.assertEqual(telemetry["commandRestartCount"], 1)
         self.assertEqual(telemetry["locomotionStrategy"], "legacy-forward")
+        self.assertAlmostEqual(telemetry["absoluteLateralVelocityMps"], 0.42)
+        self.assertAlmostEqual(telemetry["absoluteRollRateRadPerSec"], 2.4)
+        self.assertAlmostEqual(
+            telemetry["baseAngularSpeedRadPerSec"],
+            float(np.linalg.norm([2.4, -1.2, 0.3])),
+        )
 
     def test_behavior_supervisor_distinguishes_gait_excursion_from_resting_fall(self):
         root = PROJECT / "controllers" / "behavior-supervisor"
@@ -2123,6 +2275,82 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(completed_terms["recoverySuccess"], 100.0)
         self.assertEqual(completed_terms["timeoutFreeCompletion"], 100.0)
 
+    def test_bilateral_symmetry_is_a_complete_compiled_abi_involution(self):
+        observation_contract = {
+            "size": 6,
+            "channels": [
+                {"name": "paired", "size": 4},
+                {"name": "invariant", "size": 2},
+            ],
+        }
+        symmetry = compile_bilateral_symmetry({
+            "kind": "lateral-reflection-v1",
+            "policyConsistencyCoefficient": 0.05,
+            "augmentNormalizer": True,
+            "mirrorEliteReplay": True,
+            "identityObservationChannels": ["invariant"],
+            "observationTransforms": {
+                "paired": {
+                    "permutation": [1, 0, 3, 2],
+                    "signs": [-1, -1, 1, 1],
+                },
+            },
+            "actionTransform": {
+                "permutation": [1, 0],
+                "signs": [-1, -1],
+            },
+        }, observation_contract, 2)
+        self.assertIsNotNone(symmetry)
+        observation = np.asarray([1, 2, 3, 4, 5, 6], dtype=np.float32)
+        action = np.asarray([7, 8], dtype=np.float32)
+        mirrored_observation = symmetry.mirror_observation(observation)
+        mirrored_action = symmetry.mirror_action(action)
+        np.testing.assert_array_equal(
+            symmetry.mirror_observation(mirrored_observation), observation
+        )
+        np.testing.assert_array_equal(
+            symmetry.mirror_action(mirrored_action), action
+        )
+        self.assertTrue(symmetry.contract["validatedInvolution"])
+        with self.assertRaisesRegex(
+            RuntimeError, "classify every Observation channel"
+        ):
+            compile_bilateral_symmetry({
+                **symmetry.contract,
+                "identityObservationChannels": [],
+            }, observation_contract, 2)
+
+    def test_lateral_impact_audit_does_not_call_unequal_loads_mirrored(self):
+        scenarios = [
+            json.loads(
+                (PROJECT / "scenarios" / name).read_text()
+            )
+            for name in (
+                "mission-impact-left-degraded.scenario.json",
+                "mission-impact-right-degraded.scenario.json",
+            )
+        ]
+        samples = [{
+            "curriculum": "complete",
+            "scenario": scenario["id"],
+            "authoredLateralImpact": authored_lateral_impact(scenario),
+            "authoredPlant": {
+                "friction": scenario["friction"],
+                "payloadKg": scenario["payloadKg"],
+                "observationNoiseStd": scenario["observationNoiseStd"],
+                "actuatorDelaySteps": scenario["actuatorDelaySteps"],
+            },
+        } for scenario in scenarios]
+        audit = summarize_lateral_impact_pairs(samples)["complete"]
+        self.assertEqual(audit["status"], "LOAD-MAGNITUDE-ASYMMETRIC")
+        self.assertTrue(audit["oppositeDirections"])
+        self.assertTrue(audit["samePlant"])
+        self.assertFalse(audit["equalImpulseMagnitude"])
+        self.assertEqual(
+            sorted(abs(item["lateralImpulseNs"]) for item in audit["scenarios"]),
+            [7.84, 9.6],
+        )
+
     def test_ppo_performs_a_real_small_training_run(self):
         model, compiled = compiled_assembly("baseline")
         request = {
@@ -2151,7 +2379,27 @@ class RuntimeContractTest(unittest.TestCase):
             },
         }
         with tempfile.TemporaryDirectory() as directory:
-            result = PPOTrainer(hidden_sizes=[16]).train(request, Path(directory))
+            action_size = compiled["actionContract"]["size"]
+            result = PPOTrainer(
+                hidden_sizes=[16],
+                bilateral_symmetry={
+                    "kind": "lateral-reflection-v1",
+                    "policyConsistencyCoefficient": 0.05,
+                    "augmentNormalizer": True,
+                    "mirrorEliteReplay": True,
+                    "identityObservationChannels": [
+                        channel["name"]
+                        for channel in compiled["observationContract"][
+                            "channels"
+                        ]
+                    ],
+                    "observationTransforms": {},
+                    "actionTransform": {
+                        "permutation": list(range(action_size)),
+                        "signs": [1] * action_size,
+                    },
+                },
+            ).train(request, Path(directory))
             self.assertEqual(result["totalSteps"], 64)
             self.assertEqual(result["updates"], 2)
             self.assertTrue((Path(directory) / "model.pt").exists())
@@ -2165,6 +2413,21 @@ class RuntimeContractTest(unittest.TestCase):
                 metrics["eliteReplay"]["retainedTransitions"], 32
             )
             self.assertEqual(metrics["eliteReplay"]["admissionCoverage"], {})
+            self.assertTrue(
+                metrics["bilateralSymmetry"]["validatedInvolution"]
+            )
+            self.assertEqual(
+                metrics["bilateralSymmetry"][
+                    "normalizerSamplesPerEnvironmentStep"
+                ],
+                2,
+            )
+            self.assertTrue(
+                all(
+                    update["meanBilateralSymmetryLoss"] == 0.0
+                    for update in metrics["updates"]
+                )
+            )
             self.assertEqual(
                 metrics["missionOutcomeActionMode"], "stochastic-sampled"
             )

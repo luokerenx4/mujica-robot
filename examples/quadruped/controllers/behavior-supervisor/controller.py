@@ -150,6 +150,12 @@ class BehaviorSupervisorController:
 
     def act(self, observation, time_seconds: float):
         fallen, tilt, height, fall_detector, required_streak = self.fallen(observation)
+        base_velocity = np.asarray(
+            observation["base-velocity"], dtype=np.float64
+        )
+        angular_velocity = np.asarray(
+            observation["imu-angular-velocity"], dtype=np.float64
+        )
         if self.mode == "uninitialized":
             self.switch(
                 "recovery" if fallen else "locomotion",
@@ -258,6 +264,11 @@ class BehaviorSupervisorController:
             "recoveryPose": self.recovery_pose,
             "bodyTiltRad": tilt,
             "baseHeightM": height,
+            "baseAngularSpeedRadPerSec": float(
+                np.linalg.norm(angular_velocity)
+            ),
+            "absoluteRollRateRadPerSec": abs(float(angular_velocity[0])),
+            "absoluteLateralVelocityMps": abs(float(base_velocity[1])),
             "fallDetector": fall_detector,
             "fallenPose": child.get("fallenPose"),
             "supportFeet": child.get("supportFeet"),

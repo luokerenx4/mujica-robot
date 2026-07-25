@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "eac870d070dbe7e340f9c41da75ff0fc4d98ea5b56a8e8458009f68c1b589390",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-b7c038185d3cdd43",
+    "experimentId": "001-34315ff7f4bd",
+    "experimentHash": "34315ff7f4bd2747114033a871ddc48497a1b68e6226cff821c14f2c68a9b18a"
+  },
+  "proposal": {
+    "strategy": "physical-lateral-momentum-reflex",
+    "hypothesis": "The rejected bilateral run exposed a causal authority mismatch: the continuous Mission impact ends at 2.68 seconds, but the Program does not enter recovery until 6.06 seconds, leaving only 2.62 seconds of the Task's six-second recovery budget. Keep the complete Mission, physical impact loads, delay envelope, bilateral ABI, reward, seed, training budget, and Judge fixed. Add a second fail-closed authority route while the Program is still in locomotion, triggered only by measured one/two-step delay, at least one second of startup dwell, absolute lateral base speed at or above 0.4 m/s, body tilt below the Program's 0.8 rad fall threshold, and open Task recovery latches.",
+    "expectedEffect": "Let PPO learn a signed, bilaterally consistent brace during the physically observed momentum excursion before full fall, record actor-before-Program episodes and recovered budget explicitly, then reduce recovery timeouts in both impact directions without weakening any Scenario, Task target, Mission phase, or locked promotion gate."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 92.77961976181487,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "84e937dba1f0f00afae95568b5cca94344d1704de6f941b266f44b90a699f3ef"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-right-degraded",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-right-degraded",
+    "seed": 7204,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "first-primary-gate-regression",
+    "selectionReason": "First primary gate regression named by the locked Judge: impact-right-degraded: self-righting regressed from passing to failing",
+    "candidateScoreDelta": -80.2257519527933,
+    "weightedScoreDelta": -80.2257519527933
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-0a9d9859d88054c6",
+    "runKey": "0a9d9859d88054c61971a9fc4a60be8e1d0468f909326099608ac37bcdd01db7",
+    "resultHash": "fd02e5206df16d319efaa664e52a628ae516430f219805b9bbcca94a7a1c8860",
+    "artifactHash": "613d2dd0d9413edc85617d86399d4d0cfdc1d5b6172a3a0ed18db14424de6dde",
+    "manifestHash": "e360a369ebfcf67535b2fa892ed67ead6e1614de56f6d5cf619dcab9ae4c098c",
+    "metricsHash": "4852e8e6fca12738428082117baedae3c9d1fd35b2a58352adade2ab074783df",
+    "scoreHash": "0d346c861fef2156fcf6ad66a202b5a2f7ac14922e371f1e4d1ad09a6269e6d3",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 52.090808559699596
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-72fc8d30f516fbbc",
+    "runKey": "72fc8d30f516fbbc8f7911ada3a03eeaf5f19d5c73480a31ad61efc61ba96ea3",
+    "resultHash": "3f066fa1f546fb3388682ba91b80a626e396f492f64b2c2814c7052e03e56a69",
+    "artifactHash": "41c6360c7baf74ca785ded432063a24ea23809b660153d296a230f59bdcd056c",
+    "manifestHash": "ad4f8d99e572aee0002d2b195e896ef207343df1452f0ba7709c67d5028838a5",
+    "metricsHash": "b857543061a731398992d6389ad02be7e3688b691b75b97e8e188508de3df4bd",
+    "scoreHash": "ab4b188664a789e22de52afc6f4930b0a0bf0439521475fa63afc82edd424492",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": -28.134943393093703
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

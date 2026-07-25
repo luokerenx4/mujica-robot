@@ -1,0 +1,70 @@
+{
+  "version": 4,
+  "id": "001-34315ff7f4bd",
+  "experimentHash": "34315ff7f4bd2747114033a871ddc48497a1b68e6226cff821c14f2c68a9b18a",
+  "sequence": 1,
+  "sessionId": "session-b7c038185d3cdd43",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "eac870d070dbe7e340f9c41da75ff0fc4d98ea5b56a8e8458009f68c1b589390",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "0a202684e1fecd2841e0e8e0d6f8b8378f8e8a8d72c913cbd0f0ad49f6d12195",
+  "historyHash": "6cf41192dc0bbf8b27db1023e1e1f05a3641851a308491f57851e7b6d33625b6",
+  "historyCount": 20,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "physical-lateral-momentum-reflex",
+    "hypothesis": "The rejected bilateral run exposed a causal authority mismatch: the continuous Mission impact ends at 2.68 seconds, but the Program does not enter recovery until 6.06 seconds, leaving only 2.62 seconds of the Task's six-second recovery budget. Keep the complete Mission, physical impact loads, delay envelope, bilateral ABI, reward, seed, training budget, and Judge fixed. Add a second fail-closed authority route while the Program is still in locomotion, triggered only by measured one/two-step delay, at least one second of startup dwell, absolute lateral base speed at or above 0.4 m/s, body tilt below the Program's 0.8 rad fall threshold, and open Task recovery latches.",
+    "expectedEffect": "Let PPO learn a signed, bilaterally consistent brace during the physically observed momentum excursion before full fall, record actor-before-Program episodes and recovered budget explicitly, then reduce recovery timeouts in both impact directions without weakening any Scenario, Task target, Mission phase, or locked promotion gate."
+  },
+  "policyId": "articulated-inverted-escape-d9c629fe04d033ea",
+  "score": 40.263472725167524,
+  "delta": -22.458851941902985,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-right-degraded: self-righting regressed from passing to failing",
+      "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "impact-right-degraded: final-body-tilt regressed from passing to failing",
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "impact-right-degraded: score-regression regressed from passing to failing",
+      "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+      "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+      "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 92.77961976181487,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "83c2f0f999fbc74795a9e5b14798b40f64757499e51f8072177fba4d7dc130e6",
+    "acceptedRunId": "run-0a9d9859d88054c6",
+    "candidateRunId": "run-72fc8d30f516fbbc",
+    "caseId": "impact-right-degraded"
+  },
+  "durationMs": 195389,
+  "completed": true
+}

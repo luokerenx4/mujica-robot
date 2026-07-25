@@ -193,13 +193,91 @@ def transform_policy_action(raw_action: np.ndarray, observation: dict[str, np.nd
     return prior + float(transform.get("residualScale", 1.0)) * raw_action
 
 
+def _program_residual_gate_route_matches(
+    route: dict[str, Any],
+    telemetry: dict[str, Any],
+    observation: dict[str, np.ndarray] | None,
+    runtime_state: dict[str, float] | None,
+) -> bool:
+    """Evaluate one auditable physical authority route and fail closed."""
+    allowed_modes = route.get("allowedModes", [])
+    if telemetry.get("mode") not in allowed_modes:
+        return False
+    for field, expected in route.get("requiredTelemetry", {}).items():
+        if telemetry.get(field) != expected:
+            return False
+    allowed_telemetry = route.get("allowedTelemetry", {})
+    if not isinstance(allowed_telemetry, dict):
+        return False
+    for field, allowed in allowed_telemetry.items():
+        if (
+            not isinstance(allowed, list)
+            or not allowed
+            or telemetry.get(field) not in allowed
+        ):
+            return False
+    for channel, expected in route.get("requiredObservation", {}).items():
+        if (
+            observation is None
+            or channel not in observation
+            or isinstance(expected, bool)
+            or not isinstance(expected, (int, float))
+            or not np.isfinite(float(expected))
+        ):
+            return False
+        value = np.asarray(observation[channel]).reshape(-1)
+        if (
+            value.size != 1
+            or not np.isfinite(float(value[0]))
+            or float(value[0]) != float(expected)
+        ):
+            return False
+    for field, expected in route.get("requiredRuntimeState", {}).items():
+        if (
+            runtime_state is None
+            or field not in runtime_state
+            or isinstance(expected, bool)
+            or not isinstance(expected, (int, float))
+            or not np.isfinite(float(expected))
+        ):
+            return False
+        value = runtime_state[field]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not np.isfinite(float(value))
+            or float(value) != float(expected)
+        ):
+            return False
+    for bounds_key, compare in (
+        ("minimumTelemetry", lambda value, bound: value >= bound),
+        ("maximumTelemetry", lambda value, bound: value <= bound),
+    ):
+        bounds = route.get(bounds_key, {})
+        if not isinstance(bounds, dict):
+            return False
+        for field, raw_bound in bounds.items():
+            raw_value = telemetry.get(field)
+            if (
+                isinstance(raw_bound, bool)
+                or not isinstance(raw_bound, (int, float))
+                or not np.isfinite(float(raw_bound))
+                or isinstance(raw_value, bool)
+                or not isinstance(raw_value, (int, float))
+                or not np.isfinite(float(raw_value))
+                or not compare(float(raw_value), float(raw_bound))
+            ):
+                return False
+    return True
+
+
 def program_residual_gate_scale(
     transform: dict[str, Any],
     program_prior: Controller,
     observation: dict[str, np.ndarray] | None = None,
     runtime_state: dict[str, float] | None = None,
 ) -> float:
-    """Fail closed when a learned residual is outside its declared safe envelope."""
+    """Fail closed when a learned residual is outside every declared route."""
     gate = transform.get("residualGate")
     if gate is None:
         return 1.0
@@ -213,74 +291,19 @@ def program_residual_gate_scale(
     telemetry = telemetry_provider()
     if not isinstance(telemetry, dict):
         return 0.0
-    allowed_modes = gate.get("allowedModes", [])
-    if telemetry.get("mode") not in allowed_modes:
-        return 0.0
-    for field, expected in gate.get("requiredTelemetry", {}).items():
-        if telemetry.get(field) != expected:
-            return 0.0
-    allowed_telemetry = gate.get("allowedTelemetry", {})
-    if not isinstance(allowed_telemetry, dict):
-        return 0.0
-    for field, allowed in allowed_telemetry.items():
-        if (
-            not isinstance(allowed, list)
-            or not allowed
-            or telemetry.get(field) not in allowed
-        ):
-            return 0.0
-    for channel, expected in gate.get("requiredObservation", {}).items():
-        if (
-            observation is None
-            or channel not in observation
-            or isinstance(expected, bool)
-            or not isinstance(expected, (int, float))
-            or not np.isfinite(float(expected))
-        ):
-            return 0.0
-        value = np.asarray(observation[channel]).reshape(-1)
-        if (
-            value.size != 1
-            or not np.isfinite(float(value[0]))
-            or float(value[0]) != float(expected)
-        ):
-            return 0.0
-    for field, expected in gate.get("requiredRuntimeState", {}).items():
-        if (
-            runtime_state is None
-            or field not in runtime_state
-            or isinstance(expected, bool)
-            or not isinstance(expected, (int, float))
-            or not np.isfinite(float(expected))
-        ):
-            return 0.0
-        value = runtime_state[field]
-        if (
-            isinstance(value, bool)
-            or not isinstance(value, (int, float))
-            or not np.isfinite(float(value))
-            or float(value) != float(expected)
-        ):
-            return 0.0
-    for bounds_key, compare in (
-        ("minimumTelemetry", lambda value, bound: value >= bound),
-        ("maximumTelemetry", lambda value, bound: value <= bound),
+    additional_routes = gate.get("additionalRoutes", [])
+    if not isinstance(additional_routes, list) or any(
+        not isinstance(route, dict) for route in additional_routes
     ):
-        bounds = gate.get(bounds_key, {})
-        if not isinstance(bounds, dict):
-            return 0.0
-        for field, raw_bound in bounds.items():
-            raw_value = telemetry.get(field)
-            if (
-                isinstance(raw_bound, bool)
-                or not isinstance(raw_bound, (int, float))
-                or not np.isfinite(float(raw_bound))
-                or isinstance(raw_value, bool)
-                or not isinstance(raw_value, (int, float))
-                or not np.isfinite(float(raw_value))
-                or not compare(float(raw_value), float(raw_bound))
-            ):
-                return 0.0
+        return 0.0
+    routes = [gate, *additional_routes]
+    if not any(
+        _program_residual_gate_route_matches(
+            route, telemetry, observation, runtime_state
+        )
+        for route in routes
+    ):
+        return 0.0
     ramp_seconds = float(gate.get("rampSeconds", 0.0))
     if ramp_seconds <= 0.0:
         return 1.0

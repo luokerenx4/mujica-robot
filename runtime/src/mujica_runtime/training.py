@@ -90,7 +90,9 @@ def summarize_actuator_delay_coverage(
             "activePolicySteps": 0,
             "actorAuthoritySum": 0.0,
             "actorRecoveryTargetEntryCount": 0,
+            "actorContributedRecoveryTargetEntryCount": 0,
             "episodesWithActorRecoveryTargetEntry": 0,
+            "episodesWithActorContributedRecoveryTargetEntry": 0,
             "recoveryStableTransitionCount": 0,
             "episodesWithRecoveryStableTransition": 0,
             "missionPhaseTimeoutEpisodes": 0,
@@ -109,14 +111,23 @@ def summarize_actuator_delay_coverage(
         actor_target_entries = int(
             sample.get("actorRecoveryTargetEntryCount", 0)
         )
+        contributed_target_entries = int(
+            sample.get("actorContributedRecoveryTargetEntryCount", 0)
+        )
         stable_transitions = int(
             sample.get("recoveryStableTransitionCount", 0)
         )
         phase_timeouts = int(sample.get("missionPhaseTimeoutCount", 0))
         mission_completed = bool(sample.get("missionCompleted"))
         outcome["actorRecoveryTargetEntryCount"] += actor_target_entries
+        outcome["actorContributedRecoveryTargetEntryCount"] += (
+            contributed_target_entries
+        )
         outcome["episodesWithActorRecoveryTargetEntry"] += int(
             actor_target_entries > 0
+        )
+        outcome["episodesWithActorContributedRecoveryTargetEntry"] += int(
+            contributed_target_entries > 0
         )
         outcome["recoveryStableTransitionCount"] += stable_transitions
         outcome["episodesWithRecoveryStableTransition"] += int(
@@ -140,6 +151,142 @@ def summarize_actuator_delay_coverage(
     }
 
 
+def authored_lateral_impact(scenario: dict[str, Any]) -> dict[str, Any] | None:
+    """Describe the authored lateral impulse without inferring from an id label."""
+    push = scenario.get("externalPush")
+    if push is not None:
+        direction = np.asarray(push["directionXY"], dtype=np.float64)
+        norm = float(np.linalg.norm(direction))
+        force_newton = float(push["forceNewton"])
+        if norm <= 0.0:
+            return None
+        direction /= norm
+    else:
+        legacy = scenario.get("lateralPush")
+        if legacy is None:
+            return None
+        force_newton = abs(float(legacy["forceNewton"]))
+        direction = np.asarray(
+            [0.0, 1.0 if float(legacy["forceNewton"]) >= 0.0 else -1.0],
+            dtype=np.float64,
+        )
+        push = legacy
+    if abs(float(direction[1])) <= 1e-9:
+        return None
+    duration_seconds = float(push["durationSeconds"])
+    return {
+        "direction": "positive-y" if direction[1] > 0.0 else "negative-y",
+        "directionXY": direction.tolist(),
+        "forceNewton": force_newton,
+        "durationSeconds": duration_seconds,
+        "lateralImpulseNs": float(
+            force_newton * duration_seconds * direction[1]
+        ),
+    }
+
+
+def summarize_lateral_impact_pairs(
+    samples: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Audit whether opposite labels are also physically mirrored plants."""
+    by_curriculum: dict[str, dict[str, dict[str, Any]]] = {}
+    for sample in samples:
+        impact = sample.get("authoredLateralImpact")
+        if not isinstance(impact, dict):
+            continue
+        curriculum = str(sample["curriculum"])
+        scenarios = by_curriculum.setdefault(curriculum, {})
+        scenarios.setdefault(str(sample["scenario"]), {
+            "scenario": sample["scenario"],
+            "direction": impact["direction"],
+            "directionXY": impact["directionXY"],
+            "forceNewton": impact["forceNewton"],
+            "durationSeconds": impact["durationSeconds"],
+            "lateralImpulseNs": impact["lateralImpulseNs"],
+            "friction": sample["authoredPlant"]["friction"],
+            "payloadKg": sample["authoredPlant"]["payloadKg"],
+            "observationNoiseStd": sample["authoredPlant"][
+                "observationNoiseStd"
+            ],
+            "actuatorDelaySteps": sample["authoredPlant"][
+                "actuatorDelaySteps"
+            ],
+        })
+    audits: dict[str, dict[str, Any]] = {}
+    for curriculum, scenario_map in by_curriculum.items():
+        scenarios = sorted(
+            scenario_map.values(), key=lambda item: str(item["scenario"])
+        )
+        positive = [
+            item for item in scenarios if item["direction"] == "positive-y"
+        ]
+        negative = [
+            item for item in scenarios if item["direction"] == "negative-y"
+        ]
+        pair_complete = len(positive) == 1 and len(negative) == 1
+        opposite_directions = bool(
+            pair_complete
+            and np.allclose(
+                np.asarray(positive[0]["directionXY"]),
+                -np.asarray(negative[0]["directionXY"]),
+                rtol=0.0,
+                atol=1e-9,
+            )
+        )
+        equal_impulse_magnitude = bool(
+            pair_complete
+            and np.isclose(
+                abs(float(positive[0]["lateralImpulseNs"])),
+                abs(float(negative[0]["lateralImpulseNs"])),
+                rtol=0.0,
+                atol=1e-9,
+            )
+        )
+        same_plant = bool(
+            pair_complete
+            and all(
+                np.isclose(
+                    float(positive[0][name]),
+                    float(negative[0][name]),
+                    rtol=0.0,
+                    atol=1e-9,
+                )
+                for name in (
+                    "friction",
+                    "payloadKg",
+                    "observationNoiseStd",
+                    "actuatorDelaySteps",
+                )
+            )
+        )
+        physically_mirrored = bool(
+            pair_complete
+            and opposite_directions
+            and equal_impulse_magnitude
+            and same_plant
+        )
+        audits[curriculum] = {
+            "curriculum": curriculum,
+            "scenarios": scenarios,
+            "pairComplete": pair_complete,
+            "oppositeDirections": opposite_directions,
+            "equalImpulseMagnitude": equal_impulse_magnitude,
+            "samePlant": same_plant,
+            "physicallyMirrored": physically_mirrored,
+            "status": (
+                "PHYSICALLY-MIRRORED"
+                if physically_mirrored
+                else "LOAD-MAGNITUDE-ASYMMETRIC"
+                if pair_complete
+                and opposite_directions
+                and same_plant
+                and not equal_impulse_magnitude
+                else "NOT-A-MIRROR-PAIR"
+            ),
+        }
+    return audits
+
+
 def summarize_mission_outcomes(
     samples: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
@@ -159,8 +306,10 @@ def summarize_mission_outcomes(
             "actorAuthoritySum": 0.0,
             "recoveryTargetEntryCount": 0,
             "actorRecoveryTargetEntryCount": 0,
+            "actorContributedRecoveryTargetEntryCount": 0,
             "episodesWithRecoveryTargetEntry": 0,
             "episodesWithActorRecoveryTargetEntry": 0,
+            "episodesWithActorContributedRecoveryTargetEntry": 0,
             "recoveryStableTransitionCount": 0,
             "episodesWithRecoveryStableTransition": 0,
             "recoveryRelapseCount": 0,
@@ -179,13 +328,22 @@ def summarize_mission_outcomes(
         outcome["actorAuthoritySum"] += float(sample.get("actorAuthoritySum", 0.0))
         target_entries = int(sample.get("recoveryTargetEntryCount", 0))
         actor_target_entries = int(sample.get("actorRecoveryTargetEntryCount", 0))
+        contributed_target_entries = int(
+            sample.get("actorContributedRecoveryTargetEntryCount", 0)
+        )
         stable_transitions = int(sample.get("recoveryStableTransitionCount", 0))
         relapses = int(sample.get("recoveryRelapseCount", 0))
         phase_timeouts = int(sample.get("missionPhaseTimeoutCount", 0))
         outcome["recoveryTargetEntryCount"] += target_entries
         outcome["actorRecoveryTargetEntryCount"] += actor_target_entries
+        outcome["actorContributedRecoveryTargetEntryCount"] += (
+            contributed_target_entries
+        )
         outcome["episodesWithRecoveryTargetEntry"] += int(target_entries > 0)
         outcome["episodesWithActorRecoveryTargetEntry"] += int(actor_target_entries > 0)
+        outcome["episodesWithActorContributedRecoveryTargetEntry"] += int(
+            contributed_target_entries > 0
+        )
         outcome["recoveryStableTransitionCount"] += stable_transitions
         outcome["episodesWithRecoveryStableTransition"] += int(stable_transitions > 0)
         outcome["recoveryRelapseCount"] += relapses
@@ -215,6 +373,85 @@ def summarize_mission_outcomes(
     return summary
 
 
+def summarize_intervention_timing(
+    samples: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Expose whether Program and learned authority arrive inside the Task budget."""
+    summary: dict[str, dict[str, Any]] = {}
+    for sample in samples:
+        key = f"{sample['curriculum']}:{sample['scenario']}"
+        outcome = summary.setdefault(key, {
+            "curriculum": sample["curriculum"],
+            "role": sample["role"],
+            "task": sample["task"],
+            "scenario": sample["scenario"],
+            "episodesStarted": 0,
+            "episodesWithImpactEnd": 0,
+            "episodesWithRecoveryPhase": 0,
+            "episodesWithProgramRecovery": 0,
+            "episodesWithActorAuthority": 0,
+            "actorBeforeProgramEpisodes": 0,
+            "programResponseLatenciesSeconds": [],
+            "actorResponseLatenciesSeconds": [],
+            "programRecoveryBudgetsRemainingSeconds": [],
+            "actorRecoveryBudgetsRemainingSeconds": [],
+        })
+        outcome["episodesStarted"] += 1
+        impact_end = sample.get("impactEndedAtSeconds")
+        recovery_entry = sample.get("recoveryPhaseEnteredAtSeconds")
+        deadline = sample.get("recoveryDeadlineAtSeconds")
+        program_entry = sample.get("firstProgramRecoveryAtSeconds")
+        actor_entry = sample.get("firstActorAuthorityAtSeconds")
+        outcome["episodesWithImpactEnd"] += int(impact_end is not None)
+        outcome["episodesWithRecoveryPhase"] += int(recovery_entry is not None)
+        outcome["episodesWithProgramRecovery"] += int(program_entry is not None)
+        outcome["episodesWithActorAuthority"] += int(actor_entry is not None)
+        outcome["actorBeforeProgramEpisodes"] += int(
+            actor_entry is not None
+            and (program_entry is None or float(actor_entry) < float(program_entry))
+        )
+        if impact_end is not None and program_entry is not None:
+            outcome["programResponseLatenciesSeconds"].append(
+                float(program_entry) - float(impact_end)
+            )
+        if impact_end is not None and actor_entry is not None:
+            outcome["actorResponseLatenciesSeconds"].append(
+                float(actor_entry) - float(impact_end)
+            )
+        if deadline is not None and program_entry is not None:
+            outcome["programRecoveryBudgetsRemainingSeconds"].append(
+                float(deadline) - float(program_entry)
+            )
+        if deadline is not None and actor_entry is not None:
+            outcome["actorRecoveryBudgetsRemainingSeconds"].append(
+                float(deadline) - float(actor_entry)
+            )
+    for outcome in summary.values():
+        for source, prefix in (
+            ("programResponseLatenciesSeconds", "programResponseLatencySeconds"),
+            ("actorResponseLatenciesSeconds", "actorResponseLatencySeconds"),
+            (
+                "programRecoveryBudgetsRemainingSeconds",
+                "programRecoveryBudgetRemainingSeconds",
+            ),
+            (
+                "actorRecoveryBudgetsRemainingSeconds",
+                "actorRecoveryBudgetRemainingSeconds",
+            ),
+        ):
+            values = outcome.pop(source)
+            outcome[prefix] = (
+                {
+                    "minimum": min(values),
+                    "mean": float(np.mean(values)),
+                    "maximum": max(values),
+                }
+                if values
+                else None
+            )
+    return summary
+
+
 def mission_outcome_sample(
     *,
     episode: int,
@@ -234,6 +471,21 @@ def mission_outcome_sample(
         mission_phases
         and entry.get("throughPhase") == mission_phases[-1]["id"]
     )
+    recovery_phase = next(
+        (
+            phase
+            for phase in mission_phases
+            if phase.get("intent") == "recover"
+        ),
+        None,
+    )
+    recovery_timeout_seconds = (
+        float(recovery_phase["exit"]["timeoutSeconds"])
+        if recovery_phase
+        and recovery_phase.get("exit", {}).get("kind") == "recovery-stable"
+        else None
+    )
+    impact = authored_lateral_impact(scenario)
     return {
         "episode": episode,
         "curriculum": str(entry["id"]),
@@ -256,18 +508,37 @@ def mission_outcome_sample(
             int(scenario.get("actuatorDelaySteps", 0))
             + int(domain_sample.get("actuatorDelayJitterSteps", 0))
         ),
+        "authoredLateralImpact": impact,
+        "authoredPlant": {
+            "friction": float(scenario.get("friction", 1.0)),
+            "payloadKg": float(scenario.get("payloadKg", 0.0)),
+            "observationNoiseStd": float(
+                scenario.get("observationNoiseStd", 0.0)
+            ),
+            "actuatorDelaySteps": int(
+                scenario.get("actuatorDelaySteps", 0)
+            ),
+        },
         "steps": 0,
         "completed": False,
         "activePolicySteps": 0,
         "actorAuthoritySum": 0.0,
         "recoveryTargetEntryCount": 0,
         "actorRecoveryTargetEntryCount": 0,
+        "actorContributedRecoveryTargetEntryCount": 0,
+        "actorInterventionSinceTargetEntry": False,
         "recoveryStableTransitionCount": 0,
         "recoveryRelapseCount": 0,
         "recoveryDeadlineExpired": False,
         "missionPhaseTimeoutCount": 0,
         "missionCompleted": False,
         "maximumRecoveryStableProgress": 0.0,
+        "impactEndedAtSeconds": None,
+        "recoveryPhaseEnteredAtSeconds": None,
+        "recoveryTimeoutSeconds": recovery_timeout_seconds,
+        "recoveryDeadlineAtSeconds": None,
+        "firstProgramRecoveryAtSeconds": None,
+        "firstActorAuthorityAtSeconds": None,
         "parameters": domain_sample,
     }
 
@@ -277,14 +548,56 @@ def record_mission_outcome_step(
     info: dict[str, Any],
     actor_authority: float,
     previous_target_satisfied: bool,
+    *,
+    time_seconds: float | None = None,
+    program_telemetry: dict[str, Any] | None = None,
 ) -> bool:
     """Advance an episode ledger row and return the current target state."""
+    now = float(time_seconds) if time_seconds is not None else None
+    if (
+        sample.get("recoveryPhaseEnteredAtSeconds") is None
+        and info.get("missionIntent") == "recover"
+        and info.get("missionPhaseEnteredAtSeconds") is not None
+    ):
+        recovery_entry = float(info["missionPhaseEnteredAtSeconds"])
+        sample["recoveryPhaseEnteredAtSeconds"] = recovery_entry
+        timeout = sample.get("recoveryTimeoutSeconds")
+        sample["recoveryDeadlineAtSeconds"] = (
+            recovery_entry + float(timeout) if timeout is not None else None
+        )
+    if (
+        sample.get("firstProgramRecoveryAtSeconds") is None
+        and isinstance(program_telemetry, dict)
+        and program_telemetry.get("mode") == "recovery"
+        and now is not None
+    ):
+        sample["firstProgramRecoveryAtSeconds"] = now
+    if (
+        sample.get("firstActorAuthorityAtSeconds") is None
+        and actor_authority > 0.0
+        and now is not None
+    ):
+        sample["firstActorAuthorityAtSeconds"] = now
     target_satisfied = bool(info.get("recoveryTargetSatisfied"))
+    sample["actorInterventionSinceTargetEntry"] = bool(
+        sample.get("actorInterventionSinceTargetEntry")
+        or actor_authority > 0.0
+    )
     if target_satisfied and not previous_target_satisfied:
         sample["recoveryTargetEntryCount"] += 1
         sample["actorRecoveryTargetEntryCount"] += int(actor_authority > 0.0)
+        sample["actorContributedRecoveryTargetEntryCount"] += int(
+            sample["actorInterventionSinceTargetEntry"]
+        )
+        sample["actorInterventionSinceTargetEntry"] = False
     mission_transition = info.get("missionTransition")
     if isinstance(mission_transition, dict):
+        if (
+            sample.get("impactEndedAtSeconds") is None
+            and mission_transition.get("condition") == "external-push-end"
+            and now is not None
+        ):
+            sample["impactEndedAtSeconds"] = now
         sample["recoveryStableTransitionCount"] += int(
             mission_transition.get("condition") == "recovery-stable"
             and mission_transition.get("conditionMet") is True
@@ -461,6 +774,148 @@ def masked_mean(values: torch.Tensor, masks: torch.Tensor) -> torch.Tensor:
     return (values * masks).sum() / denominator
 
 
+@dataclass(frozen=True)
+class BilateralSymmetry:
+    """A declared involution over one compiled Observation/Action ABI."""
+
+    contract: dict[str, Any]
+    observation_permutation: np.ndarray
+    observation_signs: np.ndarray
+    action_permutation: np.ndarray
+    action_signs: np.ndarray
+
+    def mirror_observation(self, value: np.ndarray) -> np.ndarray:
+        array = np.asarray(value)
+        return array[..., self.observation_permutation] * self.observation_signs
+
+    def mirror_action(self, value: np.ndarray) -> np.ndarray:
+        array = np.asarray(value)
+        return array[..., self.action_permutation] * self.action_signs
+
+    def mirror_action_tensor(self, value: torch.Tensor) -> torch.Tensor:
+        permutation = torch.as_tensor(
+            self.action_permutation, dtype=torch.long, device=value.device
+        )
+        signs = torch.as_tensor(
+            self.action_signs, dtype=value.dtype, device=value.device
+        )
+        return value.index_select(-1, permutation) * signs
+
+
+def _expand_symmetry_transform(
+    size: int,
+    definition: dict[str, Any],
+    label: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    block_size = int(definition.get("blockSize", size))
+    if block_size <= 0 or size % block_size != 0:
+        raise RuntimeError(
+            f"Bilateral symmetry {label} blockSize must divide channel size {size}"
+        )
+    permutation = np.asarray(definition.get("permutation"), dtype=np.int64)
+    signs = np.asarray(definition.get("signs"), dtype=np.float64)
+    if permutation.shape != (block_size,) or signs.shape != (block_size,):
+        raise RuntimeError(
+            f"Bilateral symmetry {label} requires {block_size} permutation and sign entries"
+        )
+    if sorted(permutation.tolist()) != list(range(block_size)):
+        raise RuntimeError(
+            f"Bilateral symmetry {label} permutation must contain each block index once"
+        )
+    if not np.all(np.isin(signs, (-1.0, 1.0))):
+        raise RuntimeError(
+            f"Bilateral symmetry {label} signs must contain only -1 or 1"
+        )
+    if not np.array_equal(permutation[permutation], np.arange(block_size)):
+        raise RuntimeError(
+            f"Bilateral symmetry {label} permutation must be an involution"
+        )
+    if not np.allclose(signs * signs[permutation], 1.0):
+        raise RuntimeError(
+            f"Bilateral symmetry {label} signs must invert back to identity"
+        )
+    blocks = size // block_size
+    expanded_permutation = np.concatenate(
+        [permutation + block * block_size for block in range(blocks)]
+    )
+    expanded_signs = np.tile(signs, blocks)
+    return expanded_permutation, expanded_signs
+
+
+def compile_bilateral_symmetry(
+    definition: dict[str, Any] | None,
+    observation_contract: dict[str, Any],
+    action_size: int,
+) -> BilateralSymmetry | None:
+    """Validate a robot-authored reflection against the exact compiled ABI."""
+    if definition is None:
+        return None
+    if definition.get("kind") != "lateral-reflection-v1":
+        raise RuntimeError("Unsupported bilateral symmetry kind")
+    coefficient = float(definition.get("policyConsistencyCoefficient", 0.0))
+    if not np.isfinite(coefficient) or coefficient <= 0.0:
+        raise RuntimeError(
+            "Bilateral symmetry policyConsistencyCoefficient must be positive"
+        )
+    transforms = definition.get("observationTransforms")
+    identities = definition.get("identityObservationChannels")
+    if not isinstance(transforms, dict) or not isinstance(identities, list):
+        raise RuntimeError(
+            "Bilateral symmetry requires observationTransforms and identityObservationChannels"
+        )
+    channels = observation_contract["channels"]
+    channel_names = [str(channel["name"]) for channel in channels]
+    declared_names = set(map(str, transforms)) | set(map(str, identities))
+    if declared_names != set(channel_names):
+        missing = sorted(set(channel_names) - declared_names)
+        unknown = sorted(declared_names - set(channel_names))
+        raise RuntimeError(
+            "Bilateral symmetry must classify every Observation channel exactly "
+            f"(missing={missing}, unknown={unknown})"
+        )
+    overlap = set(map(str, transforms)) & set(map(str, identities))
+    if overlap:
+        raise RuntimeError(
+            f"Bilateral symmetry channels cannot be transformed and identity: {sorted(overlap)}"
+        )
+    observation_size = int(observation_contract["size"])
+    observation_permutation = np.arange(observation_size, dtype=np.int64)
+    observation_signs = np.ones(observation_size, dtype=np.float64)
+    offset = 0
+    for channel in channels:
+        name = str(channel["name"])
+        size = int(channel["size"])
+        if name in transforms:
+            permutation, signs = _expand_symmetry_transform(
+                size, transforms[name], f"Observation channel '{name}'"
+            )
+            observation_permutation[offset : offset + size] = (
+                offset + permutation
+            )
+            observation_signs[offset : offset + size] = signs
+        offset += size
+    action_definition = definition.get("actionTransform")
+    if not isinstance(action_definition, dict):
+        raise RuntimeError("Bilateral symmetry requires an actionTransform")
+    action_permutation, action_signs = _expand_symmetry_transform(
+        action_size, action_definition, "Action"
+    )
+    canonical_contract = deepcopy(definition)
+    canonical_contract["identityObservationChannels"] = [
+        name for name in channel_names if name in set(map(str, identities))
+    ]
+    canonical_contract["observationSize"] = observation_size
+    canonical_contract["actionSize"] = action_size
+    canonical_contract["validatedInvolution"] = True
+    return BilateralSymmetry(
+        contract=canonical_contract,
+        observation_permutation=observation_permutation,
+        observation_signs=observation_signs,
+        action_permutation=action_permutation,
+        action_signs=action_signs,
+    )
+
+
 class RunningNormalizer:
     def __init__(self, size: int):
         self.count = 1e-4
@@ -625,6 +1080,7 @@ def run_deterministic_mission_probe(
                         torch.from_numpy(normalized).unsqueeze(0)
                     )
                 raw_action = mean[0].numpy()
+                prior_telemetry: dict[str, Any] | None = None
                 if (
                     action_transform
                     and action_transform.get("kind")
@@ -637,6 +1093,14 @@ def run_deterministic_mission_probe(
                     prior_action = program_prior.act(
                         observation_map, float(environment.data.time)
                     )
+                    telemetry_provider = getattr(program_prior, "telemetry", None)
+                    prior_telemetry = (
+                        telemetry_provider()
+                        if telemetry_provider is not None
+                        else None
+                    )
+                    if not isinstance(prior_telemetry, dict):
+                        prior_telemetry = None
                     residual_gate_scale, _ = advance_program_residual_gate_scale(
                         action_transform,
                         program_prior,
@@ -672,6 +1136,8 @@ def run_deterministic_mission_probe(
                     result.info,
                     actor_authority,
                     previous_target_satisfied,
+                    time_seconds=float(environment.data.time),
+                    program_telemetry=prior_telemetry,
                 )
                 observation_map = result.observation
                 observation = environment.vector(observation_map)
@@ -693,6 +1159,8 @@ def run_deterministic_mission_probe(
         "trainingBudgetCharged": False,
         "episodes": samples,
         "actuatorDelayCoverage": summarize_actuator_delay_coverage(samples),
+        "lateralImpactPairAudit": summarize_lateral_impact_pairs(samples),
+        "interventionTimingCoverage": summarize_intervention_timing(samples),
         "missionOutcomeCoverage": summarize_mission_outcomes(samples),
     }
 
@@ -734,6 +1202,9 @@ def deterministic_checkpoint_rank(
     actor_target_entry = lambda sample: bool(
         int(sample.get("actorRecoveryTargetEntryCount", 0)) > 0
     )
+    actor_contributed_target_entry = lambda sample: bool(
+        int(sample.get("actorContributedRecoveryTargetEntryCount", 0)) > 0
+    )
     progress = [
         float(sample.get("maximumRecoveryStableProgress", 0.0))
         for sample in episodes
@@ -748,6 +1219,8 @@ def deterministic_checkpoint_rank(
         "missionCompletedEpisodes": sum(int(mission_completed(sample)) for sample in episodes),
         "minimumRecoveryStableTransitionsPerScenario": minimum_per_scenario(stable_transition),
         "recoveryStableTransitionCount": sum(stable_transition(sample) for sample in episodes),
+        "minimumActorContributedTargetEntryEpisodesPerScenario": minimum_per_scenario(actor_contributed_target_entry),
+        "actorContributedTargetEntryEpisodes": sum(int(actor_contributed_target_entry(sample)) for sample in episodes),
         "minimumActorTargetEntryEpisodesPerScenario": minimum_per_scenario(actor_target_entry),
         "actorTargetEntryEpisodes": sum(int(actor_target_entry(sample)) for sample in episodes),
         "recoveryRelapseCount": sum(
@@ -767,6 +1240,8 @@ def deterministic_checkpoint_rank(
         rank["missionCompletedEpisodes"],
         rank["minimumRecoveryStableTransitionsPerScenario"],
         rank["recoveryStableTransitionCount"],
+        rank["minimumActorContributedTargetEntryEpisodesPerScenario"],
+        rank["actorContributedTargetEntryEpisodes"],
         rank["minimumActorTargetEntryEpisodesPerScenario"],
         rank["actorTargetEntryEpisodes"],
         -rank["recoveryRelapseCount"],
@@ -783,6 +1258,7 @@ class PPOTrainer:
     action_transform: dict[str, Any] | None = None
     initial_log_std: float = -0.5
     history_encoder: dict[str, Any] | None = None
+    bilateral_symmetry: dict[str, Any] | None = None
 
     def train(self, request: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         config = request["training"]
@@ -922,6 +1398,11 @@ class PPOTrainer:
         observation_map = environment.reset(); observation = environment.vector(observation_map)
         episode_recovery_target_satisfied = environment.recovery_target_satisfied()
         observation_size = observation.size; action_size = environment.model.nu
+        bilateral_symmetry = compile_bilateral_symmetry(
+            self.bilateral_symmetry,
+            request["compiled"]["observationContract"],
+            action_size,
+        )
         residual_scale_vector = (
             program_residual_scale_vector(action_transform, action_size)
             if action_transform
@@ -930,6 +1411,8 @@ class PPOTrainer:
         )
         residual_gate_scale_state = 0.0
         architecture: dict[str, Any] = {"kind": "mlp-actor-critic", "observationSize": observation_size, "actionSize": action_size, "hiddenSizes": self.hidden_sizes, "activation": "tanh", "distribution": "diagonal-normal"}
+        if bilateral_symmetry:
+            architecture["bilateralSymmetry"] = bilateral_symmetry.contract
         if self.history_encoder:
             offsets: dict[str, int] = {}; offset = 0
             for channel in request["compiled"]["observationContract"]["channels"]:
@@ -980,6 +1463,7 @@ class PPOTrainer:
         episode_elite_candidates: list[tuple[np.ndarray, np.ndarray]] = []
         episode_elite_admitted = False
         elite_replay_admissions = 0
+        elite_replay_mirrored_admissions = 0
         elite_replay_episode_admissions = 0
         elite_replay_admission_coverage: dict[str, dict[str, Any]] = {}
         deterministic_checkpoint_candidates: list[dict[str, Any]] = []
@@ -1051,6 +1535,7 @@ class PPOTrainer:
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
+            batch_mirrored_obs: list[np.ndarray] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability", "recoverySuccess", "recoveryRelapsePenalty", "phaseTimeoutPenalty", "timeoutFreeCompletion")}
             batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape", "taskTargetProgress", "taskTargetEntry")}
@@ -1058,8 +1543,26 @@ class PPOTrainer:
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
             batch_elite_replay_losses: list[float] = []
+            batch_symmetry_losses: list[float] = []
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
-                normalizer.update(observation); normalized = normalizer.normalize(observation)
+                normalizer.update(observation)
+                if (
+                    bilateral_symmetry
+                    and bilateral_symmetry.contract.get(
+                        "augmentNormalizer", False
+                    )
+                ):
+                    normalizer.update(
+                        bilateral_symmetry.mirror_observation(observation)
+                    )
+                normalized = normalizer.normalize(observation)
+                mirrored_normalized = (
+                    normalizer.normalize(
+                        bilateral_symmetry.mirror_observation(observation)
+                    )
+                    if bilateral_symmetry
+                    else None
+                )
                 obs_tensor = torch.from_numpy(normalized).unsqueeze(0)
                 with torch.no_grad():
                     mean, value, log_std = network(obs_tensor); distribution = torch.distributions.Normal(mean, log_std.exp()); action_tensor = distribution.sample(); log_prob = distribution.log_prob(action_tensor).sum(-1)
@@ -1129,20 +1632,44 @@ class PPOTrainer:
                 episode_sample["activePolicySteps"] += int(actor_authority > 0.0)
                 episode_sample["actorAuthoritySum"] += actor_authority
                 previous_target_satisfied = episode_recovery_target_satisfied
+                previous_contributed_target_entries = int(
+                    episode_sample.get(
+                        "actorContributedRecoveryTargetEntryCount", 0
+                    )
+                )
                 episode_recovery_target_satisfied = record_mission_outcome_step(
                     episode_sample,
                     result.info,
                     actor_authority,
                     episode_recovery_target_satisfied,
+                    time_seconds=float(environment.data.time),
+                    program_telemetry=prior_telemetry,
                 )
                 actor_target_entry = bool(
                     actor_authority > 0.0
                     and episode_recovery_target_satisfied
                     and not previous_target_satisfied
                 )
+                actor_contributed_target_entry = bool(
+                    int(
+                        episode_sample.get(
+                            "actorContributedRecoveryTargetEntryCount", 0
+                        )
+                    )
+                    > previous_contributed_target_entries
+                )
+                elite_triggered = bool(
+                    elite_replay_config
+                    and (
+                        actor_target_entry
+                        if elite_replay_config["trigger"]
+                        == "actor-recovery-target-entry"
+                        else actor_contributed_target_entry
+                    )
+                )
                 if (
                     elite_replay_config
-                    and actor_target_entry
+                    and elite_triggered
                     and not episode_elite_admitted
                     and (
                         elite_replay_config.get("scope", "all-progression")
@@ -1153,6 +1680,23 @@ class PPOTrainer:
                     for elite_observation, elite_action in episode_elite_candidates:
                         elite_replay_observations.append(elite_observation)
                         elite_replay_actions.append(elite_action)
+                        if (
+                            bilateral_symmetry
+                            and bilateral_symmetry.contract.get(
+                                "mirrorEliteReplay", False
+                            )
+                        ):
+                            elite_replay_observations.append(
+                                bilateral_symmetry.mirror_observation(
+                                    elite_observation
+                                ).astype(np.float32)
+                            )
+                            elite_replay_actions.append(
+                                bilateral_symmetry.mirror_action(
+                                    elite_action
+                                ).astype(np.float32)
+                            )
+                            elite_replay_mirrored_admissions += 1
                     elite_replay_admissions += len(episode_elite_candidates)
                     elite_replay_episode_admissions += 1
                     admission_key = (
@@ -1169,14 +1713,25 @@ class PPOTrainer:
                             ),
                             "episodes": 0,
                             "transitions": 0,
+                            "mirroredTransitions": 0,
                         },
                     )
                     admission["episodes"] += 1
                     admission["transitions"] += len(episode_elite_candidates)
+                    admission["mirroredTransitions"] += (
+                        len(episode_elite_candidates)
+                        if bilateral_symmetry
+                        and bilateral_symmetry.contract.get(
+                            "mirrorEliteReplay", False
+                        )
+                        else 0
+                    )
                     episode_elite_admitted = True
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
                 batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(learning_reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
+                if mirrored_normalized is not None:
+                    batch_mirrored_obs.append(mirrored_normalized)
                 batch_base_rewards.append(result.reward); batch_quality_penalties.append(quality_penalty)
                 for name, value in quality_terms.items(): batch_quality_terms[name].append(value)
                 batch_mission_bonuses.append(mission_bonus)
@@ -1242,6 +1797,11 @@ class PPOTrainer:
             policy_masks = np.asarray(batch_policy_masks, dtype=np.float32)
             advantages = normalize_masked_advantages(advantages, policy_masks)
             tensors = (torch.tensor(np.asarray(batch_obs)), torch.tensor(np.asarray(batch_actions)), torch.tensor(np.asarray(batch_log_probs)), torch.tensor(advantages), torch.tensor(returns), torch.tensor(policy_masks))
+            mirrored_observation_tensor = (
+                torch.tensor(np.asarray(batch_mirrored_obs))
+                if bilateral_symmetry
+                else None
+            )
             losses: list[float] = []
             indices = np.arange(len(batch_rewards))
             for _ in range(int(config["epochs"])):
@@ -1254,6 +1814,23 @@ class PPOTrainer:
                     policy_loss = -masked_mean(torch.min(ratio * advantage_t, clipped * advantage_t), policy_mask_t); value_loss = 0.5 * torch.square(value - return_t).mean()
                     residual_penalty = float(config.get("residualPenalty", 0.0)) * masked_mean(torch.square(mean).mean(dim=-1), policy_mask_t)
                     elite_replay_loss = torch.zeros((), dtype=mean.dtype)
+                    symmetry_loss = torch.zeros((), dtype=mean.dtype)
+                    if bilateral_symmetry and mirrored_observation_tensor is not None:
+                        mirrored_mean, _, _ = network(
+                            mirrored_observation_tensor[selected]
+                        )
+                        symmetry_error = torch.square(
+                            mirrored_mean
+                            - bilateral_symmetry.mirror_action_tensor(mean)
+                        ).mean(dim=-1)
+                        symmetry_loss = float(
+                            bilateral_symmetry.contract[
+                                "policyConsistencyCoefficient"
+                            ]
+                        ) * masked_mean(symmetry_error, policy_mask_t)
+                        batch_symmetry_losses.append(
+                            float(symmetry_loss.detach().item())
+                        )
                     if elite_replay_config and elite_replay_observations:
                         elite_batch_size = min(
                             int(elite_replay_config["minibatchSize"]),
@@ -1283,7 +1860,7 @@ class PPOTrainer:
                         batch_elite_replay_losses.append(
                             float(elite_replay_loss.detach().item())
                         )
-                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss - float(config["entropyCoefficient"]) * entropy
+                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + symmetry_loss - float(config["entropyCoefficient"]) * entropy
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
             metrics.append({
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
@@ -1297,6 +1874,7 @@ class PPOTrainer:
                 "meanResidualL2": float(np.mean(batch_residual_l2)) if batch_residual_l2 else None,
                 "activePolicyFraction": float(np.mean(policy_masks > 0.0)),
                 "meanEliteReplayLoss": float(np.mean(batch_elite_replay_losses)) if batch_elite_replay_losses else None,
+                "meanBilateralSymmetryLoss": float(np.mean(batch_symmetry_losses)) if batch_symmetry_losses else None,
                 "eliteReplayTransitions": len(elite_replay_observations),
                 "eliteReplayEpisodeAdmissions": elite_replay_episode_admissions,
             })
@@ -1341,6 +1919,8 @@ class PPOTrainer:
                     "missionCompletedEpisodes",
                     "minimumRecoveryStableTransitionsPerScenario",
                     "recoveryStableTransitionCount",
+                    "minimumActorContributedTargetEntryEpisodesPerScenario",
+                    "actorContributedTargetEntryEpisodes",
                     "minimumActorTargetEntryEpisodesPerScenario",
                     "actorTargetEntryEpisodes",
                     "negativeRecoveryRelapseCount",
@@ -1395,6 +1975,26 @@ class PPOTrainer:
             "actuatorDelayCoverage": summarize_actuator_delay_coverage(
                 domain_samples
             ),
+            "lateralImpactPairAudit": summarize_lateral_impact_pairs(
+                domain_samples
+            ),
+            "interventionTimingCoverage": summarize_intervention_timing(
+                domain_samples
+            ),
+            "bilateralSymmetry": {
+                **bilateral_symmetry.contract,
+                "normalizerSamplesPerEnvironmentStep": (
+                    2
+                    if bilateral_symmetry.contract.get(
+                        "augmentNormalizer", False
+                    )
+                    else 1
+                ),
+                "sourceEliteReplayTransitions": elite_replay_admissions,
+                "mirroredEliteReplayTransitions": (
+                    elite_replay_mirrored_admissions
+                ),
+            } if bilateral_symmetry else None,
             "missionOutcomeActionMode": "stochastic-sampled",
             "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
             "deterministicMissionProbe": deterministic_mission_probe,
@@ -1402,6 +2002,7 @@ class PPOTrainer:
             "eliteReplay": {
                 **elite_replay_config,
                 "admittedTransitions": elite_replay_admissions,
+                "mirroredTransitions": elite_replay_mirrored_admissions,
                 "retainedTransitions": len(elite_replay_observations),
                 "admittedEpisodes": elite_replay_episode_admissions,
                 "admissionCoverage": dict(
