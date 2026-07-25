@@ -850,3 +850,41 @@ violations regressed from 43 to 44, and normalized severity regressed from
 explanation. Checkpoint selection exposed and preserved a real transient
 behavior, but it could not manufacture the missing bilateral,
 complete-Mission evidence.
+
+## Interleaved Mission progression
+
+Sequential progression can create a deployment-data blind spot: a recovery
+behavior may emerge during a short diagnostic prefix and disappear before
+complete-Mission stages begin. Training v3 may therefore declare
+`progressionSampling: interleaved-step-share`. The cumulative `untilStep`
+boundaries still define an exact per-stage step quota, but a deterministic
+deficit scheduler interleaves those quotas from the beginning of Training.
+Every episode still resets to Mission phase one and executes one declared
+Scenario; no fallen-state reset, phase teleport, or independent Skill
+promotion is introduced.
+
+This schedule is a data-collection policy, not a test change. Complete exact
+and randomized Missions now observe early, middle, and late Policy states,
+while short prefixes retain only their declared diagnostic quota. Training
+metrics publish target and actual step share, first/last observed step, and
+per-stage actor authority. Elite replay additionally publishes admission
+coverage by progression stage and Scenario, including whether each admitted
+tail came from a complete Mission. Studio and headless Policy inspection can
+therefore distinguish genuinely bilateral deployment evidence from a replay
+buffer populated by one side or by diagnostic prefixes.
+
+The first governed comparison used the same 65,536-step budget and
+32,768/16,384/16,384 quotas as the sequential run. Actual shares were
+`49.01%`, `25.65%`, and `25.34%`; complete-Mission collection began at step
+zero, proving that the temporal blind spot was removed. The result also
+demonstrated why sampling and evaluation must remain separate claims:
+complete-only replay still admitted just one 64-step left/exact tail, no
+deterministic checkpoint achieved bilateral actor target entry or stable
+recovery, and every complete probe timed out. The locked Judge rejected Policy
+`articulated-inverted-escape-6bcc5001e7faabbe` with score `49.004078`,
+violations `43 → 44`, and normalized severity `87.786 → 89.151`.
+
+Mujica therefore reports interleaving as data-collection provenance, never as
+evidence of integrated competence. A Candidate is useful only when the same
+continuous Mission produces bilateral recovery and downstream command
+evidence under the locked Judge.

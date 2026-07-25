@@ -623,6 +623,7 @@ export const trainingSchema = z.union([
   }),
   z.object({
     version: z.literal(3), ...trainingOptimizationFields,
+    progressionSampling: z.enum(["sequential", "interleaved-step-share"]).optional(),
     deterministicCheckpoint: deterministicCheckpointSchema.optional(),
     mission: z.object({
       task: idSchema,

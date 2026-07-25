@@ -354,3 +354,45 @@ left-side behavior but did not solve bilateral deployment. The next bounded
 problem is collecting multiple complete-Mission target-entry trajectories on
 both sides and physical profiles; neither later-weight rollback nor a larger
 distillation coefficient is supported as the next intervention.
+
+## Interleaved complete-Mission collection
+
+The current sequential schedule spends the first 32,984 observed steps on the
+recovery prefix, then 16,812 on exact complete Missions and 15,740 on
+randomized complete Missions. That ordering can miss transient useful Policies
+before the deployment-context stages begin.
+
+Training v3 now supports deterministic `interleaved-step-share` progression.
+The existing cumulative boundaries become fixed quotas while prefix, exact
+complete Mission, and randomized complete Mission episodes are deficit
+scheduled throughout the run. Every episode still starts at approach and
+experiences the authored impact. Elite replay records admission coverage by
+stage and direction so a nominal replay count can no longer hide one-sided or
+prefix-only evidence.
+
+The governed comparison kept the same 32,768/16,384/16,384 step quotas, total
+budget, seed, architecture, rewards, Program authority, Task, Scenarios, and
+locked Judge. It changed only the temporal schedule, restricted elite
+admissions to complete-Mission stages, and used the already-governed
+deterministic checkpoint selector for publication.
+
+Session `session-a2b1b65d1340da02` confirmed the scheduler behaved as designed.
+The recovery prefix, exact complete Mission, and randomized complete Mission
+received `49.01%`, `25.65%`, and `25.34%` of 65,536 steps. Complete-Mission
+collection began at global step zero instead of after the prefix, and all
+started episodes still began at approach.
+
+The learning hypothesis was falsified. Complete-Mission-only elite replay
+again admitted one 64-step left/exact tail and no right or randomized tail.
+All complete Missions timed out recovery, no deterministic checkpoint
+produced an actor target entry, stable transition, or timeout-free Mission,
+and the earliest tied checkpoint at step 8,192 was restored. The locked Judge
+returned `REVERT`: score `62.722325 → 49.004078`, violations `43 → 44`, and
+normalized severity `87.786 → 89.151`, with new Mission and handoff gate
+regressions.
+
+Interleaving is retained as the honest option when simultaneous Mission data
+collection is required, but it is not itself a recovery algorithm. The next
+intervention must increase bilateral actor-authorized recovery signal in the
+complete Mission—by changing authority/credit or the recovery policy—not
+merely reschedule the same sparse trajectories.

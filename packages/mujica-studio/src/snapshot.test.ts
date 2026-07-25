@@ -162,6 +162,7 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Mission phase learning evidence");
     expect(html).toContain("curriculum sampling");
     expect(html).toContain("Mission progression · every episode starts at Mission phase 1");
+    expect(html).toContain("interleaved-step-share");
     expect(html).toContain("Stochastic training rollout ledger");
     expect(html).toContain("exploration evidence, not deployable Policy proof");
     expect(html).toContain("Frozen deterministic Policy probe");
@@ -169,6 +170,7 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Policy consolidation");
     expect(html).toContain("Elite recovery replay");
     expect(html).toContain("exploration-to-mean consolidation");
+    expect(html).toContain("diagnostic prefix");
     expect(html).toContain("Frozen checkpoint");
     expect(html).toContain("Deterministic checkpoint selection");
     expect(html).toContain("Frozen-weight Authority Counterfactual");

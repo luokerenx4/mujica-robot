@@ -1,0 +1,63 @@
+{
+  "version": 4,
+  "id": "001-5ad4e17afc61",
+  "experimentHash": "5ad4e17afc6182dc4cf9a8fa969252f49bf0a07b4a02d27896ecd541e69e8eb3",
+  "sequence": 1,
+  "sessionId": "session-a2b1b65d1340da02",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "1dee5ab8d8982d4f918b0f4ee710bf072873d9c879c9c8cf578246f8e87a454b",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "c9430760fd3ef609ffbda4df9b99d0168d5349b384c8157afede26795f2d99c4",
+  "historyHash": "29a114dc6d35975280bf53174d9943411bb4dcbab44a85da75009e10862d9bfc",
+  "historyCount": 16,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "interleaved-complete-mission-elite-collection",
+    "hypothesis": "Sequential progression observed 76 recovery-prefix episodes before any complete-Mission training and complete-only elite replay admitted only one successful tail. Preserve the exact 32,768/16,384/16,384 stage quotas and every physical, reward, authority, seed, and Judge input, but deficit-schedule prefix, exact complete Mission, and randomized complete Mission episodes throughout Training so transient useful Policies can create deployment-context evidence before later PPO updates erase them.",
+    "expectedEffect": "Admit multiple complete-Mission target-entry tails across both impact directions and physical profiles, produce a frozen checkpoint with nonzero worst-direction actor target-entry coverage, then improve the locked Mission violation tier without exchanging left/right failures or regressing exact and handoff gates."
+  },
+  "policyId": "articulated-inverted-escape-6bcc5001e7faabbe",
+  "score": 49.00407762763017,
+  "delta": -13.718247039440342,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 44,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 89.15092581682742,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "4aa6eb5f33f9571d0c95417c474266eba82286335d8a2b26eb24010aeeeb77ef",
+    "acceptedRunId": "run-6026f0b21a733161",
+    "candidateRunId": "run-e43f96245f78939d",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 187003,
+  "completed": true
+}

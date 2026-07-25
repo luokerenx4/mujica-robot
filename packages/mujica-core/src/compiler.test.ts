@@ -579,6 +579,14 @@ describe("Robot Assembly compiler", () => {
     }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
+      progressionSampling: "interleaved-step-share",
+    }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      progressionSampling: "random-stage",
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
       progression: curriculum.progression.slice(0, 2),
     }).success).toBe(false);
   });

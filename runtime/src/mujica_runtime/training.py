@@ -750,15 +750,37 @@ class PPOTrainer:
                 "task": request["task"],
                 "scenarios": request["scenarios"],
             }]
-        weights = np.asarray(
-            [1.0 for _ in curriculum]
+        progression_sampling = (
+            str(config.get("progressionSampling", "sequential"))
             if progression
+            else None
+        )
+        if progression_sampling not in (None, "sequential", "interleaved-step-share"):
+            raise RuntimeError(
+                f"Unsupported Mission progression sampling '{progression_sampling}'"
+            )
+        progression_step_budgets = (
+            [
+                int(entry["untilStep"])
+                - (
+                    0
+                    if index == 0
+                    else int(curriculum[index - 1]["untilStep"])
+                )
+                for index, entry in enumerate(curriculum)
+            ]
+            if progression
+            else None
+        )
+        weights = np.asarray(
+            progression_step_budgets
+            if progression_step_budgets is not None
             else [float(entry["weight"]) for entry in curriculum],
             dtype=np.float64,
         )
         weights /= weights.sum()
         curriculum_sampling = (
-            "mission-progression"
+            progression_sampling
             if progression
             else str(config.get("curriculumSampling", "episode-probability"))
         )
@@ -774,13 +796,19 @@ class PPOTrainer:
 
         def make_environment() -> RobotEnvironment:
             nonlocal episode_index
-            curriculum_index = (
-                select_progression_index(curriculum, completed_steps)
-                if progression
-                else select_curriculum_index(
-                    weights, curriculum_step_counts, curriculum_rng, curriculum_sampling
+            if progression and progression_sampling == "sequential":
+                curriculum_index = select_progression_index(
+                    curriculum, completed_steps
                 )
-            )
+            else:
+                curriculum_index = select_curriculum_index(
+                    weights,
+                    curriculum_step_counts,
+                    curriculum_rng,
+                    "step-share"
+                    if progression
+                    else str(curriculum_sampling),
+                )
             entry = curriculum[curriculum_index]
             entry_id = str(entry["id"])
             scenario_index = scenario_indices[entry_id]
@@ -882,6 +910,7 @@ class PPOTrainer:
         episode_elite_admitted = False
         elite_replay_admissions = 0
         elite_replay_episode_admissions = 0
+        elite_replay_admission_coverage: dict[str, dict[str, Any]] = {}
         deterministic_checkpoint_candidates: list[dict[str, Any]] = []
         selected_checkpoint_state: dict[str, torch.Tensor] | None = None
         selected_checkpoint_normalizer: dict[str, Any] | None = None
@@ -1055,6 +1084,24 @@ class PPOTrainer:
                         elite_replay_actions.append(elite_action)
                     elite_replay_admissions += len(episode_elite_candidates)
                     elite_replay_episode_admissions += 1
+                    admission_key = (
+                        f"{episode_sample['curriculum']}:"
+                        f"{episode_sample['scenario']}"
+                    )
+                    admission = elite_replay_admission_coverage.setdefault(
+                        admission_key,
+                        {
+                            "curriculum": episode_sample["curriculum"],
+                            "scenario": episode_sample["scenario"],
+                            "completeMissionStage": bool(
+                                episode_sample.get("completeMissionStage")
+                            ),
+                            "episodes": 0,
+                            "transitions": 0,
+                        },
+                    )
+                    admission["episodes"] += 1
+                    admission["transitions"] += len(episode_elite_candidates)
                     episode_elite_admitted = True
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
@@ -1283,7 +1330,11 @@ class PPOTrainer:
                 "admittedTransitions": elite_replay_admissions,
                 "retainedTransitions": len(elite_replay_observations),
                 "admittedEpisodes": elite_replay_episode_admissions,
+                "admissionCoverage": dict(
+                    sorted(elite_replay_admission_coverage.items())
+                ),
             } if elite_replay_config else None,
+            "progressionSampling": progression_sampling,
             "curriculumCoverage": {
                 str(entry["id"]): {
                     "role": entry["role"],
@@ -1304,8 +1355,26 @@ class PPOTrainer:
             "missionProgression": {
                 str(entry["id"]): {
                     "throughPhase": entry["throughPhase"],
-                    "scheduledStartStep": 0 if index == 0 else int(curriculum[index - 1]["untilStep"]),
-                    "scheduledUntilStep": int(entry["untilStep"]),
+                    "sampling": progression_sampling,
+                    "quotaSteps": int(progression_step_budgets[index]),
+                    "targetStepShare": float(weights[index]),
+                    "actualStepShare": float(
+                        curriculum_step_counts[index] / completed_steps
+                    ),
+                    "stepShareDeviation": float(
+                        curriculum_step_counts[index] / completed_steps
+                        - weights[index]
+                    ),
+                    "scheduledStartStep": (
+                        0
+                        if index == 0
+                        else int(curriculum[index - 1]["untilStep"])
+                    ) if progression_sampling == "sequential" else None,
+                    "scheduledUntilStep": (
+                        int(entry["untilStep"])
+                        if progression_sampling == "sequential"
+                        else None
+                    ),
                     "episodeEndSeconds": float(entry["episodeEndSeconds"]),
                     "episodeEndPhase": entry.get("episodeEndPhase"),
                     "meanObservedDurationSeconds": float(np.mean([

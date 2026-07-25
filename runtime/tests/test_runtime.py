@@ -2164,6 +2164,7 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertLessEqual(
                 metrics["eliteReplay"]["retainedTransitions"], 32
             )
+            self.assertEqual(metrics["eliteReplay"]["admissionCoverage"], {})
             self.assertEqual(
                 metrics["missionOutcomeActionMode"], "stochastic-sampled"
             )
@@ -2368,6 +2369,7 @@ class RuntimeContractTest(unittest.TestCase):
             metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
             stages = metrics["missionProgression"]
             self.assertEqual(metrics["trainingMode"], "mission-progression")
+            self.assertEqual(metrics["progressionSampling"], "sequential")
             self.assertIsNone(metrics["curriculumCoverage"])
             self.assertEqual(stages["approach-prefix"]["episodeEndSeconds"], 0.02)
             self.assertEqual(stages["complete-mission"]["episodeEndSeconds"], 0.06)
@@ -2460,6 +2462,38 @@ class RuntimeContractTest(unittest.TestCase):
                 ),
             )
             self.assertEqual(metrics["totalSteps"], 64)
+
+        interleaved_request = json.loads(json.dumps(request))
+        interleaved_request["training"].pop("deterministicCheckpoint")
+        interleaved_request["training"]["progressionSampling"] = (
+            "interleaved-step-share"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            PPOTrainer(hidden_sizes=[16]).train(
+                interleaved_request, Path(directory)
+            )
+            metrics = json.loads(
+                (Path(directory) / "training-metrics.json").read_text()
+            )
+            stages = metrics["missionProgression"]
+            self.assertEqual(
+                metrics["progressionSampling"], "interleaved-step-share"
+            )
+            self.assertEqual(
+                {stage["quotaSteps"] for stage in stages.values()}, {32}
+            )
+            self.assertTrue(
+                all(
+                    stage["scheduledStartStep"] is None
+                    and stage["scheduledUntilStep"] is None
+                    and stage["observedStartStep"] < 32
+                    for stage in stages.values()
+                )
+            )
+            self.assertAlmostEqual(
+                sum(stage["actualStepShare"] for stage in stages.values()),
+                1.0,
+            )
 
 
 if __name__ == "__main__":
