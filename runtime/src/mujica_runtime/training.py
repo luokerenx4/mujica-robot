@@ -626,6 +626,86 @@ def run_deterministic_mission_probe(
     }
 
 
+def deterministic_checkpoint_rank(
+    probe: dict[str, Any],
+) -> dict[str, Any]:
+    """Rank one frozen actor by complete-Mission, side-balanced Task evidence.
+
+    This is intentionally not a Benchmark score. Training may select which
+    frozen weights to publish, but the locked Judge remains the only promotion
+    authority.
+    """
+    episodes = [
+        sample
+        for sample in probe.get("episodes", [])
+        if sample.get("completeMissionStage") is True
+    ]
+    if not episodes:
+        raise RuntimeError(
+            "Deterministic checkpoint selection requires a complete Mission stage"
+        )
+    scenarios = sorted({str(sample["scenario"]) for sample in episodes})
+
+    def minimum_per_scenario(value: Any) -> int:
+        return min(
+            sum(int(value(sample)) for sample in episodes if sample["scenario"] == scenario)
+            for scenario in scenarios
+        )
+
+    timeout_free = lambda sample: bool(
+        sample.get("missionCompleted")
+        and int(sample.get("missionPhaseTimeoutCount", 0)) == 0
+    )
+    mission_completed = lambda sample: bool(sample.get("missionCompleted"))
+    stable_transition = lambda sample: int(
+        sample.get("recoveryStableTransitionCount", 0)
+    )
+    actor_target_entry = lambda sample: bool(
+        int(sample.get("actorRecoveryTargetEntryCount", 0)) > 0
+    )
+    progress = [
+        float(sample.get("maximumRecoveryStableProgress", 0.0))
+        for sample in episodes
+    ]
+    rank = {
+        "scope": "complete-mission",
+        "episodes": len(episodes),
+        "scenarios": scenarios,
+        "minimumTimeoutFreeMissionsPerScenario": minimum_per_scenario(timeout_free),
+        "timeoutFreeMissionEpisodes": sum(int(timeout_free(sample)) for sample in episodes),
+        "minimumCompletedMissionsPerScenario": minimum_per_scenario(mission_completed),
+        "missionCompletedEpisodes": sum(int(mission_completed(sample)) for sample in episodes),
+        "minimumRecoveryStableTransitionsPerScenario": minimum_per_scenario(stable_transition),
+        "recoveryStableTransitionCount": sum(stable_transition(sample) for sample in episodes),
+        "minimumActorTargetEntryEpisodesPerScenario": minimum_per_scenario(actor_target_entry),
+        "actorTargetEntryEpisodes": sum(int(actor_target_entry(sample)) for sample in episodes),
+        "recoveryRelapseCount": sum(
+            int(sample.get("recoveryRelapseCount", 0)) for sample in episodes
+        ),
+        "missionPhaseTimeoutEpisodes": sum(
+            int(int(sample.get("missionPhaseTimeoutCount", 0)) > 0)
+            for sample in episodes
+        ),
+        "minimumRecoveryStableProgress": min(progress),
+        "meanRecoveryStableProgress": float(np.mean(progress)),
+    }
+    rank["comparisonKey"] = [
+        rank["minimumTimeoutFreeMissionsPerScenario"],
+        rank["timeoutFreeMissionEpisodes"],
+        rank["minimumCompletedMissionsPerScenario"],
+        rank["missionCompletedEpisodes"],
+        rank["minimumRecoveryStableTransitionsPerScenario"],
+        rank["recoveryStableTransitionCount"],
+        rank["minimumActorTargetEntryEpisodesPerScenario"],
+        rank["actorTargetEntryEpisodes"],
+        -rank["recoveryRelapseCount"],
+        -rank["missionPhaseTimeoutEpisodes"],
+        rank["minimumRecoveryStableProgress"],
+        rank["meanRecoveryStableProgress"],
+    ]
+    return rank
+
+
 @dataclass
 class PPOTrainer:
     hidden_sizes: list[int]
@@ -637,6 +717,14 @@ class PPOTrainer:
         config = request["training"]
         action_transform = effective_action_transform(self.action_transform, config)
         elite_replay_config = config.get("eliteReplay")
+        deterministic_checkpoint_config = config.get("deterministicCheckpoint")
+        if (
+            deterministic_checkpoint_config
+            and deterministic_checkpoint_config.get("scope") != "complete-mission"
+        ):
+            raise RuntimeError(
+                "Deterministic checkpoint selection supports only complete Missions"
+            )
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
         torch.use_deterministic_algorithms(True, warn_only=True)
@@ -794,6 +882,72 @@ class PPOTrainer:
         episode_elite_admitted = False
         elite_replay_admissions = 0
         elite_replay_episode_admissions = 0
+        deterministic_checkpoint_candidates: list[dict[str, Any]] = []
+        selected_checkpoint_state: dict[str, torch.Tensor] | None = None
+        selected_checkpoint_normalizer: dict[str, Any] | None = None
+        selected_checkpoint_rank: dict[str, Any] | None = None
+        selected_checkpoint_steps: int | None = None
+        checkpoint_every_steps = (
+            int(deterministic_checkpoint_config["everySteps"])
+            if deterministic_checkpoint_config
+            else total_steps
+        )
+        checkpoint_minimum_steps = (
+            int(
+                deterministic_checkpoint_config.get(
+                    "minimumSteps", checkpoint_every_steps
+                )
+            )
+            if deterministic_checkpoint_config
+            else total_steps
+        )
+        next_checkpoint_step = max(
+            checkpoint_every_steps,
+            (
+                (checkpoint_minimum_steps + checkpoint_every_steps - 1)
+                // checkpoint_every_steps
+            )
+            * checkpoint_every_steps,
+        )
+
+        def consider_deterministic_checkpoint() -> None:
+            nonlocal selected_checkpoint_state
+            nonlocal selected_checkpoint_normalizer
+            nonlocal selected_checkpoint_rank
+            nonlocal selected_checkpoint_steps
+            probe = run_deterministic_mission_probe(
+                request=request,
+                curriculum=curriculum,
+                network=network,
+                normalizer=normalizer,
+                action_transform=action_transform,
+                residual_scale_vector=residual_scale_vector,
+                lows=lows,
+                highs=highs,
+                seed=seed,
+            )
+            rank = deterministic_checkpoint_rank(probe)
+            deterministic_checkpoint_candidates.append({
+                "steps": completed_steps,
+                "rank": rank,
+            })
+            if (
+                selected_checkpoint_rank is None
+                or tuple(rank["comparisonKey"])
+                > tuple(selected_checkpoint_rank["comparisonKey"])
+            ):
+                selected_checkpoint_state = {
+                    name: tensor.detach().clone()
+                    for name, tensor in network.state_dict().items()
+                }
+                selected_checkpoint_normalizer = {
+                    "count": float(normalizer.count),
+                    "mean": normalizer.mean.copy(),
+                    "m2": normalizer.m2.copy(),
+                }
+                selected_checkpoint_rank = rank
+                selected_checkpoint_steps = completed_steps
+            network.train()
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
@@ -1028,7 +1182,62 @@ class PPOTrainer:
                 "eliteReplayTransitions": len(elite_replay_observations),
                 "eliteReplayEpisodeAdmissions": elite_replay_episode_admissions,
             })
+            if deterministic_checkpoint_config and (
+                completed_steps >= next_checkpoint_step
+                or completed_steps == total_steps
+            ):
+                consider_deterministic_checkpoint()
+                while next_checkpoint_step <= completed_steps:
+                    next_checkpoint_step += checkpoint_every_steps
 
+        deterministic_checkpoint_selection: dict[str, Any] | None = None
+        if deterministic_checkpoint_config:
+            if (
+                not deterministic_checkpoint_candidates
+                or deterministic_checkpoint_candidates[-1]["steps"]
+                != completed_steps
+            ):
+                consider_deterministic_checkpoint()
+            if (
+                selected_checkpoint_state is None
+                or selected_checkpoint_normalizer is None
+                or selected_checkpoint_rank is None
+                or selected_checkpoint_steps is None
+            ):
+                raise RuntimeError("Deterministic checkpoint selection found no candidate")
+            network.load_state_dict(selected_checkpoint_state)
+            normalizer.count = selected_checkpoint_normalizer["count"]
+            normalizer.mean = selected_checkpoint_normalizer["mean"]
+            normalizer.m2 = selected_checkpoint_normalizer["m2"]
+            for candidate in deterministic_checkpoint_candidates:
+                candidate["selected"] = (
+                    candidate["steps"] == selected_checkpoint_steps
+                )
+            deterministic_checkpoint_selection = {
+                **deterministic_checkpoint_config,
+                "trainingBudgetCharged": False,
+                "comparisonOrder": [
+                    "minimumTimeoutFreeMissionsPerScenario",
+                    "timeoutFreeMissionEpisodes",
+                    "minimumCompletedMissionsPerScenario",
+                    "missionCompletedEpisodes",
+                    "minimumRecoveryStableTransitionsPerScenario",
+                    "recoveryStableTransitionCount",
+                    "minimumActorTargetEntryEpisodesPerScenario",
+                    "actorTargetEntryEpisodes",
+                    "negativeRecoveryRelapseCount",
+                    "negativeMissionPhaseTimeoutEpisodes",
+                    "minimumRecoveryStableProgress",
+                    "meanRecoveryStableProgress",
+                ],
+                "tieBreak": "earliest-checkpoint",
+                "latestTrainedSteps": completed_steps,
+                "selectedSteps": selected_checkpoint_steps,
+                "restoredEarlierCheckpoint": selected_checkpoint_steps
+                != completed_steps,
+                "selectedRank": selected_checkpoint_rank,
+                "candidates": deterministic_checkpoint_candidates,
+            }
         deterministic_mission_probe = (
             run_deterministic_mission_probe(
                 request=request,
@@ -1068,6 +1277,7 @@ class PPOTrainer:
             "missionOutcomeActionMode": "stochastic-sampled",
             "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
             "deterministicMissionProbe": deterministic_mission_probe,
+            "deterministicCheckpointSelection": deterministic_checkpoint_selection,
             "eliteReplay": {
                 **elite_replay_config,
                 "admittedTransitions": elite_replay_admissions,
@@ -1146,7 +1356,21 @@ class PPOTrainer:
                 for key, sample in mission_phase_samples.items()
             },
         })
-        return {"totalSteps": completed_steps, "updates": len(metrics), "episodes": len(completed_rewards), "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward}
+        return {
+            "totalSteps": completed_steps,
+            "updates": len(metrics),
+            "episodes": len(completed_rewards),
+            "finalMeanEpisodeReward": float(np.mean(completed_rewards[-10:]))
+            if completed_rewards
+            else episode_reward,
+            "selectedCheckpointSteps": selected_checkpoint_steps,
+            "restoredEarlierCheckpoint": bool(
+                deterministic_checkpoint_selection
+                and deterministic_checkpoint_selection[
+                    "restoredEarlierCheckpoint"
+                ]
+            ),
+        }
 
 
 def assert_domain_profile_plant_compatible(request: dict[str, Any]) -> None:

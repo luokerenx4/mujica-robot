@@ -169,6 +169,8 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Policy consolidation");
     expect(html).toContain("Elite recovery replay");
     expect(html).toContain("exploration-to-mean consolidation");
+    expect(html).toContain("Frozen checkpoint");
+    expect(html).toContain("Deterministic checkpoint selection");
     expect(html).toContain("Frozen-weight Authority Counterfactual");
     expect(html).toContain("byte-identical Policy weights");
     expect(html).toContain("mujica-frozen-policy-authority-counterfactual");

@@ -549,6 +549,36 @@ describe("Robot Assembly compiler", () => {
     }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
+      deterministicCheckpoint: {
+        scope: "complete-mission",
+        everySteps: 2048,
+        minimumSteps: 4096,
+      },
+    }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      deterministicCheckpoint: {
+        scope: "all-progression",
+        everySteps: 2048,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      deterministicCheckpoint: {
+        scope: "complete-mission",
+        everySteps: curriculum.totalSteps + 1,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      deterministicCheckpoint: {
+        scope: "complete-mission",
+        everySteps: 2048,
+        minimumSteps: curriculum.totalSteps + 1,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
       progression: curriculum.progression.slice(0, 2),
     }).success).toBe(false);
   });

@@ -587,6 +587,12 @@ const trainingOptimizationFields = {
   }).strict().optional(),
 };
 
+const deterministicCheckpointSchema = z.object({
+  scope: z.literal("complete-mission"),
+  everySteps: z.number().int().positive(),
+  minimumSteps: z.number().int().nonnegative().optional(),
+}).strict();
+
 export const trainingSchema = z.union([
   z.object({
     version: z.literal(1), ...trainingOptimizationFields,
@@ -617,6 +623,7 @@ export const trainingSchema = z.union([
   }),
   z.object({
     version: z.literal(3), ...trainingOptimizationFields,
+    deterministicCheckpoint: deterministicCheckpointSchema.optional(),
     mission: z.object({
       task: idSchema,
       scenarios: z.array(idSchema).min(1),
@@ -639,6 +646,12 @@ export const trainingSchema = z.union([
     });
     if (training.progression.at(-1)?.untilStep !== training.totalSteps) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["progression"], message: "final progression boundary must equal totalSteps" });
+    }
+    if (training.deterministicCheckpoint?.everySteps && training.deterministicCheckpoint.everySteps > training.totalSteps) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["deterministicCheckpoint", "everySteps"], message: "checkpoint interval must not exceed totalSteps" });
+    }
+    if ((training.deterministicCheckpoint?.minimumSteps ?? 0) > training.totalSteps) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["deterministicCheckpoint", "minimumSteps"], message: "checkpoint minimum must not exceed totalSteps" });
     }
   }),
 ]);

@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_mission_outcomes
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, deterministic_checkpoint_rank, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_mission_outcomes
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -853,6 +853,59 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertEqual(outcomes["timeoutFreeMissionEpisodes"], 1)
         self.assertAlmostEqual(outcomes["activePolicyFraction"], 0.2)
         self.assertAlmostEqual(outcomes["meanActorAuthority"], 0.05)
+
+        one_sided = deterministic_checkpoint_rank({"episodes": [
+            {
+                "completeMissionStage": False,
+                "scenario": "prefix",
+                "missionCompleted": True,
+                "missionPhaseTimeoutCount": 0,
+                "recoveryStableTransitionCount": 1,
+                "actorRecoveryTargetEntryCount": 1,
+                "recoveryRelapseCount": 0,
+                "maximumRecoveryStableProgress": 1.0,
+            },
+            {
+                "completeMissionStage": True,
+                "scenario": "impact-left",
+                "missionCompleted": False,
+                "missionPhaseTimeoutCount": 1,
+                "recoveryStableTransitionCount": 0,
+                "actorRecoveryTargetEntryCount": 1,
+                "recoveryRelapseCount": 0,
+                "maximumRecoveryStableProgress": 1.0,
+            },
+            {
+                "completeMissionStage": True,
+                "scenario": "impact-right",
+                "missionCompleted": False,
+                "missionPhaseTimeoutCount": 1,
+                "recoveryStableTransitionCount": 0,
+                "actorRecoveryTargetEntryCount": 0,
+                "recoveryRelapseCount": 0,
+                "maximumRecoveryStableProgress": 0.4,
+            },
+        ]})
+        balanced = deterministic_checkpoint_rank({"episodes": [
+            {
+                "completeMissionStage": True,
+                "scenario": side,
+                "missionCompleted": False,
+                "missionPhaseTimeoutCount": 1,
+                "recoveryStableTransitionCount": 0,
+                "actorRecoveryTargetEntryCount": 1,
+                "recoveryRelapseCount": 0,
+                "maximumRecoveryStableProgress": 0.7,
+            }
+            for side in ("impact-left", "impact-right")
+        ]})
+        self.assertEqual(one_sided["episodes"], 2)
+        self.assertEqual(one_sided["minimumActorTargetEntryEpisodesPerScenario"], 0)
+        self.assertEqual(balanced["minimumActorTargetEntryEpisodesPerScenario"], 1)
+        self.assertGreater(
+            tuple(balanced["comparisonKey"]),
+            tuple(one_sided["comparisonKey"]),
+        )
 
         model, compiled = compiled_assembly("command-conditioned-history-3dof")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
@@ -2303,6 +2356,11 @@ class RuntimeContractTest(unittest.TestCase):
                 "gaeLambda": 0.95,
                 "clipRatio": 0.2,
                 "entropyCoefficient": 0.01,
+                "deterministicCheckpoint": {
+                    "scope": "complete-mission",
+                    "everySteps": 32,
+                    "minimumSteps": 32,
+                },
             },
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -2380,6 +2438,26 @@ class RuntimeContractTest(unittest.TestCase):
                     and sample["globalStepStart"] is None
                     for sample in probe["episodes"]
                 )
+            )
+            checkpoint = metrics["deterministicCheckpointSelection"]
+            self.assertFalse(checkpoint["trainingBudgetCharged"])
+            self.assertEqual(checkpoint["latestTrainedSteps"], 64)
+            self.assertIn(checkpoint["selectedSteps"], [32, 64])
+            self.assertEqual(
+                [candidate["steps"] for candidate in checkpoint["candidates"]],
+                [32, 64],
+            )
+            self.assertEqual(
+                sum(int(candidate["selected"]) for candidate in checkpoint["candidates"]),
+                1,
+            )
+            self.assertEqual(
+                checkpoint["selectedRank"],
+                next(
+                    candidate["rank"]
+                    for candidate in checkpoint["candidates"]
+                    if candidate["selected"]
+                ),
             )
             self.assertEqual(metrics["totalSteps"], 64)
 

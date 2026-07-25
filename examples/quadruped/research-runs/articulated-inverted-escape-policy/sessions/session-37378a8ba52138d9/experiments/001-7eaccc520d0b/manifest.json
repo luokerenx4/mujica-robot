@@ -1,0 +1,65 @@
+{
+  "version": 4,
+  "id": "001-7eaccc520d0b",
+  "experimentHash": "7eaccc520d0bbbca165b503ce89ce4fd086765edaa96d03fadd6becab03ddc26",
+  "sequence": 1,
+  "sessionId": "session-37378a8ba52138d9",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "efddffa269ed71dd8a770477272932315d651be4f9be92fb14ae1ff55a6c6f17",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "97c430b213ecd5b706de8ffe920c63d1fe4adf7bd7e372de2c37c7fa1a5e8f8d",
+  "historyHash": "64b890b2d4329c9ef2ed9a9bfc2a1d5316e12cff02afe51bbec541c385c3648a",
+  "historyCount": 15,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "deterministic-complete-mission-checkpoint-selection",
+    "hypothesis": "All-progression elite replay improved the locked violation tier and produced the first frozen actor-mean target entry, but PPO still published only its final update. Keep the same 65,536 Training steps, replay data, architecture, rewards, seed, Program prior, authority envelope, Task, Scenarios, and Judge; every 8,192 steps freeze the network plus normalizer and compare actor-mean behavior only on the complete Mission stages using side-balanced Task events.",
+    "expectedEffect": "Publish the checkpoint with the best worst-direction complete-Mission completion, stable recovery, target entry, relapse/timeout avoidance, and target progress; restore earlier weights only when that zero-budget evidence is stronger, then let the unchanged locked Mission Judge accept or reject the selected Policy."
+  },
+  "policyId": "articulated-inverted-escape-2ced228c45390cc4",
+  "score": 58.81139862781099,
+  "delta": -3.9109260392595218,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "impact-left-degraded: backward-displacement regressed from passing to failing",
+      "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "impact-right-degraded: final-base-height regressed from passing to failing",
+      "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+      "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+      "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 44,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 102.66280188759411,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "cfcba66effddc00ca120c433a28a4d0b38ef12148f5f079fda12c9005eaed0b6",
+    "acceptedRunId": "run-15f7232742409463",
+    "candidateRunId": "run-e388909cac1b57be",
+    "caseId": "impact-left-degraded"
+  },
+  "durationMs": 191861,
+  "completed": true
+}

@@ -807,3 +807,46 @@ success is the right deployment evidence, but one elite episode cannot support
 reliable policy consolidation. The next bounded problem is collection and
 selection of more diverse complete-Mission recovery evidence, not increasing
 the cloning coefficient or weakening the Judge.
+
+## Deterministic Mission checkpoint selection
+
+PPO's last update is not automatically the most deployable Policy. Mission
+Training v3 may therefore declare a bounded `deterministicCheckpoint`
+contract. At each configured Training-step interval, Runtime freezes the
+current network and normalizer and replays the same complete Mission stages,
+Scenarios, domain seeds, Program prior, and residual-authority envelope with
+the deterministic actor mean. Probe steps do not update weights or
+normalization and do not consume the declared Training budget.
+
+Selection uses Task-owned causal evidence, never the locked Benchmark score.
+It compares the worst left/right Scenario first and then totals, in this
+order: timeout-free Mission completion, Mission completion, stable-recovery
+transition, actor-caused recovery-target entry, fewer relapses, fewer
+phase-timeout episodes, worst-case recovery-target progress, and mean target
+progress. Exact ties preserve the earlier checkpoint because later weight
+changes have not demonstrated an observable capability gain.
+
+The selected network and its matching normalizer become the frozen Policy
+Artifact. Training metrics retain every candidate step, its named rank
+components, the selected step, the final trained step, and whether earlier
+weights were restored. Studio presents the same ledger, while
+`mujica policy inspect --json` exposes it headlessly. This is a deployability
+selection mechanism inside one Training run, not evaluation or promotion:
+the complete locked Mission Judge still has sole authority to KEEP or REVERT
+the resulting Candidate.
+
+The first governed use froze eight checkpoints across a 65,536-step elite
+replay run. The selector restored step 24,576 because it was the only
+checkpoint whose actor mean caused a target entry in a complete Mission
+probe; the final checkpoint caused none. The entry existed only on the left
+exact-profile probe, so the worst-direction target-entry count remained zero,
+no checkpoint produced a stable transition or timeout-free Mission, and every
+complete probe still timed out.
+
+The locked Judge rejected the selected Policy
+`articulated-inverted-escape-2ced228c45390cc4`: score was `58.811399`,
+violations regressed from 43 to 44, and normalized severity regressed from
+`87.786` to `102.663`. This falsifies final-update forgetting as a sufficient
+explanation. Checkpoint selection exposed and preserved a real transient
+behavior, but it could not manufacture the missing bilateral,
+complete-Mission evidence.

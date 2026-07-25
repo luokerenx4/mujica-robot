@@ -320,3 +320,37 @@ experiment should increase diverse complete-Mission success collection or
 select an earlier deterministic checkpoint. It should not simply raise the
 distillation coefficient: the present evidence shows a data-coverage problem,
 not insufficient loss magnitude.
+
+## Deterministic checkpoint selection
+
+The Harness now treats the final PPO update as a candidate rather than an
+implicit winner. A bounded Training v3 contract freezes the network and its
+matching normalizer at configured intervals, runs fixed-seed actor-mean probes
+over the complete Mission stages, and publishes a side-balanced,
+lexicographic Task-evidence ledger. The selector cannot read Benchmark scores,
+change the locked Judge, consume Training steps, or widen residual authority.
+It restores an earlier checkpoint only when that frozen Policy is observably
+better on complete-Mission completion, stable recovery, target entry,
+relapse/timeout avoidance, or worst-case target progress. Exact ties keep the
+earlier weights.
+
+The next governed experiment keeps the successful all-progression elite
+replay configuration and all other Training/Task/Scenario/Judge inputs fixed.
+It adds only periodic deterministic checkpoint selection, then judges the
+selected frozen Policy on the same locked complete Mission Suite.
+
+Session `session-37378a8ba52138d9` completed that comparison. Eight checkpoints
+were frozen from step 8,192 through 65,536. Step 24,576 was selected because
+it alone produced one actor-caused target entry in a complete left Mission;
+the final weights produced none. All checkpoints still had zero
+worst-direction target entries, zero stable transitions, zero timeout-free
+Missions, and four complete-probe timeout episodes.
+
+The locked Judge returned `REVERT`: score `58.811399`, violations `43 → 44`,
+and normalized severity `87.786 → 102.663`. Degraded-left lost backward and
+terminal-planar gates, degraded-right lost final height, and both handoff
+directions regressed. Earlier checkpoint selection preserved a transient
+left-side behavior but did not solve bilateral deployment. The next bounded
+problem is collecting multiple complete-Mission target-entry trajectories on
+both sides and physical profiles; neither later-weight rollback nor a larger
+distillation coefficient is supported as the next intervention.
