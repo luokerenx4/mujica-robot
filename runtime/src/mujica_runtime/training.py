@@ -493,6 +493,7 @@ class PPOTrainer:
                         observation_map,
                         residual_gate_scale_state,
                         environment.control_dt,
+                        environment.runtime_state(),
                     )
                     residual_gate_scale_state = residual_gate_scale
                     transformed = (

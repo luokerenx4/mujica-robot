@@ -22,7 +22,7 @@ mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
 mujica studio <workspace> [--json]
-mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID) [--json]
+mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID | --authority-counterfactual ID [--case ID]) [--json]
 mujica twin audit <project> --capture ID --episode ID [--json]
 mujica twin inspect <project> --audit ID [--transition N] [--json]
 mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]
@@ -41,6 +41,7 @@ mujica train-research <project> --research ID [--iterations N] [--agent-command 
 mujica policies <project> [--json]
 mujica policy inspect <project> --policy ID [--json]
 mujica policy requalify <project> --policy ID --assembly ID [--json]
+mujica policy counterfactual <project> --assembly ID --controller ID --policy ID --benchmark ID --profile ID [--json]
 mujica policy-revisions <project> [--json]
 mujica policy-revision inspect <project> --revision ID [--json]
 mujica benchmark lock <project> --benchmark ID [--json]
@@ -264,6 +265,19 @@ discarding the evidence. The driver must acknowledge the exact episode and stop
 kind; writing a stop request alone is not success.
 
 `policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
+
+`policy counterfactual` is a causal authority experiment, not training or
+promotion. It executes one immutable Policy twice across every locked Benchmark
+case with byte-identical weights, normalizer, Assembly, physical plant, Task,
+Scenario, and seed. The baseline uses the gate frozen in the Policy
+architecture; the candidate uses one typed `authority-profiles/*.authority.json`
+residual gate. Both sides publish ordinary immutable Runs, while the
+content-addressed Authority Counterfactual records invariants, per-case Run ids,
+score and gate deltas, and an `EQUIVALENT`, `IMPROVED`, `DEGRADED`, or `MIXED`
+causal assessment. Its `promotionVerdict` is always null: only the locked Judge
+may promote a robot or Policy. `studio --authority-counterfactual` opens any
+named case on one synchronized A/B clock and copies the exact headless
+reproduction command.
 
 `research list|inspect|brief|run|status` is the V2 source-research interface. A
 Lab names one human `program.md`, a controller/policy/development execution

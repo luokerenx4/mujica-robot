@@ -457,7 +457,12 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     if controller_definition["kind"] == "program":
         controller = load_program_controller(Path(request["controllerRoot"]), controller_definition)
     else:
-        controller = load_policy_controller(project_dir, controller_definition, compiled)
+        controller = load_policy_controller(
+            project_dir,
+            controller_definition,
+            compiled,
+            request.get("policyResidualGateOverride"),
+        )
     controller.reset(int(request["seed"]))
     environment = RobotEnvironment(model_path, compiled, request["task"], request["scenario"], int(request["seed"]))
     observation = environment.reset()
@@ -529,6 +534,9 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
             ):
                 mobility_initial_position = environment.data.qpos[:3].copy()
                 mobility_started_at = float(environment.data.time)
+        runtime_state_provider = getattr(controller, "set_runtime_state", None)
+        if runtime_state_provider is not None:
+            runtime_state_provider(environment.runtime_state())
         action = controller.act({name: values.copy() for name, values in observation.items()}, float(environment.data.time))
         controller_telemetry = read_controller_telemetry(controller)
         controller_phase = (
@@ -714,6 +722,40 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     mean_motion_command = motion_command_total / steps
     transition_metrics = transition_response_metrics(trajectory, request["task"], request["objective"])
     quality_metrics = motion_quality_metrics(trajectory, float(request["task"]["controlHz"]), compiled["actionLow"], compiled["actionHigh"])
+    residual_gate_scales = [
+        float(row["controllerTelemetry"]["policyResidualGateScale"])
+        for row in trajectory
+        if isinstance(row.get("controllerTelemetry"), dict)
+        and isinstance(
+            row["controllerTelemetry"].get("policyResidualGateScale"),
+            (int, float),
+        )
+    ]
+    residual_gate_targets = [
+        float(row["controllerTelemetry"]["policyResidualGateTargetScale"])
+        for row in trajectory
+        if isinstance(row.get("controllerTelemetry"), dict)
+        and isinstance(
+            row["controllerTelemetry"].get("policyResidualGateTargetScale"),
+            (int, float),
+        )
+    ]
+    residual_gate_entries = sum(
+        1
+        for previous, current in zip(
+            [0.0, *residual_gate_scales[:-1]],
+            residual_gate_scales,
+        )
+        if previous <= 0.0 and current > 0.0
+    )
+    residual_gate_exits = sum(
+        1
+        for previous, current in zip(
+            [0.0, *residual_gate_targets[:-1]],
+            residual_gate_targets,
+        )
+        if previous > 0.0 and current <= 0.0
+    )
     metrics = {
         "durationSeconds": float(environment.data.time), "steps": environment.step_index, "survivalRate": episode_survival_rate(survived_steps, environment.step_index if int(request["task"]["version"]) == 8 and environment.mission_completed else environment.max_steps),
         "fell": fell, "motionCommand": mean_motion_command.tolist(), "meanMotionCommand": mean_motion_command.tolist(), "meanMeasuredMotion": mean_measured_motion.tolist(),
@@ -732,6 +774,17 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "minimumJointLimitMarginRad": minimum_limit_margin, "disallowedCollisionSteps": disallowed_collision_steps,
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
+        "policyResidualActiveSteps": sum(
+            1 for value in residual_gate_scales if value > 0.0
+        ),
+        "policyResidualTargetActiveSteps": sum(
+            1 for value in residual_gate_targets if value > 0.0
+        ),
+        "policyResidualAuthoritySeconds": (
+            sum(residual_gate_scales) / float(request["task"]["controlHz"])
+        ),
+        "policyResidualGateEntryCount": residual_gate_entries,
+        "policyResidualGateExitCount": residual_gate_exits,
         **quality_metrics,
         **transition_metrics,
         **motion_metrics(
@@ -763,7 +816,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     metrics["mission"] = mission_phase_metrics(trajectory, request["task"])
     score = score_metrics(metrics, request["objective"], compiled, int(request.get("trainingSteps", 0)))
     environment.events.append({"type": "episode.completed", "time": float(environment.data.time), "steps": environment.step_index, "score": score["total"]})
-    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})
+    run_key = hash_json({"runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "mujocoVersion": mujoco.__version__, "assemblyHash": compiled["assemblyHash"], "controllerHash": request["controllerHash"], "authorityProfileHash": request.get("authorityProfileHash"), "trainingSteps": request.get("trainingSteps", 0), "task": request["task"], "scenario": request["scenario"], "objective": request["objective"], "seed": request["seed"]})
     result_hash = hash_json({"runKey": run_key, "initialState": initial_state, "events": environment.events, "trajectory": trajectory, "metrics": metrics, "score": score})
     output = {"runId": f"run-{run_key[:16]}", "runKey": run_key, "resultHash": result_hash, "metrics": metrics, "score": score, "events": environment.events}
     if not persist: return output
@@ -786,6 +839,11 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "inputs" / "compiled-assembly.json", compiled)
         shutil.copyfile(model_path, directory / "inputs" / "model.xml")
         write_json(directory / "inputs" / "controller.json", controller_definition)
+        if request.get("authorityProfile") is not None:
+            write_json(
+                directory / "inputs" / "authority-profile.json",
+                request["authorityProfile"],
+            )
         write_json(directory / "inputs" / "task.json", request["task"])
         write_json(directory / "inputs" / "scenario.json", request["scenario"])
         write_json(directory / "inputs" / "objective.json", request["objective"])
@@ -797,7 +855,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         write_json(directory / "metrics.json", metrics)
         write_json(directory / "score.json", score)
         (directory / "report.md").write_text(f"# Mujica simulation run\n\n- Run: `{output['runId']}`\n- Score: `{score['total']:.6f}`\n- Survival: `{metrics['survivalRate']:.3f}`\n- Fell: `{metrics['fell']}`\n")
-        write_json(directory / "manifest.json", {"version": 3, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "modelHash": compiled["modelHash"], "controllerHash": request["controllerHash"], "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
+        write_json(directory / "manifest.json", {"version": 3, "id": output["runId"], "runKey": run_key, "resultHash": result_hash, "runtimeVersion": request["runtimeVersion"], "runtimeSourceHash": request["runtimeSourceHash"], "harnessSourceHash": request["harnessSourceHash"], "assemblyHash": compiled["assemblyHash"], "modelHash": compiled["modelHash"], "controllerHash": request["controllerHash"], "authorityProfileHash": request.get("authorityProfileHash"), "trainingSteps": request.get("trainingSteps", 0), "seed": request["seed"], "mujocoVersion": mujoco.__version__, "completed": True})
     try:
         atomic_directory(target, writer)
     except OSError:

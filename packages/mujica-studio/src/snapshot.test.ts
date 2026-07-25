@@ -162,6 +162,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("Mission phase learning evidence");
     expect(html).toContain("curriculum sampling");
     expect(html).toContain("Mission progression · every episode starts at Mission phase 1");
+    expect(html).toContain("Frozen-weight Authority Counterfactual");
+    expect(html).toContain("byte-identical Policy weights");
+    expect(html).toContain("mujica-frozen-policy-authority-counterfactual");
     expect(html).toContain("promotion:'locked-judge-only'");
     expect(html).toContain("mujica-human-observation-draft");
     expect(html).toContain("mujica-research-brief-selector");

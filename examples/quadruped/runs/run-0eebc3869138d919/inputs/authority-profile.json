@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "as-trained",
+  "name": "As-trained Policy authority",
+  "policy": "articulated-inverted-escape-7165992fb1a9b8bc",
+  "intervention": "residual-gate",
+  "rationale": "Frozen residual gate stored in the immutable Policy architecture.",
+  "residualGate": {
+    "kind": "prior-telemetry-mode",
+    "allowedModes": [
+      "recovery"
+    ],
+    "requiredTelemetry": {
+      "dynamicRecovery": true
+    },
+    "allowedTelemetry": {
+      "phase": [
+        "recovery.impulse",
+        "recovery.capture"
+      ]
+    },
+    "requiredObservation": {
+      "recovery-target-satisfied": 0,
+      "recovery-stable-latched": 0,
+      "recovery-deadline-expired": 0
+    },
+    "requiredRuntimeState": {},
+    "minimumTelemetry": {
+      "measuredDelaySteps": 1,
+      "bodyTiltRad": 0.3
+    },
+    "maximumTelemetry": {
+      "measuredDelaySteps": 1,
+      "recoveryRetryCount": 1,
+      "baseHeightM": 0.45,
+      "supportFeet": 3,
+      "modeDwellSeconds": 4.5
+    },
+    "rampSeconds": 0,
+    "entryRampSeconds": 0.4
+  }
+}

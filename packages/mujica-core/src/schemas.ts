@@ -120,6 +120,35 @@ export const controllerSchema = z.discriminatedUnion("kind", [
   z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("policy"), policy: idSchema, deterministic: z.boolean().default(true) }).strict(),
 ]);
 
+const residualGateScalarSchema = z.union([
+  z.string(),
+  z.number().finite(),
+  z.boolean(),
+]);
+
+export const residualGateSchema = z.object({
+  kind: z.literal("prior-telemetry-mode"),
+  allowedModes: z.array(z.string().min(1)).min(1),
+  requiredTelemetry: z.record(residualGateScalarSchema).default({}),
+  allowedTelemetry: z.record(z.array(residualGateScalarSchema).min(1)).default({}),
+  requiredObservation: z.record(z.number().finite()).default({}),
+  requiredRuntimeState: z.record(z.number().finite()).default({}),
+  minimumTelemetry: z.record(z.number().finite()).default({}),
+  maximumTelemetry: z.record(z.number().finite()).default({}),
+  rampSeconds: z.number().finite().nonnegative().default(0),
+  entryRampSeconds: z.number().finite().nonnegative().default(0),
+}).strict();
+
+export const authorityProfileSchema = z.object({
+  version: z.literal(1),
+  id: idSchema,
+  name: z.string().min(1),
+  policy: idSchema,
+  intervention: z.literal("residual-gate"),
+  rationale: z.string().min(1),
+  residualGate: residualGateSchema,
+}).strict();
+
 const motionCommandSchema = z.object({
   frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite().min(-1).max(1), z.number().finite().min(-1).max(1)]), yawRateRadPerSec: z.number().finite().min(-2).max(2),
 }).strict();
@@ -1243,6 +1272,7 @@ export const researchReviewSchema = z.object({
 }).strict();
 
 export type ControllerDefinition = z.output<typeof controllerSchema>;
+export type AuthorityProfileDefinition = z.output<typeof authorityProfileSchema>;
 export type DevelopmentCharter = z.output<typeof developmentCharterSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;

@@ -207,5 +207,32 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
   inference.
 - [x] Preserve four reverted Mission experiments that separate Program
   fallback, target-boundary failure, gate chatter, and deadline reactivation.
-- [ ] Add a frozen-weight authority counterfactual lane so a gate-only change
+- [x] Add a frozen-weight authority counterfactual lane so a gate-only change
   can be judged without retraining a different Policy.
+
+## Frozen-weight authority result
+
+Two counterfactuals reused Policy
+`articulated-inverted-escape-7165992fb1a9b8bc`, its exact model and
+normalizer bytes, Assembly
+`resilient-command-conditioned-waist-history-3dof`, the same locked Mission
+cases, and the same seeds.
+
+- `authority-counterfactual-13fefce43e04ed0b` moved only
+  `recoveryDeadlineExpired=0` from the neural Observation gate to out-of-band
+  Runtime supervisor state. All four case metrics, scores, violation counts,
+  severities, and residual-authority durations were byte-equivalent. This
+  validates the ABI separation.
+- `authority-counterfactual-7a10e0e7af3e1776` removed the deadline predicate
+  from the same frozen Policy. Exact and degraded-left cases were unchanged.
+  Degraded-right received `0.52 → 1.90 s` residual authority; total violations
+  remained `45`, normalized severity improved `112.925 → 105.211`, and
+  aggregate score changed `40.1174 → 40.0466`. The causal classification is
+  `IMPROVED` within the same infeasible gate tier, not promoted.
+
+This isolates a useful but insufficient signal: deadline-open recovery reduces
+physical gate severity on the one case where it changes behavior, but does not
+eliminate a violation and slightly lowers aggregate score. The next learned
+experiment may use Runtime-owned deadline state without widening its neural
+input ABI, but the complete Mission Judge still requires a new Policy or
+Program intervention before release.

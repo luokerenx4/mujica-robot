@@ -383,6 +383,17 @@ class RobotEnvironment:
             np.clip(self.mission_recovery_stable_steps / required_steps, 0.0, 1.0)
         )
 
+    def runtime_state(self) -> dict[str, float]:
+        """Runtime-owned supervisor facts that do not expand the Policy input ABI."""
+        return {
+            "recoveryTargetSatisfied": float(self.recovery_target_satisfied()),
+            "recoveryStableProgress": self.recovery_stable_progress(),
+            "recoveryStableLatched": float(self.recovery_stable_latched),
+            "recoveryDeadlineExpired": float(
+                self.recovery_deadline_expired_latched
+            ),
+        }
+
     def body_tilt(self) -> float:
         quaternion = np.asarray(self.data.qpos[3:7], dtype=np.float64)
         _, x, y, _ = quaternion

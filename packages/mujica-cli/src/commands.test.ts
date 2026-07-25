@@ -78,6 +78,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "hardware.verify")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "capture.run")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.requalify")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.counterfactual")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
@@ -1246,6 +1247,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.definitions.calibrations).toBe(2);
     expect(envelope.data.definitions.capturePlans).toBe(7);
     expect(envelope.data.definitions.driverPackages).toBe(1);
+    expect(envelope.data.definitions.authorityProfiles).toBe(2);
     const lock = JSON.parse(await readFile(resolve(root, "examples/quadruped/benchmarks/sensor-development.lock.json"), "utf8"));
     expect(lock.harnessSourceHash).toHaveLength(64);
     expect(lock.evaluatorDependencyLockHash).toHaveLength(64);

@@ -197,6 +197,7 @@ def program_residual_gate_scale(
     transform: dict[str, Any],
     program_prior: Controller,
     observation: dict[str, np.ndarray] | None = None,
+    runtime_state: dict[str, float] | None = None,
 ) -> float:
     """Fail closed when a learned residual is outside its declared safe envelope."""
     gate = transform.get("residualGate")
@@ -242,6 +243,23 @@ def program_residual_gate_scale(
             value.size != 1
             or not np.isfinite(float(value[0]))
             or float(value[0]) != float(expected)
+        ):
+            return 0.0
+    for field, expected in gate.get("requiredRuntimeState", {}).items():
+        if (
+            runtime_state is None
+            or field not in runtime_state
+            or isinstance(expected, bool)
+            or not isinstance(expected, (int, float))
+            or not np.isfinite(float(expected))
+        ):
+            return 0.0
+        value = runtime_state[field]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not np.isfinite(float(value))
+            or float(value) != float(expected)
         ):
             return 0.0
     for bounds_key, compare in (
@@ -312,9 +330,15 @@ def advance_program_residual_gate_scale(
     observation: dict[str, np.ndarray] | None,
     previous_scale: float,
     elapsed_seconds: float,
+    runtime_state: dict[str, float] | None = None,
 ) -> tuple[float, float]:
     """Rise smoothly on gate entry while every unsafe exit still fails closed."""
-    target = program_residual_gate_scale(transform, program_prior, observation)
+    target = program_residual_gate_scale(
+        transform,
+        program_prior,
+        observation,
+        runtime_state,
+    )
     gate = transform.get("residualGate") or {}
     entry_ramp_seconds = float(gate.get("entryRampSeconds", 0.0))
     if not np.isfinite(entry_ramp_seconds) or entry_ramp_seconds < 0.0:
@@ -348,6 +372,7 @@ class FrozenPolicyController:
     last_residual_gate_scale: float = 0.0
     residual_gate_target_scale: float = 0.0
     last_action_time_seconds: float | None = None
+    runtime_state: dict[str, float] | None = None
 
     def reset(self, seed: int) -> None:
         torch.manual_seed(seed)
@@ -355,6 +380,11 @@ class FrozenPolicyController:
         self.last_residual_gate_scale = 0.0
         self.residual_gate_target_scale = 0.0
         self.last_action_time_seconds = None
+        self.runtime_state = None
+
+    def set_runtime_state(self, state: dict[str, float]) -> None:
+        """Receive Runtime-owned supervisor facts outside the neural input ABI."""
+        self.runtime_state = dict(state)
 
     def act(self, observation: dict[str, np.ndarray], time_seconds: float) -> np.ndarray:
         vector = np.concatenate([observation[channel["name"]] for channel in self.observation_channels]).astype(np.float32)
@@ -382,6 +412,7 @@ class FrozenPolicyController:
                 observation,
                 self.last_residual_gate_scale,
                 elapsed_seconds,
+                self.runtime_state,
             )
             action = (
                 prior_action
@@ -412,7 +443,12 @@ class FrozenPolicyController:
         return telemetry
 
 
-def load_policy_controller(project_dir: Path, definition: dict[str, Any], compiled: dict[str, Any]) -> FrozenPolicyController:
+def load_policy_controller(
+    project_dir: Path,
+    definition: dict[str, Any],
+    compiled: dict[str, Any],
+    residual_gate_override: dict[str, Any] | None = None,
+) -> FrozenPolicyController:
     policy_dir = (project_dir / "policies" / definition["policy"]).resolve()
     if (project_dir / "policies").resolve() not in policy_dir.parents:
         raise RuntimeError("Policy path escapes project")
@@ -441,6 +477,18 @@ def load_policy_controller(project_dir: Path, definition: dict[str, Any], compil
     lows = np.array(compiled["actionLow"], dtype=np.float32)
     highs = np.array(compiled["actionHigh"], dtype=np.float32)
     action_transform = architecture.get("actionTransform")
+    if residual_gate_override is not None:
+        if (
+            not isinstance(action_transform, dict)
+            or action_transform.get("kind") != "program-controller-residual"
+            or not isinstance(residual_gate_override, dict)
+            or residual_gate_override.get("kind") != "prior-telemetry-mode"
+        ):
+            raise RuntimeError(
+                "Residual gate override requires a typed program-controller-residual Policy"
+            )
+        action_transform = json.loads(json.dumps(action_transform))
+        action_transform["residualGate"] = residual_gate_override
     program_prior = None
     if action_transform and action_transform.get("kind") == "program-controller-residual":
         prior_root = (policy_dir / "prior").resolve()

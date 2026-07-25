@@ -2,11 +2,32 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadObjective, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
+import { authorityProfileSchema, calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadAuthorityProfile, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadObjective, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
 describe("Robot Assembly compiler", () => {
+  test("Authority Profiles keep supervisor state outside the Policy observation ABI", async () => {
+    const profile = await loadAuthorityProfile(
+      project,
+      "runtime-deadline-closed-recovery",
+    );
+    expect(profile.policy).toBe("articulated-inverted-escape-7165992fb1a9b8bc");
+    expect(profile.residualGate.requiredRuntimeState).toEqual({
+      recoveryDeadlineExpired: 0,
+    });
+    expect(profile.residualGate.requiredObservation).not.toHaveProperty(
+      "recovery-deadline-expired",
+    );
+    expect(() => authorityProfileSchema.parse({
+      ...profile,
+      residualGate: {
+        ...profile.residualGate,
+        requiredRuntimeState: { recoveryDeadlineExpired: Number.NaN },
+      },
+    })).toThrow();
+  });
+
   test("Development Reviews and Work Orders preserve typed requirement-to-lane evidence", async () => {
     const reviewPointer = JSON.parse(await readFile(join(project, "development-reviews/current.json"), "utf8"));
     const review = developmentReviewSchema.parse(JSON.parse(await readFile(join(project, "development-reviews", reviewPointer.id, "review.json"), "utf8")));

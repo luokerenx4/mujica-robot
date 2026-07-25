@@ -1,0 +1,651 @@
+{
+  "version": 1,
+  "kind": "mujica-hardware-state-abi",
+  "runtime": "mujoco",
+  "assembly": "force-sensing-3dof",
+  "assemblyHash": "95a3165fa1f85aa2c909108212bbd633144ab7c269ee3d6c9e9604dcae236f95",
+  "modelHash": "9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea",
+  "qpos": {
+    "size": 19,
+    "coordinates": [
+      {
+        "index": 0,
+        "name": "root.position.x",
+        "joint": "root",
+        "component": "position.x",
+        "unit": "m",
+        "frame": "model-world"
+      },
+      {
+        "index": 1,
+        "name": "root.position.y",
+        "joint": "root",
+        "component": "position.y",
+        "unit": "m",
+        "frame": "model-world"
+      },
+      {
+        "index": 2,
+        "name": "root.position.z",
+        "joint": "root",
+        "component": "position.z",
+        "unit": "m",
+        "frame": "model-world"
+      },
+      {
+        "index": 3,
+        "name": "root.orientation.w",
+        "joint": "root",
+        "component": "orientation.w",
+        "unit": "unit-quaternion",
+        "frame": "model-world-from-body"
+      },
+      {
+        "index": 4,
+        "name": "root.orientation.x",
+        "joint": "root",
+        "component": "orientation.x",
+        "unit": "unit-quaternion",
+        "frame": "model-world-from-body"
+      },
+      {
+        "index": 5,
+        "name": "root.orientation.y",
+        "joint": "root",
+        "component": "orientation.y",
+        "unit": "unit-quaternion",
+        "frame": "model-world-from-body"
+      },
+      {
+        "index": 6,
+        "name": "root.orientation.z",
+        "joint": "root",
+        "component": "orientation.z",
+        "unit": "unit-quaternion",
+        "frame": "model-world-from-body"
+      },
+      {
+        "index": 7,
+        "name": "abd-fl.position",
+        "joint": "abd-fl",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 8,
+        "name": "hip-fl.position",
+        "joint": "hip-fl",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 9,
+        "name": "knee-fl.position",
+        "joint": "knee-fl",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 10,
+        "name": "abd-fr.position",
+        "joint": "abd-fr",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 11,
+        "name": "hip-fr.position",
+        "joint": "hip-fr",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 12,
+        "name": "knee-fr.position",
+        "joint": "knee-fr",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 13,
+        "name": "abd-rl.position",
+        "joint": "abd-rl",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 14,
+        "name": "hip-rl.position",
+        "joint": "hip-rl",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 15,
+        "name": "knee-rl.position",
+        "joint": "knee-rl",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 16,
+        "name": "abd-rr.position",
+        "joint": "abd-rr",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 17,
+        "name": "hip-rr.position",
+        "joint": "hip-rr",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 18,
+        "name": "knee-rr.position",
+        "joint": "knee-rr",
+        "component": "position",
+        "unit": "rad",
+        "frame": "body-fixed-axis"
+      }
+    ]
+  },
+  "qvel": {
+    "size": 18,
+    "coordinates": [
+      {
+        "index": 0,
+        "name": "root.linear-velocity.x",
+        "joint": "root",
+        "component": "linear-velocity.x",
+        "unit": "m/s",
+        "frame": "model-world"
+      },
+      {
+        "index": 1,
+        "name": "root.linear-velocity.y",
+        "joint": "root",
+        "component": "linear-velocity.y",
+        "unit": "m/s",
+        "frame": "model-world"
+      },
+      {
+        "index": 2,
+        "name": "root.linear-velocity.z",
+        "joint": "root",
+        "component": "linear-velocity.z",
+        "unit": "m/s",
+        "frame": "model-world"
+      },
+      {
+        "index": 3,
+        "name": "root.angular-velocity.x",
+        "joint": "root",
+        "component": "angular-velocity.x",
+        "unit": "rad/s",
+        "frame": "body-local"
+      },
+      {
+        "index": 4,
+        "name": "root.angular-velocity.y",
+        "joint": "root",
+        "component": "angular-velocity.y",
+        "unit": "rad/s",
+        "frame": "body-local"
+      },
+      {
+        "index": 5,
+        "name": "root.angular-velocity.z",
+        "joint": "root",
+        "component": "angular-velocity.z",
+        "unit": "rad/s",
+        "frame": "body-local"
+      },
+      {
+        "index": 6,
+        "name": "abd-fl.velocity",
+        "joint": "abd-fl",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 7,
+        "name": "hip-fl.velocity",
+        "joint": "hip-fl",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 8,
+        "name": "knee-fl.velocity",
+        "joint": "knee-fl",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 9,
+        "name": "abd-fr.velocity",
+        "joint": "abd-fr",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 10,
+        "name": "hip-fr.velocity",
+        "joint": "hip-fr",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 11,
+        "name": "knee-fr.velocity",
+        "joint": "knee-fr",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 12,
+        "name": "abd-rl.velocity",
+        "joint": "abd-rl",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 13,
+        "name": "hip-rl.velocity",
+        "joint": "hip-rl",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 14,
+        "name": "knee-rl.velocity",
+        "joint": "knee-rl",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 15,
+        "name": "abd-rr.velocity",
+        "joint": "abd-rr",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 16,
+        "name": "hip-rr.velocity",
+        "joint": "hip-rr",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      },
+      {
+        "index": 17,
+        "name": "knee-rr.velocity",
+        "joint": "knee-rr",
+        "component": "velocity",
+        "unit": "rad/s",
+        "frame": "body-fixed-axis"
+      }
+    ]
+  },
+  "joints": [
+    {
+      "index": 0,
+      "name": "root",
+      "type": "free",
+      "qposIndices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "qvelIndices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "referenceQpos": [
+        0,
+        0,
+        0.44,
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 1,
+      "name": "abd-fl",
+      "type": "hinge",
+      "qposIndices": [
+        7
+      ],
+      "qvelIndices": [
+        6
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 2,
+      "name": "hip-fl",
+      "type": "hinge",
+      "qposIndices": [
+        8
+      ],
+      "qvelIndices": [
+        7
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 3,
+      "name": "knee-fl",
+      "type": "hinge",
+      "qposIndices": [
+        9
+      ],
+      "qvelIndices": [
+        8
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 4,
+      "name": "abd-fr",
+      "type": "hinge",
+      "qposIndices": [
+        10
+      ],
+      "qvelIndices": [
+        9
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 5,
+      "name": "hip-fr",
+      "type": "hinge",
+      "qposIndices": [
+        11
+      ],
+      "qvelIndices": [
+        10
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 6,
+      "name": "knee-fr",
+      "type": "hinge",
+      "qposIndices": [
+        12
+      ],
+      "qvelIndices": [
+        11
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 7,
+      "name": "abd-rl",
+      "type": "hinge",
+      "qposIndices": [
+        13
+      ],
+      "qvelIndices": [
+        12
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 8,
+      "name": "hip-rl",
+      "type": "hinge",
+      "qposIndices": [
+        14
+      ],
+      "qvelIndices": [
+        13
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 9,
+      "name": "knee-rl",
+      "type": "hinge",
+      "qposIndices": [
+        15
+      ],
+      "qvelIndices": [
+        14
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 10,
+      "name": "abd-rr",
+      "type": "hinge",
+      "qposIndices": [
+        16
+      ],
+      "qvelIndices": [
+        15
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 11,
+      "name": "hip-rr",
+      "type": "hinge",
+      "qposIndices": [
+        17
+      ],
+      "qvelIndices": [
+        16
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    },
+    {
+      "index": 12,
+      "name": "knee-rr",
+      "type": "hinge",
+      "qposIndices": [
+        18
+      ],
+      "qvelIndices": [
+        17
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "referenceQpos": [
+        0
+      ]
+    }
+  ],
+  "actuators": [
+    {
+      "index": 0,
+      "name": "abd-fl-motor",
+      "transmissionJoint": "abd-fl"
+    },
+    {
+      "index": 1,
+      "name": "hip-fl-motor",
+      "transmissionJoint": "hip-fl"
+    },
+    {
+      "index": 2,
+      "name": "knee-fl-motor",
+      "transmissionJoint": "knee-fl"
+    },
+    {
+      "index": 3,
+      "name": "abd-fr-motor",
+      "transmissionJoint": "abd-fr"
+    },
+    {
+      "index": 4,
+      "name": "hip-fr-motor",
+      "transmissionJoint": "hip-fr"
+    },
+    {
+      "index": 5,
+      "name": "knee-fr-motor",
+      "transmissionJoint": "knee-fr"
+    },
+    {
+      "index": 6,
+      "name": "abd-rl-motor",
+      "transmissionJoint": "abd-rl"
+    },
+    {
+      "index": 7,
+      "name": "hip-rl-motor",
+      "transmissionJoint": "hip-rl"
+    },
+    {
+      "index": 8,
+      "name": "knee-rl-motor",
+      "transmissionJoint": "knee-rl"
+    },
+    {
+      "index": 9,
+      "name": "abd-rr-motor",
+      "transmissionJoint": "abd-rr"
+    },
+    {
+      "index": 10,
+      "name": "hip-rr-motor",
+      "transmissionJoint": "hip-rr"
+    },
+    {
+      "index": 11,
+      "name": "knee-rr-motor",
+      "transmissionJoint": "knee-rr"
+    }
+  ],
+  "quaternionConvention": {
+    "order": "wxyz",
+    "handedness": "right-handed"
+  },
+  "driverBoundary": {
+    "wireOrder": "exact-contract-index-order",
+    "normalizationOwner": "driver",
+    "requirement": "The Driver MUST transform native encoder order, sign, zero offset, unit, base frame, and quaternion order into this ABI before emitting state."
+  }
+}

@@ -630,3 +630,45 @@ frozen-weight counterfactual lane. Mujica must be able to preserve model
 weights, normalizer, plant, Task, Scenario, and seed while changing only a
 typed, auditable gate. Retraining after an ABI change answers a different
 question and must not be presented as causal evidence about the gate.
+
+## Frozen-weight authority counterfactual
+
+The counterfactual lane makes that requirement executable. A typed Authority
+Profile may override only
+`architecture.actionTransform.residualGate`; Policy model bytes, normalizer,
+the rest of the architecture, Assembly execution, plant, Task, Scenario, seed,
+and between-case reset policy are invariants. Baseline and candidate both
+produce normal immutable Simulation Runs. A content-addressed evaluation binds
+the two Run sets and classifies the observed behavior as `EQUIVALENT`,
+`IMPROVED`, `DEGRADED`, or `MIXED`.
+
+Safety-supervisor facts no longer need to be neural inputs. A residual gate may
+use `requiredRuntimeState`, populated by the same Task-owned recovery target,
+stable dwell, success latch, and deadline latch used by the Mission Runtime.
+That state is supplied out-of-band immediately before each frozen-Policy
+action. Missing or mismatched state drops residual authority to zero, while
+moving an existing predicate from Observation to Runtime state can be checked
+for exact behavioral equivalence without retraining.
+
+The artifact makes a causal claim only about residual authority. It never
+publishes a promotion verdict, and Studio labels visual interpretation as a
+hypothesis. Robot release remains subordinate to the complete locked Mission
+Judge.
+
+The first governed uses of this lane preserved the same 65,536-step Policy:
+
+- `authority-counterfactual-13fefce43e04ed0b` moved the deadline predicate
+  from `requiredObservation` to `requiredRuntimeState`. Every complete-Mission
+  metric and score was byte-equivalent, validating the out-of-band supervisor
+  contract.
+- `authority-counterfactual-7a10e0e7af3e1776` removed only the deadline
+  predicate. Degraded-right residual authority increased `0.52 → 1.90 s`;
+  locked violation count remained `45`, severity improved
+  `112.925 → 105.211`, and aggregate score moved `40.1174 → 40.0466`. The
+  result is causally `IMPROVED` inside the same infeasible tier, with
+  `promotionVerdict: null`.
+
+The experiment therefore answers the narrow gate question without claiming a
+successful robot: deadline reactivation can reduce violation severity for the
+frozen network, but it neither clears the Mission gates nor improves aggregate
+score.

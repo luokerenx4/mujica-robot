@@ -2,7 +2,7 @@ import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, developmentCharterSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DevelopmentCharter, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { authorityProfileSchema, benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, developmentCharterSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type AuthorityProfileDefinition, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DevelopmentCharter, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
 import { confined, hashDirectory, hashJson, readJson, sha256, stableJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -62,6 +62,7 @@ export function assertProgramControllerCompatible(controller: ControllerDefiniti
 export const loadTask = async (projectDir: string, id: string): Promise<TaskDefinition> => await readJson(confined(resolve(projectDir), `tasks/${id}.task.json`), taskSchema) as TaskDefinition;
 export const loadScenario = async (projectDir: string, id: string): Promise<ScenarioDefinition> => await readJson(confined(resolve(projectDir), `scenarios/${id}.scenario.json`), scenarioSchema) as ScenarioDefinition;
 export const loadDomainProfile = async (projectDir: string, id: string): Promise<DomainProfileDefinition> => await readJson(confined(resolve(projectDir), `domain-profiles/${id}.domain.json`), domainProfileSchema) as DomainProfileDefinition;
+export const loadAuthorityProfile = async (projectDir: string, id: string): Promise<AuthorityProfileDefinition> => await readJson(confined(resolve(projectDir), `authority-profiles/${id}.authority.json`), authorityProfileSchema) as AuthorityProfileDefinition;
 export const loadCalibration = async (projectDir: string, id: string): Promise<CalibrationDefinition> => await readJson(confined(resolve(projectDir), `calibrations/${id}.calibration.json`), calibrationSchema) as CalibrationDefinition;
 export const loadObjective = async (projectDir: string, id: string): Promise<ObjectiveDefinition> => await readJson(confined(resolve(projectDir), `objectives/${id}.objective.json`), objectiveSchema) as ObjectiveDefinition;
 export const loadBenchmark = async (projectDir: string, id: string): Promise<BenchmarkDefinition> => await readJson(confined(resolve(projectDir), `benchmarks/${id}.benchmark.json`), benchmarkSchema) as BenchmarkDefinition;
@@ -121,6 +122,12 @@ async function fileIds(root: string, suffix: string): Promise<string[]> {
 export async function listDomainProfileIds(projectDir: string): Promise<string[]> {
   const root = confined(resolve(projectDir), "domain-profiles");
   try { return await fileIds(root, ".domain.json"); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+}
+
+export async function listAuthorityProfileIds(projectDir: string): Promise<string[]> {
+  const root = confined(resolve(projectDir), "authority-profiles");
+  try { return await fileIds(root, ".authority.json"); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
 }
 
@@ -200,6 +207,17 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   for (const id of domainProfileIds) {
     const profile = await loadDomainProfile(root, id); if (profile.id !== id) throw new Error(`Domain Profile id '${profile.id}' must match filename '${id}'`);
     if (profile.provenance.evidence) await requireFile(confined(root, profile.provenance.evidence), `Domain Profile '${id}' evidence`);
+  }
+  const authorityProfileIds = await listAuthorityProfileIds(root);
+  for (const id of authorityProfileIds) {
+    const profile = await loadAuthorityProfile(root, id);
+    if (profile.id !== id) throw new Error(`Authority Profile id '${profile.id}' must match filename '${id}'`);
+    const policyRoot = confined(root, `policies/${profile.policy}`);
+    await requireFile(join(policyRoot, "manifest.json"), `Authority Profile '${id}' Policy`);
+    const architecture = JSON.parse(await Bun.file(join(policyRoot, "architecture.json")).text());
+    if (architecture.actionTransform?.kind !== "program-controller-residual") {
+      throw new Error(`Authority Profile '${id}' requires a program-controller-residual Policy`);
+    }
   }
   const calibrationIds = await listCalibrationIds(root);
   for (const id of calibrationIds) {
@@ -418,5 +436,5 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     }
   }
   const defaultAssembly = await compileAssembly(root, project.manifest.defaults.assembly); const defaultController = await loadController(root, project.manifest.defaults.controller); assertProgramControllerCompatible(defaultController.definition, defaultAssembly); await loadTask(root, project.manifest.defaults.task); await loadScenario(root, project.manifest.defaults.scenario); await loadObjective(root, project.manifest.defaults.objective); await loadBenchmark(root, project.manifest.defaults.benchmark);
-  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, domainProfiles: domainProfileIds.length, calibrations: calibrationIds.length, capturePlans: capturePlanIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, driverPackages: driverPackageIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
+  return { controllers: controllerIds.length, trainers: trainerIds.length, tasks: taskIds.length, scenarios: scenarioIds.length, domainProfiles: domainProfileIds.length, authorityProfiles: authorityProfileIds.length, calibrations: calibrationIds.length, capturePlans: capturePlanIds.length, objectives: objectiveIds.length, trainings: trainingIds.length, benchmarks: benchmarkIds.length, candidates: candidateIds.length, driverPackages: driverPackageIds.length, hardwareTargets: hardwareTargetIds.length, research: researchIds.length, trainingResearch: trainingResearchIds.length, researchLabs: researchLabIds.length };
 }

@@ -104,6 +104,7 @@ export async function studioCommand(
   researchTimeline?: Omit<ResearchTimelineInput, "entries"> & {
     entries: Array<{ review: ResearchReview; reviewHash: string }>;
   },
+  authorityCounterfactual?: Record<string, any>,
 ) {
   const project = await loadProject(projectDir); const runIds = await listManifestDirectories(join(project.rootDir, "runs")); const runId = run ?? runIds.at(-1);
   if (!runId) throw new Error("Studio requires at least one completed Simulation Run");
@@ -167,6 +168,7 @@ export async function studioCommand(
     ...(compareRun && comparisonReplay ? { compareRun, compareReplay: { path: comparisonReplay.path, manifest: comparisonReplay.manifest } } : {}),
     ...(researchReview ? { researchReview } : {}),
     ...(researchTimeline ? { researchTimeline: { ...researchTimeline, entries: timelineEntries } } : {}),
+    ...(authorityCounterfactual ? { authorityCounterfactual } : {}),
   });
   const artifacts = [
     ...[...replayByRun.values()].map((rendered) => projectArtifact("simulation-replay", rendered.id, rendered.path, true)),
@@ -178,6 +180,7 @@ export async function studioCommand(
     comparisonReplay: comparisonReplay ? { id: comparisonReplay.id, path: comparisonReplay.path, frameCount: comparisonReplay.manifest.frameCount, cached: comparisonReplay.cached } : null,
     researchReview: researchReview ? { experimentId: researchReview.review.lineage.experimentId, reviewHash: researchReview.reviewHash } : null,
     researchTimeline: researchTimeline ? { labId: researchTimeline.labId, selectedKey: researchTimeline.selectedKey, reviewCount: timelineEntries.length } : null,
+    authorityCounterfactual: authorityCounterfactual ? { id: authorityCounterfactual.id, case: authorityCounterfactual.case.id } : null,
   }, project, artifacts);
 }
 

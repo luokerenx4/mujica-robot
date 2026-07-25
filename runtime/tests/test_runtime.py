@@ -543,6 +543,55 @@ class RuntimeContractTest(unittest.TestCase):
                 0.0,
             )
 
+    def test_program_residual_gate_requires_exact_runtime_supervisor_state(self):
+        class Prior:
+            def telemetry(self):
+                return {"mode": "recovery"}
+
+        transform = {
+            "residualGate": {
+                "kind": "prior-telemetry-mode",
+                "allowedModes": ["recovery"],
+                "requiredObservation": {"recovery-stable-latched": 0.0},
+                "requiredRuntimeState": {"recoveryDeadlineExpired": 0.0},
+            }
+        }
+        observation = {"recovery-stable-latched": np.asarray([0.0])}
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(),
+                observation,
+                {"recoveryDeadlineExpired": 0.0},
+            ),
+            1.0,
+        )
+        for unsafe_state in (
+            None,
+            {},
+            {"recoveryDeadlineExpired": 1.0},
+            {"recoveryDeadlineExpired": float("nan")},
+            {"recoveryDeadlineExpired": False},
+        ):
+            self.assertEqual(
+                program_residual_gate_scale(
+                    transform,
+                    Prior(),
+                    observation,
+                    unsafe_state,
+                ),
+                0.0,
+            )
+        self.assertEqual(
+            program_residual_gate_scale(
+                transform,
+                Prior(),
+                {"recovery-stable-latched": np.asarray([1.0])},
+                {"recoveryDeadlineExpired": 0.0},
+            ),
+            0.0,
+        )
+
     def test_program_residual_gate_ramps_each_entry_and_exits_immediately(self):
         class Prior:
             def __init__(self):

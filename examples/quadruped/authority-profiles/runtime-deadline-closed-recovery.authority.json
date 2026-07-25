@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "runtime-deadline-closed-recovery",
+  "name": "Runtime-owned recovery deadline gate",
+  "policy": "articulated-inverted-escape-7165992fb1a9b8bc",
+  "intervention": "residual-gate",
+  "rationale": "Move the recovery deadline supervisor fact out of the neural observation ABI while preserving the exact as-trained authority rule.",
+  "residualGate": {
+    "kind": "prior-telemetry-mode",
+    "allowedModes": [
+      "recovery"
+    ],
+    "requiredObservation": {
+      "recovery-target-satisfied": 0,
+      "recovery-stable-latched": 0
+    },
+    "requiredRuntimeState": {
+      "recoveryDeadlineExpired": 0
+    },
+    "allowedTelemetry": {
+      "phase": [
+        "recovery.impulse",
+        "recovery.capture"
+      ]
+    },
+    "requiredTelemetry": {
+      "dynamicRecovery": true
+    },
+    "minimumTelemetry": {
+      "measuredDelaySteps": 1,
+      "bodyTiltRad": 0.3
+    },
+    "maximumTelemetry": {
+      "measuredDelaySteps": 1,
+      "recoveryRetryCount": 1,
+      "baseHeightM": 0.45,
+      "supportFeet": 3,
+      "modeDwellSeconds": 4.5
+    },
+    "rampSeconds": 0,
+    "entryRampSeconds": 0.4
+  }
+}

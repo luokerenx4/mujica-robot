@@ -11,6 +11,7 @@ import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCo
 import { evidenceInspectCommand, observationInspectCommand, observationListCommand, observationRecordCommand } from "./evidence";
 import { projectCreateCommand, projectInspectCommand, projectListCommand, projectReviewCommand, projectWorkCommand, workspaceStudioCommand } from "./project";
 import { twinAuditCommand, twinInspectCommand, twinStudioCommand } from "./twin";
+import { authorityCounterfactualCommand, authorityCounterfactualStudioCommand } from "./authority";
 
 const HELP = `mujica — AI-native robot development harness
 
@@ -40,6 +41,7 @@ USAGE
   mujica studio <project> --research-lab ID [--session ID [--experiment ID]] [--json]
   mujica studio <project> --capture ID --episode ID [--json]
   mujica studio <project> --twin-audit ID [--json]
+  mujica studio <project> --authority-counterfactual ID [--case ID] [--json]
   mujica twin audit <project> --capture ID --episode ID [--json]
   mujica twin inspect <project> --audit ID [--transition N] [--json]
   mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]
@@ -56,6 +58,7 @@ USAGE
   mujica policies <project> [--json]
   mujica policy inspect <project> --policy ID [--json]
   mujica policy requalify <project> --policy ID --assembly ID [--json]
+  mujica policy counterfactual <project> --assembly ID --controller ID --policy ID --benchmark ID --profile ID [--json]
   mujica policy-revisions <project> [--json]
   mujica policy-revision inspect <project> --revision ID [--json]
   mujica benchmark lock <project> --benchmark ID [--json]
@@ -97,7 +100,7 @@ const CAPABILITIES = [
   { id: "assembly.compile", usage: "mujica assembly compile <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "assembly.compare", usage: "mujica assembly compare <project> --from ID --to ID [--json]", effect: "read-only" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
-  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID) [--json]", effect: "creates-artifact" },
+  { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID | --authority-counterfactual ID [--case ID]) [--json]", effect: "creates-artifact" },
   { id: "twin.audit", usage: "mujica twin audit <project> --capture ID --episode ID [--json]", effect: "creates-artifact" },
   { id: "twin.inspect", usage: "mujica twin inspect <project> --audit ID [--transition N] [--json]", effect: "read-only" },
   { id: "evidence.inspect", usage: "mujica evidence inspect <project> (--run ID --time S [--compare-run ID] | --capture ID (--event N | --episode ID --time S)) [--json]", effect: "read-only" },
@@ -114,6 +117,7 @@ const CAPABILITIES = [
   { id: "policies", usage: "mujica policies <project> [--json]", effect: "read-only" },
   { id: "policy.inspect", usage: "mujica policy inspect <project> --policy ID [--json]", effect: "read-only" },
   { id: "policy.requalify", usage: "mujica policy requalify <project> --policy ID --assembly ID [--json]", effect: "creates-artifact" },
+  { id: "policy.counterfactual", usage: "mujica policy counterfactual <project> --assembly ID --controller ID --policy ID --benchmark ID --profile ID [--json]", effect: "creates-artifact" },
   { id: "policy-revisions", usage: "mujica policy-revisions <project> [--json]", effect: "read-only" },
   { id: "policy-revision.inspect", usage: "mujica policy-revision inspect <project> --revision ID [--json]", effect: "read-only" },
   { id: "benchmark.lock", usage: "mujica benchmark lock <project> --benchmark ID [--json]", effect: "mutates-project" },
@@ -169,6 +173,7 @@ function printHuman(command: string, data: any): void {
   else if (command === "capture.run") process.stdout.write(`capture=${data.captureId}\nstatus=${data.status}\nenvironment=${data.environment}\nepisodes=${data.episodes.filter((episode: any) => episode.completed).length}/${data.episodes.length}\ncalibration_eligible=${data.calibrationEligible}\nartifact=${data.artifactPath}\n`);
   else if (command === "train") process.stdout.write(`training_run=${data.trainingRunId}\npolicy=${data.policyId}\nsteps=${data.trainingMetrics.totalSteps}\nartifact=${data.policyPath}\n`);
   else if (command === "policy.requalify") process.stdout.write(`policy=${data.id}\nsource=${data.sourcePolicyId}\nassembly=${data.assembly}\nartifact=${data.path}\n`);
+  else if (command === "policy.counterfactual") process.stdout.write(`counterfactual=${data.id}\nresult=${data.evaluation.causalAssessment.direction}\nscore_delta=${data.evaluation.delta.aggregateScore}\nviolations=${data.evaluation.delta.baselineViolationCount}->${data.evaluation.delta.candidateViolationCount}\nartifact=${data.path}\n`);
   else if (command === "evaluate") process.stdout.write(`benchmark=${data.benchmark}\nscore=${data.evaluation.aggregateScore}\nlock=${data.lockHash}\n`);
   else if (command === "diagnose") {
     const worst = data.cases[0]; const violationLines = worst?.violations.map((gate: any) => `${gate.id}: ${gate.metric}=${gate.value} ${gate.comparator} ${gate.threshold} margin=${gate.margin}`).join("\n") ?? ""; const hypotheses = worst?.hypotheses.map((item: any) => `hypothesis[${item.surface}]=${item.description}`).join("\n") ?? "";
@@ -214,11 +219,11 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       });
       else throw new Error("Usage: mujica project list|inspect|create|review|work ...");
     } else if (command === "validate" || command === "inspect" || command === "policies" || command === "revisions" || command === "policy-revisions" || command === "studio") {
-      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, "twin-audit": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const { values, positionals } = parseArgs({ args, options: { run: { type: "string" }, "compare-run": { type: "string" }, "research-lab": { type: "string" }, session: { type: "string" }, experiment: { type: "string" }, capture: { type: "string" }, episode: { type: "string" }, "twin-audit": { type: "string" }, "authority-counterfactual": { type: "string" }, case: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
       const input = one(positionals, `mujica ${command} <project>`);
       const workspaceStudio = command === "studio" && values.project === undefined && await Bun.file(`${input}/${WORKSPACE_MANIFEST}`).exists();
       if (workspaceStudio) {
-        if ([values.run, values["compare-run"], values["research-lab"], values.session, values.experiment, values.capture, values.episode, values["twin-audit"]].some(Boolean)) {
+        if ([values.run, values["compare-run"], values["research-lab"], values.session, values.experiment, values.capture, values.episode, values["twin-audit"], values["authority-counterfactual"], values.case].some(Boolean)) {
           throw new Error("Workspace Studio does not accept project evidence selectors; pass --project ID to open one project");
         }
         envelope = await workspaceStudioCommand(input);
@@ -227,14 +232,16 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       if (command === "studio") {
         const reviewSelectorCount = [values["research-lab"], values.session, values.experiment].filter(Boolean).length;
         const captureSelectorCount = [values.capture, values.episode].filter(Boolean).length;
+        if (values.case && !values["authority-counterfactual"]) throw new Error("Studio Authority Counterfactual requires --authority-counterfactual when --case is supplied");
         if (reviewSelectorCount && !values["research-lab"]) throw new Error("Studio Research Timeline requires --research-lab");
         if (values.experiment && !values.session) throw new Error("Studio Research Timeline requires --session when --experiment is supplied");
         if (captureSelectorCount !== 0 && captureSelectorCount !== 2) throw new Error("Studio Hardware Capture selection requires --capture and --episode together");
-        if ([Boolean(values.run || values["compare-run"]), Boolean(reviewSelectorCount), Boolean(captureSelectorCount), Boolean(values["twin-audit"])].filter(Boolean).length > 1) throw new Error("Studio accepts exactly one explicit Run, Research Review, Hardware Capture, or Digital Twin Audit source mode");
+        if ([Boolean(values.run || values["compare-run"]), Boolean(reviewSelectorCount), Boolean(captureSelectorCount), Boolean(values["twin-audit"]), Boolean(values["authority-counterfactual"])].filter(Boolean).length > 1) throw new Error("Studio accepts exactly one explicit Run, Research Review, Hardware Capture, Digital Twin Audit, or Authority Counterfactual source mode");
         if (reviewSelectorCount) {
           envelope = await researchTimelineStudioCommand(project, values["research-lab"]!, values.session, values.experiment);
         } else if (captureSelectorCount) envelope = await studioCaptureCommand(project, values.capture!, values.episode!);
         else if (values["twin-audit"]) envelope = await twinStudioCommand(project, values["twin-audit"]);
+        else if (values["authority-counterfactual"]) envelope = await authorityCounterfactualStudioCommand(project, values["authority-counterfactual"], values.case);
         else envelope = await studioCommand(project, values.run, values["compare-run"]);
       } else envelope = command === "validate" ? await validateCommand(project) : command === "inspect" ? await inspectCommand(project) : command === "policies" ? await policiesCommand(project) : command === "policy-revisions" ? await policyRevisionsCommand(project) : await revisionsCommand(project);
       }
@@ -309,7 +316,67 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     } else if (command === "train-research") {
       const { values, positionals } = parseArgs({ args, options: { research: { type: "string" }, iterations: { type: "string", default: "1" }, "agent-command": { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica train-research <project>"), values.project); envelope = await trainingResearchCommand(project, required(values.research, "research"), Number(values.iterations), values["agent-command"]);
     } else if (command === "policy" || command === "revision" || command === "policy-revision") {
-      const action = args.shift(); commandId = `${command}.${action}`; if (action !== "inspect" && !(command === "policy" && action === "requalify")) throw new Error(`Usage: mujica ${command} inspect ...`); const options = command === "policy" ? { policy: { type: "string" as const }, assembly: { type: "string" as const }, json: { type: "boolean" as const, default: false }, project: { type: "string" as const } } : { revision: { type: "string" as const }, json: { type: "boolean" as const, default: false }, project: { type: "string" as const } }; const { values, positionals } = parseArgs({ args, options, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, `mujica ${command} ${action} <project>`), values.project); envelope = command === "policy" && action === "requalify" ? await policyRequalifyCommand(project, required((values as any).policy, "policy"), required((values as any).assembly, "assembly")) : command === "policy" ? await policyInspectCommand(project, required((values as any).policy, "policy")) : command === "policy-revision" ? await policyRevisionInspectCommand(project, required((values as any).revision, "revision")) : await revisionInspectCommand(project, required((values as any).revision, "revision"));
+      const action = args.shift();
+      commandId = `${command}.${action}`;
+      const policyAction = command === "policy"
+        && ["inspect", "requalify", "counterfactual"].includes(action ?? "");
+      if (action !== "inspect" && !policyAction) {
+        throw new Error(
+          command === "policy"
+            ? "Usage: mujica policy inspect|requalify|counterfactual ..."
+            : `Usage: mujica ${command} inspect ...`,
+        );
+      }
+      const options = command === "policy"
+        ? {
+            policy: { type: "string" as const },
+            assembly: { type: "string" as const },
+            controller: { type: "string" as const },
+            benchmark: { type: "string" as const },
+            profile: { type: "string" as const },
+            json: { type: "boolean" as const, default: false },
+            project: { type: "string" as const },
+          }
+        : {
+            revision: { type: "string" as const },
+            json: { type: "boolean" as const, default: false },
+            project: { type: "string" as const },
+          };
+      const { values, positionals } = parseArgs({ args, options, allowPositionals: true });
+      const project = await resolveProjectDirectory(
+        one(positionals, `mujica ${command} ${action} <project>`),
+        values.project,
+      );
+      if (command === "policy" && action === "requalify") {
+        envelope = await policyRequalifyCommand(
+          project,
+          required((values as any).policy, "policy"),
+          required((values as any).assembly, "assembly"),
+        );
+      } else if (command === "policy" && action === "counterfactual") {
+        envelope = await authorityCounterfactualCommand(project, {
+          assembly: required((values as any).assembly, "assembly"),
+          controller: required((values as any).controller, "controller"),
+          policy: required((values as any).policy, "policy"),
+          benchmark: required((values as any).benchmark, "benchmark"),
+          profile: required((values as any).profile, "profile"),
+        });
+      } else if (command === "policy") {
+        envelope = await policyInspectCommand(
+          project,
+          required((values as any).policy, "policy"),
+        );
+      } else if (command === "policy-revision") {
+        envelope = await policyRevisionInspectCommand(
+          project,
+          required((values as any).revision, "revision"),
+        );
+      } else {
+        envelope = await revisionInspectCommand(
+          project,
+          required((values as any).revision, "revision"),
+        );
+      }
     } else if (command === "benchmark") {
       const action = args.shift(); commandId = `benchmark.${action}`; if (action !== "lock") throw new Error("Usage: mujica benchmark lock ..."); const { values, positionals } = parseArgs({ args, options: { benchmark: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica benchmark lock <project>"), values.project); envelope = await benchmarkLockCommand(project, required(values.benchmark, "benchmark"));
     } else if (command === "evaluate") {

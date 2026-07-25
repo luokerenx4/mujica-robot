@@ -108,6 +108,16 @@ A Research definition names one locked Benchmark, one Assembly, one program Cont
 
 A Training Research definition similarly names one Training JSON file and promoted policy Controller. Candidate Training Runs and Policies are immutable even on REVERT. KEEP advances both mutable pointers and publishes an immutable Policy Revision. Policy identity includes Runtime and Harness source, dependency locks, Trainer, contracts, seed, budget, and model content.
 
+An Authority Profile lives at
+`authority-profiles/<id>.authority.json`. It binds one immutable Policy and may
+replace only that Policy's `program-controller-residual` gate. Gate inputs may
+name Program telemetry, scalar Policy observations, or scalar
+`requiredRuntimeState` supervisor facts. Runtime state is out-of-band: it can
+constrain action authority without expanding or retraining the neural
+Observation ABI. Missing, non-finite, mismatched, or disallowed inputs fail
+closed. A Profile has no release authority; it is consumed only by the
+frozen-weight `policy counterfactual` lane.
+
 A V2 Research Lab lives at `research/<id>/research.json` beside its human-owned `program.md`. It selects one `controller`, `policy`, or `development` execution lane; one locked primary Benchmark; zero or more locked regression Benchmarks; exact editable files or trailing-`/**` directory closures; experiment, wall-clock, and optional training-transition budgets; minimum improvement; and an evidence, Policy Revision, or Robot Revision promotion rule. The Agent owns only the declared source closure. Runtime, Harness, Benchmarks, locks, objectives, tasks, scenarios, generated artifacts, and every undeclared project path remain fixed.
 
 Each V2 invocation creates an immutable Session under `research-runs/<lab-id>/sessions/`. Its `results.tsv` is compact Agent memory; every Experiment directory contains proposal metadata, an authoritative source patch, before/after hashes, execution references, frozen evaluation evidence, verdict, manifest, and—when KEEP or REVERT completed successfully—a `review.json`. Candidate work occurs in a disposable project copy. REVERT and CRASH cannot modify source. KEEP uses stale-source checks and a rollback-capable source transaction before publishing the declared Revision. Large content-addressed Runs, Training Runs, Policies, Revisions, and the accepted/candidate Simulation Runs referenced by a Research Review stay in their normal top-level stores.
