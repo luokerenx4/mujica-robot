@@ -209,6 +209,12 @@ credit—not merely widen torque authority or repeat scalar stability thresholds
   fallback, target-boundary failure, gate chatter, and deadline reactivation.
 - [x] Add a frozen-weight authority counterfactual lane so a gate-only change
   can be judged without retraining a different Policy.
+- [x] Make complete-Mission training publish a stage-by-Scenario episode
+  outcome ledger instead of hiding directional failures in aggregate reward.
+- [x] Derive dense recovery progress conjunctively from the complete
+  Task-authored height, tilt, linear-speed, and angular-speed target.
+- [x] Train and judge one balanced left/right continuous-Mission Policy using
+  the conjunctive Task-target signal.
 
 ## Frozen-weight authority result
 
@@ -236,3 +242,45 @@ eliminate a violation and slightly lowers aggregate score. The next learned
 experiment may use Runtime-owned deadline state without widening its neural
 input ABI, but the complete Mission Judge still requires a new Policy or
 Program intervention before release.
+
+## Continuous-Mission outcome contract
+
+The first trained impulse/capture/rise Policy
+`articulated-inverted-escape-b68c36415c7bcfe4` was rejected despite improving
+violation count `43 → 40` and severity `87.786 → 81.573`: degraded-right lost
+self-righting and stable dwell, and both handoff directions regressed. Training
+exposure was already balanced by left/right Scenario. Only six Task-target
+entries occurred across 110 episodes, and the degraded-right Candidate ended
+upright but `0.031 m` below the authored minimum height.
+
+The Harness now preserves atomic Scenarios as diagnostic labels inside one
+continuous Mission rather than treating them as independently promotable
+skills. Every training episode records target entry, actor-caused target entry,
+stable transition, relapse, deadline expiry, phase timeout, and complete
+Mission outcome. Frozen Policy evidence aggregates this by curriculum stage
+and Scenario for both Studio and headless inspection.
+
+Dense target progress is the geometric conjunction of Task-authored height,
+tilt, linear-speed, and angular-speed components. It remains training-only:
+the sparse causal events, locked complete Mission, and gate-first Judge retain
+promotion authority.
+
+Session `session-ff1d35144211cc53` trained that contract for `65,536` steps.
+The outcome ledger exposed the handoff failure directly:
+
+- every one of the `110` episodes started from Mission approach;
+- both sides received `38` recovery-prefix episodes and `17–18` complete
+  Mission episodes;
+- ML caused only `6` target entries in total;
+- the physical state repeatedly crossed the target boundary, but no training
+  episode held it long enough for a `recovery-stable` transition;
+- all `110` episodes expired the recovery phase, and no full Mission completed
+  without a phase timeout.
+
+The locked Judge therefore returned `REVERT`: violations regressed `43 → 45`,
+severity regressed `87.786 → 106.691`, degraded-right lost self-righting and
+stable dwell, and both atomic handoff directions lost score. The next bounded
+problem is no longer Scenario sampling or independent Skill training. It is
+the Policy-to-Program recovery-target handoff: instantaneous target entry
+causes learned authority to close, but the deterministic Program does not
+preserve the target for the authored dwell.

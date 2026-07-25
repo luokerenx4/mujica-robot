@@ -73,6 +73,81 @@ def summarize_domain_samples(samples: list[dict[str, Any]]) -> dict[str, dict[st
     return summary
 
 
+def summarize_mission_outcomes(
+    samples: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Aggregate episode outcomes without hiding Scenario direction or Mission stage."""
+    summary: dict[str, dict[str, Any]] = {}
+    for sample in samples:
+        key = f"{sample['curriculum']}:{sample['scenario']}"
+        outcome = summary.setdefault(key, {
+            "curriculum": sample["curriculum"],
+            "role": sample["role"],
+            "task": sample["task"],
+            "scenario": sample["scenario"],
+            "episodesStarted": 0,
+            "episodesCompleted": 0,
+            "steps": 0,
+            "activePolicySteps": 0,
+            "actorAuthoritySum": 0.0,
+            "recoveryTargetEntryCount": 0,
+            "actorRecoveryTargetEntryCount": 0,
+            "episodesWithRecoveryTargetEntry": 0,
+            "episodesWithActorRecoveryTargetEntry": 0,
+            "recoveryStableTransitionCount": 0,
+            "episodesWithRecoveryStableTransition": 0,
+            "recoveryRelapseCount": 0,
+            "episodesWithRecoveryRelapse": 0,
+            "recoveryDeadlineExpiredEpisodes": 0,
+            "missionPhaseTimeoutCount": 0,
+            "missionPhaseTimeoutEpisodes": 0,
+            "missionCompletedEpisodes": 0,
+            "timeoutFreeMissionEpisodes": 0,
+            "maximumRecoveryStableProgress": 0.0,
+        })
+        outcome["episodesStarted"] += 1
+        outcome["episodesCompleted"] += int(bool(sample.get("completed")))
+        outcome["steps"] += int(sample.get("steps", 0))
+        outcome["activePolicySteps"] += int(sample.get("activePolicySteps", 0))
+        outcome["actorAuthoritySum"] += float(sample.get("actorAuthoritySum", 0.0))
+        target_entries = int(sample.get("recoveryTargetEntryCount", 0))
+        actor_target_entries = int(sample.get("actorRecoveryTargetEntryCount", 0))
+        stable_transitions = int(sample.get("recoveryStableTransitionCount", 0))
+        relapses = int(sample.get("recoveryRelapseCount", 0))
+        phase_timeouts = int(sample.get("missionPhaseTimeoutCount", 0))
+        outcome["recoveryTargetEntryCount"] += target_entries
+        outcome["actorRecoveryTargetEntryCount"] += actor_target_entries
+        outcome["episodesWithRecoveryTargetEntry"] += int(target_entries > 0)
+        outcome["episodesWithActorRecoveryTargetEntry"] += int(actor_target_entries > 0)
+        outcome["recoveryStableTransitionCount"] += stable_transitions
+        outcome["episodesWithRecoveryStableTransition"] += int(stable_transitions > 0)
+        outcome["recoveryRelapseCount"] += relapses
+        outcome["episodesWithRecoveryRelapse"] += int(relapses > 0)
+        outcome["recoveryDeadlineExpiredEpisodes"] += int(
+            bool(sample.get("recoveryDeadlineExpired"))
+        )
+        outcome["missionPhaseTimeoutCount"] += phase_timeouts
+        outcome["missionPhaseTimeoutEpisodes"] += int(phase_timeouts > 0)
+        mission_completed = bool(sample.get("missionCompleted"))
+        outcome["missionCompletedEpisodes"] += int(mission_completed)
+        outcome["timeoutFreeMissionEpisodes"] += int(
+            mission_completed and phase_timeouts == 0
+        )
+        outcome["maximumRecoveryStableProgress"] = max(
+            float(outcome["maximumRecoveryStableProgress"]),
+            float(sample.get("maximumRecoveryStableProgress", 0.0)),
+        )
+    for outcome in summary.values():
+        steps = max(int(outcome["steps"]), 1)
+        outcome["activePolicyFraction"] = float(
+            outcome["activePolicySteps"] / steps
+        )
+        outcome["meanActorAuthority"] = float(
+            outcome.pop("actorAuthoritySum") / steps
+        )
+    return summary
+
+
 def quality_reward_penalty(info: dict[str, Any], weights: dict[str, Any] | None) -> tuple[float, dict[str, float]]:
     quality = info.get("motionQuality", {})
     terms = {
@@ -139,6 +214,7 @@ def recovery_reward_bonus(
         "stillness": 0.0,
         "support": 0.0,
         "tiltEscape": 0.0,
+        "taskTargetProgress": 0.0,
         "taskTargetEntry": 0.0,
     }
     if (
@@ -191,6 +267,9 @@ def recovery_reward_bonus(
     terms["support"] = float(weights.get("support", 0.0)) * float(
         np.clip(support_feet / 4.0, 0.0, 1.0)
     )
+    terms["taskTargetProgress"] = float(
+        weights.get("taskTargetProgress", 0.0)
+    ) * float(np.clip(info.get("recoveryTargetProgress", 0.0), 0.0, 1.0))
     # The gate is evaluated before this action and the Task target afterward.
     # This therefore credits only an actor-authorized action that causally enters
     # the authored target. The next step fails closed because target-satisfied is
@@ -403,6 +482,16 @@ class PPOTrainer:
                 "domainProfileHash": entry.get("domainProfileHash") or request.get("domainProfileHash"),
                 "steps": 0,
                 "completed": False,
+                "activePolicySteps": 0,
+                "actorAuthoritySum": 0.0,
+                "recoveryTargetEntryCount": 0,
+                "actorRecoveryTargetEntryCount": 0,
+                "recoveryStableTransitionCount": 0,
+                "recoveryRelapseCount": 0,
+                "recoveryDeadlineExpired": False,
+                "missionPhaseTimeoutCount": 0,
+                "missionCompleted": False,
+                "maximumRecoveryStableProgress": 0.0,
                 "parameters": domain_sample,
             })
             return RobotEnvironment(
@@ -423,6 +512,7 @@ class PPOTrainer:
             program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"])
             program_prior.reset(seed + episode_index)
         observation_map = environment.reset(); observation = environment.vector(observation_map)
+        episode_recovery_target_satisfied = environment.recovery_target_satisfied()
         observation_size = observation.size; action_size = environment.model.nu
         residual_scale_vector = (
             program_residual_scale_vector(action_transform, action_size)
@@ -473,7 +563,7 @@ class PPOTrainer:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
             batch_base_rewards: list[float] = []; batch_quality_penalties: list[float] = []; batch_quality_terms: dict[str, list[float]] = {name: [] for name in QUALITY_REWARD_REFERENCES}
             batch_mission_bonuses: list[float] = []; batch_mission_terms: dict[str, list[float]] = {name: [] for name in ("commandProgress", "velocityTracking", "stopStability", "recoverySuccess", "recoveryRelapsePenalty", "phaseTimeoutPenalty", "timeoutFreeCompletion")}
-            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape", "taskTargetEntry")}
+            batch_recovery_bonuses: list[float] = []; batch_recovery_terms: dict[str, list[float]] = {name: [] for name in ("upright", "height", "stillness", "support", "tiltEscape", "taskTargetProgress", "taskTargetEntry")}
             batch_residual_gate_scales: list[float] = []
             batch_residual_l2: list[float] = []
             batch_policy_masks: list[float] = []
@@ -537,6 +627,40 @@ class PPOTrainer:
                 curriculum_active_policy_steps[curriculum_index] += int(actor_authority > 0.0)
                 curriculum_actor_authority_sums[curriculum_index] += actor_authority
                 curriculum_learning_reward_sums[curriculum_index] += learning_reward
+                episode_sample = domain_samples[-1]
+                episode_sample["activePolicySteps"] += int(actor_authority > 0.0)
+                episode_sample["actorAuthoritySum"] += actor_authority
+                target_satisfied = bool(result.info.get("recoveryTargetSatisfied"))
+                if target_satisfied and not episode_recovery_target_satisfied:
+                    episode_sample["recoveryTargetEntryCount"] += 1
+                    episode_sample["actorRecoveryTargetEntryCount"] += int(
+                        actor_authority > 0.0
+                    )
+                episode_recovery_target_satisfied = target_satisfied
+                mission_transition = result.info.get("missionTransition")
+                if isinstance(mission_transition, dict):
+                    episode_sample["recoveryStableTransitionCount"] += int(
+                        mission_transition.get("condition") == "recovery-stable"
+                        and mission_transition.get("conditionMet") is True
+                    )
+                    episode_sample["missionPhaseTimeoutCount"] += int(
+                        mission_transition.get("timedOut") is True
+                    )
+                episode_sample["recoveryRelapseCount"] += int(
+                    result.info.get("recoveryRelapseEntered") is True
+                )
+                episode_sample["recoveryDeadlineExpired"] = bool(
+                    episode_sample["recoveryDeadlineExpired"]
+                    or result.info.get("recoveryDeadlineExpired")
+                )
+                episode_sample["missionCompleted"] = bool(
+                    episode_sample["missionCompleted"]
+                    or result.info.get("missionCompleted")
+                )
+                episode_sample["maximumRecoveryStableProgress"] = max(
+                    float(episode_sample["maximumRecoveryStableProgress"]),
+                    float(result.info.get("recoveryStableProgress", 0.0)),
+                )
                 episode_reward += learning_reward
                 done = result.terminated or result.truncated
                 batch_obs.append(normalized); batch_actions.append(raw_action.astype(np.float32)); batch_log_probs.append(float(log_prob.item())); batch_rewards.append(learning_reward); batch_dones.append(float(done)); batch_values.append(float(value.item()))
@@ -589,6 +713,7 @@ class PPOTrainer:
                         if program_prior is not None: program_prior = load_program_controller(Path(request["priorControllerRoot"]), request["priorController"]); program_prior.reset(seed + episode_index)
                         residual_gate_scale_state = 0.0
                         observation_map = environment.reset(); observation = environment.vector(observation_map)
+                        episode_recovery_target_satisfied = environment.recovery_target_satisfied()
             with torch.no_grad():
                 normalized = normalizer.normalize(observation); _, next_value, _ = network(torch.from_numpy(normalized).unsqueeze(0)); bootstrap = float(next_value.item())
             advantages = np.zeros(len(batch_rewards), dtype=np.float32); last_advantage = 0.0
@@ -649,6 +774,7 @@ class PPOTrainer:
             } if request.get("domainProfile") else None,
             "domainSamples": domain_samples,
             "domainCoverage": summarize_domain_samples(domain_samples),
+            "missionOutcomeCoverage": summarize_mission_outcomes(domain_samples),
             "curriculumCoverage": {
                 str(entry["id"]): {
                     "role": entry["role"],

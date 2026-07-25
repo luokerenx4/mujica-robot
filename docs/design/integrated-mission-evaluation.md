@@ -192,11 +192,25 @@ non-zero authority. Recovery shaping may include `taskTargetEntry`: a bounded
 bonus on the actor-authorized action whose resulting state first satisfies the
 Task-authored recovery target. The authority gate observes that target before
 the next action and fails closed, so the Policy cannot farm target occupancy.
+It may also include `taskTargetProgress`, the geometric conjunction of smooth
+height, yaw-invariant tilt, linear-speed, and angular-speed components derived
+from that same Task target. Independent posture terms can all look locally
+good while one required physical dimension still fails; conjunction makes that
+missing dimension suppress the dense signal without changing the target or the
+Policy Observation ABI.
 Sparse Mission outcomes remain in the return for earlier causal credit. None
 of these terms change Benchmark scores or gates.
 The frozen Policy records, per Mission phase, step exposure, active-actor
 fraction, effective residual authority, signed progress, base reward, shaped
 reward, quality penalty, and final learning reward.
+
+Frozen training evidence also records a Mission outcome ledger keyed by
+curriculum stage and Scenario. Each row counts episode completion, total and
+actor-caused recovery-target entries, stable-recovery transitions, relapse,
+deadline expiry, phase timeout, and timeout-free full-Mission completion.
+Scenario remains a disturbance/plant label inside the continuous task. The
+ledger is a directional diagnostic for humans and Agents; it does not create
+separate promotion authority for walking, impact response, or self-righting.
 
 Legacy Training v2 still supports `episode-probability` and `step-share` for
 reproducing existing Policies. It is not the main integrated-robot
@@ -712,3 +726,29 @@ Prefix curricula improve sampling efficiency, but they have no promotion
 authority. A candidate is selected only if the same uninterrupted trajectory
 survives impact, recovers, avoids relapse, resumes locomotion, redirects,
 traverses, and stops across the complete Mission Suite.
+
+## Conjunctive target and outcome-ledger result
+
+Session `session-ff1d35144211cc53` replaced part of the independent recovery
+shaping with `taskTargetProgress` and trained the same bounded
+impulse/capture/rise envelope for `65,536` steps. The new ledger showed that
+left/right sampling was not the limiting variable: each side received `38`
+recovery-prefix episodes and roughly equal complete-Mission exposure.
+
+The important result was causal. Across `110` episodes, ML caused only six
+entries into the Task recovery target. The physical state crossed into and out
+of the target hundreds of times, but no episode held it long enough to emit a
+`recovery-stable` transition. Every training episode expired the recovery
+phase; later phases could still run, but `timeoutFreeMissionEpisodes` remained
+zero.
+
+The locked Judge rejected Policy
+`articulated-inverted-escape-f5d2e2cbb4ede888`: violations regressed `43 → 45`,
+severity regressed `87.786 → 106.691`, degraded-right lost self-righting,
+stable dwell, final posture, and final height, and both handoff regressions
+lost score. This rules out independent Skill sampling and an additive reward
+blind spot as sufficient explanations. The measured boundary is now the
+instantaneous recovery-target handoff: learned authority closes at target
+entry, while the Program fails to preserve the target for the authored dwell.
+Any next intervention must change that shared handoff contract and still be
+judged by the uninterrupted Mission.

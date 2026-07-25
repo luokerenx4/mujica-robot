@@ -119,6 +119,25 @@ The word “scenario” here denotes a controlled disturbance or plant variant
 inside a complete Mission Case. It is not an independently promotable skill
 test. The locked four-Case benchmark is the sole promotion authority.
 
+The first trained rise-envelope Policy was rejected by that authority. Relative
+to Program on degraded-right it reduced violations `43 → 40`, but score fell
+`62.722 → 40.603`; self-righting, stable dwell, and recovery handoff regressed.
+Training exposure was directionally balanced in both exact and complete stages,
+so another blind left/right resampling change is not justified. The stronger
+measured failure is objective sparsity: only six Task-target entries occurred
+across 110 episodes, while the rejected right-side trajectory finished upright
+but at `0.289 m`, just below the Task's `0.32 m` height requirement.
+
+The next hypothesis must therefore derive dense recovery progress from the
+whole Task target, not four independently maximizable proxies. Use a geometric
+conjunction of normalized height, tilt, linear-speed, and angular-speed
+components, so one near-zero physical dimension suppresses the combined
+progress signal. Keep the sparse target-entry event as actor-causal credit.
+Training output must also publish an episode outcome ledger keyed by curriculum
+stage and Scenario, including target entries, stable transitions, relapse,
+deadline expiry, Mission timeouts, and full completion. These are diagnostics
+inside continuous Missions, not separate optimization authorities.
+
 Edit the isolated workspace directly, then print exactly one proposal object:
 
 ```json

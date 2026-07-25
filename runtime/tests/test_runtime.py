@@ -19,7 +19,7 @@ from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
 from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
-from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples
+from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, effective_action_transform, masked_mean, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_mission_outcomes
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
 
 
@@ -689,7 +689,12 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(bonus, 10.0)
         self.assertEqual(
             terms,
-            {**weights, "tiltEscape": 0.0, "taskTargetEntry": 0.0},
+            {
+                **weights,
+                "tiltEscape": 0.0,
+                "taskTargetProgress": 0.0,
+                "taskTargetEntry": 0.0,
+            },
         )
         self.assertEqual(recovery_reward_bonus(info, telemetry, weights, 0.0)[0], 0.0)
         self.assertEqual(
@@ -748,6 +753,14 @@ class RuntimeContractTest(unittest.TestCase):
         )
         self.assertAlmostEqual(target_bonus, bonus + 80.0)
         self.assertEqual(target_terms["taskTargetEntry"], 80.0)
+        progress_bonus, progress_terms = recovery_reward_bonus(
+            {**info, "recoveryTargetProgress": 0.75},
+            telemetry,
+            {**weights, "taskTargetProgress": 12.0},
+            0.08,
+        )
+        self.assertAlmostEqual(progress_bonus, bonus + 9.0)
+        self.assertEqual(progress_terms["taskTargetProgress"], 9.0)
         self.assertEqual(
             recovery_reward_bonus(
                 {**info, "recoveryTargetSatisfied": True},
@@ -793,6 +806,53 @@ class RuntimeContractTest(unittest.TestCase):
             {"parameters": {"bodyMassScale": 1.1, "actuatorDelayJitterSteps": 2}},
         ])
         self.assertEqual(summary["bodyMassScale"], {"minimum": 0.9, "mean": 1.0, "maximum": 1.1})
+
+        outcomes = summarize_mission_outcomes([
+            {
+                "curriculum": "complete",
+                "role": "mission",
+                "task": "resilience",
+                "scenario": "impact-left",
+                "completed": True,
+                "steps": 100,
+                "activePolicySteps": 20,
+                "actorAuthoritySum": 5.0,
+                "recoveryTargetEntryCount": 2,
+                "actorRecoveryTargetEntryCount": 1,
+                "recoveryStableTransitionCount": 1,
+                "recoveryRelapseCount": 1,
+                "recoveryDeadlineExpired": False,
+                "missionPhaseTimeoutCount": 0,
+                "missionCompleted": True,
+                "maximumRecoveryStableProgress": 1.0,
+            },
+            {
+                "curriculum": "complete",
+                "role": "mission",
+                "task": "resilience",
+                "scenario": "impact-left",
+                "completed": False,
+                "steps": 50,
+                "activePolicySteps": 10,
+                "actorAuthoritySum": 2.5,
+                "recoveryTargetEntryCount": 0,
+                "actorRecoveryTargetEntryCount": 0,
+                "recoveryStableTransitionCount": 0,
+                "recoveryRelapseCount": 0,
+                "recoveryDeadlineExpired": True,
+                "missionPhaseTimeoutCount": 1,
+                "missionCompleted": False,
+                "maximumRecoveryStableProgress": 0.5,
+            },
+        ])["complete:impact-left"]
+        self.assertEqual(outcomes["episodesStarted"], 2)
+        self.assertEqual(outcomes["episodesCompleted"], 1)
+        self.assertEqual(outcomes["actorRecoveryTargetEntryCount"], 1)
+        self.assertEqual(outcomes["episodesWithRecoveryStableTransition"], 1)
+        self.assertEqual(outcomes["recoveryDeadlineExpiredEpisodes"], 1)
+        self.assertEqual(outcomes["timeoutFreeMissionEpisodes"], 1)
+        self.assertAlmostEqual(outcomes["activePolicyFraction"], 0.2)
+        self.assertAlmostEqual(outcomes["meanActorAuthority"], 0.05)
 
         model, compiled = compiled_assembly("command-conditioned-history-3dof")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())
@@ -1231,6 +1291,11 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(stable_event["requiredDwellSeconds"], 0.04)
         self.assertTrue(result.info["recoveryStableLatched"])
         self.assertEqual(result.info["recoveryStableProgress"], 1.0)
+        self.assertEqual(result.info["recoveryTargetProgress"], 1.0)
+        self.assertEqual(
+            set(result.info["recoveryTargetProgressComponents"]),
+            {"height", "tilt", "linearSpeed", "angularSpeed", "combined"},
+        )
         approach_event = next(event for event in environment.events if event.get("from") == "approach")
         self.assertAlmostEqual(approach_event["time"], 0.06)
 
@@ -2117,6 +2182,15 @@ class RuntimeContractTest(unittest.TestCase):
                 sum(item["steps"] for item in metrics["missionPhaseCoverage"].values()),
                 coverage["mission"]["steps"],
             )
+            outcomes = metrics["missionOutcomeCoverage"]
+            self.assertEqual(
+                {item["curriculum"] for item in outcomes.values()},
+                {"skill", "mission"},
+            )
+            self.assertEqual(
+                sum(item["steps"] for item in outcomes.values()),
+                64,
+            )
 
     def test_step_share_curriculum_corrects_for_unequal_episode_lengths(self):
         weights = np.asarray([0.35, 0.65], dtype=np.float64)
@@ -2243,6 +2317,15 @@ class RuntimeContractTest(unittest.TestCase):
                     if item["curriculum"] == "complete-mission"
                 },
                 {"approach", "recover", "stop"},
+            )
+            outcomes = metrics["missionOutcomeCoverage"]
+            self.assertEqual(
+                {item["curriculum"] for item in outcomes.values()},
+                {"approach-prefix", "complete-mission"},
+            )
+            self.assertEqual(
+                sum(item["steps"] for item in outcomes.values()),
+                64,
             )
 
 

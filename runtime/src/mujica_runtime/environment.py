@@ -368,6 +368,59 @@ class RobotEnvironment:
             and float(np.linalg.norm(self.data.qvel[3:6])) <= float(target["maximumAngularSpeedRadPerSec"])
         )
 
+    def recovery_target_progress(self) -> dict[str, float]:
+        """Smooth, conjunctive progress toward the authored recovery target."""
+        target = self.task.get("recoveryTarget")
+        if target is None:
+            return {
+                "height": 0.0,
+                "tilt": 0.0,
+                "linearSpeed": 0.0,
+                "angularSpeed": 0.0,
+                "combined": 0.0,
+            }
+        height = float(self.data.qpos[2])
+        tilt = self.body_tilt()
+        linear_speed = float(np.linalg.norm(self.data.qvel[:3]))
+        angular_speed = float(np.linalg.norm(self.data.qvel[3:6]))
+        minimum_height = float(target["minimumBaseHeightM"])
+        maximum_tilt = float(target["maximumBodyTiltRad"])
+        maximum_linear_speed = float(target["maximumLinearSpeedMps"])
+        maximum_angular_speed = float(target["maximumAngularSpeedRadPerSec"])
+        components = {
+            "height": 1.0 if height >= minimum_height else float(
+                np.clip(
+                    (height - 0.05) / max(minimum_height - 0.05, 1e-9),
+                    0.0,
+                    1.0,
+                )
+            ),
+            "tilt": 1.0 if tilt <= maximum_tilt else float(
+                np.clip(
+                    (np.pi - tilt) / max(np.pi - maximum_tilt, 1e-9),
+                    0.0,
+                    1.0,
+                )
+            ),
+            "linearSpeed": float(
+                np.exp(
+                    -max(0.0, linear_speed - maximum_linear_speed)
+                    / max(maximum_linear_speed, 0.05)
+                )
+            ),
+            "angularSpeed": float(
+                np.exp(
+                    -max(0.0, angular_speed - maximum_angular_speed)
+                    / max(maximum_angular_speed, 0.05)
+                )
+            ),
+        }
+        components["combined"] = float(
+            np.prod(np.asarray(list(components.values()), dtype=np.float64))
+            ** (1.0 / len(components))
+        )
+        return components
+
     def recovery_stable_progress(self) -> float:
         """Task-authored stable-recovery dwell, normalized and latched at success."""
         if self.recovery_stable_latched:
@@ -774,6 +827,8 @@ class RobotEnvironment:
             "missionCompleted": self.mission_completed,
             "missionPhaseTimeoutCount": self.mission_phase_timeout_count,
             "recoveryTargetSatisfied": self.recovery_target_satisfied(),
+            "recoveryTargetProgress": self.recovery_target_progress()["combined"],
+            "recoveryTargetProgressComponents": self.recovery_target_progress(),
             "recoveryStableProgress": self.recovery_stable_progress(),
             "recoveryStableLatched": self.recovery_stable_latched,
             "recoveryStableAtSeconds": self.recovery_stable_at_seconds,

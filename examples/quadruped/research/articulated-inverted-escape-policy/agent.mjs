@@ -20,6 +20,7 @@ const strategies = [
   "phase-bounded-ramped-history-recovery",
   "deadline-closed-phase-bounded-history-recovery",
   "predeadline-target-seeking-rise-recovery",
+  "conjunctive-task-target-balanced-recovery",
 ];
 const strategy = strategies.find((candidate) => !triedStrategies.has(candidate));
 if (!strategy) {
@@ -30,8 +31,11 @@ const firstRecoveryOnly =
   strategy === "first-recovery-only-delay-one-residual";
 const deadlineClosed =
   strategy === "deadline-closed-phase-bounded-history-recovery";
+const conjunctiveTargetProgress =
+  strategy === "conjunctive-task-target-balanced-recovery";
 const targetSeekingRise =
-  strategy === "predeadline-target-seeking-rise-recovery";
+  strategy === "predeadline-target-seeking-rise-recovery" ||
+  conjunctiveTargetProgress;
 const phaseBoundedRamp =
   strategy === "phase-bounded-ramped-history-recovery" ||
   deadlineClosed ||
@@ -198,12 +202,16 @@ training.learningRate = 0.00005;
 training.entropyCoefficient = 0.0005;
 training.residualPenalty = 0.05;
 training.recoveryReward = {
-  upright: 12,
-  height: 6,
+  upright: conjunctiveTargetProgress ? 6 : 12,
+  height: conjunctiveTargetProgress ? 3 : 6,
   stillness: 1,
-  support: 5,
+  support: conjunctiveTargetProgress ? 3 : 5,
   tiltEscape: 8,
-  ...(targetSeekingRise ? { taskTargetEntry: 80 } : {}),
+  ...(conjunctiveTargetProgress
+    ? { taskTargetProgress: 12, taskTargetEntry: 120 }
+    : targetSeekingRise
+    ? { taskTargetEntry: 80 }
+    : {}),
   stillnessMaximumTiltRad: 0.5,
 };
 if (taskTargetClosedLoop) {
@@ -225,7 +233,9 @@ await writeFile(trainingPath, `${JSON.stringify(training, null, 2)}\n`);
 process.stdout.write(
   JSON.stringify({
     strategy,
-    hypothesis: targetSeekingRise
+    hypothesis: conjunctiveTargetProgress
+      ? "The prior continuous-Mission run exposed a reward and observability mismatch rather than a left/right sampling imbalance: complete-stage training was balanced by direction, but only six Task-target entries occurred in 110 episodes, and the rejected degraded-right Policy ended upright yet 3.1 cm below the authored height threshold. Replace part of the independent posture shaping with a smooth geometric conjunction of the Task-authored height, tilt, linear-speed, and angular-speed targets, retain sparse actor-causal target entry, and publish every stage-by-Scenario episode outcome so PPO cannot receive a high local recovery return while silently missing one physical target dimension or the downstream Mission."
+      : targetSeekingRise
       ? "A frozen-weight authority counterfactual proved that extending the bounded residual through Program rise can turn degraded-left from terminal inversion into a stable target entry, but the untrained rise actions also caused two relapses and degraded transition tracking. Train that exact pre-deadline rise envelope inside the continuous no-reset Mission, credit only actor-authorized entry into the Task-authored recovery target, and retain sparse relapse, timeout, and Mission-completion terms so local self-righting cannot win by breaking the later traverse and stop phases."
       : deadlineClosed
       ? "The phase-bounded ramped Policy restored degraded-right self-righting and improved the Mission violation tier, but the Task recovery phase had already timed out before self-righting. Because no success latch can exist after that failed transition, the Policy reactivated on later falls and ended below the final-height gate. Preserve the learned initial impulse/capture correction, and additionally require the Task-derived recovery-deadline-expired latch to remain false. This closes authority permanently at the six-second recovery timeout even when the Program later enters recovery again."
@@ -236,7 +246,9 @@ process.stdout.write(
       : firstRecoveryOnly
       ? "The first delay-one residual improved degraded-right progress, tilt, collisions, and joint margin, but the complete Mission exposed a second fall during traverse/stop. The residual reactivated for that later recovery and the Mission ended mid-rise. Requiring observable Program telemetry recoveryCompleted=false preserves learned authority for the initial impact recovery while returning all later falls to the deterministic Program."
       : "Controller experiments improved trigger timing and entry classification but proved that one fixed recovery trajectory cannot absorb the delay-one impact-state distribution. A residual restricted to observable delay-one dynamic recovery can adapt the initial recovery and first retry while static recovery and locomotion remain Program-only; complete exact and degraded Cases must still judge any state that causally enters the same gate.",
-    expectedEffect: targetSeekingRise
+    expectedEffect: conjunctiveTargetProgress
+      ? "Increase actor-caused target entries and stable-recovery episodes in both impact directions—especially degraded-right base height—while reducing recovery deadline expiry and preserving timeout-free traverse/stop completion; the new outcome ledger must make any directional or curriculum-stage tradeoff explicit."
+      : targetSeekingRise
       ? "Complete stable recovery before the six-second deadline in both degraded directions, then traverse and stop without relapse; preserve all exact-plant gates and keep Policy authority at zero after target entry, stable latch, or recovery timeout."
       : deadlineClosed
       ? "Keep the first recovery correction unchanged until the Task deadline, guarantee zero learned authority afterward, retain degraded-right self-righting, and restore terminal height by leaving every post-timeout recovery to the Program."
