@@ -613,6 +613,7 @@ const deterministicCheckpointSchema = z.object({
   scope: z.literal("complete-mission"),
   everySteps: z.number().int().positive(),
   minimumSteps: z.number().int().nonnegative().optional(),
+  includeInitialProgramPolicy: z.literal(true).optional(),
 }).strict();
 
 function validateTrainingOptimization(

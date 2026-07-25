@@ -660,3 +660,40 @@ that reproduces the Program across the whole Mission—using Program
 demonstration/DAgger-style coverage and the same end-to-end Judge—before
 reintroducing local counterfactual reflex optimization. No isolated Skill or
 proxy gains promotion authority.
+
+## Program-safe complete-Mission Policy selection
+
+The next bounded experiment addresses that unsafe-parent gap without treating
+walking, impact response, self-righting, and resumed locomotion as separate
+robots. It preserves the diagnostic recovery prefix, but adds the exactly zero
+residual actor at step 0 to the deterministic selector. Every candidate—step 0
+and learned—runs the same no-reset Mission from approach through impact,
+recovery, resumption, redirection, traversal, and stop across both impact
+directions and plant profiles.
+
+Runtime fails closed unless the step-0 actor is a non-warm-start
+Program-residual Policy and its frozen probe reports an exactly zero raw actor
+mean. If learning improves only the local recovery slice, the selector restores
+Program-equivalent step 0. If a learned checkpoint wins complete-Mission Task
+evidence, the unchanged locked Judge must still approve it before release.
+
+The first run exposed an insufficient selector: step `40,960` earned one
+actor-contributed target entry, which beat step 0 lexicographically even though
+all four deterministic probes still timed out and no side produced stable
+recovery. The locked Judge rejected it at `40.486566` versus the Program's
+`62.722325`; right-impact recovery, handoff, and disturbed-lateral tracking
+regressed. The selector now treats such target entry as local diagnostic
+evidence. Learned weights may replace step 0 only through bilateral worst-case
+complete-Mission improvement with no integrated-outcome regression.
+
+Session `session-35a8241fa4e79ff7` verified the stricter rule on the same
+65,536-step run. Step 0 was restored with maximum raw actor mean exactly
+`0.0`. All eight learned checkpoints were ineligible. Step `40,960` again
+contained one actor-contributed target entry, but worst-side stable recovery
+remained zero and all four complete probes timed out; Studio and the immutable
+ledger therefore label it local evidence only. The locked Judge measured
+identical feasibility—`43` violations and `87.786021` normalized severity—for
+Program and Policy behavior. The Policy score was `59.506965` versus
+`62.722325` solely because the unchanged complexity term charges its 65,536
+Training steps, so the experiment correctly remained `REVERT`. This artifact
+is a safe executable parent, not an improvement claim.

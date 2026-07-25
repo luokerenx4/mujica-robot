@@ -317,3 +317,17 @@ reports the parent Policy and maximum accepted KL. Frozen Policy metrics retain
 the anchor distribution/count, maximum attempted KL, and accepted/rolled-back
 optimizer-step counts. This bound applies only to the declared Mission anchor;
 the unchanged locked Judge remains the promotion authority.
+
+For a Program-residual Trainer, Training v3 may set
+`deterministicCheckpoint.includeInitialProgramPolicy: true`. Runtime then
+freezes step 0 as an executable Policy candidate and proves that its maximum
+raw actor mean is exactly zero, so deployed Actions are exactly the frozen
+Program prior. Learned checkpoints compete with that baseline only on the
+same complete no-reset Mission. `train` reports
+`program_equivalent_initial_policy=true` when every learned checkpoint loses
+and step 0 is restored. A learned checkpoint must improve at least one
+bilateral worst-case end-to-end Mission outcome without regressing completion,
+stable recovery, relapse, timeout, or recovery progress; actor intervention or
+local target entry alone remains diagnostic. This option rejects warm-start
+weights and non-Program action transforms because neither can prove
+zero-residual equivalence.

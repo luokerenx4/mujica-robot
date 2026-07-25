@@ -648,8 +648,17 @@ describe("Robot Assembly compiler", () => {
         scope: "complete-mission",
         everySteps: 2048,
         minimumSteps: 4096,
+        includeInitialProgramPolicy: true,
       },
     }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      deterministicCheckpoint: {
+        scope: "complete-mission",
+        everySteps: 2048,
+        includeInitialProgramPolicy: false,
+      },
+    }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
       deterministicCheckpoint: {

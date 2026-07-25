@@ -208,6 +208,11 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("exploration evidence, not deployable Policy proof");
     expect(html).toContain("Frozen deterministic Policy probe");
     expect(html).toContain("zero Training-budget steps");
+    expect(html).toContain("Complete-Mission Policy selection");
+    expect(html).toContain("Step 0 safety baseline");
+    expect(html).toContain("walking, impact, self-righting, resumption, redirection, traversal, and stop are evaluated together");
+    expect(html).toContain("bilateral worst-case complete-Mission improvement");
+    expect(html).toContain("LOCAL EVIDENCE ONLY");
     expect(html).toContain("Policy consolidation");
     expect(html).toContain("Elite recovery replay");
     expect(html).toContain("exploration-to-mean consolidation");
@@ -219,7 +224,7 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("frozen-parent-deterministic-complete-mission-active-states");
     expect(html).toContain("diagnostic prefix");
     expect(html).toContain("Frozen checkpoint");
-    expect(html).toContain("Deterministic checkpoint selection");
+    expect(html).toContain("Complete-Mission Policy selection");
     expect(html).toContain("Frozen-weight Authority Counterfactual");
     expect(html).toContain("byte-identical Policy weights");
     expect(html).toContain("mujica-frozen-policy-authority-counterfactual");

@@ -2770,6 +2770,10 @@ class RuntimeContractTest(unittest.TestCase):
                 "domainProfileHash": "b" * 64,
             },
         ]
+        prior_root = PROJECT / "controllers" / "baseline-gait"
+        prior_controller = json.loads(
+            (prior_root / "controller.json").read_text()
+        )
         self.assertEqual(mission_prefix_end_seconds(task, "approach"), 0.02)
         self.assertEqual(mission_prefix_end_seconds(task, "stop"), 0.06)
         causal_task = json.loads((PROJECT / "tasks" / "integrated-resilience-mission.task.json").read_text())
@@ -2785,6 +2789,9 @@ class RuntimeContractTest(unittest.TestCase):
             "task": task,
             "scenarios": [scenario],
             "progression": progression,
+            "priorController": prior_controller,
+            "priorControllerRoot": str(prior_root),
+            "priorControllerHash": hash_directory(prior_root),
             "seed": 13,
             "training": {
                 "totalSteps": 64,
@@ -2800,11 +2807,18 @@ class RuntimeContractTest(unittest.TestCase):
                     "scope": "complete-mission",
                     "everySteps": 32,
                     "minimumSteps": 32,
+                    "includeInitialProgramPolicy": True,
                 },
             },
         }
         with tempfile.TemporaryDirectory() as directory:
-            PPOTrainer(hidden_sizes=[16]).train(request, Path(directory))
+            result = PPOTrainer(
+                hidden_sizes=[16],
+                action_transform={
+                    "kind": "program-controller-residual",
+                    "residualScale": 1.0,
+                },
+            ).train(request, Path(directory))
             metrics = json.loads((Path(directory) / "training-metrics.json").read_text())
             stages = metrics["missionProgression"]
             self.assertEqual(metrics["trainingMode"], "mission-progression")
@@ -2896,10 +2910,47 @@ class RuntimeContractTest(unittest.TestCase):
             checkpoint = metrics["deterministicCheckpointSelection"]
             self.assertFalse(checkpoint["trainingBudgetCharged"])
             self.assertEqual(checkpoint["latestTrainedSteps"], 64)
-            self.assertIn(checkpoint["selectedSteps"], [32, 64])
+            self.assertEqual(checkpoint["selectedSteps"], 0)
+            self.assertTrue(
+                checkpoint["selectedProgramEquivalentInitialPolicy"]
+            )
+            self.assertEqual(
+                checkpoint["initialProgramPolicy"],
+                {
+                    "included": True,
+                    "step": 0,
+                    "semantics": "program-controller-plus-zero-residual",
+                    "programController": "baseline-gait",
+                    "controllerHash": hash_directory(prior_root),
+                    "maximumAbsoluteRawActorMean": 0.0,
+                },
+            )
             self.assertEqual(
                 [candidate["steps"] for candidate in checkpoint["candidates"]],
-                [32, 64],
+                [0, 32, 64],
+            )
+            self.assertEqual(
+                checkpoint["candidates"][0]["maximumAbsoluteRawActorMean"],
+                0.0,
+            )
+            self.assertEqual(
+                checkpoint["programSafeSelection"],
+                {
+                    "baselineStep": 0,
+                    "rule": "bilateral-complete-mission-dominance-over-program-step-0",
+                    "localActorEvidenceCanPromote": False,
+                },
+            )
+            self.assertTrue(
+                checkpoint["candidates"][0][
+                    "programSafeAgainstInitial"
+                ]["eligible"]
+            )
+            self.assertTrue(
+                all(
+                    not candidate["programSafeAgainstInitial"]["eligible"]
+                    for candidate in checkpoint["candidates"][1:]
+                )
             )
             self.assertEqual(
                 sum(int(candidate["selected"]) for candidate in checkpoint["candidates"]),
@@ -2914,6 +2965,7 @@ class RuntimeContractTest(unittest.TestCase):
                 ),
             )
             self.assertEqual(metrics["totalSteps"], 64)
+            self.assertTrue(result["selectedProgramEquivalentInitialPolicy"])
 
         interleaved_request = json.loads(json.dumps(request))
         interleaved_request["training"].pop("deterministicCheckpoint")
@@ -2921,7 +2973,13 @@ class RuntimeContractTest(unittest.TestCase):
             "interleaved-step-share"
         )
         with tempfile.TemporaryDirectory() as directory:
-            PPOTrainer(hidden_sizes=[16]).train(
+            PPOTrainer(
+                hidden_sizes=[16],
+                action_transform={
+                    "kind": "program-controller-residual",
+                    "residualScale": 1.0,
+                },
+            ).train(
                 interleaved_request, Path(directory)
             )
             metrics = json.loads(

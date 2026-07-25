@@ -1096,6 +1096,7 @@ def run_deterministic_mission_probe(
     """
     samples: list[dict[str, Any]] = []
     probe_index = 0
+    maximum_absolute_raw_actor_mean = 0.0
     network.eval()
     for curriculum_index, entry in enumerate(curriculum):
         for scenario in entry["scenarios"]:
@@ -1152,6 +1153,10 @@ def run_deterministic_mission_probe(
                         torch.from_numpy(normalized).unsqueeze(0)
                     )
                 raw_action = mean[0].numpy()
+                maximum_absolute_raw_actor_mean = max(
+                    maximum_absolute_raw_actor_mean,
+                    float(np.max(np.abs(raw_action))),
+                )
                 prior_telemetry: dict[str, Any] | None = None
                 if (
                     action_transform
@@ -1234,6 +1239,7 @@ def run_deterministic_mission_probe(
     return {
         "actionMode": "deterministic-actor-mean",
         "trainingBudgetCharged": False,
+        "maximumAbsoluteRawActorMean": maximum_absolute_raw_actor_mean,
         "episodes": samples,
         "actuatorDelayCoverage": summarize_actuator_delay_coverage(samples),
         "lateralImpactPairAudit": summarize_lateral_impact_pairs(samples),
@@ -1329,6 +1335,86 @@ def deterministic_checkpoint_rank(
     return rank
 
 
+def program_safe_complete_mission_improvement(
+    candidate: dict[str, Any],
+    baseline: dict[str, Any],
+) -> dict[str, Any]:
+    """Require bilateral end-to-end progress before replacing Program step 0.
+
+    Actor intervention and target-entry counts remain useful diagnostics, but
+    they cannot by themselves establish that the whole robot improved.
+    """
+    non_regression_checks = {
+        "minimumTimeoutFreeMissionsPerScenario": (
+            candidate["minimumTimeoutFreeMissionsPerScenario"]
+            >= baseline["minimumTimeoutFreeMissionsPerScenario"]
+        ),
+        "timeoutFreeMissionEpisodes": (
+            candidate["timeoutFreeMissionEpisodes"]
+            >= baseline["timeoutFreeMissionEpisodes"]
+        ),
+        "minimumCompletedMissionsPerScenario": (
+            candidate["minimumCompletedMissionsPerScenario"]
+            >= baseline["minimumCompletedMissionsPerScenario"]
+        ),
+        "missionCompletedEpisodes": (
+            candidate["missionCompletedEpisodes"]
+            >= baseline["missionCompletedEpisodes"]
+        ),
+        "minimumRecoveryStableTransitionsPerScenario": (
+            candidate["minimumRecoveryStableTransitionsPerScenario"]
+            >= baseline["minimumRecoveryStableTransitionsPerScenario"]
+        ),
+        "recoveryStableTransitionCount": (
+            candidate["recoveryStableTransitionCount"]
+            >= baseline["recoveryStableTransitionCount"]
+        ),
+        "recoveryRelapseCount": (
+            candidate["recoveryRelapseCount"]
+            <= baseline["recoveryRelapseCount"]
+        ),
+        "missionPhaseTimeoutEpisodes": (
+            candidate["missionPhaseTimeoutEpisodes"]
+            <= baseline["missionPhaseTimeoutEpisodes"]
+        ),
+        "minimumRecoveryStableProgress": (
+            candidate["minimumRecoveryStableProgress"]
+            >= baseline["minimumRecoveryStableProgress"]
+        ),
+        "meanRecoveryStableProgress": (
+            candidate["meanRecoveryStableProgress"]
+            >= baseline["meanRecoveryStableProgress"]
+        ),
+    }
+    worst_case_improvements = {
+        "minimumTimeoutFreeMissionsPerScenario": (
+            candidate["minimumTimeoutFreeMissionsPerScenario"]
+            > baseline["minimumTimeoutFreeMissionsPerScenario"]
+        ),
+        "minimumCompletedMissionsPerScenario": (
+            candidate["minimumCompletedMissionsPerScenario"]
+            > baseline["minimumCompletedMissionsPerScenario"]
+        ),
+        "minimumRecoveryStableTransitionsPerScenario": (
+            candidate["minimumRecoveryStableTransitionsPerScenario"]
+            > baseline["minimumRecoveryStableTransitionsPerScenario"]
+        ),
+        "minimumRecoveryStableProgress": (
+            candidate["minimumRecoveryStableProgress"]
+            > baseline["minimumRecoveryStableProgress"]
+        ),
+    }
+    return {
+        "eligible": (
+            all(non_regression_checks.values())
+            and any(worst_case_improvements.values())
+        ),
+        "rule": "bilateral-complete-mission-dominance-over-program-step-0",
+        "nonRegression": non_regression_checks,
+        "worstCaseImprovement": worst_case_improvements,
+    }
+
+
 @dataclass
 class PPOTrainer:
     hidden_sizes: list[int]
@@ -1344,12 +1430,29 @@ class PPOTrainer:
         reflex_distillation_config = request.get("reflexDistillation")
         warm_start_config = request.get("warmStart")
         deterministic_checkpoint_config = config.get("deterministicCheckpoint")
+        include_initial_program_policy = bool(
+            deterministic_checkpoint_config
+            and deterministic_checkpoint_config.get(
+                "includeInitialProgramPolicy", False
+            )
+        )
         if (
             deterministic_checkpoint_config
             and deterministic_checkpoint_config.get("scope") != "complete-mission"
         ):
             raise RuntimeError(
                 "Deterministic checkpoint selection supports only complete Missions"
+            )
+        if include_initial_program_policy and (
+            not action_transform
+            or action_transform.get("kind") != "program-controller-residual"
+        ):
+            raise RuntimeError(
+                "Initial Program Policy checkpoint requires a Program residual Trainer"
+            )
+        if include_initial_program_policy and warm_start_config:
+            raise RuntimeError(
+                "Initial Program Policy checkpoint cannot be combined with warm-start weights"
             )
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
@@ -1769,14 +1872,45 @@ class PPOTrainer:
                 seed=seed,
             )
             rank = deterministic_checkpoint_rank(probe)
-            deterministic_checkpoint_candidates.append({
+            candidate = {
                 "steps": completed_steps,
                 "rank": rank,
-            })
+                "maximumAbsoluteRawActorMean": probe[
+                    "maximumAbsoluteRawActorMean"
+                ],
+            }
+            deterministic_checkpoint_candidates.append(candidate)
             if (
-                selected_checkpoint_rank is None
-                or tuple(rank["comparisonKey"])
-                > tuple(selected_checkpoint_rank["comparisonKey"])
+                include_initial_program_policy
+                and completed_steps == 0
+                and probe["maximumAbsoluteRawActorMean"] != 0.0
+            ):
+                raise RuntimeError(
+                    "Initial Program Policy checkpoint actor mean is not exactly zero"
+                )
+            if include_initial_program_policy:
+                candidate["programSafeAgainstInitial"] = (
+                    {
+                        "eligible": True,
+                        "rule": "program-equivalent-baseline",
+                    }
+                    if completed_steps == 0
+                    else program_safe_complete_mission_improvement(
+                        rank,
+                        deterministic_checkpoint_candidates[0]["rank"],
+                    )
+                )
+            eligible = (
+                not include_initial_program_policy
+                or candidate["programSafeAgainstInitial"]["eligible"]
+            )
+            if (
+                eligible
+                and (
+                    selected_checkpoint_rank is None
+                    or tuple(rank["comparisonKey"])
+                    > tuple(selected_checkpoint_rank["comparisonKey"])
+                )
             ):
                 selected_checkpoint_state = {
                     name: tensor.detach().clone()
@@ -1790,6 +1924,9 @@ class PPOTrainer:
                 selected_checkpoint_rank = rank
                 selected_checkpoint_steps = completed_steps
             network.train()
+
+        if include_initial_program_policy:
+            consider_deterministic_checkpoint()
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
@@ -2333,6 +2470,36 @@ class PPOTrainer:
                 "tieBreak": "earliest-checkpoint",
                 "latestTrainedSteps": completed_steps,
                 "selectedSteps": selected_checkpoint_steps,
+                "selectedProgramEquivalentInitialPolicy": (
+                    selected_checkpoint_steps == 0
+                ),
+                "initialProgramPolicy": (
+                    {
+                        "included": True,
+                        "step": 0,
+                        "semantics": "program-controller-plus-zero-residual",
+                        "programController": request["priorController"]["id"],
+                        "controllerHash": request["priorControllerHash"],
+                        "maximumAbsoluteRawActorMean": (
+                            deterministic_checkpoint_candidates[0][
+                                "maximumAbsoluteRawActorMean"
+                            ]
+                        ),
+                    }
+                    if include_initial_program_policy
+                    else None
+                ),
+                "programSafeSelection": (
+                    {
+                        "baselineStep": 0,
+                        "rule": (
+                            "bilateral-complete-mission-dominance-over-program-step-0"
+                        ),
+                        "localActorEvidenceCanPromote": False,
+                    }
+                    if include_initial_program_policy
+                    else None
+                ),
                 "restoredEarlierCheckpoint": selected_checkpoint_steps
                 != completed_steps,
                 "selectedRank": selected_checkpoint_rank,
@@ -2597,6 +2764,12 @@ class PPOTrainer:
             if completed_rewards
             else episode_reward,
             "selectedCheckpointSteps": selected_checkpoint_steps,
+            "selectedProgramEquivalentInitialPolicy": bool(
+                deterministic_checkpoint_selection
+                and deterministic_checkpoint_selection[
+                    "selectedProgramEquivalentInitialPolicy"
+                ]
+            ),
             "restoredEarlierCheckpoint": bool(
                 deterministic_checkpoint_selection
                 and deterministic_checkpoint_selection[

@@ -1,0 +1,60 @@
+{
+  "version": 4,
+  "id": "001-5d46961b3741",
+  "experimentHash": "5d46961b3741d2184b0000dbd7903a47146facf08f2af75752c36b619db12e27",
+  "sequence": 1,
+  "sessionId": "session-35a8241fa4e79ff7",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "ca276d6765f80dd05f6a6987071cafb46419dc30240cec7a3f1bdc747c15f604",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "44f409f0b6c0dfe2c78d1bc49b6ac5c36aa1d76c38ddde7153614627ab45a305",
+  "historyHash": "0e2472eb9da67b3fce2833d39065fb75fe12ad1eee1106e1ba51b8a3ae66a72b",
+  "historyCount": 32,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "program-safe-complete-mission-policy-selection",
+    "hypothesis": "Skill-focused rewards and stochastic exploration may improve a recovery slice while damaging walking, impact response, Mission resumption, redirection, traversal, or stop. Include the exactly zero residual actor at Training step 0 as a frozen Program-equivalent Policy candidate, then compare it with every learned checkpoint only on deterministic, complete no-reset Mission evidence across both authored impact directions and plant profiles.",
+    "expectedEffect": "Publish learned weights only if they improve the integrated Mission ranking. Otherwise restore the step-0 Policy, proving that the ML artifact remains executable and behavior-equivalent to the Program baseline while preserving all learned checkpoints as negative research evidence for diagnosis."
+  },
+  "policyId": "articulated-inverted-escape-6f7d5d14b3437a79",
+  "score": 59.506964667070505,
+  "delta": -3.215360000000004,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reference-controller: no-lexicographic-improvement",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 87.78602050689881,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "b4807e43e4b2802380f3847553b087f9335ee03aa6cfd7c889405ad578561a3e",
+    "acceptedRunId": "run-9f11162c91c6f81c",
+    "candidateRunId": "run-855550bc9306eac9",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 218289,
+  "completed": true
+}

@@ -851,6 +851,21 @@ phase-timeout episodes, worst-case recovery-target progress, and mean target
 progress. Exact ties preserve the earlier checkpoint because later weight
 changes have not demonstrated an observable capability gain.
 
+For Program-residual learning, the selector may include the untrained step-0
+actor as an explicit safety baseline. This is not a generic random
+initialization checkpoint: Runtime accepts it only when there is no warm-start
+Policy, the effective transform is `program-controller-residual`, and a frozen
+probe observes an exactly zero raw actor mean. The resulting Policy executes
+the Program prior exactly at the Action boundary while retaining the same
+deployable Policy packaging. Walking, impact response, self-righting, Mission
+resumption, redirection, traversal, and stop are therefore compared together;
+a local recovery reward cannot replace a better whole-robot baseline.
+To replace step 0, learned weights must strictly improve at least one
+side-balanced worst-case end-to-end outcome and must not regress any named
+complete-Mission completion, stable-recovery, relapse, timeout, or recovery
+progress measure. Actor-caused target entry is retained in the ledger but
+cannot by itself satisfy this Program-safe dominance rule.
+
 The selected network and its matching normalizer become the frozen Policy
 Artifact. Training metrics retain every candidate step, its named rank
 components, the selected step, the final trained step, and whether earlier
@@ -875,6 +890,16 @@ violations regressed from 43 to 44, and normalized severity regressed from
 explanation. Checkpoint selection exposed and preserved a real transient
 behavior, but it could not manufacture the missing bilateral,
 complete-Mission evidence.
+
+The first governed Program-safe run found one local target entry at step
+`40,960` but no bilateral stable recovery or timeout-free Mission. The original
+lexicographic selector chose it and the locked Judge exposed downstream
+regressions. After adding Program-safe dominance, the identical experiment
+restored step 0: all eight learned checkpoints were marked local evidence only,
+the raw actor mean was exactly zero, and locked violation count/severity were
+identical to the Program. The remaining score gap is the explicit Training
+complexity charge, so the Research verdict stayed `REVERT` without implying a
+behavior regression.
 
 ## Interleaved Mission progression
 

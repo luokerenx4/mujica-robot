@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "articulated-inverted-escape-policy",
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "ca276d6765f80dd05f6a6987071cafb46419dc30240cec7a3f1bdc747c15f604",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-35a8241fa4e79ff7",
+    "experimentId": "001-5d46961b3741",
+    "experimentHash": "5d46961b3741d2184b0000dbd7903a47146facf08f2af75752c36b619db12e27"
+  },
+  "proposal": {
+    "strategy": "program-safe-complete-mission-policy-selection",
+    "hypothesis": "Skill-focused rewards and stochastic exploration may improve a recovery slice while damaging walking, impact response, Mission resumption, redirection, traversal, or stop. Include the exactly zero residual actor at Training step 0 as a frozen Program-equivalent Policy candidate, then compare it with every learned checkpoint only on deterministic, complete no-reset Mission evidence across both authored impact directions and plant profiles.",
+    "expectedEffect": "Publish learned weights only if they improve the integrated Mission ranking. Otherwise restore the step-0 Policy, proving that the ML artifact remains executable and behavior-equivalent to the Program baseline while preserving all learned checkpoints as negative research evidence for diagnosis."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [
+        "reference-controller: no-lexicographic-improvement",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 87.78602050689881,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "gate-regression"
+    },
+    "decisionHash": "e7e9a4795521f61ce929794372da04a720b4aedd4383fe3e8a20699c78b78be2"
+  },
+  "selectedCase": {
+    "benchmark": "integrated-resilience-mission",
+    "id": "impact-left-exact",
+    "task": "integrated-resilience-mission",
+    "scenario": "mission-impact-left",
+    "seed": 7201,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": -3.215360000000004,
+    "weightedScoreDelta": -3.215360000000004
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-9f11162c91c6f81c",
+    "runKey": "9f11162c91c6f81cf55649a16a6235c3bb7d506cc006e522d4b1786c19d592c4",
+    "resultHash": "bede1871997ae9b08a679b4facfbadf4b0b43584e73bad91cc8125c48b2e923f",
+    "artifactHash": "d3720d23f575cd6e4ed08b9ef356f75759c329d54dac347a40979c7317f1953a",
+    "manifestHash": "161c76156885e5f482cba83fe3bdf1a91b822ffa61d82229ac6956cfa85db9f2",
+    "metricsHash": "29ec914135eea6b29291d1541d803a4b31bf5792bb9e3816fbf22726ab3bc6b5",
+    "scoreHash": "176d6e836abfb46ecedee6a76c0717d55832ee5e37911cf4e0a464ce3ac7d044",
+    "assembly": "resilient-command-conditioned-waist-3dof",
+    "controller": "articulated-behavior-supervisor",
+    "score": 111.98197692172577
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-855550bc9306eac9",
+    "runKey": "855550bc9306eac98cd9dd57f3c9025e00bdb63ef61ab29564abdf643aa465cf",
+    "resultHash": "20d60814a3cfa8a006d7e58bd370ad5daab6a5b36ebd70de5e0d5ea8ffb9531a",
+    "artifactHash": "895335b3ce5e707967ceffc1c81e28f65e29c4ca783c2d4b5c6c68dde0f5cc15",
+    "manifestHash": "160ca7a4c5345fab498e3469dd866faa976d870d5a28cf25761e4fb6c2dff684",
+    "metricsHash": "29ec914135eea6b29291d1541d803a4b31bf5792bb9e3816fbf22726ab3bc6b5",
+    "scoreHash": "982c01a9f0094abfbf0b3c873ceaa7bf6b0d6e23bf857b4a2eeab4c096b49037",
+    "assembly": "resilient-command-conditioned-waist-history-3dof",
+    "controller": "articulated-inverted-escape-policy",
+    "score": 108.76661692172577
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}
