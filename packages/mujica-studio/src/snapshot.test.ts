@@ -129,6 +129,21 @@ describe("read-only Studio snapshot", () => {
         },
       },
     });
+    expect(first.snapshot.policies.find((item) => item.id === "articulated-inverted-escape-d47ea392e29fa22d")).toMatchObject({
+      training: {
+        programReference: {
+          distribution: "step-0-program-complete-mission-active-states",
+          target: "zero-pre-transform-residual-action",
+          retainedActiveStates: 512,
+          maximumAppliedResidualRms: 0.05,
+          rolledBackOptimizerSteps: 477,
+          authorityBoundary: {
+            reference: "training-only",
+            promotion: "locked-judge-only",
+          },
+        },
+      },
+    });
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
         status: "READY",
@@ -213,6 +228,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("walking, impact, self-righting, resumption, redirection, traversal, and stop are evaluated together");
     expect(html).toContain("bilateral worst-case complete-Mission improvement");
     expect(html).toContain("LOCAL EVIDENCE ONLY");
+    expect(html).toContain("Program-reference trust region");
+    expect(html).toContain("complete-Mission physical preservation");
+    expect(html).toContain("hard applied-residual RMS");
     expect(html).toContain("Policy consolidation");
     expect(html).toContain("Elite recovery replay");
     expect(html).toContain("exploration-to-mean consolidation");

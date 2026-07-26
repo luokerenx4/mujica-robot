@@ -1,0 +1,1345 @@
+[
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-c48393802da86aed",
+    "experimentId": "001-7fb9994fa24f",
+    "sequence": 1,
+    "startedAt": "2026-07-24T21:10:45.076Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "375bcd2366206b128be8c75c588a748acdabfd0a726fde1d5c0fb964ede1806e",
+    "benchmarkLockHash": "b4f1cedcf5d4a1d438a4c71defdbf8c950c43445088d185ffb39e7c3edc17cf7",
+    "proposal": {
+      "strategy": "first-recovery-only-delay-one-residual",
+      "hypothesis": "The first delay-one residual improved degraded-right progress, tilt, collisions, and joint margin, but the complete Mission exposed a second fall during traverse/stop. The residual reactivated for that later recovery and the Mission ended mid-rise. Requiring observable Program telemetry recoveryCompleted=false preserves learned authority for the initial impact recovery while returning all later falls to the deterministic Program.",
+      "expectedEffect": "Retain the degraded-right signed-progress, tilt, collision, and joint-margin gains while restoring the passing terminal base-height gate; exact Cases and every post-recovery Mission action remain Program-only."
+    },
+    "policyId": "articulated-inverted-escape-70c366c35ad18fff",
+    "score": 42.74728783906425,
+    "delta": -29.97503682800626,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 42,
+      "candidateViolationCount": 45,
+      "previousViolationSeverity": 85.78602050689881,
+      "candidateViolationSeverity": 115.05022801091012
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-05c346ca1e4b2fa5",
+    "experimentId": "001-8b5bc6d0e174",
+    "sequence": 1,
+    "startedAt": "2026-07-24T23:18:35.055Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "b2108f2ba62feedf4f9cf0f419116c9dc51f4f29aaf4a834e4af2b6c6b5c1887",
+    "benchmarkLockHash": "9c5292480847bc13491260161bf1d1a54c51c795c1241c75d2d4f7708479567c",
+    "proposal": {
+      "strategy": "task-target-closed-loop-history-recovery",
+      "hypothesis": "The first-recovery Program flag is an early private threshold and cannot distinguish a transient upright sample from the Task's physical recovery dwell. Give the delay-one recovery residual bounded commanded/applied/contact history, but remove its authority whenever the Task target is currently satisfied and permanently after the Runtime stable latch. This creates a closed loop: PPO can correct delayed recovery while outside the target, the Program alone owns every dwell sample, and later post-latch falls cannot reactivate the recovery Policy.",
+      "expectedEffect": "Complete the Task's 0.5 second stable-recovery dwell before its six-second timeout in both degraded directions, preserve exact and static recovery, and keep Policy authority at zero during every stable-dwell sample and all post-latch Mission phases."
+    },
+    "policyId": "articulated-inverted-escape-cc757be9d5e68ebd",
+    "score": 40.09091515995392,
+    "delta": -22.631409507116587,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 117.00017306164116
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-0ad2f2c3b560afab",
+    "experimentId": "001-d7e269584c91",
+    "sequence": 1,
+    "startedAt": "2026-07-24T23:24:59.239Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "b2108f2ba62feedf4f9cf0f419116c9dc51f4f29aaf4a834e4af2b6c6b5c1887",
+    "benchmarkLockHash": "95b29bf2c265b71653c45ea0a9656614953ac6b4e9dbaba8420a9afd3ac4e030",
+    "proposal": {
+      "strategy": "phase-bounded-ramped-history-recovery",
+      "hypothesis": "The prior closed-loop Policy did not fail at the Task dwell boundary; it re-entered with full authority during Program rise/stand as tilt oscillated around the 0.3 rad gate, then drove the degraded-right robot from 0.34 metres and moderate tilt into inversion. Preserve the same Task-state boundary, history, reward, and torque envelope, but restrict learned authority to the Program's observable impulse/capture phases and ramp every gate entry over 0.4 seconds. Unsafe exits remain immediate, so the deterministic Program exclusively owns rise, stand, and stable dwell.",
+      "expectedEffect": "Retain any learned impact-momentum correction before recovery.rise, eliminate gate flapping and all learned action during rise/stand, and restore the Program's degraded-right self-righting result without changing exact Cases."
+    },
+    "policyId": "articulated-inverted-escape-75783f7b74fa5459",
+    "score": 59.92824863979775,
+    "delta": -2.7940760272727587,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 41,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 84.00973312514287
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-199eb99ac9e80c72",
+    "experimentId": "001-2c5fde594442",
+    "sequence": 1,
+    "startedAt": "2026-07-24T23:31:15.754Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "b2108f2ba62feedf4f9cf0f419116c9dc51f4f29aaf4a834e4af2b6c6b5c1887",
+    "benchmarkLockHash": "d70e92ce56d5c780b20c7c713ec07b4b4aad75182c4655acc3d945087ae6dbde",
+    "proposal": {
+      "strategy": "deadline-closed-phase-bounded-history-recovery",
+      "hypothesis": "The phase-bounded ramped Policy restored degraded-right self-righting and improved the Mission violation tier, but the Task recovery phase had already timed out before self-righting. Because no success latch can exist after that failed transition, the Policy reactivated on later falls and ended below the final-height gate. Preserve the learned initial impulse/capture correction, and additionally require the Task-derived recovery-deadline-expired latch to remain false. This closes authority permanently at the six-second recovery timeout even when the Program later enters recovery again.",
+      "expectedEffect": "Keep the first recovery correction unchanged until the Task deadline, guarantee zero learned authority afterward, retain degraded-right self-righting, and restore terminal height by leaving every post-timeout recovery to the Program."
+    },
+    "policyId": "articulated-inverted-escape-7165992fb1a9b8bc",
+    "score": 40.11741411016883,
+    "delta": -22.60491055690168,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 113.98536158986524
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-9e9d909f7dc6bfdb",
+    "experimentId": "001-8468e5b331d1",
+    "sequence": 1,
+    "startedAt": "2026-07-25T00:39:30.729Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": false,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "f9979c950fa813137a188f0abf5c1225ff357c484700a70989c2bf2120ce26e7",
+    "benchmarkLockHash": "47ef4eb9ae0a258e0df17c72a4263d1604a46c472669a7b0ba8cc0697ce2a4ba",
+    "proposal": {
+      "strategy": "predeadline-target-seeking-rise-recovery",
+      "hypothesis": "A frozen-weight authority counterfactual proved that extending the bounded residual through Program rise can turn degraded-left from terminal inversion into a stable target entry, but the untrained rise actions also caused two relapses and degraded transition tracking. Train that exact pre-deadline rise envelope inside the continuous no-reset Mission, credit only actor-authorized entry into the Task-authored recovery target, and retain sparse relapse, timeout, and Mission-completion terms so local self-righting cannot win by breaking the later traverse and stop phases.",
+      "expectedEffect": "Complete stable recovery before the six-second deadline in both degraded directions, then traverse and stop without relapse; preserve all exact-plant gates and keep Policy authority at zero after target entry, stable latch, or recovery timeout."
+    },
+    "policyId": "articulated-inverted-escape-b68c36415c7bcfe4",
+    "score": 40.60317489013052,
+    "delta": -22.11914977693999,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 40,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 81.57326942023798
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-ff1d35144211cc53",
+    "experimentId": "001-c42f277e6019",
+    "sequence": 1,
+    "startedAt": "2026-07-25T01:14:13.815Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "8b93838e5177f06b84f38376124b24b98adb56db7449e7ee1f151c9c817cfa6e",
+    "proposal": {
+      "strategy": "conjunctive-task-target-balanced-recovery",
+      "hypothesis": "The prior continuous-Mission run exposed a reward and observability mismatch rather than a left/right sampling imbalance: complete-stage training was balanced by direction, but only six Task-target entries occurred in 110 episodes, and the rejected degraded-right Policy ended upright yet 3.1 cm below the authored height threshold. Replace part of the independent posture shaping with a smooth geometric conjunction of the Task-authored height, tilt, linear-speed, and angular-speed targets, retain sparse actor-causal target entry, and publish every stage-by-Scenario episode outcome so PPO cannot receive a high local recovery return while silently missing one physical target dimension or the downstream Mission.",
+      "expectedEffect": "Increase actor-caused target entries and stable-recovery episodes in both impact directions—especially degraded-right base height—while reducing recovery deadline expiry and preserving timeout-free traverse/stop completion; the new outcome ledger must make any directional or curriculum-stage tradeoff explicit."
+    },
+    "policyId": "articulated-inverted-escape-f5d2e2cbb4ede888",
+    "score": 39.98437851894402,
+    "delta": -22.73794614812649,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 45,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 106.69065412124016
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-5f72ad19fef2ce3b",
+    "experimentId": "001-cecd0cef1f53",
+    "sequence": 1,
+    "startedAt": "2026-07-25T01:55:17.652Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "02946277f9ed906b3a40c2086ccd7fc960b25a863586e1de47b1de67ac09b326",
+    "proposal": null,
+    "policyId": null,
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Researcher command failed with exit 1: 12 | \n13 | request.history = strategiesBeforeConjunctiveProbe.map((strategy) => ({\n14 |   proposal: { strategy },\n15 | }));\n16 | \n17 | const child = Bun.spawn(\n                       ^\nTypeError: stdio must be an array of 'inherit', 'pipe', 'ignore', Bun.file(pathOrFd), number, or null\n code: \"ERR_INVALID_ARG_TYPE\"\n\n      at /Users/ame/Documents/2607toydev/mujica/examples/quadruped/research/articulated-inverted-escape-policy/probe-agent.mjs:17:19\n\nBun v1.3.14 (macOS arm64)"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-b826672ffce1d756",
+    "experimentId": "001-827bb10f570f",
+    "sequence": 1,
+    "startedAt": "2026-07-25T01:55:57.346Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "02946277f9ed906b3a40c2086ccd7fc960b25a863586e1de47b1de67ac09b326",
+    "proposal": {
+      "strategy": "conjunctive-task-target-balanced-recovery",
+      "hypothesis": "The prior continuous-Mission run exposed a reward and observability mismatch rather than a left/right sampling imbalance: complete-stage training was balanced by direction, but only six Task-target entries occurred in 110 episodes, and the rejected degraded-right Policy ended upright yet 3.1 cm below the authored height threshold. Replace part of the independent posture shaping with a smooth geometric conjunction of the Task-authored height, tilt, linear-speed, and angular-speed targets, retain sparse actor-causal target entry, and publish every stage-by-Scenario episode outcome so PPO cannot receive a high local recovery return while silently missing one physical target dimension or the downstream Mission.",
+      "expectedEffect": "Increase actor-caused target entries and stable-recovery episodes in both impact directions—especially degraded-right base height—while reducing recovery deadline expiry and preserving timeout-free traverse/stop completion; the new outcome ledger must make any directional or curriculum-stage tradeoff explicit."
+    },
+    "policyId": "articulated-inverted-escape-d23b22b99d4a2c80",
+    "score": 39.98437851894402,
+    "delta": -22.73794614812649,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 45,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 106.69065412124016
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-c84b9a6b5e071a4b",
+    "experimentId": "001-dfbd09d196d0",
+    "sequence": 1,
+    "startedAt": "2026-07-25T02:03:47.160Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "91833960d12849145852e5f5c3b5ca8d3ff4d214d28c3e0e471da63bad6c7808",
+    "proposal": {
+      "strategy": "elite-target-entry-replay-consolidation",
+      "hypothesis": "The reproducible 65,536-step continuous-Mission run produced six actor-caused recovery-target entries under sampled PPO actions, but the frozen actor mean produced zero entries, zero stable progress, and a timeout in every deterministic probe. Preserve the exact architecture, authority envelope, curriculum, reward, seed, and training budget; when an actor-authorized action first enters the Task-authored recovery target, retain only the preceding 64 actor-authorized observation/action pairs and distill that bounded successful tail into the actor mean during later PPO updates.",
+      "expectedEffect": "Convert exploration-only target entries into deterministic actor-mean target entries in both impact directions without increasing Training steps or changing the locked Task, Scenario, Program prior, authority envelope, or Mission Judge; any failure to improve the frozen probe or complete-Mission gate tier must remain REVERT."
+    },
+    "policyId": "articulated-inverted-escape-2c084934ac04e4a6",
+    "score": 59.44940085353308,
+    "delta": -3.2729238135374317,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 81.7352693017512
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-e118e40d3f3f3158",
+    "experimentId": "001-bea44a78a492",
+    "sequence": 1,
+    "startedAt": "2026-07-25T02:10:29.836Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "765c9ca6b245a8da19836d35c349525790876d329fecf14636b66965b725c95e",
+    "proposal": {
+      "strategy": "complete-mission-elite-replay-consolidation",
+      "hypothesis": "All-progression elite replay moved the frozen actor mean from zero to one target entry and improved the locked Mission violation tier, but six of its nine admitted episodes came from the short recovery prefix while the deterministic complete-Mission probes still entered the target zero times. Keep the replay algorithm and every physical/training input fixed, but admit target-entry tails only from progression stages that run through the final authored Mission phase.",
+      "expectedEffect": "Consolidate behavior that was demonstrated in the same uninterrupted impact→recover→resume→redirect→traverse→stop context used for deployment, improve deterministic complete-Mission target entry and terminal posture on both directions, and remove the final-height and recovery-handoff regressions without weakening any locked gate."
+    },
+    "policyId": "articulated-inverted-escape-e62da94dd48e6f9b",
+    "score": 40.0763009016497,
+    "delta": -22.646023765420807,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 108.88328053166414
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-e8008b77f4fde592",
+    "experimentId": "001-cf130debd401",
+    "sequence": 1,
+    "startedAt": "2026-07-25T02:32:17.722Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "efddffa269ed71dd8a770477272932315d651be4f9be92fb14ae1ff55a6c6f17",
+    "proposal": {
+      "strategy": "deterministic-complete-mission-checkpoint-selection",
+      "hypothesis": "All-progression elite replay improved the locked violation tier and produced the first frozen actor-mean target entry, but PPO still published only its final update. Keep the same 65,536 Training steps, replay data, architecture, rewards, seed, Program prior, authority envelope, Task, Scenarios, and Judge; every 8,192 steps freeze the network plus normalizer and compare actor-mean behavior only on the complete Mission stages using side-balanced Task events.",
+      "expectedEffect": "Publish the checkpoint with the best worst-direction complete-Mission completion, stable recovery, target entry, relapse/timeout avoidance, and target progress; restore earlier weights only when that zero-budget evidence is stronger, then let the unchanged locked Mission Judge accept or reject the selected Policy."
+    },
+    "policyId": "articulated-inverted-escape-2ced228c45390cc4",
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Benchmark 'self-righting-morphology-v2' fixed inputs drifted; review changes and lock again"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-37378a8ba52138d9",
+    "experimentId": "001-7eaccc520d0b",
+    "sequence": 1,
+    "startedAt": "2026-07-25T02:34:40.602Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "efddffa269ed71dd8a770477272932315d651be4f9be92fb14ae1ff55a6c6f17",
+    "proposal": {
+      "strategy": "deterministic-complete-mission-checkpoint-selection",
+      "hypothesis": "All-progression elite replay improved the locked violation tier and produced the first frozen actor-mean target entry, but PPO still published only its final update. Keep the same 65,536 Training steps, replay data, architecture, rewards, seed, Program prior, authority envelope, Task, Scenarios, and Judge; every 8,192 steps freeze the network plus normalizer and compare actor-mean behavior only on the complete Mission stages using side-balanced Task events.",
+      "expectedEffect": "Publish the checkpoint with the best worst-direction complete-Mission completion, stable recovery, target entry, relapse/timeout avoidance, and target progress; restore earlier weights only when that zero-budget evidence is stronger, then let the unchanged locked Mission Judge accept or reject the selected Policy."
+    },
+    "policyId": "articulated-inverted-escape-2ced228c45390cc4",
+    "score": 58.81139862781099,
+    "delta": -3.9109260392595218,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 44,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 102.66280188759411
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-a2b1b65d1340da02",
+    "experimentId": "001-5ad4e17afc61",
+    "sequence": 1,
+    "startedAt": "2026-07-25T03:01:24.094Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "1dee5ab8d8982d4f918b0f4ee710bf072873d9c879c9c8cf578246f8e87a454b",
+    "proposal": {
+      "strategy": "interleaved-complete-mission-elite-collection",
+      "hypothesis": "Sequential progression observed 76 recovery-prefix episodes before any complete-Mission training and complete-only elite replay admitted only one successful tail. Preserve the exact 32,768/16,384/16,384 stage quotas and every physical, reward, authority, seed, and Judge input, but deficit-schedule prefix, exact complete Mission, and randomized complete Mission episodes throughout Training so transient useful Policies can create deployment-context evidence before later PPO updates erase them.",
+      "expectedEffect": "Admit multiple complete-Mission target-entry tails across both impact directions and physical profiles, produce a frozen checkpoint with nonzero worst-direction actor target-entry coverage, then improve the locked Mission violation tier without exchanging left/right failures or regressing exact and handoff gates."
+    },
+    "policyId": "articulated-inverted-escape-6bcc5001e7faabbe",
+    "score": 49.00407762763017,
+    "delta": -13.718247039440342,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 44,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 89.15092581682742
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-465adc94163c2d13",
+    "experimentId": "001-fb6b7fc7ee4f",
+    "sequence": 1,
+    "startedAt": "2026-07-25T03:21:41.898Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "09ce069d15e4bf90e819591a17086f88f3daf708b022fbf87a2c3ccb22a3f56b",
+    "proposal": {
+      "strategy": "delay-conditioned-interleaved-complete-mission-recovery",
+      "hypothesis": "The interleaved run proved that Mission scheduling was no longer the blind spot, but its randomized complete-Mission ledger exposed a second contract mismatch: every episode with one sampled delay-jitter step had zero actor-authorized actions because the residual gate required measuredDelaySteps to equal exactly one, even though the Policy observes the effective delay and the declared Domain Profile intentionally produces one- or two-step plants. Preserve the complete Mission, quotas, replay, checkpoint selector, torque envelope, reward, seed, and Judge while authorizing the same ramped recovery residual at the two explicitly trained delay values.",
+      "expectedEffect": "Give both one- and two-step randomized plants nonzero recovery actor coverage, collect actor-caused target entries across both delay buckets and impact directions, and improve the worst-direction deterministic Mission rank without changing zero-delay exact Cases or any locked promotion gate."
+    },
+    "policyId": "articulated-inverted-escape-fc5bf55bd5a150e6",
+    "score": 41.05675536662247,
+    "delta": -21.66556930044804,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 44,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 109.43521748255041
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-c5fe02f9bffa4749",
+    "experimentId": "001-23e55e92537c",
+    "sequence": 1,
+    "startedAt": "2026-07-25T03:49:37.952Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "a15e52ad17c919955b0ba2854778fd253caefe1a1dac995b9c058a6028d55d3c",
+    "proposal": {
+      "strategy": "declared-bilateral-symmetry-recovery",
+      "hypothesis": "Delay-conditioned interleaving gave the two-step plant real actor authority but the frozen actor still reproduced a target entry only on the left and failed the right Mission. Keep the complete Mission, impact loads, delay envelope, stage quotas, reward, residual authority, checkpoint selector, seed, and Judge fixed. Declare the exact lateral reflection of every compiled Observation and Action coordinate, symmetrize normalizer statistics, penalize actor-mean equivariance error only where the actor has authority, and mirror any complete-Mission elite target-entry tail.",
+      "expectedEffect": "Turn a physically observed target-entry tail on either side into coordinate-consistent policy evidence for the other side, produce nonzero deterministic actor target-entry coverage in both impact directions, and improve the worst-direction complete-Mission rank without pretending that the 60 N and 49 N degraded impacts are physically identical."
+    },
+    "policyId": "articulated-inverted-escape-cced35f9432f28ef",
+    "score": 40.154611740383054,
+    "delta": -22.567712926687456,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 46,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 114.87759175961021
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-a40805cc915bfd26",
+    "experimentId": "001-f341440afa8b",
+    "sequence": 1,
+    "startedAt": "2026-07-25T04:11:18.501Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "eac870d070dbe7e340f9c41da75ff0fc4d98ea5b56a8e8458009f68c1b589390",
+    "proposal": {
+      "strategy": "physical-lateral-momentum-reflex",
+      "hypothesis": "The rejected bilateral run exposed a causal authority mismatch: the continuous Mission impact ends at 2.68 seconds, but the Program does not enter recovery until 6.06 seconds, leaving only 2.62 seconds of the Task's six-second recovery budget. Keep the complete Mission, physical impact loads, delay envelope, bilateral ABI, reward, seed, training budget, and Judge fixed. Add a second fail-closed authority route while the Program is still in locomotion, triggered only by measured one/two-step delay, at least one second of startup dwell, absolute lateral base speed at or above 0.4 m/s, body tilt below the Program's 0.8 rad fall threshold, and open Task recovery latches.",
+      "expectedEffect": "Let PPO learn a signed, bilaterally consistent brace during the physically observed momentum excursion before full fall, record actor-before-Program episodes and recovered budget explicitly, then reduce recovery timeouts in both impact directions without weakening any Scenario, Task target, Mission phase, or locked promotion gate."
+    },
+    "policyId": "articulated-inverted-escape-d9c629fe04d033ea",
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Benchmark 'self-righting-morphology-v2' fixed inputs drifted; review changes and lock again"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-b7c038185d3cdd43",
+    "experimentId": "001-34315ff7f4bd",
+    "sequence": 1,
+    "startedAt": "2026-07-25T04:13:42.418Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "eac870d070dbe7e340f9c41da75ff0fc4d98ea5b56a8e8458009f68c1b589390",
+    "proposal": {
+      "strategy": "physical-lateral-momentum-reflex",
+      "hypothesis": "The rejected bilateral run exposed a causal authority mismatch: the continuous Mission impact ends at 2.68 seconds, but the Program does not enter recovery until 6.06 seconds, leaving only 2.62 seconds of the Task's six-second recovery budget. Keep the complete Mission, physical impact loads, delay envelope, bilateral ABI, reward, seed, training budget, and Judge fixed. Add a second fail-closed authority route while the Program is still in locomotion, triggered only by measured one/two-step delay, at least one second of startup dwell, absolute lateral base speed at or above 0.4 m/s, body tilt below the Program's 0.8 rad fall threshold, and open Task recovery latches.",
+      "expectedEffect": "Let PPO learn a signed, bilaterally consistent brace during the physically observed momentum excursion before full fall, record actor-before-Program episodes and recovered budget explicitly, then reduce recovery timeouts in both impact directions without weakening any Scenario, Task target, Mission phase, or locked promotion gate."
+    },
+    "policyId": "articulated-inverted-escape-d9c629fe04d033ea",
+    "score": 40.263472725167524,
+    "delta": -22.458851941902985,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 92.77961976181487
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-ad873f49486690a2",
+    "experimentId": "001-ea306d06fd12",
+    "sequence": 1,
+    "startedAt": "2026-07-25T04:22:31.179Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "7fb761770721f5326b1784ab467069235acb54a31f1420c44fab2881817c5058",
+    "proposal": {
+      "strategy": "isolated-causally-credited-lateral-reflex",
+      "hypothesis": "The first physical-reflex experiment opened the intended pre-fall route in every complete-Mission probe and advanced Program recovery on degraded-right from 6.06 to 5.00 seconds, but the old recovery route then retained learned authority for 3.70 seconds and the robot ended inverted. Isolate the causal variable by removing all learned authority after the Program enters recovery. Credit a later Task-target entry to the bounded actor interventions that preceded it in the same uninterrupted episode, so elite replay and checkpoint selection can consolidate a useful brace even though the fail-closed gate is correctly shut at the target crossing.",
+      "expectedEffect": "Preserve the Program's known self-righting trajectory after an ML-only momentum brace, eliminate residual gate activity during recovery and unrelated command-tracking regressions, admit complete-Mission early-reflex tails that causally precede a target entry, and improve both impact directions under the unchanged continuous Mission Judge."
+    },
+    "policyId": "articulated-inverted-escape-b4519609aeda2211",
+    "score": 60.376779002182175,
+    "delta": -2.345545664888334,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-left-degraded: recovery-relapse regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-left-degraded: recovery-relapse regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 44,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 109.42862681976636
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-7a808fd87e77c7ad",
+    "experimentId": "001-66cfbc82cfb3",
+    "sequence": 1,
+    "startedAt": "2026-07-25T04:28:31.597Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "7fb761770721f5326b1784ab467069235acb54a31f1420c44fab2881817c5058",
+    "proposal": {
+      "strategy": "lateral-dof-causally-credited-reflex",
+      "hypothesis": "The isolated early-reflex checkpoint produced Task-target entries after actor intervention on both exact impact directions and improved degraded-left self-righting to 7.30 seconds, but only 12 actor steps made degraded-right unrecoverable. The 14-DOF residual was allowed to perturb sagittal hip/knee torques and waist pitch even though its trigger is a lateral momentum excursion. Preserve the same continuous Mission, timing gate, causal replay, bilateral contract, reward, and budget, but restrict learned authority to the four leg abduction motors and waist roll; the Program retains every sagittal and pitch action.",
+      "expectedEffect": "Keep the useful signed lateral brace while preventing the short Policy window from moving the robot into a sagittally unrecoverable basin, preserve degraded-right Program self-righting, and remove command-tracking and recovery-handoff regressions without changing the physical scenarios or Judge."
+    },
+    "policyId": "articulated-inverted-escape-dcff66d30460b6e1",
+    "score": 39.89236057924314,
+    "delta": -22.82996408782737,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 48,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 125.55443294320604
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-72a0f022950c6425",
+    "experimentId": "001-70d1990bf5db",
+    "sequence": 1,
+    "startedAt": "2026-07-25T05:23:12.028Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "56a18a267c20d8edf48d5419c781ea5dc904185651d80c50943b3eca7fd21d75",
+    "proposal": {
+      "strategy": "continuous-mission-counterfactual-reflex-distillation",
+      "hypothesis": "A frozen-policy short-horizon search on four Training-only seeds found no safe improvement for the 60 N positive-y impact, but found one negative-y intervention that improved terminal recovery-target progress on both independent 49 N cases while reducing disallowed self-contact steps from two to zero. Distill its 24 pre-transform actor targets into the same state-conditioned Policy while preserving the complete no-reset Mission progression, Program prior, lateral-only authority, bilateral consistency regularizer, seed, budget, and locked Judge.",
+      "expectedEffect": "Teach the actor a physically screened early brace without splitting locomotion, impact, and recovery into separate deployed policies. The short proxy remains Training-only; promotion still requires the unchanged walk→impact→recover→resume→redirect→traverse→stop Mission Suite to improve without regressions."
+    },
+    "policyId": "articulated-inverted-escape-2bafab9f68460ff7",
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Benchmark 'self-righting-morphology-v2' fixed inputs drifted; review changes and lock again"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-f970e459ae8a671c",
+    "experimentId": "001-c2aea3338d6b",
+    "sequence": 1,
+    "startedAt": "2026-07-25T05:26:14.778Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "56a18a267c20d8edf48d5419c781ea5dc904185651d80c50943b3eca7fd21d75",
+    "proposal": {
+      "strategy": "continuous-mission-counterfactual-reflex-distillation",
+      "hypothesis": "A frozen-policy short-horizon search on four Training-only seeds found no safe improvement for the 60 N positive-y impact, but found one negative-y intervention that improved terminal recovery-target progress on both independent 49 N cases while reducing disallowed self-contact steps from two to zero. Distill its 24 pre-transform actor targets into the same state-conditioned Policy while preserving the complete no-reset Mission progression, Program prior, lateral-only authority, bilateral consistency regularizer, seed, budget, and locked Judge.",
+      "expectedEffect": "Teach the actor a physically screened early brace without splitting locomotion, impact, and recovery into separate deployed policies. The short proxy remains Training-only; promotion still requires the unchanged walk→impact→recover→resume→redirect→traverse→stop Mission Suite to improve without regressions."
+    },
+    "policyId": "articulated-inverted-escape-2bafab9f68460ff7",
+    "score": 40.16892889224002,
+    "delta": -22.55339577483049,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 47,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 99.09769440188333
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-320ff65a294130b0",
+    "experimentId": "001-86844d43d685",
+    "sequence": 1,
+    "startedAt": "2026-07-25T05:34:38.715Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "690abdf652b0401a005f7bbbd791f1a84910ae49187d0f78e3b392ae2cbeb136",
+    "proposal": {
+      "strategy": "continuous-mission-counterfactual-reflex-distillation",
+      "hypothesis": "A frozen-policy short-horizon search on four Training-only seeds found no safe improvement for the 60 N positive-y impact, but found one negative-y intervention that improved terminal recovery-target progress on both independent 49 N cases while reducing disallowed self-contact steps from two to zero. The first always-on 24-frame distillation overfit this local basin and failed the continuous Judge. Use 24 counterfactual teacher frames plus 38 frozen-policy anchors from the no-improvement side, lower the coefficient to 0.01, and linearly retire supervision by step 8192 while preserving the complete no-reset Mission progression, Program prior, lateral-only authority, bilateral consistency regularizer, seed, budget, and locked Judge.",
+      "expectedEffect": "Use the physical proxy only to initialize a state-local brace, explicitly preserve the opposite-side actor, and let the remaining 57,344 continuous-Mission steps overwrite any locally useful but globally harmful teacher bias. Promotion still requires the unchanged walk→impact→recover→resume→redirect→traverse→stop Mission Suite to improve without regressions."
+    },
+    "policyId": "articulated-inverted-escape-f319aeffab0d482d",
+    "score": 40.486566105159035,
+    "delta": -22.235758561911474,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 105.3057986216274
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-d1561ef898f43f6c",
+    "experimentId": "001-2960da97ab2b",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:20:10.420Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "7fb5b100cdba3fe403258f4e0f3c0c2c5c9b4dbc96c17465ea34fe74a5007788",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, and reject every optimizer update whose observed actor distribution exceeds mean reverse KL 0.005 from that parent. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": null,
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "ENOENT: no such file or directory, open '/var/folders/nf/j8ctzyf956gg4h79xdmj3rwr0000gn/T/mujica-articulated-inverted-escape-policy-HQAM0f/project/training-runs/training-bc2f16adeeca7b1b/result.json'"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-d07aea714abfcd13",
+    "experimentId": "001-d9668c3ca63c",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:21:27.056Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "c2f4bb8ff3027261f33a63d87406cf1ae5c4ad216508d8e2e6feb1aedcf88fe4",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, and reject every optimizer update whose observed actor distribution exceeds mean reverse KL 0.005 from that parent. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": null,
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Python Runtime train failed:\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 38, in <module>\n    main()\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 27, in main\n    elif args.operation == \"train\": result = train(request)\n                                             ^^^^^^^^^^^^^^\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2572, in train\n    atomic_directory(training_run, run_writer)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/io.py\", line 49, in atomic_directory\n    writer(temporary)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2534, in run_writer\n    started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-74efae89f9b49f01",
+    "experimentId": "001-441c214b40ab",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:22:38.229Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "12a963066490ab00a2ab09bedd267362ca03b1f23603a0c7fb66c007a847b346",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, and reject every optimizer update whose observed actor distribution exceeds mean reverse KL 0.005 from that parent. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": null,
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Python Runtime train failed:\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 38, in <module>\n    main()\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 27, in main\n    elif args.operation == \"train\": result = train(request)\n                                             ^^^^^^^^^^^^^^\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2576, in train\n    atomic_directory(training_run, run_writer)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/io.py\", line 49, in atomic_directory\n    writer(temporary)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2538, in run_writer\n    started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-0182f9fd9a8c2713",
+    "experimentId": "001-c05c3053bc7e",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:23:37.133Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "3b8b6bab3bbd8faaceed26ef7e136256b72d85e983e9e126d0e7d931209c4287",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, and reject every optimizer update whose observed actor distribution exceeds mean reverse KL 0.005 from that parent. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": null,
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Python Runtime train failed:\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 38, in <module>\n    main()\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 27, in main\n    elif args.operation == \"train\": result = train(request)\n                                             ^^^^^^^^^^^^^^\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2623, in train\n    atomic_directory(training_run, run_writer)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/io.py\", line 49, in atomic_directory\n    writer(temporary)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2585, in run_writer\n    started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-c99862fafbca215b",
+    "experimentId": "001-74829fe7cb11",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:25:08.195Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "3f39dba894ea36e87f3c58801c20d5565780f4e42001c9f28b68dd47f86c4ef6",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, and reject every optimizer update whose observed actor distribution exceeds mean reverse KL 0.005 from that parent. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": null,
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Python Runtime train failed:\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 38, in <module>\n    main()\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/cli.py\", line 27, in main\n    elif args.operation == \"train\": result = train(request)\n                                             ^^^^^^^^^^^^^^\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2631, in train\n    atomic_directory(training_run, run_writer)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/io.py\", line 49, in atomic_directory\n    writer(temporary)\n  File \"/Users/ame/Documents/2607toydev/mujica/runtime/src/mujica_runtime/training.py\", line 2593, in run_writer\n    started = time.time(); training_metrics = trainer.train(request, work); elapsed = time.time"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-ebcbbda58fc528d0",
+    "experimentId": "001-56ceebf629da",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:26:32.993Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "7ebc022489ad8f4635ad86e8779de870c1eaa667655dd6dcd667ce4571340f28",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, and reject every optimizer update whose observed actor distribution exceeds mean reverse KL 0.005 from that parent. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": "articulated-inverted-escape-5b99273353ac3e39",
+    "score": 40.292340809095855,
+    "delta": -22.429983857974655,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: forward-progress regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 47,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 104.31602714277516
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-15292965fe772070",
+    "experimentId": "001-7fb758a2a1a9",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:35:22.509Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "9342ee0395bbb103d7a95b8015e1d7d9048d0830738b1217ff68e7c68d359374",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, freeze the parent's active observations from a deterministic complete-Mission probe as the trust-region distribution, and reject every optimizer update whose mean reverse KL on that fixed distribution exceeds 0.005. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": "articulated-inverted-escape-033188bcc69cd7cc",
+    "score": 62.72232466707051,
+    "delta": 0,
+    "verdict": "CRASH",
+    "decision": null,
+    "revisionId": null,
+    "error": "Benchmark 'self-righting-morphology-v2' fixed inputs drifted; review changes and lock again"
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-c20b30f82bf6222f",
+    "experimentId": "001-30d83983f032",
+    "sequence": 1,
+    "startedAt": "2026-07-25T06:38:07.933Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "9342ee0395bbb103d7a95b8015e1d7d9048d0830738b1217ff68e7c68d359374",
+    "proposal": {
+      "strategy": "warm-start-counterfactual-trust-region",
+      "hypothesis": "Direct from-scratch reflex distillation changed the complete-Mission learning basin and erased behavior already present in the executable parent candidate. Start byte-identically from Policy articulated-inverted-escape-dcff66d30460b6e1 and its frozen Observation normalizer, use the same 62-frame contrastive local course only during the first 8,192 steps, freeze the parent's active observations from a deterministic complete-Mission probe as the trust-region distribution, and reject every optimizer update whose mean reverse KL on that fixed distribution exceeds 0.005. The parent is executable but not accepted; promotion still requires beating the Program reference on the unchanged locked continuous Mission and every regression suite.",
+      "expectedEffect": "Preserve the parent's state-conditioned recovery behavior while allowing a bounded local correction, expose accepted versus rolled-back optimizer steps and measured KL as immutable evidence, and determine whether the local proxy can improve complete-Mission recovery without exchanging direction, handoff, or command failures."
+    },
+    "policyId": "articulated-inverted-escape-033188bcc69cd7cc",
+    "score": 40.37741377155915,
+    "delta": -22.34491089551136,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-left-degraded: backward-displacement regressed from passing to failing",
+        "impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-left-degraded: backward-displacement regressed from passing to failing",
+        "reference-controller: impact-left-degraded: transition-terminal-planar regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 48,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 119.35602099577143
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-f10a5061892e667f",
+    "experimentId": "001-eefee4978cf2",
+    "sequence": 1,
+    "startedAt": "2026-07-25T07:15:49.755Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "24e3440903fba6b3937320b4a0d8672dd91e889c2a731359fa097c22c526a0dc",
+    "proposal": {
+      "strategy": "program-safe-complete-mission-policy-selection",
+      "hypothesis": "Skill-focused rewards and stochastic exploration may improve a recovery slice while damaging walking, impact response, Mission resumption, redirection, traversal, or stop. Include the exactly zero residual actor at Training step 0 as a frozen Program-equivalent Policy candidate, then compare it with every learned checkpoint only on deterministic, complete no-reset Mission evidence across both authored impact directions and plant profiles.",
+      "expectedEffect": "Publish learned weights only if they improve the integrated Mission ranking. Otherwise restore the step-0 Policy, proving that the ML artifact remains executable and behavior-equivalent to the Program baseline while preserving all learned checkpoints as negative research evidence for diagnosis."
+    },
+    "policyId": "articulated-inverted-escape-fac5f214f862d696",
+    "score": 40.486566105159035,
+    "delta": -22.235758561911474,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "impact-right-degraded: self-righting regressed from passing to failing",
+        "impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "impact-right-degraded: final-base-height regressed from passing to failing",
+        "impact-right-degraded: score-regression regressed from passing to failing",
+        "reference-controller: impact-right-degraded: self-righting regressed from passing to failing",
+        "reference-controller: impact-right-degraded: stable-standing-dwell regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-body-tilt regressed from passing to failing",
+        "reference-controller: impact-right-degraded: final-base-height regressed from passing to failing",
+        "reference-controller: impact-right-degraded: score-regression regressed from passing to failing",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing",
+        "command-tracking: disturbed-lateral: planar-velocity-tracking regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 42,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 105.3057986216274
+    },
+    "revisionId": null,
+    "error": null
+  },
+  {
+    "version": 1,
+    "source": "prior-session",
+    "researchId": "articulated-inverted-escape-policy",
+    "sessionId": "session-35a8241fa4e79ff7",
+    "experimentId": "001-5d46961b3741",
+    "sequence": 1,
+    "startedAt": "2026-07-25T08:00:43.310Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": false
+    },
+    "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+    "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+    "benchmarkLockHash": "ca276d6765f80dd05f6a6987071cafb46419dc30240cec7a3f1bdc747c15f604",
+    "proposal": {
+      "strategy": "program-safe-complete-mission-policy-selection",
+      "hypothesis": "Skill-focused rewards and stochastic exploration may improve a recovery slice while damaging walking, impact response, Mission resumption, redirection, traversal, or stop. Include the exactly zero residual actor at Training step 0 as a frozen Program-equivalent Policy candidate, then compare it with every learned checkpoint only on deterministic, complete no-reset Mission evidence across both authored impact directions and plant profiles.",
+      "expectedEffect": "Publish learned weights only if they improve the integrated Mission ranking. Otherwise restore the step-0 Policy, proving that the ML artifact remains executable and behavior-equivalent to the Program baseline while preserving all learned checkpoints as negative research evidence for diagnosis."
+    },
+    "policyId": "articulated-inverted-escape-6f7d5d14b3437a79",
+    "score": 59.506964667070505,
+    "delta": -3.215360000000004,
+    "verdict": "REVERT",
+    "decision": {
+      "selectionReason": "gate-regression",
+      "gateReasons": [
+        "reference-controller: no-lexicographic-improvement",
+        "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+        "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+      ],
+      "previousViolationCount": 43,
+      "candidateViolationCount": 43,
+      "previousViolationSeverity": 87.78602050689881,
+      "candidateViolationSeverity": 87.78602050689881
+    },
+    "revisionId": null,
+    "error": null
+  }
+]

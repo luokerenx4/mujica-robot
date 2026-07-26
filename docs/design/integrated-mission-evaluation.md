@@ -866,6 +866,26 @@ complete-Mission completion, stable-recovery, relapse, timeout, or recovery
 progress measure. Actor-caused target entry is retained in the ledger but
 cannot by itself satisfy this Program-safe dominance rule.
 
+Step-0 fallback prevents publication of a regression, but it does not prevent
+PPO from repeatedly destroying and relearning the Program's useful state
+distribution. A Program-residual Training may therefore declare a
+`programReference` trust region. Runtime executes the exactly zero residual
+step-0 Policy on deterministic complete Missions and retains only physical
+Observations where the residual gate had nonzero authority. The dataset is
+derived from Training seeds, consumes no optimization budget, and carries
+per-stage, per-Scenario, and Mission-phase coverage; it is not Judge evidence.
+
+The reference target is exactly zero pre-transform residual. The soft loss is
+computed after multiplying actor mean by both the observed gate scale and the
+per-Action residual scale. The hard bound uses the RMS of that same physically
+applied residual over the entire retained reference set after every optimizer
+step. If the bound is exceeded, Runtime restores both model and optimizer
+state. Stochastic exploration and off-reference residual learning remain
+possible, but known Program states have an explicit torque-space preservation
+contract instead of relying on an aggregate residual penalty. This mechanism
+requires the Program-equivalent step-0 checkpoint, rejects warm-start weights,
+and cannot change promotion authority.
+
 The selected network and its matching normalizer become the frozen Policy
 Artifact. Training metrics retain every candidate step, its named rank
 components, the selected step, the final trained step, and whether earlier
@@ -900,6 +920,25 @@ the raw actor mean was exactly zero, and locked violation count/severity were
 identical to the Program. The remaining score gap is the explicit Training
 complexity charge, so the Research verdict stayed `REVERT` without implying a
 behavior regression.
+
+Two governed Program-reference experiments then separated preservation from
+capability. Session `session-5930c3ec5d23037a` retained 75 actor-authorized
+Program states across both directions and exact/randomized complete Missions.
+All 4,096 optimizer steps stayed below the `0.05` applied-residual RMS bound;
+step `32,768` produced bilateral actor-contributed target entry, but no stable
+recovery and four deterministic Mission timeouts. Step 0 remained selected.
+
+Session `session-bc467bc837db6b74` added a bounded Program-recovery
+continuation. It retained 512 of 529 active reference states, accepted 3,619
+optimizer steps, rolled back 477, and held maximum accepted RMS to
+`0.0499995` while attempted drift reached `0.0507081`. The mechanism therefore
+enforced its declared physical limit. The learning hypothesis still failed:
+every checkpoint had zero stable recovery and four timeouts, while the
+step-`40,960` candidate combined two contributed target entries with three
+relapses. Step 0 again preserved behavior identical to Program. These results
+rule out both an inactive trust region and a merely-too-short residual window;
+the next intervention must change the physical trigger, Action/morphology
+surface, or recovery policy structure rather than sweep the same scalar bound.
 
 ## Interleaved Mission progression
 

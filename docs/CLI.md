@@ -331,3 +331,27 @@ stable recovery, relapse, timeout, or recovery progress; actor intervention or
 local target entry alone remains diagnostic. This option rejects warm-start
 weights and non-Program action transforms because neither can prove
 zero-residual equivalence.
+
+The same Training may add a `programReference` contract:
+
+```json
+{
+  "scope": "complete-mission-active-states",
+  "maximumSamples": 512,
+  "coefficient": 0.1,
+  "maximumAppliedResidualRms": 0.05
+}
+```
+
+Runtime collects the physical Observations where the step-0 Program-equivalent
+Policy actually receives residual authority in deterministic complete
+Missions. These samples remain Training-only and consume no Training budget.
+During PPO, the actor is softly pulled toward zero residual on that fixed
+physical distribution. After every optimizer step, Runtime measures the
+Action-scaled, gate-scaled residual RMS over all retained samples and rolls
+back both model and optimizer state when the declared bound is exceeded.
+`train` reports `program_reference_maximum_applied_residual_rms`; Policy
+evidence preserves sample/case/phase coverage, attempted drift, and
+accepted/rolled-back optimizer-step counts. This trust region preserves known
+Program behavior but does not promote a Policy—the locked Judge remains the
+only release authority.

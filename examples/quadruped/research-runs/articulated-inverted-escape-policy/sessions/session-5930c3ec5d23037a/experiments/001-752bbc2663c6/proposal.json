@@ -1,0 +1,5 @@
+{
+  "strategy": "program-reference-anchored-complete-mission-rl",
+  "hypothesis": "The zero-residual step-0 Policy exactly reproduces the current-Assembly Program, but unconstrained PPO erases that behavior as soon as a local reflex reward moves the actor mean. Freeze the physical observations where step-0 receives residual authority during both exact and randomized complete Missions, train against zero applied residual on that fixed Program distribution, and roll back any optimizer step whose mean applied residual RMS exceeds 0.05 while preserving the same local counterfactual course, exploration, Mission rewards, step-0 selector, and locked Judge.",
+  "expectedEffect": "Keep learned changes inside a measured torque-space trust region on the Program's complete-Mission state distribution, retain the exact Program as the executable fallback, and determine whether RL can improve a bilateral recovery basin without destroying walking, downstream Mission resumption, redirection, traversal, or stop."
+}

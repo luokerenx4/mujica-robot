@@ -1,0 +1,273 @@
+diff --git a/before/controllers/articulated-inverted-escape-policy/controller.json b/after/controllers/articulated-inverted-escape-policy/controller.json
+index bc5c9e9..fda9443 100644
+--- a/before/controllers/articulated-inverted-escape-policy/controller.json
++++ b/after/controllers/articulated-inverted-escape-policy/controller.json
+@@ -3,6 +3,6 @@
+   "id": "articulated-inverted-escape-policy",
+   "name": "Frozen state-gated articulated inverted-escape residual",
+   "kind": "policy",
+-  "policy": "articulated-inverted-escape-64872c025769000b",
++  "policy": "articulated-inverted-escape-d47ea392e29fa22d",
+   "deterministic": true
+ }
+diff --git a/before/trainers/articulated-inverted-escape-residual-ppo/trainer.py b/after/trainers/articulated-inverted-escape-residual-ppo/trainer.py
+index 93fd2b6..3c2333a 100644
+--- a/before/trainers/articulated-inverted-escape-residual-ppo/trainer.py
++++ b/after/trainers/articulated-inverted-escape-residual-ppo/trainer.py
+@@ -4,26 +4,138 @@ from mujica_runtime.training import PPOTrainer
+ def create_trainer():
+     return PPOTrainer(
+         hidden_sizes=[64, 64],
+-        initial_log_std=-1.5,
++        initial_log_std=-1.1,
++        history_encoder={
++            "channels": [
++                {"channel": "command-action-history", "steps": 4, "size": 14},
++                {"channel": "applied-action-history", "steps": 4, "size": 14},
++                {"channel": "foot-contact-history", "steps": 4, "size": 4},
++            ],
++            "recurrentSize": 32,
++        },
++        bilateral_symmetry={
++            "kind": "lateral-reflection-v1",
++            "policyConsistencyCoefficient": 0.05,
++            "augmentNormalizer": True,
++            "mirrorEliteReplay": True,
++            "identityObservationChannels": [
++                "base-height",
++                "actuator-delay-steps",
++                "recovery-target-satisfied",
++                "recovery-stable-progress",
++                "recovery-stable-latched",
++                "recovery-deadline-expired",
++            ],
++            "observationTransforms": {
++                "joint-position": {
++                    "permutation": [3, 4, 5, 0, 1, 2, 6, 7, 11, 12, 13, 8, 9, 10],
++                    "signs": [-1, 1, 1, -1, 1, 1, -1, 1, -1, 1, 1, -1, 1, 1],
++                },
++                "joint-velocity": {
++                    "permutation": [3, 4, 5, 0, 1, 2, 6, 7, 11, 12, 13, 8, 9, 10],
++                    "signs": [-1, 1, 1, -1, 1, 1, -1, 1, -1, 1, 1, -1, 1, 1],
++                },
++                "base-orientation": {
++                    "permutation": [0, 1, 2, 3],
++                    "signs": [1, -1, 1, -1],
++                },
++                "base-velocity": {
++                    "permutation": [0, 1, 2, 3, 4, 5],
++                    "signs": [1, -1, 1, -1, 1, -1],
++                },
++                "imu-angular-velocity": {
++                    "permutation": [0, 1, 2],
++                    "signs": [-1, 1, -1],
++                },
++                "imu-linear-acceleration": {
++                    "permutation": [0, 1, 2],
++                    "signs": [1, -1, 1],
++                },
++                "command-action-history": {
++                    "blockSize": 14,
++                    "permutation": [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8, 12, 13],
++                    "signs": [-1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1],
++                },
++                "applied-action-history": {
++                    "blockSize": 14,
++                    "permutation": [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8, 12, 13],
++                    "signs": [-1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1],
++                },
++                "foot-contact-history": {
++                    "blockSize": 4,
++                    "permutation": [1, 0, 3, 2],
++                    "signs": [1, 1, 1, 1],
++                },
++                "motion-command": {
++                    "permutation": [0, 1, 2],
++                    "signs": [1, -1, -1],
++                },
++                "foot-contact-force": {
++                    "permutation": [1, 0, 3, 2],
++                    "signs": [1, 1, 1, 1],
++                },
++            },
++            "actionTransform": {
++                "permutation": [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8, 12, 13],
++                "signs": [-1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1],
++            },
++        },
+         action_transform={
+             "kind": "program-controller-residual",
+-            "residualScale": 1.0,
++            "residualScaleByAction": [
++                0.30, 0.00, 0.00,
++                0.30, 0.00, 0.00,
++                0.30, 0.00, 0.00,
++                0.30, 0.00, 0.00,
++                1.00, 0.00,
++            ],
+             "residualGate": {
+                 "kind": "prior-telemetry-mode",
+-                "allowedModes": ["recovery"],
+-                "requiredTelemetry": {
+-                    "dynamicRecovery": True,
++                "allowedModes": ["locomotion"],
++                "requiredObservation": {
++                    "recovery-target-satisfied": 0.0,
++                    "recovery-stable-latched": 0.0,
++                },
++                "requiredRuntimeState": {
++                    "recoveryDeadlineExpired": 0.0,
++                },
++                "allowedTelemetry": {
++                    "measuredDelaySteps": [1, 2],
+                 },
+                 "minimumTelemetry": {
+-                    "recoveryRetryCount": 1,
+-                    "bodyTiltRad": 2.6,
++                    "modeDwellSeconds": 1.0,
++                    "absoluteLateralVelocityMps": 0.4,
+                 },
+                 "maximumTelemetry": {
+-                    "recoveryRetryCount": 2,
+-                    "baseHeightM": 0.16,
+-                    "supportFeet": 0,
++                    "bodyTiltRad": 0.8,
+                 },
++                "additionalRoutes": [
++                    {
++                        "allowedModes": ["recovery"],
++                        "requiredObservation": {
++                            "recovery-target-satisfied": 0.0,
++                            "recovery-stable-latched": 0.0,
++                        },
++                        "requiredRuntimeState": {
++                            "recoveryDeadlineExpired": 0.0,
++                        },
++                        "allowedTelemetry": {
++                            "phase": [
++                                "recovery.impulse",
++                                "recovery.capture",
++                                "recovery.rise",
++                            ],
++                            "measuredDelaySteps": [1, 2],
++                        },
++                        "maximumTelemetry": {
++                            "modeDwellSeconds": 2.5,
++                            "baseHeightM": 0.40,
++                            "supportFeet": 3,
++                        },
++                    },
++                ],
+                 "rampSeconds": 0,
++                "entryRampSeconds": 0.4,
+             },
+         },
+     )
+diff --git a/before/training/articulated-inverted-escape.training.json b/after/training/articulated-inverted-escape.training.json
+index c62827c..3e78b54 100644
+--- a/before/training/articulated-inverted-escape.training.json
++++ b/after/training/articulated-inverted-escape.training.json
+@@ -2,7 +2,7 @@
+   "version": 3,
+   "id": "articulated-inverted-escape",
+   "name": "Continuous-Mission articulated inverted-escape residual",
+-  "assembly": "resilient-command-conditioned-waist-3dof",
++  "assembly": "resilient-command-conditioned-waist-history-3dof",
+   "trainer": "articulated-inverted-escape-residual-ppo",
+   "priorController": "articulated-behavior-supervisor",
+   "mission": {
+@@ -16,34 +16,33 @@
+     {
+       "id": "continuous-inverted-escape",
+       "throughPhase": "recover",
+-      "untilStep": 16384,
++      "untilStep": 32768,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "complete-mission-exact-plants",
+       "throughPhase": "stop",
+-      "untilStep": 24576,
++      "untilStep": 49152,
+       "domainProfile": "quadruped-resilient-resume-curriculum-v1"
+     },
+     {
+       "id": "complete-mission-randomized-plants",
+       "throughPhase": "stop",
+-      "untilStep": 32768,
++      "untilStep": 65536,
+       "domainProfile": "quadruped-resilient-mission-v1"
+     }
+   ],
+   "promotionBenchmark": "integrated-resilience-mission",
+-  "totalSteps": 32768,
++  "totalSteps": 65536,
+   "rolloutSteps": 256,
+   "epochs": 4,
+   "minibatchSize": 64,
+-  "learningRate": 0.0001,
++  "learningRate": 0.00005,
+   "gamma": 0.995,
+   "gaeLambda": 0.97,
+   "clipRatio": 0.15,
+-  "entropyCoefficient": 0.001,
+-  "residualScale": 1.0,
+-  "residualPenalty": 0.02,
++  "entropyCoefficient": 0.0005,
++  "residualPenalty": 0.05,
+   "qualityReward": {
+     "jointAcceleration": 0.0001,
+     "bodyAngularAcceleration": 0.0002,
+@@ -55,14 +54,47 @@
+   "missionReward": {
+     "commandProgress": 3,
+     "velocityTracking": 0.5,
+-    "stopStability": 1
++    "stopStability": 2,
++    "recoverySuccess": 200,
++    "recoveryRelapsePenalty": 300,
++    "phaseTimeoutPenalty": 300,
++    "timeoutFreeCompletion": 150
+   },
+   "recoveryReward": {
+-    "upright": 10,
+-    "height": 4,
+-    "stillness": 2,
++    "upright": 6,
++    "height": 3,
++    "stillness": 1,
+     "support": 3,
+-    "tiltEscape": 15,
++    "tiltEscape": 8,
++    "taskTargetProgress": 12,
++    "taskTargetEntry": 120,
+     "stillnessMaximumTiltRad": 0.5
++  },
++  "eliteReplay": {
++    "trigger": "actor-contributed-recovery-target-entry",
++    "tailSteps": 64,
++    "capacity": 4096,
++    "minibatchSize": 64,
++    "coefficient": 0.05,
++    "scope": "complete-mission"
++  },
++  "progressionSampling": "interleaved-step-share",
++  "deterministicCheckpoint": {
++    "scope": "complete-mission",
++    "everySteps": 8192,
++    "minimumSteps": 8192,
++    "includeInitialProgramPolicy": true
++  },
++  "reflexDistillation": {
++    "search": "reflex-search-7e950b1350b261dd",
++    "minibatchSize": 62,
++    "coefficient": 0.01,
++    "untilStep": 8192
++  },
++  "programReference": {
++    "scope": "complete-mission-active-states",
++    "maximumSamples": 512,
++    "coefficient": 0.1,
++    "maximumAppliedResidualRms": 0.05
+   }
+ }

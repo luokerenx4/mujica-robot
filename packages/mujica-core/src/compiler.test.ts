@@ -650,7 +650,45 @@ describe("Robot Assembly compiler", () => {
         minimumSteps: 4096,
         includeInitialProgramPolicy: true,
       },
+      programReference: {
+        scope: "complete-mission-active-states",
+        maximumSamples: 512,
+        coefficient: 0.1,
+        maximumAppliedResidualRms: 0.05,
+      },
     }).success).toBe(true);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      programReference: {
+        scope: "complete-mission-active-states",
+        maximumSamples: 512,
+        coefficient: 0.1,
+        maximumAppliedResidualRms: 0.05,
+      },
+    }).success).toBe(false);
+    expect(trainingSchema.safeParse({
+      ...curriculum,
+      warmStart: {
+        policy: "accepted-policy-0123456789abcdef",
+        normalizer: "frozen",
+        trustRegion: {
+          kind: "reverse-kl-to-frozen-policy",
+          coefficient: 0.1,
+          maximumMeanKl: 0.01,
+        },
+      },
+      deterministicCheckpoint: {
+        scope: "complete-mission",
+        everySteps: 2048,
+        includeInitialProgramPolicy: true,
+      },
+      programReference: {
+        scope: "complete-mission-active-states",
+        maximumSamples: 512,
+        coefficient: 0.1,
+        maximumAppliedResidualRms: 0.05,
+      },
+    }).success).toBe(false);
     expect(trainingSchema.safeParse({
       ...curriculum,
       deterministicCheckpoint: {

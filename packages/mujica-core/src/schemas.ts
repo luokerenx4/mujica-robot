@@ -584,6 +584,12 @@ const trainingOptimizationFields = {
       maximumMeanKl: z.number().finite().positive().max(1),
     }).strict(),
   }).strict().optional(),
+  programReference: z.object({
+    scope: z.literal("complete-mission-active-states"),
+    maximumSamples: z.number().int().min(1).max(2048),
+    coefficient: z.number().finite().positive().max(10),
+    maximumAppliedResidualRms: z.number().finite().positive().max(10),
+  }).strict().optional(),
   qualityReward: z.object({
     jointAcceleration: z.number().nonnegative(), bodyAngularAcceleration: z.number().nonnegative(), actionSlew: z.number().nonnegative(),
     actuatorSaturation: z.number().nonnegative(), footSlip: z.number().nonnegative(), footImpact: z.number().nonnegative(),
@@ -620,6 +626,11 @@ function validateTrainingOptimization(
   training: {
     totalSteps: number;
     reflexDistillation?: { untilStep: number } | undefined;
+    programReference?: unknown;
+    warmStart?: unknown;
+    deterministicCheckpoint?: {
+      includeInitialProgramPolicy?: true | undefined;
+    } | undefined;
   },
   context: z.RefinementCtx,
 ): void {
@@ -631,6 +642,23 @@ function validateTrainingOptimization(
       code: z.ZodIssueCode.custom,
       path: ["reflexDistillation", "untilStep"],
       message: "Reflex Distillation must retire within the declared Training budget",
+    });
+  }
+  if (
+    training.programReference
+    && training.deterministicCheckpoint?.includeInitialProgramPolicy !== true
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["programReference"],
+      message: "Program Reference requires the step-0 Program Policy safety baseline",
+    });
+  }
+  if (training.programReference && training.warmStart) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["programReference"],
+      message: "Program Reference cannot be combined with warm-start Policy weights",
     });
   }
 }

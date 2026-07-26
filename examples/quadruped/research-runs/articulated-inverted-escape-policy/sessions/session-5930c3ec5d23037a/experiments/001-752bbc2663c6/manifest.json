@@ -1,0 +1,60 @@
+{
+  "version": 4,
+  "id": "001-752bbc2663c6",
+  "experimentHash": "752bbc2663c6558b12241147b9e5cbf8970aa1d611504252e90bbaaa1e68365b",
+  "sequence": 1,
+  "sessionId": "session-5930c3ec5d23037a",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "dbde55c521175376f1a68884a3529e0d39dc4372624168a1d79167ccc1e1dd1b",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "ded5834194bc4fd1ee8ab6d5220aa607d9881a73a98946834bdc1632893f6d93",
+  "historyHash": "381c3fe015599a74379485950be600206bddbed5286cbb4a05c3824c18001334",
+  "historyCount": 32,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "program-reference-anchored-complete-mission-rl",
+    "hypothesis": "The zero-residual step-0 Policy exactly reproduces the current-Assembly Program, but unconstrained PPO erases that behavior as soon as a local reflex reward moves the actor mean. Freeze the physical observations where step-0 receives residual authority during both exact and randomized complete Missions, train against zero applied residual on that fixed Program distribution, and roll back any optimizer step whose mean applied residual RMS exceeds 0.05 while preserving the same local counterfactual course, exploration, Mission rewards, step-0 selector, and locked Judge.",
+    "expectedEffect": "Keep learned changes inside a measured torque-space trust region on the Program's complete-Mission state distribution, retain the exact Program as the executable fallback, and determine whether RL can improve a bilateral recovery basin without destroying walking, downstream Mission resumption, redirection, traversal, or stop."
+  },
+  "policyId": "articulated-inverted-escape-c89187ddf83bdedc",
+  "score": 59.506964667070505,
+  "delta": -3.215360000000004,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reference-controller: no-lexicographic-improvement",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 87.78602050689881,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "2e450775a70816f6ac79c0d392943702f2b744d1735e0a03cd19a53fae0738fa",
+    "acceptedRunId": "run-23f0fa055b3415a7",
+    "candidateRunId": "run-aa9e419980558e05",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 219986,
+  "completed": true
+}

@@ -697,3 +697,53 @@ Program and Policy behavior. The Policy score was `59.506965` versus
 `62.722325` solely because the unchanged complexity term charges its 65,536
 Training steps, so the experiment correctly remained `REVERT`. This artifact
 is a safe executable parent, not an improvement claim.
+
+## Program-reference anchored complete-Mission RL
+
+The safe step-0 parent exposed the next optimization defect: ordinary PPO can
+move far away from the Program on the exact physical states where residual
+authority is available, discover a local recovery event, and then be rejected
+only after the deterministic checkpoint probe. The next bounded experiment
+keeps the same complete Mission, local counterfactual course, bilateral
+contract, authority envelope, seed, budget, and locked Judge. It adds a fixed
+Program-reference distribution collected by executing the exactly zero
+residual step-0 Policy on the exact and randomized complete-Mission stages.
+
+Only actor-authorized physical Observations are retained. The Training loss
+targets zero residual after the observed gate and per-Action torque scales. A
+hard `0.05` applied-residual RMS limit is checked over the full retained set
+after every optimizer update; model and optimizer state roll back together on
+violation. This is a preservation boundary, not a second Judge. RL may still
+explore and learn off-reference recovery corrections, while step-0 remains the
+executable fallback and the locked Mission Suite remains the sole promotion
+authority.
+
+Session `session-5930c3ec5d23037a` ran the first anchored comparison. The
+reference covered 75 active states in all four direction/profile combinations;
+its maximum applied-residual RMS was `0.0152845`, so all 4,096 optimizer steps
+were accepted. Step `32,768` produced the first bilateral
+actor-contributed-target-entry checkpoint under this configuration, but all
+four deterministic Missions still timed out and none reached stable recovery.
+Program-equivalent step 0 was restored, and the locked Judge measured the same
+43 violations and `87.786021` severity as Program.
+
+The result showed that the `0.05` limit was not suppressing learning. It also
+localized a control-boundary gap: the early reflex closed when Program recovery
+began. Session `session-bc467bc837db6b74` therefore kept every other input
+fixed and added one lateral-only continuation through Program
+impulse/capture/rise, bounded by open Task latches, the one/two-step delay set,
+`2.5 s` recovery dwell, `0.40 m` height, and three support feet.
+
+That continuation made the preservation boundary active. It retained 512 of
+529 Program states, accepted 3,619 optimizer steps, rolled back 477, held
+maximum accepted RMS to `0.0499995`, and observed an attempted maximum of
+`0.0507081`. The algorithmic hypothesis was nevertheless falsified. Every
+checkpoint still had zero stable transitions and four timeouts; step `40,960`
+combined two contributed target entries with three relapses. Step 0 and the
+locked Program again had identical feasibility evidence.
+
+The next bounded change is not another scalar threshold or longer continuation.
+The evidence now points to co-design: remove false pre-impact authority seen in
+randomized `approach`, then test whether a physically detected impact plus a
+different recovery Action/morphology surface can reach stable support. Program
+reference remains the preservation contract for that work.

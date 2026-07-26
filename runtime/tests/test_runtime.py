@@ -2809,6 +2809,12 @@ class RuntimeContractTest(unittest.TestCase):
                     "minimumSteps": 32,
                     "includeInitialProgramPolicy": True,
                 },
+                "programReference": {
+                    "scope": "complete-mission-active-states",
+                    "maximumSamples": 16,
+                    "coefficient": 0.1,
+                    "maximumAppliedResidualRms": 0.000001,
+                },
             },
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -2966,9 +2972,58 @@ class RuntimeContractTest(unittest.TestCase):
             )
             self.assertEqual(metrics["totalSteps"], 64)
             self.assertTrue(result["selectedProgramEquivalentInitialPolicy"])
+            program_reference = metrics["programReference"]
+            self.assertEqual(
+                program_reference["distribution"],
+                "step-0-program-complete-mission-active-states",
+            )
+            self.assertEqual(
+                program_reference["target"],
+                "zero-pre-transform-residual-action",
+            )
+            self.assertFalse(program_reference["trainingBudgetCharged"])
+            self.assertGreater(
+                program_reference["observedActiveStates"],
+                0,
+            )
+            self.assertGreater(
+                program_reference["retainedActiveStates"],
+                0,
+            )
+            self.assertLessEqual(
+                program_reference["retainedActiveStates"],
+                16,
+            )
+            self.assertGreater(
+                program_reference["rolledBackOptimizerSteps"],
+                0,
+            )
+            self.assertLessEqual(
+                program_reference[
+                    "maximumObservedAppliedResidualRms"
+                ],
+                0.000001,
+            )
+            self.assertGreaterEqual(
+                program_reference[
+                    "maximumAttemptedAppliedResidualRms"
+                ],
+                program_reference[
+                    "maximumObservedAppliedResidualRms"
+                ],
+            )
+            self.assertEqual(
+                result[
+                    "programReferenceMaximumObservedAppliedResidualRms"
+                ],
+                program_reference[
+                    "maximumObservedAppliedResidualRms"
+                ],
+            )
 
         interleaved_request = json.loads(json.dumps(request))
         interleaved_request["training"].pop("deterministicCheckpoint")
+        interleaved_request["training"].pop("programReference")
         interleaved_request["training"]["progressionSampling"] = (
             "interleaved-step-share"
         )

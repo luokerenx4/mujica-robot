@@ -1,0 +1,60 @@
+{
+  "version": 4,
+  "id": "001-b9e48399901e",
+  "experimentHash": "b9e48399901e8c7d4ef65249b135befd031a2b59b451964c9eda2f29e7e2cdc1",
+  "sequence": 1,
+  "sessionId": "session-bc467bc837db6b74",
+  "researchId": "articulated-inverted-escape-policy",
+  "labHash": "58ab607abc5497d27acd76e2a7b43acab59ec8a5d8d38662b5234b09cc5f9802",
+  "programHash": "1c7fdafafa7e4e31c828420328d8a2117b6d67fcd529221bae249c9f45d26714",
+  "benchmarkLockHash": "dbde55c521175376f1a68884a3529e0d39dc4372624168a1d79167ccc1e1dd1b",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "16fae4d0c01d1b9343b5b583cd3f309faa3a34c91a8ac49ad58865117f612c38",
+  "historyHash": "dad362d443e98e31368933dcf7a4febc4943268b6b773825d10339ebff23939f",
+  "historyCount": 32,
+  "researcherChangedPaths": [
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "changedPaths": [
+    "controllers/articulated-inverted-escape-policy/controller.json",
+    "trainers/articulated-inverted-escape-residual-ppo/trainer.py",
+    "training/articulated-inverted-escape.training.json"
+  ],
+  "proposal": {
+    "strategy": "program-anchored-reflex-to-recovery-continuation",
+    "hypothesis": "The Program-reference run produced bilateral actor-contributed target entry at step 32,768 while remaining below 0.0153 applied-residual RMS, but the early reflex gate closed as soon as the Program entered recovery, so no learned checkpoint produced stable recovery or a timeout-free Mission. Preserve the exact reference distribution, 0.05 RMS bound, lateral-only Action authority, local course, seed, budget, and Judge; add one causal recovery continuation route limited to Program impulse/capture/rise, the trained one/two-step delay set, open Task recovery latches, at most 2.5 seconds of recovery dwell, base height below 0.40 m, and no more than three support feet.",
+    "expectedEffect": "Let the same bounded lateral residual carry an improved post-impact basin through Program recovery long enough to satisfy stable recovery on both directions, while the Program reference prevents the continuation from erasing known complete-Mission behavior and the step-0 candidate remains the fallback."
+  },
+  "policyId": "articulated-inverted-escape-d47ea392e29fa22d",
+  "score": 59.506964667070505,
+  "delta": -3.215360000000004,
+  "verdict": "REVERT",
+  "decision": {
+    "verdict": "REVERT",
+    "gateReasons": [
+      "reference-controller: no-lexicographic-improvement",
+      "recovery-handoff: left-forward: score-regression regressed from passing to failing",
+      "recovery-handoff: right-forward: score-regression regressed from passing to failing"
+    ],
+    "previousViolationCount": 43,
+    "candidateViolationCount": 43,
+    "previousViolationSeverity": 87.78602050689881,
+    "candidateViolationSeverity": 87.78602050689881,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": false,
+    "selectionReason": "gate-regression"
+  },
+  "revisionId": null,
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "c491d87d045886290f2e647f39aa1838042f33d8ff237a65c07af0031cdb12e0",
+    "acceptedRunId": "run-23f0fa055b3415a7",
+    "candidateRunId": "run-1c3a8c55473da306",
+    "caseId": "impact-left-exact"
+  },
+  "durationMs": 223817,
+  "completed": true
+}

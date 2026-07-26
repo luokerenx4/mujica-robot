@@ -1088,6 +1088,7 @@ def run_deterministic_mission_probe(
     highs: np.ndarray,
     seed: int,
     active_observation_sink: list[np.ndarray] | None = None,
+    active_reference_sink: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Replay each Mission stage and Scenario with the frozen actor mean.
 
@@ -1157,6 +1158,7 @@ def run_deterministic_mission_probe(
                     maximum_absolute_raw_actor_mean,
                     float(np.max(np.abs(raw_action))),
                 )
+                reference_gate_scale = 1.0
                 prior_telemetry: dict[str, Any] | None = None
                 if (
                     action_transform
@@ -1187,6 +1189,7 @@ def run_deterministic_mission_probe(
                         environment.runtime_state(),
                     )
                     residual_gate_scale_state = residual_gate_scale
+                    reference_gate_scale = residual_gate_scale
                     transformed = (
                         prior_action
                         + residual_gate_scale
@@ -1210,6 +1213,20 @@ def run_deterministic_mission_probe(
                 ):
                     active_observation_sink.append(normalized.copy())
                 result = environment.step(np.clip(transformed, lows, highs))
+                if (
+                    active_reference_sink is not None
+                    and actor_authority > 0.0
+                ):
+                    active_reference_sink.append({
+                        "observation": observation.copy(),
+                        "gateScale": float(reference_gate_scale),
+                        "curriculum": str(entry["id"]),
+                        "scenario": str(scenario["id"]),
+                        "completeMissionStage": bool(
+                            sample.get("completeMissionStage")
+                        ),
+                        "missionPhase": result.info.get("missionPhase"),
+                    })
                 sample["steps"] += 1
                 sample["activePolicySteps"] += int(actor_authority > 0.0)
                 sample["actorAuthoritySum"] += actor_authority
@@ -1430,6 +1447,7 @@ class PPOTrainer:
         reflex_distillation_config = request.get("reflexDistillation")
         warm_start_config = request.get("warmStart")
         deterministic_checkpoint_config = config.get("deterministicCheckpoint")
+        program_reference_config = config.get("programReference")
         include_initial_program_policy = bool(
             deterministic_checkpoint_config
             and deterministic_checkpoint_config.get(
@@ -1453,6 +1471,20 @@ class PPOTrainer:
         if include_initial_program_policy and warm_start_config:
             raise RuntimeError(
                 "Initial Program Policy checkpoint cannot be combined with warm-start weights"
+            )
+        if program_reference_config and (
+            program_reference_config.get("scope")
+            != "complete-mission-active-states"
+            or not include_initial_program_policy
+            or not action_transform
+            or action_transform.get("kind") != "program-controller-residual"
+        ):
+            raise RuntimeError(
+                "Program Reference requires a step-0 Program residual complete-Mission baseline"
+            )
+        if program_reference_config and warm_start_config:
+            raise RuntimeError(
+                "Program Reference cannot be combined with warm-start weights"
             )
         seed = int(request["seed"])
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
@@ -1827,6 +1859,10 @@ class PPOTrainer:
         elite_replay_mirrored_admissions = 0
         elite_replay_episode_admissions = 0
         elite_replay_admission_coverage: dict[str, dict[str, Any]] = {}
+        program_reference_samples: list[dict[str, Any]] = []
+        program_reference_observations: np.ndarray | None = None
+        program_reference_gate_scales: np.ndarray | None = None
+        program_reference_coverage: dict[str, dict[str, Any]] = {}
         deterministic_checkpoint_candidates: list[dict[str, Any]] = []
         selected_checkpoint_state: dict[str, torch.Tensor] | None = None
         selected_checkpoint_normalizer: dict[str, Any] | None = None
@@ -1870,6 +1906,11 @@ class PPOTrainer:
                 lows=lows,
                 highs=highs,
                 seed=seed,
+                active_reference_sink=(
+                    program_reference_samples
+                    if program_reference_config and completed_steps == 0
+                    else None
+                ),
             )
             rank = deterministic_checkpoint_rank(probe)
             candidate = {
@@ -1925,8 +1966,81 @@ class PPOTrainer:
                 selected_checkpoint_steps = completed_steps
             network.train()
 
+        def finalize_program_reference() -> None:
+            nonlocal program_reference_observations
+            nonlocal program_reference_gate_scales
+            eligible_samples = [
+                sample
+                for sample in program_reference_samples
+                if sample["completeMissionStage"] is True
+            ]
+            if not eligible_samples:
+                raise RuntimeError(
+                    "Program Reference found no actor-authorized states in a complete Mission"
+                )
+            maximum_samples = int(
+                program_reference_config["maximumSamples"]
+            )
+            selected_indices = np.arange(len(eligible_samples))
+            if len(selected_indices) > maximum_samples:
+                selected_indices = np.linspace(
+                    0,
+                    len(selected_indices) - 1,
+                    num=maximum_samples,
+                    dtype=np.int64,
+                )
+            retained_samples = [
+                eligible_samples[int(index)]
+                for index in selected_indices
+            ]
+            program_reference_observations = np.asarray(
+                [sample["observation"] for sample in retained_samples],
+                dtype=np.float32,
+            )
+            program_reference_gate_scales = np.asarray(
+                [sample["gateScale"] for sample in retained_samples],
+                dtype=np.float32,
+            )
+            if (
+                program_reference_observations.shape
+                != (len(retained_samples), observation_size)
+                or program_reference_gate_scales.shape
+                != (len(retained_samples),)
+                or not np.all(np.isfinite(program_reference_observations))
+                or not np.all(np.isfinite(program_reference_gate_scales))
+                or np.any(program_reference_gate_scales <= 0.0)
+                or np.any(program_reference_gate_scales > 1.0)
+            ):
+                raise RuntimeError(
+                    "Program Reference samples violate the compiled contracts"
+                )
+            for sample in eligible_samples:
+                key = f"{sample['curriculum']}:{sample['scenario']}"
+                coverage = program_reference_coverage.setdefault(
+                    key,
+                    {
+                        "curriculum": sample["curriculum"],
+                        "scenario": sample["scenario"],
+                        "observedActiveStates": 0,
+                        "retainedActiveStates": 0,
+                        "missionPhases": {},
+                    },
+                )
+                coverage["observedActiveStates"] += 1
+                phase = str(sample.get("missionPhase") or "unknown")
+                coverage["missionPhases"][phase] = (
+                    int(coverage["missionPhases"].get(phase, 0)) + 1
+                )
+            for sample in retained_samples:
+                key = f"{sample['curriculum']}:{sample['scenario']}"
+                program_reference_coverage[key][
+                    "retainedActiveStates"
+                ] += 1
+
         if include_initial_program_policy:
             consider_deterministic_checkpoint()
+        if program_reference_config:
+            finalize_program_reference()
 
         while completed_steps < total_steps:
             batch_obs: list[np.ndarray] = []; batch_actions: list[np.ndarray] = []; batch_log_probs: list[float] = []; batch_rewards: list[float] = []; batch_dones: list[float] = []; batch_values: list[float] = []
@@ -1943,8 +2057,13 @@ class PPOTrainer:
             batch_frozen_policy_kls: list[float] = []
             batch_attempted_frozen_policy_kls: list[float] = []
             batch_policy_anchor_losses: list[float] = []
+            batch_program_reference_losses: list[float] = []
+            batch_program_reference_residual_rms: list[float] = []
+            batch_attempted_program_reference_residual_rms: list[float] = []
             trust_region_rollback_count = 0
             trust_region_accepted_steps = 0
+            program_reference_rollback_count = 0
+            program_reference_accepted_steps = 0
             for _ in range(min(rollout_steps, total_steps - completed_steps)):
                 if not normalizer_frozen:
                     normalizer.update(observation)
@@ -2204,6 +2323,31 @@ class PPOTrainer:
                 if bilateral_symmetry
                 else None
             )
+            program_reference_observation_tensor = (
+                torch.tensor(
+                    normalizer.normalize(program_reference_observations),
+                    dtype=torch.float32,
+                )
+                if program_reference_observations is not None
+                else None
+            )
+            program_reference_gate_tensor = (
+                torch.tensor(
+                    program_reference_gate_scales,
+                    dtype=torch.float32,
+                ).unsqueeze(-1)
+                if program_reference_gate_scales is not None
+                else None
+            )
+            program_reference_scale_tensor = (
+                torch.tensor(
+                    residual_scale_vector,
+                    dtype=torch.float32,
+                ).unsqueeze(0)
+                if program_reference_config
+                and residual_scale_vector is not None
+                else None
+            )
             losses: list[float] = []
             indices = np.arange(len(batch_rewards))
             for _ in range(int(config["epochs"])):
@@ -2221,6 +2365,9 @@ class PPOTrainer:
                     )
                     symmetry_loss = torch.zeros((), dtype=mean.dtype)
                     policy_anchor_loss = torch.zeros((), dtype=mean.dtype)
+                    program_reference_loss = torch.zeros(
+                        (), dtype=mean.dtype
+                    )
                     frozen_policy_kl = torch.zeros((), dtype=mean.dtype)
                     if (
                         policy_anchor_observation_tensor is not None
@@ -2243,6 +2390,30 @@ class PPOTrainer:
                         ) * frozen_policy_kl
                         batch_policy_anchor_losses.append(
                             float(policy_anchor_loss.detach().item())
+                        )
+                    if (
+                        program_reference_config
+                        and program_reference_observation_tensor is not None
+                        and program_reference_gate_tensor is not None
+                        and program_reference_scale_tensor is not None
+                    ):
+                        reference_mean, _, _ = network(
+                            program_reference_observation_tensor
+                        )
+                        reference_applied_residual = (
+                            reference_mean
+                            * program_reference_gate_tensor
+                            * program_reference_scale_tensor
+                        )
+                        program_reference_loss = float(
+                            program_reference_config["coefficient"]
+                        ) * torch.square(
+                            reference_applied_residual
+                        ).mean()
+                        batch_program_reference_losses.append(
+                            float(
+                                program_reference_loss.detach().item()
+                            )
                         )
                     if bilateral_symmetry and mirrored_observation_tensor is not None:
                         mirrored_mean, _, _ = network(
@@ -2328,18 +2499,24 @@ class PPOTrainer:
                         batch_reflex_distillation_losses.append(
                             float(reflex_distillation_loss.detach().item())
                         )
-                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + reflex_distillation_loss + symmetry_loss + policy_anchor_loss - float(config["entropyCoefficient"]) * entropy
+                    loss = policy_loss + value_loss + residual_penalty + elite_replay_loss + reflex_distillation_loss + symmetry_loss + policy_anchor_loss + program_reference_loss - float(config["entropyCoefficient"]) * entropy
                     network_state_before_step = (
                         {
                             name: tensor.detach().clone()
                             for name, tensor in network.state_dict().items()
                         }
-                        if frozen_policy_anchor is not None
+                        if (
+                            frozen_policy_anchor is not None
+                            or program_reference_config is not None
+                        )
                         else None
                     )
                     optimizer_state_before_step = (
                         deepcopy(optimizer.state_dict())
-                        if frozen_policy_anchor is not None
+                        if (
+                            frozen_policy_anchor is not None
+                            or program_reference_config is not None
+                        )
                         else None
                     )
                     optimizer.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(network.parameters(), 0.5); optimizer.step(); losses.append(float(loss.item()))
@@ -2383,6 +2560,68 @@ class PPOTrainer:
                             batch_frozen_policy_kls.append(
                                 attempted_kl_value
                             )
+                    if (
+                        program_reference_config
+                        and program_reference_observation_tensor is not None
+                        and program_reference_gate_tensor is not None
+                        and program_reference_scale_tensor is not None
+                        and network_state_before_step is not None
+                        and optimizer_state_before_step is not None
+                    ):
+                        with torch.no_grad():
+                            candidate_reference_mean, _, _ = network(
+                                program_reference_observation_tensor
+                            )
+                            candidate_applied_residual = (
+                                candidate_reference_mean
+                                * program_reference_gate_tensor
+                                * program_reference_scale_tensor
+                            )
+                            attempted_reference_rms = torch.sqrt(
+                                torch.square(
+                                    candidate_applied_residual
+                                ).mean()
+                            )
+                        attempted_reference_rms_value = float(
+                            attempted_reference_rms.item()
+                        )
+                        batch_attempted_program_reference_residual_rms.append(
+                            attempted_reference_rms_value
+                        )
+                        if attempted_reference_rms_value > float(
+                            program_reference_config[
+                                "maximumAppliedResidualRms"
+                            ]
+                        ):
+                            network.load_state_dict(
+                                network_state_before_step
+                            )
+                            optimizer.load_state_dict(
+                                optimizer_state_before_step
+                            )
+                            program_reference_rollback_count += 1
+                            with torch.no_grad():
+                                accepted_reference_mean, _, _ = network(
+                                    program_reference_observation_tensor
+                                )
+                                accepted_applied_residual = (
+                                    accepted_reference_mean
+                                    * program_reference_gate_tensor
+                                    * program_reference_scale_tensor
+                                )
+                                accepted_reference_rms = torch.sqrt(
+                                    torch.square(
+                                        accepted_applied_residual
+                                    ).mean()
+                                )
+                            batch_program_reference_residual_rms.append(
+                                float(accepted_reference_rms.item())
+                            )
+                        else:
+                            program_reference_accepted_steps += 1
+                            batch_program_reference_residual_rms.append(
+                                attempted_reference_rms_value
+                            )
             metrics.append({
                 "steps": completed_steps, "meanLoss": float(np.mean(losses)), "meanEpisodeReward": float(np.mean(completed_rewards[-10:])) if completed_rewards else episode_reward,
                 "meanBaseReward": float(np.mean(batch_base_rewards)), "meanQualityPenalty": float(np.mean(batch_quality_penalties)),
@@ -2412,8 +2651,14 @@ class PPOTrainer:
                 "maximumFrozenPolicyKl": float(np.max(batch_frozen_policy_kls)) if batch_frozen_policy_kls else None,
                 "maximumAttemptedFrozenPolicyKl": float(np.max(batch_attempted_frozen_policy_kls)) if batch_attempted_frozen_policy_kls else None,
                 "meanPolicyAnchorLoss": float(np.mean(batch_policy_anchor_losses)) if batch_policy_anchor_losses else None,
+                "meanProgramReferenceLoss": float(np.mean(batch_program_reference_losses)) if batch_program_reference_losses else None,
+                "meanProgramReferenceAppliedResidualRms": float(np.mean(batch_program_reference_residual_rms)) if batch_program_reference_residual_rms else None,
+                "maximumProgramReferenceAppliedResidualRms": float(np.max(batch_program_reference_residual_rms)) if batch_program_reference_residual_rms else None,
+                "maximumAttemptedProgramReferenceAppliedResidualRms": float(np.max(batch_attempted_program_reference_residual_rms)) if batch_attempted_program_reference_residual_rms else None,
                 "trustRegionRollbackCount": trust_region_rollback_count,
                 "trustRegionAcceptedOptimizerSteps": trust_region_accepted_steps,
+                "programReferenceRollbackCount": program_reference_rollback_count,
+                "programReferenceAcceptedOptimizerSteps": program_reference_accepted_steps,
                 "eliteReplayTransitions": len(elite_replay_observations),
                 "eliteReplayEpisodeAdmissions": elite_replay_episode_admissions,
             })
@@ -2608,6 +2853,76 @@ class PPOTrainer:
                     for update in metrics
                 ),
             } if warm_start_config else None,
+            "programReference": {
+                **program_reference_config,
+                "programController": request["priorController"]["id"],
+                "controllerHash": request["priorControllerHash"],
+                "distribution": (
+                    "step-0-program-complete-mission-active-states"
+                ),
+                "target": "zero-pre-transform-residual-action",
+                "normalization": "current-training-normalizer",
+                "trainingBudgetCharged": False,
+                "seedDerivation": (
+                    "training-seed-plus-deterministic-probe-offset"
+                ),
+                "observedActiveStates": sum(
+                    int(item["observedActiveStates"])
+                    for item in program_reference_coverage.values()
+                ),
+                "retainedActiveStates": (
+                    len(program_reference_observations)
+                    if program_reference_observations is not None
+                    else 0
+                ),
+                "coverage": dict(
+                    sorted(program_reference_coverage.items())
+                ),
+                "maximumObservedAppliedResidualRms": max(
+                    (
+                        float(
+                            update[
+                                "maximumProgramReferenceAppliedResidualRms"
+                            ]
+                        )
+                        for update in metrics
+                        if update[
+                            "maximumProgramReferenceAppliedResidualRms"
+                        ] is not None
+                    ),
+                    default=0.0,
+                ),
+                "maximumAttemptedAppliedResidualRms": max(
+                    (
+                        float(
+                            update[
+                                "maximumAttemptedProgramReferenceAppliedResidualRms"
+                            ]
+                        )
+                        for update in metrics
+                        if update[
+                            "maximumAttemptedProgramReferenceAppliedResidualRms"
+                        ] is not None
+                    ),
+                    default=0.0,
+                ),
+                "acceptedOptimizerSteps": sum(
+                    int(
+                        update[
+                            "programReferenceAcceptedOptimizerSteps"
+                        ]
+                    )
+                    for update in metrics
+                ),
+                "rolledBackOptimizerSteps": sum(
+                    int(update["programReferenceRollbackCount"])
+                    for update in metrics
+                ),
+                "authorityBoundary": {
+                    "reference": "training-only",
+                    "promotion": "locked-judge-only",
+                },
+            } if program_reference_config else None,
             "eliteReplay": {
                 **elite_replay_config,
                 "admittedTransitions": elite_replay_admissions,
@@ -2791,6 +3106,24 @@ class PPOTrainer:
                     default=0.0,
                 )
                 if warm_start_config
+                else None
+            ),
+            "programReferenceMaximumObservedAppliedResidualRms": (
+                max(
+                    (
+                        float(
+                            update[
+                                "maximumProgramReferenceAppliedResidualRms"
+                            ]
+                        )
+                        for update in metrics
+                        if update[
+                            "maximumProgramReferenceAppliedResidualRms"
+                        ] is not None
+                    ),
+                    default=0.0,
+                )
+                if program_reference_config
                 else None
             ),
         }

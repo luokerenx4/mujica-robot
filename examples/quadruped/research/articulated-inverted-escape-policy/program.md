@@ -119,6 +119,36 @@ The word “scenario” here denotes a controlled disturbance or plant variant
 inside a complete Mission Case. It is not an independently promotable skill
 test. The locked four-Case benchmark is the sole promotion authority.
 
+Program-reference experiments now supersede scalar trust-region and residual
+duration sweeps. Training must include the exactly zero residual step-0 Policy
+as a Program-equivalent candidate and may use
+`programReference.scope=complete-mission-active-states` to preserve the
+current-Assembly Program in applied torque space. The reference is
+Training-only. It cannot promote a Policy or replace any Mission gate.
+
+Session `session-5930c3ec5d23037a` showed that a `0.05` applied-residual RMS
+bound was not too restrictive: all 4,096 optimizer steps stayed below it, and
+step `32,768` produced bilateral actor-contributed target entry, but no stable
+recovery or timeout-free Mission. Session `session-bc467bc837db6b74` added a
+bounded lateral-only continuation through Program recovery. The hard reference
+became active—477 optimizer steps rolled back and maximum accepted RMS was
+`0.0499995`—yet every checkpoint still timed out and the most locally active
+checkpoint relapsed three times.
+
+Do not propose another change that only increases recovery duration, widens
+the same lateral torque axes, or tunes the `0.05` bound. The next proposal must
+address at least one measured structural cause:
+
+- false pre-impact authority in randomized `approach` must be removed using
+  causal physical evidence rather than a Mission phase or Scenario label;
+- the recovery Action surface or articulated morphology must change enough to
+  make stable support physically reachable; or
+- a different recovery policy structure must predict a stable post-impact
+  basin rather than optimize instantaneous posture.
+
+Every proposal must retain Program reference, the step-0 fallback, bilateral
+complete-Mission selection, and the unchanged locked Judge.
+
 The first trained rise-envelope Policy was rejected by that authority. Relative
 to Program on degraded-right it reduced violations `43 → 40`, but score fell
 `62.722 → 40.603`; self-righting, stable dwell, and recovery handoff regressed.
