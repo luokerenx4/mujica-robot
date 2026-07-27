@@ -1,6 +1,6 @@
 # Lateral-reach recovery co-design
 
-Status: active
+Status: completed
 
 ## Outcome
 

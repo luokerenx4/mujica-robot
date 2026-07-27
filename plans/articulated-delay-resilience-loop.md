@@ -13,6 +13,22 @@ approach, impact, recover, resume, redirect, traverse, and stop. Controller and
 RL work share that authority and may use atomic Skills only to diagnose a
 failure witnessed by the Mission Suite.
 
+## Development emphasis
+
+- Mode: `design-reassessment`
+- Evidence: multiple bounded Controller strategies and residual Policies
+  changed intermediate progress without removing the same inverted recovery
+  bottleneck; the program-reference-constrained Policy preserved behavior but
+  retained 43 locked violations.
+- Budget bias: no additional Training on the unchanged plant. Route physical
+  hypotheses to the embodiment-first quadruped design cycle; allow only cheap
+  behavior probes that distinguish candidate mechanisms.
+- Exit condition: a candidate Assembly demonstrates a new usable recovery
+  contact or state transition under the same Mission.
+- Switch-back condition: if materially different candidate plants fail
+  identically while readable Controller changes alter the outcome, return this
+  Plan to `balanced`.
+
 ## Current development branch
 
 - Review subject:

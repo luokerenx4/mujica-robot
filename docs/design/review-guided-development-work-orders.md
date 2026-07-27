@@ -10,6 +10,12 @@ Mujica separates three questions that are easy to blur:
 
 A Work Order is not a task description written by a language model. It is a deterministic, content-addressed projection of project evidence and governed development lanes.
 
+Eligibility is not scheduling. A Work Order may expose `complete-design`,
+`controller-code`, and `rl-policy` lanes at the same time. The active Plan's
+[development emphasis](adaptive-development-emphasis.md) decides which bounded
+lane receives the next budget and why. Repeated eligibility never obliges an
+Agent to continue an exhausted RL lane.
+
 ## Authority
 
 The authority order is:
@@ -49,6 +55,11 @@ A Research Lab is eligible only when:
 - its definition and program pass normal project validation.
 
 Regression Benchmarks never create eligibility. They only constrain the Judge after a lane has matched its primary Benchmark.
+
+Routing does not assume that design is finished when behavior work begins. A
+behavior plateau can trigger a design-reassessment Plan, but the Agent must use
+an existing eligible complete-design Lab or explicitly add a governed one; the
+emphasis cannot widen source authority by itself.
 
 During isolated evaluation, the original project proves every lock against its frozen inputs. The staged project must retain byte-equivalent Benchmark definitions and lock artifacts, while its explicitly editable candidate source is expected to differ. Mujica therefore evaluates the immutable baseline in the original project and the candidate in the staged project. It does not recompute a regression lock from candidate source: that would make a legal Controller edit impossible whenever the reviewed Controller is also the regression Benchmark baseline.
 

@@ -14,6 +14,14 @@ machine-readable structural facts before any Simulation Run exists. These
 projections help humans and Agents reject visibly implausible concepts, while
 executable Design Reviews and capability tests retain acceptance authority.
 
+Development emphasis is dynamic rather than a fixed waterfall. New projects
+begin design-heavy; credible physical mechanisms allow the budget to move
+toward Controller and Policy work; repeated behavior plateaus or physically
+equivalent failures move it back to design reassessment. A Plan records the
+current emphasis and switching evidence, while Development Reviews, Work
+Orders, and locked Judges retain authority. See [Adaptive Development
+Emphasis](adaptive-development-emphasis.md).
+
 ## Robot source model
 
 A Robot Base declares its MJCF, mount catalog, built-in observation channels, action channels, mass, and attribution. A Component package declares a root-level MJCF fragment, compatible mount types, provided mounts, observation/action additions, mass/cost proxies, dependencies, license, and attribution. An Assembly selects one base and named component instances attached to compatible mounts.

@@ -13,6 +13,20 @@ The study compares at least two complete robot candidates:
 
 A waist is promoted only when locked evidence shows that it adds necessary recovery capability within the mass, cost, action-width, collision, and control-complexity envelope.
 
+## Development emphasis
+
+- Mode: `design-heavy`
+- Evidence: deterministic exact-pose recovery exists, but perturbed and
+  continuous-Mission recovery still exposes contact-workspace and morphology
+  uncertainty that repeated residual Policies did not resolve.
+- Budget bias: compare honest embodiment/contact mechanisms and use scripted
+  recovery probes before another bounded Policy batch.
+- Exit condition: one fixed Assembly demonstrates the required recovery
+  transition across bounded pose/contact variation with a readable Controller.
+- Switch-back condition: if the same Assembly becomes consistently feasible
+  and residual failures respond to Controller logic rather than physical
+  boundaries, change to `balanced` or `behavior-heavy`.
+
 ## Context
 
 The current capability charter and Benchmarks treat falling as failure but do not define recovery after a fall. That makes a fallen robot terminal in both development reasoning and operation. Adding a waist could increase the reachable recovery workspace, but it also changes the Assembly, Controller action ABI, mass distribution, collision geometry, Training configuration, and hardware boundary. The capability must be specified before choosing the morphology.
