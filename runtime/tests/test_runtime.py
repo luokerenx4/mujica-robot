@@ -13,6 +13,7 @@ import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, advance_program_residual_gate_scale, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
+from mujica_runtime.design_preview import DESIGN_PREVIEW_RENDERER_ID, render_design_preview
 from mujica_runtime.environment import RecoveryRelapseTracker, RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
@@ -237,6 +238,61 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertEqual(prediction["manifest"]["source"]["auditId"], "twin-audit-example")
             with self.assertRaisesRegex(RuntimeError, "prediction hash"):
                 render_replay({**prediction_request, "source": {**prediction_request["source"], "predictionHash": "0" * 64}})
+
+    def test_design_preview_is_local_content_addressed_and_integrity_checked(self):
+        model, compiled = compiled_assembly("resilient-command-conditioned-waist-3dof")
+        with tempfile.TemporaryDirectory() as directory:
+            request = {
+                "runtimeVersion": "test-runtime",
+                "runtimeSourceHash": "test-source",
+                "assembly": compiled["id"],
+                "assemblyHash": compiled["assemblyHash"],
+                "modelHash": hash_file(model),
+                "modelPath": str(model),
+                "baseBody": compiled["morphology"]["baseBody"],
+                "outputRoot": str(Path(directory) / "design-previews"),
+                "settings": {
+                    "width": 320,
+                    "height": 240,
+                    "cameraDistance": 2.2,
+                },
+            }
+            first = render_design_preview(request)
+            second = render_design_preview(request)
+            self.assertFalse(first["cached"])
+            self.assertTrue(second["cached"])
+            self.assertEqual(first["id"], second["id"])
+            manifest = first["manifest"]
+            self.assertEqual(manifest["renderer"], DESIGN_PREVIEW_RENDERER_ID)
+            self.assertEqual(manifest["kind"], "mujica-design-preview")
+            self.assertEqual(len(manifest["images"]), 8)
+            self.assertEqual(
+                {image["pose"] for image in manifest["images"]},
+                {
+                    "home",
+                    "resting-left",
+                    "resting-right",
+                    "resting-prone",
+                    "resting-supine",
+                },
+            )
+            self.assertEqual(
+                manifest["authorityBoundary"],
+                {
+                    "source": "compiled-mjcf",
+                    "visual": "derived-local-preview",
+                    "designAcceptance": "none",
+                    "physicalEvidence": False,
+                },
+            )
+            self.assertEqual(manifest["modelFacts"]["rootFreeJoint"], "root")
+            self.assertEqual(len(manifest["modelFacts"]["actuators"]), 14)
+            self.assertGreater(manifest["modelFacts"]["totalModelMassKg"], 0)
+            primary = Path(first["path"]) / "images" / "home-isometric.png"
+            self.assertEqual(primary.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            primary.write_bytes(primary.read_bytes() + b"corrupt")
+            with self.assertRaisesRegex(RuntimeError, "integrity"):
+                render_design_preview(request)
 
     def test_program_prior_policy_freezes_the_exact_controller_source(self):
         policy_root = PROJECT / "policies" / "upright-residual-locomotion-1d4c901d04ccfabb"

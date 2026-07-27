@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .calibration import calibrate
+from .design_preview import render_design_preview
 from .hardware_capture import capture_hardware
 from .replay import render_replay
 from .reflex_search import search_reflex
@@ -17,7 +18,7 @@ from .twin_audit import audit_twin
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m mujica_runtime.cli")
-    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay", "audit-twin", "describe-state", "search-reflex"])
+    parser.add_argument("operation", choices=["validate", "simulate", "evaluate-case", "train", "calibrate", "hardware-capture", "render-replay", "render-design-preview", "audit-twin", "describe-state", "search-reflex"])
     parser.add_argument("--request", required=True)
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text())
@@ -28,6 +29,7 @@ def main() -> None:
     elif args.operation == "calibrate": result = calibrate(request)
     elif args.operation == "hardware-capture": result = capture_hardware(request)
     elif args.operation == "render-replay": result = render_replay(request)
+    elif args.operation == "render-design-preview": result = render_design_preview(request)
     elif args.operation == "audit-twin": result = audit_twin(request)
     elif args.operation == "search-reflex": result = search_reflex(request)
     else: result = describe_state(request)

@@ -101,6 +101,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "policy.reflex-search")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.render")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "domain.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "driver.inspect")).toBe(true);
@@ -109,6 +110,54 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "project.create")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "project.list")).toBe(true);
   });
+
+  test("renders a compiled robot design locally without creating Git assets", async () => {
+    const first = invoke([
+      "design",
+      "render",
+      "examples/quadruped",
+      "--assembly",
+      "resilient-command-conditioned-waist-3dof",
+      "--json",
+    ]);
+    expect(first.code).toBe(0);
+    const data = JSON.parse(first.stdout).data;
+    expect(data).toMatchObject({
+      assembly: {
+        id: "resilient-command-conditioned-waist-3dof",
+        actionSize: 14,
+      },
+      authorityBoundary: {
+        source: "compiled-mjcf",
+        visual: "derived-local-preview",
+        designAcceptance: "none",
+        physicalEvidence: false,
+      },
+    });
+    expect(data.images).toHaveLength(8);
+    expect(data.modelFacts.rootFreeJoint).toBe("root");
+    expect(data.path).toContain("/.mujica/design-previews/design-preview-");
+    expect((await readFile(data.primaryImagePath)).subarray(0, 8))
+      .toEqual(Buffer.from("\x89PNG\r\n\x1a\n", "binary"));
+    const repeated = invoke([
+      "design",
+      "render",
+      "examples/quadruped",
+      "--assembly",
+      "resilient-command-conditioned-waist-3dof",
+      "--json",
+    ]);
+    expect(repeated.code).toBe(0);
+    expect(JSON.parse(repeated.stdout).data).toMatchObject({
+      id: data.id,
+      cached: true,
+    });
+    const ignored = Bun.spawnSync(
+      ["git", "check-ignore", "--quiet", data.primaryImagePath],
+      { cwd: root },
+    );
+    expect(ignored.exitCode).toBe(0);
+  }, 20_000);
 
   test("creates and discovers an independently chartered hexapod project atomically", async () => {
     const workspace = await mkdtemp(resolve(tmpdir(), "mujica-workspace-"));

@@ -8,6 +8,12 @@ Mujica lets Coding Agents design robot assemblies, add components, develop contr
 
 The authoritative source is a self-contained project folder. A scene viewer may eventually project artifacts, but it may never become a second editor or evaluator.
 
+Embodiment inspection precedes policy optimization. A compiled Assembly can be
+rendered into ignored, locally reproducible Design Preview images and
+machine-readable structural facts before any Simulation Run exists. These
+projections help humans and Agents reject visibly implausible concepts, while
+executable Design Reviews and capability tests retain acceptance authority.
+
 ## Robot source model
 
 A Robot Base declares its MJCF, mount catalog, built-in observation channels, action channels, mass, and attribution. A Component package declares a root-level MJCF fragment, compatible mount types, provided mounts, observation/action additions, mass/cost proxies, dependencies, license, and attribution. An Assembly selects one base and named component instances attached to compatible mounts.

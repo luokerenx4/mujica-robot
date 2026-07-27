@@ -20,6 +20,7 @@ mujica controller list <project> [--json]
 mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
+mujica design render <project> --assembly ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
 mujica studio <workspace> [--json]
 mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID | --authority-counterfactual ID [--case ID]) [--json]
@@ -77,6 +78,15 @@ stage status remains project intent; observed PASS/FAIL remains derived
 evidence.
 
 `controller list` exposes each Program or Policy Controller and the Assemblies it can legally execute against. `controller inspect` includes the complete Program Controller interface or frozen Policy pointer plus structured incompatibility reasons. Program Controller Observation requirements are a named subset; produced Action channels must exactly match the compiled Assembly in order, size, and bounds. Incompatible pairs fail before Python Runtime invocation.
+
+`design render` compiles one Assembly and locally generates deterministic home
+and resting-pose views plus machine-readable joints, actuator ranges, model
+mass, home bounds, and centre of mass. The content-addressed result lives under
+ignored `<project>/.mujica/design-previews/`; cloning the repository and running
+the command reconstructs it from checked-in MJCF and Component source. The
+preview is a derived visual projection, not a Design Review, physical test,
+Training authorization, or promotion result. See
+[Local Design Previews](design/local-design-previews.md).
 
 `domain list|inspect` exposes each Domain Profile's physical uncertainty ranges,
 provenance, optional evidence-file hash, and combined identity. A `synthetic`

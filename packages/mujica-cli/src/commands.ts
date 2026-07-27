@@ -491,6 +491,55 @@ export async function assemblyCompileCommand(projectDir: string, id: string) {
   return success("assembly.compile", { assembly, model }, project, [projectArtifact("compiled-assembly", assembly.assemblyHash, assembly.artifactDir, false)]);
 }
 
+export async function designRenderCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir);
+  const assembly = await compileAssembly(project.rootDir, id);
+  const preview = await invokeRuntime("render-design-preview", {
+    runtimeVersion,
+    runtimeSourceHash: await runtimeSourceHash(),
+    assembly: assembly.id,
+    assemblyHash: assembly.assemblyHash,
+    modelHash: assembly.modelHash,
+    modelPath: assembly.modelPath,
+    baseBody: assembly.morphology.baseBody,
+    outputRoot: join(project.rootDir, ".mujica", "design-previews"),
+    settings: {
+      width: 640,
+      height: 480,
+      cameraDistance: 2.2,
+    },
+  });
+  const primaryImage = preview.manifest.images.find(
+    (image: { id: string }) => image.id === "home-isometric",
+  );
+  return success("design.render", {
+    id: preview.id,
+    path: preview.path,
+    cached: preview.cached,
+    assembly: {
+      id: assembly.id,
+      assemblyHash: assembly.assemblyHash,
+      base: assembly.baseId,
+      components: assembly.components.map((component) => ({
+        instance: component.instanceId,
+        component: component.componentId,
+        mount: component.mount,
+      })),
+      totalMassKg: assembly.totalMassKg,
+      observationSize: assembly.observationContract.size,
+      actionSize: assembly.actionContract.size,
+    },
+    modelFacts: preview.manifest.modelFacts,
+    images: preview.manifest.images,
+    primaryImagePath: primaryImage
+      ? join(preview.path, primaryImage.file)
+      : null,
+    authorityBoundary: preview.manifest.authorityBoundary,
+  }, project, [
+    projectArtifact("design-preview", preview.id, preview.path, false),
+  ]);
+}
+
 export async function assemblyInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const source = await loadAssembly(project.rootDir, id); const compiled = await compileAssembly(project.rootDir, id);
   return success("assembly.inspect", { source, compiled }, project);

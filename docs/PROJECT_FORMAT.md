@@ -219,6 +219,13 @@ identity covers the Run result, frozen model, trajectory bytes, Runtime/MuJoCo
 renderer, camera, resolution, and stride. Legacy Runs can be replayed only while
 their matching content-addressed Assembly cache is still available.
 
+Pre-training Design Previews similarly live under ignored
+`.mujica/design-previews/<content-id>/`. They are regenerated from the compiled
+MJCF after clone and contain standard home/resting views plus machine-readable
+model facts. They are visual design projections and never Design Review,
+capability, promotion, or physical evidence. See
+[Local Design Previews](design/local-design-previews.md).
+
 Completed Hardware Capture episodes use the same renderer only after Capture
 and Bundle integrity verification. Their v2
 `mujica-hardware-capture-replay` identity covers Capture, Bundle, episode,
