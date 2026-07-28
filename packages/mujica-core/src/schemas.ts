@@ -134,6 +134,21 @@ export const designStudySchema = z.object({
         z.number().int().nonnegative(),
       ),
     }).strict(),
+    dynamicProbe: z.object({
+      controller: idSchema,
+      task: idSchema,
+      objective: idSchema.optional(),
+      seed: z.number().int(),
+      scenarios: z.array(idSchema).min(1)
+        .refine((items) => new Set(items).size === items.length, "dynamic probe scenarios must be unique"),
+      expectations: z.object({
+        minimumSuccessfulScenarios: z.number().int().positive(),
+        minimumSelfRightingSuccess: z.number().min(0).max(1),
+        maximumDisallowedCollisionSteps: z.number().int().nonnegative(),
+        minimumJointLimitMarginRad: z.number().finite(),
+      }).strict(),
+      switchBackIf: z.string().min(1),
+    }).strict().optional(),
   }).strict()).min(2)
     .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "candidate ids must be unique")
     .refine((items) => items.filter((item) => item.role === "baseline").length === 1, "exactly one baseline is required"),

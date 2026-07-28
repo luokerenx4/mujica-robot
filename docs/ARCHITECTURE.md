@@ -21,6 +21,7 @@ mujica.json + Robot Base + Component packages + Robot Assembly
   -> observation/action contract compilation
   -> optional ignored local Design Preview + structural inventory
   -> optional sampled Design Analysis + falsifiable multi-Assembly Design Study
+  -> optional static-gated readable-Controller Dynamic Design Probe
   -> Task motion-command injection for command-capable Assemblies
   -> Controller interface compatibility validation
   -> content-addressed compiled robot directory
@@ -60,7 +61,13 @@ Previews](design/local-design-previews.md).
 surface. `design study` binds multiple exact Assemblies to checked-in hypotheses,
 shared probe settings, and explicit contact thresholds, then produces one local
 JSON/Markdown/HTML comparison. Both artifact families are derived and ignored;
-neither can accept a design or claim dynamic recovery. This supplies a cheap
+neither can accept a design or claim dynamic recovery. `design probe` is the
+next bounded gate: it requires one statically supported candidate, executes an
+exact readable Program Controller over frozen Scenarios, preserves every
+immutable Run, and reports full/partial/no dynamic mechanism evidence plus the
+next development emphasis. It still cannot authorize Training or promotion.
+Static and dynamic layers share one disallowed-self-contact predicate, and raw
+colliding samples can never satisfy a static gate. This supplies a cheap
 falsification boundary between visual design work and behavior optimization.
 See [Embodiment Feasibility
 Studies](design/embodiment-feasibility-studies.md).

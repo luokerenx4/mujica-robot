@@ -23,6 +23,7 @@ mujica assembly compare <project> --from ID --to ID [--json]
 mujica design render <project> --assembly ID [--json]
 mujica design analyze <project> --assembly ID [--samples N] [--json]
 mujica design study <project> --study ID [--json]
+mujica design probe <project> --study ID --candidate ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
 mujica studio <workspace> [--json]
 mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID | --authority-counterfactual ID [--case ID]) [--json]
@@ -99,6 +100,14 @@ probe and sample budget for every Assembly, evaluates the declared falsification
 thresholds, and emits one local comparison gallery. A passing screen is not
 dynamic recovery, Design acceptance, promotion, or physical evidence. See
 [Embodiment Feasibility Studies](design/embodiment-feasibility-studies.md).
+
+`design probe` selects a candidate from that Study, regenerates the static gate,
+and refuses to simulate a candidate that is not `SUPPORTED_WITHIN_SCREEN`. It
+runs the declared readable Program Controller across the frozen Scenario set,
+preserves every immutable Run, evaluates self-righting, collision, and
+joint-margin checks per Scenario, and emits a local aggregate with the next
+development emphasis. Partial success is mechanism evidence only; it does not
+authorize Training, accept a capability, or promote a Revision.
 
 `domain list|inspect` exposes each Domain Profile's physical uncertainty ranges,
 provenance, optional evidence-file hash, and combined identity. A `synthetic`

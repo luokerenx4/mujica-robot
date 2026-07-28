@@ -9,6 +9,7 @@ from typing import Any
 import mujoco
 import numpy as np
 
+from .collisions import disallowed_self_contact_geom_pairs
 from .design_preview import _home_state, _name, _robot_bounds, _root_free_joint
 from .io import atomic_directory, hash_file, hash_json, write_json
 from .replay import write_rgb_png
@@ -324,17 +325,7 @@ def _pose_measurement(
             )
 
     self_collision_pairs: set[tuple[str, str]] = set()
-    for contact_index in range(data.ncon):
-        collision = data.contact[contact_index]
-        left = int(collision.geom1)
-        right = int(collision.geom2)
-        if (
-            left < 0
-            or right < 0
-            or int(model.geom_bodyid[left]) == 0
-            or int(model.geom_bodyid[right]) == 0
-        ):
-            continue
+    for left, right in disallowed_self_contact_geom_pairs(model, data):
         names = sorted([
             _geom_label(model, left),
             _geom_label(model, right),
@@ -727,6 +718,13 @@ def analyze_design(request: dict[str, Any]) -> dict[str, Any]:
             "contactCountHistogram": histogram,
             "perFootMinimumSurfaceClearanceM": per_foot_minimum,
             "best": best,
+            "bestCollisionFree": best_collision_free,
+            "bestRaw": best_any,
+            "displayedSelection": (
+                "collision-free"
+                if best_collision_free is not None
+                else "raw-diagnostic-with-self-collision"
+            ),
             "bestRawContactCount": best_any["simultaneousFootContacts"],
             "bestRawContactHasSelfCollision": bool(
                 best_any["selfCollisionPairs"]

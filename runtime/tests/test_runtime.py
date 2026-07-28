@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
+from mujica_runtime.collisions import within_kinematic_edges
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, advance_program_residual_gate_scale, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
 from mujica_runtime.design_analysis import DESIGN_ANALYZER_ID, analyze_design
 from mujica_runtime.design_preview import DESIGN_PREVIEW_RENDERER_ID, render_design_preview
@@ -51,6 +52,22 @@ def compiled_assembly(assembly_id: str, project: Path = PROJECT) -> tuple[Path, 
 
 
 class RuntimeContractTest(unittest.TestCase):
+    def test_static_and_dynamic_collision_gate_share_local_assembly_edges(self):
+        model_path, _ = compiled_assembly("self-righting-balanced-waist-3dof")
+        model = mujoco.MjModel.from_xml_path(str(model_path))
+        body = lambda name: mujoco.mj_name2id(
+            model,
+            mujoco.mjtObj.mjOBJ_BODY,
+            name,
+        )
+        lower = body("leg-fl-lower")
+        abductor = body("leg-fl-abductor")
+        torso = body("torso")
+        opposite_lower = body("leg-fr-lower")
+        self.assertTrue(within_kinematic_edges(model, lower, abductor))
+        self.assertFalse(within_kinematic_edges(model, lower, torso))
+        self.assertFalse(within_kinematic_edges(model, lower, opposite_lower))
+
     def test_hardware_state_abi_names_every_mujoco_coordinate(self):
         model, compiled = compiled_assembly("force-sensing-history-3dof")
         described = describe_state({

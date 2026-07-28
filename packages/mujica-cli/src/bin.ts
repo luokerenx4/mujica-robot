@@ -4,7 +4,7 @@ import { resolveProjectDirectory, WORKSPACE_MANIFEST } from "@mujica/core";
 import { failure } from "./contract";
 import { hardwareCaptureCommand, hardwareCaptureInspectCommand, hardwareCapturePlanInspectCommand, hardwareCapturePlanListCommand, hardwareExportCommand, hardwareVerifyCommand } from "./hardware";
 import {
-  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, designAnalyzeCommand, designRenderCommand, designStudyCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
+  assemblyCompareCommand, assemblyCompileCommand, assemblyInspectCommand, benchmarkLockCommand, calibrateCommand, calibrationInspectCommand, calibrationListCommand, calibrationPromoteCommand, candidateCommand, componentInspectCommand, componentListCommand, controllerInspectCommand, controllerListCommand, designAnalyzeCommand, designProbeCommand, designRenderCommand, designStudyCommand, diagnoseCommand, domainInspectCommand, domainListCommand, driverInspectCommand, driverListCommand, evaluateCommand, inspectCommand,
   policiesCommand, policyInspectCommand, policyRequalifyCommand, policyRevisionInspectCommand, policyRevisionsCommand, researchCommand, revisionInspectCommand, revisionsCommand, simulateCommand, studioCaptureCommand, studioCommand, trainCommand, trainingResearchCommand, validateCommand,
 } from "./commands";
 import { researchBriefCommand, researchBriefInspectCommand, researchLabInspectCommand, researchLabListCommand, researchLabRunCommand, researchLabStatusCommand, researchReviewInspectCommand, researchTimelineStudioCommand } from "./research-lab";
@@ -40,6 +40,7 @@ USAGE
   mujica design render <project> --assembly ID [--json]
   mujica design analyze <project> --assembly ID [--samples N] [--json]
   mujica design study <project> --study ID [--json]
+  mujica design probe <project> --study ID --candidate ID [--json]
   mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
   mujica studio <project> [--run ID] [--compare-run ID] [--json]
   mujica studio <project> --research-lab ID [--session ID [--experiment ID]] [--json]
@@ -107,6 +108,7 @@ const CAPABILITIES = [
   { id: "design.render", usage: "mujica design render <project> --assembly ID [--json]", effect: "creates-artifact" },
   { id: "design.analyze", usage: "mujica design analyze <project> --assembly ID [--samples N] [--json]", effect: "creates-artifact" },
   { id: "design.study", usage: "mujica design study <project> --study ID [--json]", effect: "creates-artifact" },
+  { id: "design.probe", usage: "mujica design probe <project> --study ID --candidate ID [--json]", effect: "creates-artifact" },
   { id: "simulate", usage: "mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N] [--json]", effect: "creates-artifact" },
   { id: "studio", usage: "mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID | --authority-counterfactual ID [--case ID]) [--json]", effect: "creates-artifact" },
   { id: "twin.audit", usage: "mujica twin audit <project> --capture ID --episode ID [--json]", effect: "creates-artifact" },
@@ -176,6 +178,15 @@ function printHuman(command: string, data: any): void {
     `design_study=${data.id}\n`
     + `outcome=${data.outcome}\n`
     + `${data.candidates.map((candidate: any) => `${candidate.id}=${candidate.verdict}`).join("\n")}\n`
+    + `cached=${data.cached}\n`
+    + `open=${data.htmlPath}\n`
+    + `artifact=${data.path}\n`,
+  );
+  else if (command === "design.probe") process.stdout.write(
+    `design_probe=${data.id}\n`
+    + `outcome=${data.outcome}\n`
+    + `scenarios=${data.successfulScenarios}/${data.scenarios.length}\n`
+    + `next_emphasis=${data.nextDevelopmentEmphasis}\n`
     + `cached=${data.cached}\n`
     + `open=${data.htmlPath}\n`
     + `artifact=${data.path}\n`,
@@ -323,12 +334,13 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       if (action === "compile") envelope = await assemblyCompileCommand(project, required(values.assembly, "assembly")); else if (action === "inspect") envelope = await assemblyInspectCommand(project, required(values.assembly, "assembly")); else if (action === "compare") envelope = await assemblyCompareCommand(project, required(values.from, "from"), required(values.to, "to")); else throw new Error("Usage: mujica assembly inspect|compile|compare ...");
     } else if (command === "design") {
       const action = args.shift(); commandId = `design.${action}`;
-      const { values, positionals } = parseArgs({ args, options: { assembly: { type: "string" }, study: { type: "string" }, samples: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
+      const { values, positionals } = parseArgs({ args, options: { assembly: { type: "string" }, study: { type: "string" }, candidate: { type: "string" }, samples: { type: "string" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true });
       const project = await resolveProjectDirectory(one(positionals, `mujica design ${action} <project>`), values.project);
       if (action === "render") envelope = await designRenderCommand(project, required(values.assembly, "assembly"));
       else if (action === "analyze") envelope = await designAnalyzeCommand(project, required(values.assembly, "assembly"), { ...(values.samples === undefined ? {} : { samples: Number(values.samples) }) });
       else if (action === "study") envelope = await designStudyCommand(project, required(values.study, "study"));
-      else throw new Error("Usage: mujica design render|analyze|study <project> (--assembly ID [--samples N] | --study ID) [--json]");
+      else if (action === "probe") envelope = await designProbeCommand(project, required(values.study, "study"), required(values.candidate, "candidate"));
+      else throw new Error("Usage: mujica design render|analyze|study|probe <project> (--assembly ID [--samples N] | --study ID [--candidate ID]) [--json]");
     } else if (command === "simulate") {
       const { values, positionals } = parseArgs({ args, options: { assembly: { type: "string" }, controller: { type: "string" }, task: { type: "string" }, scenario: { type: "string" }, objective: { type: "string" }, seed: { type: "string", default: "42" }, json: { type: "boolean", default: false }, project: { type: "string" } }, allowPositionals: true }); const project = await resolveProjectDirectory(one(positionals, "mujica simulate <project>"), values.project);
       envelope = await simulateCommand(project, { assembly: required(values.assembly, "assembly"), controller: required(values.controller, "controller"), task: required(values.task, "task"), scenario: required(values.scenario, "scenario"), ...(values.objective ? { objective: values.objective } : {}), seed: Number(values.seed) });

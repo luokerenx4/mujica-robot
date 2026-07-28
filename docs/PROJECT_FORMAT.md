@@ -241,6 +241,14 @@ after clone and make no dynamic-capability, design-acceptance, promotion, or
 physical-evidence claim. See [Embodiment Feasibility
 Studies](design/embodiment-feasibility-studies.md).
 
+An optional candidate `dynamicProbe` binds its exact Assembly to one readable
+Program Controller, Task, Objective, seed, Scenario set, and explicit
+self-righting/collision/joint-margin thresholds. `mujica design probe` executes
+it only after the current static Study supports that candidate. Its aggregate
+JSON/Markdown/HTML lives under ignored `.mujica/design-probes/`; referenced
+Simulation Runs remain immutable project evidence. The aggregate has no design,
+capability, Training, physical-evidence, or promotion authority.
+
 Completed Hardware Capture episodes use the same renderer only after Capture
 and Bundle integrity verification. Their v2
 `mujica-hardware-capture-replay` identity covers Capture, Bundle, episode,

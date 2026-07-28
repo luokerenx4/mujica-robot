@@ -265,6 +265,16 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
       for (const [pose, minimum] of Object.entries(candidate.expectations.restingPoseMinimumContacts)) {
         if (minimum > contactCount) throw new Error(`Design Study '${id}' candidate '${candidate.id}' pose '${pose}' expects more contacts than Assembly '${assembly.id}' declares`);
       }
+      if (candidate.dynamicProbe) {
+        if (candidate.dynamicProbe.expectations.minimumSuccessfulScenarios > candidate.dynamicProbe.scenarios.length) {
+          throw new Error(`Design Study '${id}' candidate '${candidate.id}' expects more successful dynamic scenarios than it declares`);
+        }
+        const controller = await loadController(root, candidate.dynamicProbe.controller);
+        assertProgramControllerCompatible(controller.definition, assembly);
+        await loadTask(root, candidate.dynamicProbe.task);
+        if (candidate.dynamicProbe.objective) await loadObjective(root, candidate.dynamicProbe.objective);
+        for (const scenario of candidate.dynamicProbe.scenarios) await loadScenario(root, scenario);
+      }
     }
   }
   const trainingIds = await fileIds(join(root, "training"), ".training.json");

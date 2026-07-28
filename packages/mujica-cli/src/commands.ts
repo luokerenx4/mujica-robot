@@ -659,6 +659,35 @@ function designStudyHtml(study: DesignStudyDefinition, result: any): string {
 </style></head><body><main class="wrap"><header class="hero"><div><div class="eyebrow">Mujica · Design Study</div><h1>${escapeHtml(study.name)}</h1><p class="question">${escapeHtml(study.question)}</p></div><div class="verdict ${result.outcome === "NO_CANDIDATE_PASSED" ? "fail" : "pass"}">${escapeHtml(result.outcome)}</div></header>${candidateCards}<aside class="boundary"><strong>Authority boundary.</strong> This gallery compares sampled kinematic screens. It does not establish dynamic recovery, accept a design, promote a candidate, or provide physical evidence.</aside></main></body></html>`;
 }
 
+export function evaluateDesignStudyPose(measured: any, minimum: number) {
+  const collisionFree = measured.bestCollisionFree ?? (
+    measured.best.selfCollisionPairs.length === 0
+      ? measured.best
+      : null
+  );
+  const actual = collisionFree?.simultaneousFootContacts ?? 0;
+  const passed = (
+    measured.screeningOutcome === "CONTACT_OPPORTUNITY"
+    && actual >= minimum
+  );
+  return {
+    actual,
+    passed,
+    collisionFree: collisionFree !== null,
+    rawContactCount: measured.bestRaw?.simultaneousFootContacts
+      ?? measured.bestRawContactCount
+      ?? measured.best.simultaneousFootContacts,
+    secondFootContactGapM: collisionFree?.secondFootContactGapM ?? null,
+    failedCheck: passed
+      ? null
+      : (
+          collisionFree
+            ? `collision-free contacts ${actual} < ${minimum}`
+            : "has no collision-free sample in the declared budget"
+        ),
+  };
+}
+
 export async function designStudyCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir);
   const study = await loadDesignStudy(project.rootDir, id);
@@ -675,14 +704,19 @@ export async function designStudyCommand(projectDir: string, id: string) {
     const restingPoses = Object.entries(candidate.expectations.restingPoseMinimumContacts).map(([pose, minimum]) => {
       const measured = analysis.restingPoses.find((item: any) => item.id === pose);
       if (!measured) throw new Error(`Design Analysis for '${candidate.assembly}' omitted pose '${pose}'`);
-      const actual = measured.best.simultaneousFootContacts;
-      if (actual < minimum) failedChecks.push(`${pose} contacts ${actual} < ${minimum}`);
+      const evaluated = evaluateDesignStudyPose(measured, minimum);
+      if (evaluated.failedCheck) {
+        failedChecks.push(`${pose} ${evaluated.failedCheck}`);
+      }
       return {
         pose,
-        actual,
+        actual: evaluated.actual,
         minimum,
-        passed: actual >= minimum,
-        secondFootContactGapM: measured.best.secondFootContactGapM,
+        passed: evaluated.passed,
+        screeningOutcome: measured.screeningOutcome,
+        collisionFree: evaluated.collisionFree,
+        rawContactCount: evaluated.rawContactCount,
+        secondFootContactGapM: evaluated.secondFootContactGapM,
         imageRelativePath: `../../design-analyses/${analysis.id}/${measured.image}`,
       };
     });
@@ -746,6 +780,11 @@ export async function designStudyCommand(projectDir: string, id: string) {
       throw new Error(`Design Study '${artifactId}' identity is inconsistent`);
     }
   }
+  await writeJson(join(project.rootDir, ".mujica", "design-studies", "current.json"), {
+    version: 1,
+    id: artifactId,
+    study: study.id,
+  });
   return success("design.study", {
     id: artifactId,
     path: target,
@@ -758,6 +797,224 @@ export async function designStudyCommand(projectDir: string, id: string) {
     htmlPath: join(target, "index.html"),
     authorityBoundary: result.authorityBoundary,
   }, project, [projectArtifact("design-study", artifactId, target, false)]);
+}
+
+function dynamicProbeReport(result: any): string {
+  const rows = result.scenarios.map((scenario: any) => (
+    `| \`${scenario.scenario}\` | \`${scenario.runId}\` | ${scenario.passed ? "PASS" : "FAIL"} | ${scenario.metrics.selfRightingSuccess} | ${scenario.metrics.disallowedCollisionSteps} | ${scenario.metrics.minimumJointLimitMarginRad.toFixed(4)} | ${scenario.metrics.finalBodyTiltRad.toFixed(3)} | ${scenario.metrics.finalBaseHeightM.toFixed(3)} |`
+  ));
+  return [
+    `# Dynamic Design Probe ${result.study}/${result.candidate}`,
+    "",
+    `Outcome: **${result.outcome}**`,
+    "",
+    `Static prerequisite: \`${result.staticStudy.id}\` / \`${result.staticStudy.verdict}\``,
+    "",
+    "| Scenario | Run | Gate | Self-right | Collision steps | Joint margin rad | Final tilt rad | Final height m |",
+    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ...rows,
+    "",
+    `Successful scenarios: **${result.successfulScenarios}/${result.scenarios.length}** (required ${result.expectations.minimumSuccessfulScenarios})`,
+    "",
+    `Next development emphasis: **${result.nextDevelopmentEmphasis}**`,
+    "",
+    result.switchBackReason,
+    "",
+    "## Authority boundary",
+    "",
+    "This probe establishes only bounded simulated mechanism evidence for the exact",
+    "Assembly, readable Program Controller, scenarios, seed, Runtime, and Harness",
+    "hashes recorded here. It does not accept the design, prove the full capability,",
+    "promote a revision, or provide physical hardware evidence.",
+    "",
+  ].join("\n");
+}
+
+function dynamicProbeHtml(result: any): string {
+  const scenarioCards = result.scenarios.map((scenario: any) => {
+    const failed = scenario.checks.filter((check: any) => !check.passed)
+      .map((check: any) => `<li>${escapeHtml(check.metric)}: ${escapeHtml(check.actual)} ${escapeHtml(check.comparator)} ${escapeHtml(check.threshold)}</li>`)
+      .join("");
+    return `<article><header><div><div class="eyebrow">${escapeHtml(scenario.runId)}</div><h2>${escapeHtml(scenario.scenario)}</h2></div><strong class="${scenario.passed ? "pass" : "fail"}">${scenario.passed ? "PASS" : "FAIL"}</strong></header>`
+      + `<div class="metrics"><span><b>${escapeHtml(scenario.metrics.selfRightingSuccess)}</b>self-right</span><span><b>${escapeHtml(scenario.metrics.finalBodyTiltRad.toFixed(3))}</b>final tilt</span><span><b>${escapeHtml(scenario.metrics.finalBaseHeightM.toFixed(3))}</b>height m</span><span><b>${escapeHtml(scenario.metrics.minimumJointLimitMarginRad.toFixed(4))}</b>joint margin</span></div>`
+      + `${failed ? `<details open><summary>Failed gates</summary><ul>${failed}</ul></details>` : "<p class=\"pass\">All declared dynamic gates passed.</p>"}`
+      + `<a href="../../../runs/${escapeHtml(scenario.runId)}/report.md">Open immutable run report</a></article>`;
+  }).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dynamic Design Probe ${escapeHtml(result.candidate)}</title><style>
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#080b10;color:#edf3f8}*{box-sizing:border-box}body{margin:0;padding:36px;background:radial-gradient(circle at 20% 0,#182840 0,#080b10 38%);min-height:100vh}.wrap{max-width:1250px;margin:auto}.hero{display:flex;justify-content:space-between;gap:24px;align-items:end}.eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#8ea4c2}h1{font-size:clamp(34px,6vw,68px);line-height:.95;margin:10px 0}.summary{color:#b9c5d2;max-width:780px;line-height:1.55}.verdict{font:800 12px ui-monospace,monospace;border:1px solid #33445b;border-radius:999px;padding:10px 13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:28px}article{background:#111722;border:1px solid #263143;border-radius:16px;padding:18px}article header{display:flex;justify-content:space-between;gap:12px}h2{margin:5px 0 14px}.pass{color:#68e0ad}.fail{color:#ff8989}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metrics span{border:1px solid #273345;border-radius:9px;padding:9px;color:#8fa1b7;font-size:11px}.metrics b{display:block;color:#edf3f8;font-size:16px}details{margin:14px 0;color:#bac5d2}a{color:#7cc7ff}.decision,.boundary{margin-top:18px;padding:16px;background:#111722;border-left:3px solid #e7ba61;line-height:1.55}.boundary{border-left-color:#6e86a8;color:#b8c3d1}@media(max-width:800px){body{padding:20px}.hero{display:block}.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><main class="wrap"><header class="hero"><div><div class="eyebrow">Mujica · Static-gated dynamic evidence</div><h1>${escapeHtml(result.candidate)}</h1><p class="summary">Static screen <code>${escapeHtml(result.staticStudy.id)}</code> passed before these exact simulations ran. ${result.successfulScenarios}/${result.scenarios.length} frozen scenarios passed; the required gate is ${result.expectations.minimumSuccessfulScenarios}/${result.scenarios.length}.</p></div><div class="verdict ${result.gatePassed ? "pass" : "fail"}">${escapeHtml(result.outcome)}</div></header><section class="grid">${scenarioCards}</section><aside class="decision"><strong>Next emphasis · ${escapeHtml(result.nextDevelopmentEmphasis)}</strong><br>${escapeHtml(result.switchBackReason)}</aside><aside class="boundary"><strong>Authority boundary.</strong> Bounded simulated mechanism evidence only. No design acceptance, capability claim, revision promotion, or physical evidence.</aside></main></body></html>`;
+}
+
+export async function designProbeCommand(projectDir: string, studyId: string, candidateId: string) {
+  const project = await loadProject(projectDir);
+  const study = await loadDesignStudy(project.rootDir, studyId);
+  const candidate = study.candidates.find((item) => item.id === candidateId);
+  if (!candidate) throw new Error(`Design Study '${studyId}' has no candidate '${candidateId}'`);
+  if (!candidate.dynamicProbe) throw new Error(`Design Study '${studyId}' candidate '${candidateId}' has no dynamicProbe declaration`);
+  const staticEnvelope = await designStudyCommand(project.rootDir, studyId);
+  const staticCandidate = staticEnvelope.data.candidates.find((item: any) => item.id === candidateId);
+  if (staticCandidate?.verdict !== "SUPPORTED_WITHIN_SCREEN") {
+    throw new Error(`Dynamic Design Probe refused: candidate '${candidateId}' is '${staticCandidate?.verdict ?? "UNKNOWN"}' in static Study '${staticEnvelope.data.id}'`);
+  }
+  const probe = candidate.dynamicProbe;
+  const scenarios: any[] = [];
+  for (const scenario of probe.scenarios) {
+    const envelope = await simulateCommand(project.rootDir, {
+      assembly: candidate.assembly,
+      controller: probe.controller,
+      task: probe.task,
+      scenario,
+      ...(probe.objective ? { objective: probe.objective } : {}),
+      seed: probe.seed,
+    });
+    const run: any = envelope.data;
+    const checks = [
+      {
+        metric: "selfRightingSuccess",
+        actual: Number(run.metrics.selfRightingSuccess),
+        comparator: ">=",
+        threshold: probe.expectations.minimumSelfRightingSuccess,
+        passed: Number(run.metrics.selfRightingSuccess) >= probe.expectations.minimumSelfRightingSuccess,
+      },
+      {
+        metric: "disallowedCollisionSteps",
+        actual: Number(run.metrics.disallowedCollisionSteps),
+        comparator: "<=",
+        threshold: probe.expectations.maximumDisallowedCollisionSteps,
+        passed: Number(run.metrics.disallowedCollisionSteps) <= probe.expectations.maximumDisallowedCollisionSteps,
+      },
+      {
+        metric: "minimumJointLimitMarginRad",
+        actual: Number(run.metrics.minimumJointLimitMarginRad),
+        comparator: ">=",
+        threshold: probe.expectations.minimumJointLimitMarginRad,
+        passed: Number(run.metrics.minimumJointLimitMarginRad) >= probe.expectations.minimumJointLimitMarginRad,
+      },
+    ];
+    scenarios.push({
+      scenario,
+      runId: run.runId,
+      resultHash: run.resultHash,
+      runPath: `runs/${run.runId}`,
+      cached: run.cached,
+      passed: checks.every((check) => check.passed),
+      checks,
+      metrics: {
+        selfRightingSuccess: Number(run.metrics.selfRightingSuccess),
+        timeToStableStandSeconds: Number(run.metrics.timeToStableStandSeconds),
+        stableStandingDwellSeconds: Number(run.metrics.stableStandingDwellSeconds),
+        minimumBodyTiltRad: Number(run.metrics.minimumBodyTiltRad),
+        finalBodyTiltRad: Number(run.metrics.finalBodyTiltRad),
+        finalBaseHeightM: Number(run.metrics.finalBaseHeightM),
+        disallowedCollisionSteps: Number(run.metrics.disallowedCollisionSteps),
+        minimumJointLimitMarginRad: Number(run.metrics.minimumJointLimitMarginRad),
+      },
+    });
+  }
+  const successfulScenarios = scenarios.filter((scenario) => scenario.passed).length;
+  const gatePassed = successfulScenarios >= probe.expectations.minimumSuccessfulScenarios;
+  const outcome = gatePassed
+    ? "DYNAMIC_PROBE_PASSED"
+    : successfulScenarios > 0
+      ? "PARTIAL_DYNAMIC_MECHANISM_OBSERVED"
+      : "NO_DYNAMIC_MECHANISM_OBSERVED";
+  const result = {
+    version: 1,
+    kind: "mujica-design-probe-result",
+    harnessSourceHash: await harnessSourceHash(),
+    runtimeSourceHash: await runtimeSourceHash(),
+    study: study.id,
+    studyHash: hashJson(study),
+    candidate: candidate.id,
+    assembly: candidate.assembly,
+    controller: probe.controller,
+    task: probe.task,
+    objective: probe.objective ?? project.manifest.defaults.objective,
+    seed: probe.seed,
+    staticStudy: {
+      id: staticEnvelope.data.id,
+      verdict: staticCandidate.verdict,
+      analysisId: staticCandidate.analysisId,
+    },
+    expectations: probe.expectations,
+    scenarios,
+    successfulScenarios,
+    gatePassed,
+    outcome,
+    nextDevelopmentEmphasis: gatePassed ? "balanced" : "design-reassessment",
+    switchBackReason: gatePassed
+      ? "The readable Controller demonstrates the declared mechanism across the frozen probe set; bounded Controller work may continue before any RL budget."
+      : `${probe.switchBackIf} Observed ${successfulScenarios}/${scenarios.length} passing scenarios, so increasing RL budget is not authorized by this probe.`,
+    authorityBoundary: {
+      claim: "bounded-simulated-dynamic-mechanism",
+      designAcceptance: "none",
+      capabilityAcceptance: "none",
+      physicalEvidence: false,
+      promotion: "locked-judge-only",
+      trainingAuthorization: false,
+    },
+  };
+  const artifactId = `design-probe-${hashJson(result).slice(0, 16)}`;
+  const target = join(project.rootDir, ".mujica", "design-probes", artifactId);
+  let cached = await exists(join(target, "manifest.json"));
+  if (!cached) {
+    await atomicDirectory(target, async (directory) => {
+      await writeJson(join(directory, "result.json"), result);
+      await writeFile(join(directory, "report.md"), dynamicProbeReport(result));
+      await writeFile(join(directory, "index.html"), dynamicProbeHtml(result));
+      await writeJson(join(directory, "manifest.json"), {
+        version: 1,
+        id: artifactId,
+        kind: result.kind,
+        study: study.id,
+        candidate: candidate.id,
+        resultHash: sha256(await readFile(join(directory, "result.json"))),
+        reportHash: sha256(await readFile(join(directory, "report.md"))),
+        htmlHash: sha256(await readFile(join(directory, "index.html"))),
+        staticStudyId: result.staticStudy.id,
+        runIds: scenarios.map((scenario) => scenario.runId),
+        runResultHashes: scenarios.map((scenario) => scenario.resultHash),
+        outcome,
+        gatePassed,
+        completed: true,
+        authorityBoundary: result.authorityBoundary,
+      });
+    });
+  } else {
+    const manifest = JSON.parse(await readFile(join(target, "manifest.json"), "utf8"));
+    for (const [file, key] of [["result.json", "resultHash"], ["report.md", "reportHash"], ["index.html", "htmlHash"]] as const) {
+      if (sha256(await readFile(join(target, file))) !== manifest[key]) throw new Error(`Dynamic Design Probe '${artifactId}' failed artifact integrity verification`);
+    }
+    if (stableJson(manifest.runResultHashes) !== stableJson(scenarios.map((scenario) => scenario.resultHash))) {
+      throw new Error(`Dynamic Design Probe '${artifactId}' immutable Run identity is inconsistent`);
+    }
+  }
+  await writeJson(join(project.rootDir, ".mujica", "design-probes", "current.json"), {
+    version: 1,
+    id: artifactId,
+    study: study.id,
+    candidate: candidate.id,
+  });
+  return success("design.probe", {
+    id: artifactId,
+    path: target,
+    cached,
+    study: study.id,
+    candidate: candidate.id,
+    outcome,
+    gatePassed,
+    successfulScenarios,
+    scenarios,
+    nextDevelopmentEmphasis: result.nextDevelopmentEmphasis,
+    switchBackReason: result.switchBackReason,
+    resultPath: join(target, "result.json"),
+    reportPath: join(target, "report.md"),
+    htmlPath: join(target, "index.html"),
+    authorityBoundary: result.authorityBoundary,
+  }, project, [
+    ...scenarios.map((scenario) => projectArtifact("simulation-run", scenario.runId, join(project.rootDir, scenario.runPath), true)),
+    projectArtifact("design-probe", artifactId, target, true),
+  ]);
 }
 
 export async function assemblyInspectCommand(projectDir: string, id: string) {

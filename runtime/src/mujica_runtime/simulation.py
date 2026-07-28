@@ -11,6 +11,7 @@ import mujoco
 import numpy as np
 
 from .controllers import load_policy_controller, load_program_controller
+from .collisions import disallowed_self_contact_geom_pairs
 from .environment import RecoveryRelapseTracker, RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from .io import atomic_directory, hash_file, hash_json, sha256_bytes, write_json
 
@@ -43,29 +44,7 @@ def minimum_joint_limit_margin(model: mujoco.MjModel, data: mujoco.MjData) -> fl
 
 
 def has_disallowed_self_contact(model: mujoco.MjModel, data: mujoco.MjData) -> bool:
-    def within_two_kinematic_edges(descendant: int, ancestor: int) -> bool:
-        current = descendant
-        for _ in range(2):
-            current = int(model.body_parentid[current])
-            if current == ancestor:
-                return True
-            if current == 0:
-                break
-        return False
-
-    for contact_index in range(data.ncon):
-        contact = data.contact[contact_index]
-        first_body = int(model.geom_bodyid[int(contact.geom1)])
-        second_body = int(model.geom_bodyid[int(contact.geom2)])
-        if (
-            first_body > 0
-            and second_body > 0
-            and first_body != second_body
-            and not within_two_kinematic_edges(first_body, second_body)
-            and not within_two_kinematic_edges(second_body, first_body)
-        ):
-            return True
-    return False
+    return bool(disallowed_self_contact_geom_pairs(model, data))
 
 
 def read_controller_telemetry(controller: Any) -> dict[str, Any] | None:

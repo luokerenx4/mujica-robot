@@ -12,11 +12,11 @@ RL optimization.
 
 ## Development emphasis
 
-- Mode: `design-heavy`
-- Evidence: the current local Design Preview exposes a long rectangular body
-  and limited recovery contact geometry; the locked inverted-recovery Judge
-  remains at 43 violations after bounded residual-policy work, including a
-  program-reference trust region that preserved the reference behavior.
+- Mode: `design-reassessment`
+- Evidence: the corrected split-torso candidate passes the complete static
+  Study and a readable Controller establishes left/right recovery, but the
+  static-gated Dynamic Design Probe fails front/back. Front can reorient but
+  cannot plant and rise without crossing a joint limit; back remains inverted.
 - Budget bias: morphology, joint topology, contact geometry, actuator/sensor
   adequacy, standard Design Previews, and cheap Program-Controller probes.
   Small behavior experiments are allowed only when they distinguish competing
@@ -83,7 +83,7 @@ Out of scope:
 - [x] Define the first candidate family and falsifiable physical hypotheses.
 - [x] Add the smallest executable feasibility probes required to compare it.
 - [x] Compile, render, and inspect every candidate locally.
-- [ ] Exercise short shared scenarios with readable Program Controllers.
+- [x] Exercise short shared scenarios with readable Program Controllers.
 - [ ] Select or reject candidates through governed evidence.
 - [ ] Update emphasis and create the next bounded Plan.
 
@@ -105,11 +105,28 @@ Out of scope:
   tolerance; both rear feet have approximately 6.13 cm surface clearance.
   This is a lineage-wide nominal-state defect that precedes locomotion or
   recovery optimization.
-- The larger sample budget corrected an earlier overgeneralization: both rigid
-  candidates do contain some sampled two-foot resting configurations. The
-  current contact-seeking waist still has a directional `fallen-back` blocker,
-  where its best collision-free sample reaches only one foot and leaves the
-  second approximately 9.15 cm outside contact tolerance.
+- Static Design Analysis and Runtime now share one kinematic-neighbour
+  self-contact predicate. This corrected a second overgeneralization: all four
+  resting poses of the inherited candidates contain valid two-foot contact
+  opportunities under the same contact rule used at execution. Their static
+  rejection is solely the authored two-of-four home-support defect.
+- The `nominal-support-correction` Study adds two complete candidates. Both
+  mirror the rear sagittal joint axes with the rear geometry and move the hip
+  mounts outside the torso collision envelope. Their authored home now places
+  all four feet within tolerance, and both pass all four 2,048-sample static
+  screens. The articulated candidate adds bounded roll/pitch waist authority.
+- A bounded readable Controller search establishes a real lateral recovery
+  mechanism for the corrected articulated candidate. `fallen-left` and
+  `fallen-right` reach stable standing at 3.60 s, retain 2.42 s stable dwell,
+  finish near 0.383 m height and 0.190 rad body tilt, incur zero disallowed
+  collision steps, and retain approximately 0.0205 rad joint-limit margin.
+- The same Controller does not establish front/back recovery. Front reaches an
+  almost upright instantaneous pose (minimum tilt approximately 0.002 rad) but
+  cannot plant and rise, finishes at approximately 0.257 m, and exceeds the
+  joint limit by approximately 0.0274 rad. Back finishes inverted. The
+  first-class Dynamic Design Probe therefore records
+  `PARTIAL_DYNAMIC_MECHANISM_OBSERVED` (2/4) and switches emphasis to
+  `design-reassessment`; RL remains unauthorized.
 - `SUPPORTED_WITHIN_SCREEN` is intentionally weak authority. Sampled kinematic
   opportunity is neither a mathematical reachability proof nor dynamic
   self-righting; a passing future candidate must still exercise the mechanism
@@ -132,3 +149,10 @@ Out of scope:
   state for all four candidates and retained the current emphasis as
   `design-heavy`; no additional RL budget is justified until a corrected
   nominal-state candidate is compiled and re-screened.
+- 2026-07-28: Corrected rear-axis symmetry and hip clearance in rigid and
+  split-torso candidates, unified static/runtime collision semantics, and
+  passed the `nominal-support-correction` static Study.
+- 2026-07-28: Added the static-gated `design probe` protocol and exercised the
+  corrected split-torso candidate in all four frozen falls. Lateral recovery
+  passed; front/back failed, so Studio and the Agent handoff now recommend
+  `design-reassessment` instead of increasing RL budget.

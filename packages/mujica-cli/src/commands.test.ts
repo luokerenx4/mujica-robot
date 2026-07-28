@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
-import { assertDomainProfilePlantCompatible, candidateSelection, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
+import { assertDomainProfilePlantCompatible, candidateSelection, evaluateDesignStudyPose, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertDevelopmentPromotionEvidence, assertResearchLabEditableChanges, loadResearchLabHistory, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 import { loadFrozenPolicyArtifact } from "./policy-artifact";
@@ -104,6 +104,7 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.render")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.analyze")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.study")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.probe")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "domain.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "driver.inspect")).toBe(true);
@@ -261,8 +262,20 @@ describe("agent CLI contract", () => {
       candidate.id === "contact-seeking-waist")).toMatchObject({
       homeSupport: { actual: 2, minimum: 4, passed: false },
       restingPoses: expect.arrayContaining([
-        expect.objectContaining({ pose: "fallen-left", actual: 2, passed: true }),
-        expect.objectContaining({ pose: "fallen-back", actual: 1, passed: false }),
+        expect.objectContaining({
+          pose: "fallen-left",
+          actual: 2,
+          passed: true,
+          collisionFree: true,
+          rawContactCount: 2,
+        }),
+        expect.objectContaining({
+          pose: "fallen-back",
+          actual: 2,
+          passed: true,
+          collisionFree: true,
+          rawContactCount: 2,
+        }),
       ]),
     });
     expect(await readFile(envelope.data.htmlPath, "utf8"))
@@ -283,6 +296,78 @@ describe("agent CLI contract", () => {
       cached: true,
     });
   }, 60_000);
+
+  test("never promotes a colliding raw pose as Design Study evidence", () => {
+    expect(evaluateDesignStudyPose({
+      screeningOutcome: "NO_CONTACT_OPPORTUNITY_IN_SAMPLE_BUDGET",
+      best: {
+        simultaneousFootContacts: 3,
+        secondFootContactGapM: 0,
+        selfCollisionPairs: [["torso", "foot"]],
+      },
+      bestCollisionFree: null,
+      bestRaw: {
+        simultaneousFootContacts: 3,
+      },
+    }, 2)).toEqual({
+      actual: 0,
+      passed: false,
+      collisionFree: false,
+      rawContactCount: 3,
+      secondFootContactGapM: null,
+      failedCheck: "has no collision-free sample in the declared budget",
+    });
+  });
+
+  test("runs a readable dynamic mechanism probe only after its static design gate", async () => {
+    const first = invoke([
+      "design", "probe", "examples/quadruped",
+      "--study", "nominal-support-correction",
+      "--candidate", "mirrored-split-torso",
+      "--json",
+    ]);
+    expect({ code: first.code, stderr: first.stderr }).toEqual({ code: 0, stderr: "" });
+    const envelope = JSON.parse(first.stdout);
+    expect(envelope.data).toMatchObject({
+      outcome: "PARTIAL_DYNAMIC_MECHANISM_OBSERVED",
+      gatePassed: false,
+      successfulScenarios: 2,
+      nextDevelopmentEmphasis: "design-reassessment",
+      authorityBoundary: {
+        claim: "bounded-simulated-dynamic-mechanism",
+        designAcceptance: "none",
+        capabilityAcceptance: "none",
+        physicalEvidence: false,
+        promotion: "locked-judge-only",
+        trainingAuthorization: false,
+      },
+      scenarios: expect.arrayContaining([
+        expect.objectContaining({ scenario: "fallen-left", passed: true }),
+        expect.objectContaining({ scenario: "fallen-right", passed: true }),
+        expect.objectContaining({ scenario: "fallen-front", passed: false }),
+        expect.objectContaining({ scenario: "fallen-back", passed: false }),
+      ]),
+    });
+    expect(await readFile(envelope.data.reportPath, "utf8"))
+      .toContain("Next development emphasis: **design-reassessment**");
+    expect(await readFile(envelope.data.htmlPath, "utf8"))
+      .toContain("Static-gated dynamic evidence");
+    const ignored = Bun.spawnSync(
+      ["git", "check-ignore", "--quiet", envelope.data.htmlPath],
+      { cwd: root },
+    );
+    expect(ignored.exitCode).toBe(0);
+
+    const blocked = invoke([
+      "design", "probe", "examples/quadruped",
+      "--study", "nominal-support-correction",
+      "--candidate", "unmirrored-reference",
+      "--json",
+    ]);
+    expect(blocked.code).toBe(1);
+    expect(JSON.parse(blocked.stderr).error.message)
+      .toContain("has no dynamicProbe declaration");
+  }, 30_000);
 
   test("creates and discovers an independently chartered hexapod project atomically", async () => {
     const workspace = await mkdtemp(resolve(tmpdir(), "mujica-workspace-"));
@@ -1429,8 +1514,8 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14, 14, 12, 14]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6, 6, 6]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14, 14, 12, 14, 12, 14]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);

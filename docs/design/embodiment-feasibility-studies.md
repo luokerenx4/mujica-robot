@@ -6,11 +6,12 @@ Mujica must reject cheap, visible embodiment defects before it spends
 Controller or RL budget. A static rendering is useful for forming a hypothesis,
 but the next step must be a reproducible probe over the exact compiled plant.
 
-Two commands form that pre-training boundary:
+Three commands form that pre-training boundary:
 
 ```text
 mujica design analyze <project> --assembly ID [--samples N] [--json]
 mujica design study <project> --study ID [--json]
+mujica design probe <project> --study ID --candidate ID [--json]
 ```
 
 `design analyze` runs a deterministic low-discrepancy sweep of bounded actuated
@@ -57,6 +58,35 @@ It is deliberately a generated projection, not browser-owned robot source.
 Clone plus command execution rebuilds the complete page; no image asset belongs
 in Git.
 
+The analyzer preserves both `bestRaw` and `bestCollisionFree`. Only the latter
+can satisfy a Study expectation, and only when the Runtime-owned
+`screeningOutcome` is `CONTACT_OPPORTUNITY`. Static analysis and dynamic
+execution call the same disallowed-self-contact predicate, so a candidate
+cannot pass one layer by silently changing collision semantics.
+
+## Static-gated dynamic probes
+
+A candidate may declare one concrete `dynamicProbe`: the exact readable Program
+Controller, Task, optional Objective, seed, frozen Scenario list, per-Scenario
+self-righting/collision/joint-margin gates, the required number of successes,
+and the condition that sends work back to embodiment design.
+
+`design probe` first regenerates and verifies the complete static Study. It
+refuses Runtime execution unless the requested candidate is
+`SUPPORTED_WITHIN_SCREEN`. It then publishes immutable Simulation Runs plus one
+content-addressed aggregate under ignored
+`.mujica/design-probes/design-probe-<hash>/`. Results distinguish:
+
+- `DYNAMIC_PROBE_PASSED`;
+- `PARTIAL_DYNAMIC_MECHANISM_OBSERVED`;
+- `NO_DYNAMIC_MECHANISM_OBSERVED`.
+
+Partial success is never averaged into a capability claim. The artifact reports
+every Scenario, exact Run/result identity, failed metric gates, and the next
+development emphasis. Studio reads the verified current Study and Probe
+pointers, renders the same scenario-level evidence, and copies exact headless
+reproduction commands for an Agent.
+
 ## Interpretation
 
 The probe is a screen, not a solver:
@@ -81,12 +111,13 @@ The first study,
 `examples/quadruped/design-studies/embodiment-first-recovery.design-study.json`,
 compares four inherited rigid/waist Assemblies with 2,048 samples per resting
 orientation. All four are falsified because their authored home keyframes place
-only two of four declared feet within the 3 cm tolerance. The
-contact-seeking-waist candidate also exposes a directional rear-recovery
-bottleneck: only one collision-free foot reaches tolerance in the
-`fallen-back` screen.
+only two of four declared feet within the 3 cm tolerance. After static and
+Runtime collision semantics were unified, all four resting poses contain valid
+two-foot contact opportunities; the inherited family still fails solely
+because of that home state.
 
-This is exactly the intended development-emphasis signal. Fix and re-screen
-the nominal plant before spending more RL budget; then use a bounded dynamic
-probe to decide whether the remaining recovery failure belongs to geometry or
-behavior.
+The follow-up `nominal-support-correction` Study fixes rear-axis symmetry and
+hip clearance. Both corrected Assemblies pass static screening. Its articulated
+candidate's dynamic probe succeeds from left and right but fails front and back,
+so the current outcome is `PARTIAL_DYNAMIC_MECHANISM_OBSERVED` and the next
+emphasis is `design-reassessment`, not RL.

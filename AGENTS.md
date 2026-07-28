@@ -53,6 +53,14 @@ page. Do not commit the generated HTML or image assets. A passing static screen
 only authorizes the next bounded dynamic probe; it does not authorize RL or
 accept the design.
 
+Static Design Analysis and dynamic Runtime execution must use the same
+disallowed-self-contact predicate. A Design Study may pass a pose only from its
+authoritative collision-free selection with a `CONTACT_OPPORTUNITY` outcome;
+the raw highest-contact sample is diagnostic data and can never satisfy a gate.
+A checked-in dynamic probe may run only after its exact candidate passes the
+current static Study. Partial dynamic success remains scenario-level evidence,
+not an aggregate capability claim.
+
 Switch emphasis from design toward behavior only when no known design-envelope
 failure or physical impossibility blocks the current capability and simple
 execution demonstrates a viable mechanism. Switch back toward design when any

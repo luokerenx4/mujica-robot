@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "id": "nominal-support-correction",
+  "name": "Nominal support kinematic correction",
+  "question": "Do mirrored rear sagittal axes and hip mounts outside the torso collision envelope correct four-foot home support while retaining collision-free recovery contact opportunities?",
+  "samples": 2048,
+  "candidates": [
+    {
+      "id": "unmirrored-reference",
+      "assembly": "self-righting-rigid-3dof",
+      "role": "baseline",
+      "hypothesis": "The inherited rear sagittal axis convention is compatible with the authored symmetric home joint angles.",
+      "falsifiedIf": "The authored home has fewer than four feet within tolerance, or any frozen resting orientation has fewer than two collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    },
+    {
+      "id": "mirrored-sagittal-axes",
+      "assembly": "self-righting-balanced-3dof",
+      "role": "candidate",
+      "hypothesis": "Mirroring the rear hip and knee axes with the rear geometry makes the home angles symmetric, while moving all hip mounts outside the torso collision envelope removes the inherited permanent attachment overlap.",
+      "falsifiedIf": "The authored home still has fewer than four feet within tolerance, or any frozen resting orientation lacks two genuinely collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    },
+    {
+      "id": "mirrored-split-torso",
+      "assembly": "self-righting-balanced-waist-3dof",
+      "role": "candidate",
+      "hypothesis": "The same nominal-support and hip-clearance corrections combined with bounded roll/pitch waist articulation preserve a collision-free brace while adding a direct body reorientation mechanism.",
+      "falsifiedIf": "The authored home has fewer than four feet within tolerance, or any frozen resting orientation lacks two genuinely collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      },
+      "dynamicProbe": {
+        "controller": "balanced-waist-recovery-probe",
+        "task": "self-right",
+        "objective": "self-righting",
+        "seed": 42,
+        "scenarios": [
+          "fallen-left",
+          "fallen-right",
+          "fallen-front",
+          "fallen-back"
+        ],
+        "expectations": {
+          "minimumSuccessfulScenarios": 4,
+          "minimumSelfRightingSuccess": 1,
+          "maximumDisallowedCollisionSteps": 0,
+          "minimumJointLimitMarginRad": 0.02
+        },
+        "switchBackIf": "Any frozen resting orientation lacks a collision-free transition from body reorientation into stable four-foot support after a bounded readable-controller search."
+      }
+    }
+  ],
+  "authorityBoundary": {
+    "claim": "sampled-kinematic-screening",
+    "designAcceptance": "none",
+    "dynamicCapability": false,
+    "physicalEvidence": false,
+    "promotion": "locked-judge-only"
+  }
+}
