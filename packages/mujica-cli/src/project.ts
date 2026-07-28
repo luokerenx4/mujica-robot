@@ -1,6 +1,7 @@
 import { cp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
+  assessProjectInception,
   atomicDirectory,
   compileAssembly,
   confined,
@@ -57,6 +58,7 @@ export async function projectListCommand(workspaceDirectory: string) {
   const projects = [];
   for (const project of await listWorkspaceProjects(workspace.rootDir)) {
     const charter = await loadDevelopmentCharter(project.rootDir);
+    const inception = await assessProjectInception(project.rootDir);
     projects.push({
       id: project.manifest.id,
       name: project.manifest.name,
@@ -66,6 +68,9 @@ export async function projectListCommand(workspaceDirectory: string) {
       northStar: charter.northStar,
       morphology: charter.morphology,
       capabilityStages: charter.capabilityStages.map((stage) => ({ id: stage.id, name: stage.name, status: stage.status })),
+      inception: inception.status === "RESEARCH_COMPLETE"
+        ? { status: inception.status, route: inception.study.decision.route, studyHash: inception.studyHash }
+        : inception,
     });
   }
   return success("project.list", { workspace: workspace.manifest, projects, templates: PROJECT_TEMPLATES });
@@ -77,9 +82,11 @@ export async function projectInspectCommand(input: string, projectId?: string) {
   const charter = await loadDevelopmentCharter(project.rootDir);
   const validation = await validateProject(project.rootDir);
   const definitions = await validateProjectDefinitions(project.rootDir);
+  const inception = await assessProjectInception(project.rootDir);
   const developmentReviews = await developmentReviewIds(project.rootDir);
   return success("project.inspect", {
     project: project.manifest,
+    inception,
     charter,
     assemblies: validation.assemblies.map((assembly) => ({
       id: assembly.id,
@@ -376,8 +383,15 @@ function laneCoversSurface(kind: "controller-code" | "rl-policy" | "complete-des
 export async function projectWorkCommand(input: string, options: { project?: string; review?: string }) {
   const projectDirectory = await resolveProjectDirectory(input, options.project);
   const project = await loadProject(projectDirectory);
+  const projectInception = await assessProjectInception(project.rootDir);
+  if (projectInception.status !== "RESEARCH_COMPLETE") {
+    throw new Error(
+      `Project '${project.manifest.id}' is a demo fixture. Complete and declare a Prior Art Study before generating autonomous Development Work Orders.`,
+    );
+  }
   const verified = await verifiedDevelopmentReview(project.rootDir, options.review);
   const { review } = verified;
+  const charter = await loadDevelopmentCharter(project.rootDir);
   const blockers = review.benchmarks.flatMap((benchmark) => benchmark.cases
     .filter((item) => item.gating && item.violations.length > 0)
     .map((item) => ({
@@ -475,10 +489,73 @@ export async function projectWorkCommand(input: string, options: { project?: str
     return leftRank - rightRank || left.kind.localeCompare(right.kind) || left.researchLab.localeCompare(right.researchLab);
   });
   const uncoveredSurfaces = review.summary.interventionSurfaces.filter((item) => !lanes.some((lane) => laneCoversSurface(lane.kind, item.surface)));
+  const lastPassedStageIndex = review.stages.reduce(
+    (latest, stage, index) => stage.observedStatus === "PASS" ? index : latest,
+    -1,
+  );
+  const nextUnevaluatedStage = review.stages.find(
+    (stage, index) => index > lastPassedStageIndex && stage.observedStatus === "NOT_EVALUATED",
+  ) ?? review.stages.find((stage) => stage.observedStatus === "NOT_EVALUATED");
+  const inceptionStage = nextUnevaluatedStage
+    ? charter.capabilityStages.find((stage) => stage.id === nextUnevaluatedStage.id)
+    : undefined;
+  const inception: DevelopmentWorkOrder["inception"] = (
+    review.summary.status === "DEVELOPMENT_REQUIRED"
+    && review.summary.designPassed
+    && blockers.length === 0
+    && lanes.length === 0
+    && uncoveredSurfaces.length === 0
+    && inceptionStage !== undefined
+  ) ? {
+      kind: "capability-inception",
+      reason: "next-stage-has-no-applicable-benchmark",
+      stage: {
+        id: inceptionStage.id,
+        name: inceptionStage.name,
+        question: inceptionStage.question,
+        authoredStatus: inceptionStage.status,
+      },
+      subject: {
+        assembly: review.subject.assembly,
+        controller: review.subject.controller,
+      },
+      referenceEvidenceScopes: inceptionStage.evidenceScopes ?? [],
+      regressionBenchmarks: review.benchmarks
+        .filter((benchmark) => benchmark.status === "PASS")
+        .map((benchmark) => benchmark.id),
+      requiredArtifacts: [
+        "plan",
+        "task",
+        "scenarios",
+        "objective",
+        "benchmark",
+        "readable-controller",
+      ],
+      developmentEmphasis: lastPassedStageIndex >= 0
+        ? "behavior-heavy"
+        : "design-heavy",
+      authorityBoundary: {
+        mechanismFirst: true,
+        trainingAuthorized: false,
+        benchmarkLockRequired: true,
+        capabilityClaim: "new-applicable-evidence-required",
+      },
+      reviewArgv: [
+        "project",
+        "review",
+        project.rootDir,
+        "--assembly",
+        review.subject.assembly,
+        "--controller",
+        review.subject.controller,
+      ],
+    } : null;
   const status = review.summary.status === "NORTH_STAR_SATISFIED"
     ? "NORTH_STAR_SATISFIED" as const
     : review.summary.status === "HUMAN_REVIEW_REQUIRED"
       ? "HUMAN_REVIEW_REQUIRED" as const
+      : inception !== null
+        ? "CAPABILITY_INCEPTION_REQUIRED" as const
       : lanes.length === 0
         ? "NO_ELIGIBLE_LANES" as const
         : uncoveredSurfaces.length
@@ -495,6 +572,7 @@ export async function projectWorkCommand(input: string, options: { project?: str
     blockers,
     lanes,
     uncoveredSurfaces,
+    inception,
     authorityBoundary: {
       prioritization: "derived",
       experimentDecision: "locked-judge",
@@ -518,11 +596,20 @@ export async function projectWorkCommand(input: string, options: { project?: str
       status,
       completed: true,
     });
-    await writeFile(join(directory, "report.md"), `# Development Work Order ${id}\n\nStatus: **${status}**\n\nBlockers: ${blockers.length}\n\nEligible lanes: ${lanes.length}\n\n${lanes.map((lane) => `- ${lane.kind}: ${lane.researchLab} → ${lane.primaryBenchmark}`).join("\n") || "- No eligible Research Lab."}\n`);
+    const inceptionReport = inception
+      ? `\n\n## Capability inception\n\n- Stage: ${inception.stage.id}\n- Question: ${inception.stage.question}\n- Development emphasis: ${inception.developmentEmphasis}\n- Required artifacts: ${inception.requiredArtifacts.join(", ")}\n- Regression Benchmarks: ${inception.regressionBenchmarks.join(", ") || "none"}\n`
+      : "";
+    await writeFile(join(directory, "report.md"), `# Development Work Order ${id}\n\nStatus: **${status}**\n\nBlockers: ${blockers.length}\n\nEligible lanes: ${lanes.length}\n\n${lanes.map((lane) => `- ${lane.kind}: ${lane.researchLab} → ${lane.primaryBenchmark}`).join("\n") || "- No eligible Research Lab."}${inceptionReport}\n`);
   });
   await writeJson(join(project.rootDir, "development-work-orders", "current.json"), { version: 1, id, workOrderHash });
   return success("project.work", { id, workOrderHash, path: target, workOrder }, project, [{ kind: "development-work-order", id, path: target, immutable: true }], [
     ...lanes.map((lane) => ({ id: `run-${lane.id}`, description: `Run one ${lane.kind} experiment through '${lane.researchLab}'`, argv: lane.runArgv, effect: "mutates-project" as const })),
+    ...(inception ? [{
+      id: `inspect-${inception.stage.id}-inception`,
+      description: `Inspect project definitions before authoring the '${inception.stage.id}' capability artifacts named by this Work Order`,
+      argv: ["project", "inspect", project.rootDir],
+      effect: "read-only" as const,
+    }] : []),
     { id: "open-studio", description: "Inspect blockers and eligible lanes beside robot evidence", argv: ["studio", project.rootDir], effect: "creates-artifact" as const },
   ]);
 }
@@ -559,12 +646,15 @@ export async function projectCreateCommand(workspaceDirectory: string, input: { 
   });
   const project = await loadProject(target);
   const charter = await loadDevelopmentCharter(target);
+  const inception = await assessProjectInception(target);
   return success("project.create", {
     project: project.manifest,
+    inception,
     charter,
     template: template.id,
     path: target,
   }, project, [], [
+    { id: "project.inception", description: "Complete a source- and license-verified Prior Art Study before promoting this fixture into autonomous robot development", argv: ["project", "inspect", target], effect: "read-only" },
     { id: "benchmark.lock", description: "Freeze the starter capability benchmark before evaluation", argv: ["benchmark", "lock", target, "--benchmark", project.manifest.defaults.benchmark], effect: "mutates-project" },
     { id: "simulate", description: "Run the starter scenario", argv: ["simulate", target, "--assembly", project.manifest.defaults.assembly, "--controller", project.manifest.defaults.controller, "--task", project.manifest.defaults.task, "--scenario", project.manifest.defaults.scenario], effect: "creates-artifact" },
     { id: "studio.workspace", description: "Regenerate the Workspace Studio to include the project", argv: ["studio", workspace.rootDir], effect: "creates-artifact" },

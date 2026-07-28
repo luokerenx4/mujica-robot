@@ -65,6 +65,8 @@ open hardware and simulation models that already encode years of design work.
 - The durable design document defines when an Agent may fork, vendor, adapt, or
   use a project as reference only.
 - Repository tests and documentation checks pass.
+- The project manifest declares real research or demo-only intent, and the CLI
+  enforces that boundary before autonomous development work is generated.
 
 ## Work
 
@@ -95,6 +97,10 @@ open hardware and simulation models that already encode years of design work.
 - The existing quadruped remains a `demo-fixture` and regression comparator. It
   is no longer the morphology north star, and RL remains paused until the new
   design passes static feasibility and human visual review.
+- The Solo12-informed project now passes a typed Stage 0 gate with six source
+  ledgers and six exact repository inspections. Newly created hexapods are
+  explicitly demo-only and cannot receive a Development Work Order until they
+  complete the same gate.
 
 ## Progress log
 
@@ -106,5 +112,9 @@ open hardware and simulation models that already encode years of design work.
 - 2026-07-28: Published the machine-readable source ledger and human
   recommendation, and moved the resulting Stage 0 rules into `AGENTS.md` and
   `docs/design/project-inception-research.md`.
-- 2026-07-28: Verified JSON syntax and repository whitespace checks; full
-  `bun run test` passed with 96 TypeScript and 78 Python/MuJoCo tests.
+- 2026-07-28: Verified JSON syntax and repository whitespace checks; the
+  executable-gate follow-up now passes 98 TypeScript and 80 Python/MuJoCo
+  tests.
+- 2026-07-28: Follow-up made the research boundary executable in
+  `mujica.json`, Core validation, project inspection, Workspace listing, and
+  Development Work Order generation.

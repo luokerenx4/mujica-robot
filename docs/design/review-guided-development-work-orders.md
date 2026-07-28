@@ -10,6 +10,14 @@ Mujica separates three questions that are easy to blur:
 
 A Work Order is not a task description written by a language model. It is a deterministic, content-addressed projection of project evidence and governed development lanes.
 
+When the exact robot has passed every applicable capability but the next
+Charter stage has no applicable Benchmark, the Work Order emits
+`CAPABILITY_INCEPTION_REQUIRED` instead of manufacturing a failure or stopping
+at `NO_ELIGIBLE_LANES`. Its typed `inception` contract carries the next stage
+question, reference evidence from other robot families, required capability
+artifacts, retained regression Benchmarks, development emphasis, and a
+mechanism-first boundary that explicitly withholds Training authority.
+
 Eligibility is not scheduling. A Work Order may expose `complete-design`,
 `controller-code`, and `rl-policy` lanes at the same time. The active Plan's
 [development emphasis](adaptive-development-emphasis.md) decides which bounded
@@ -39,6 +47,7 @@ Each immutable Work Order records:
 - eligible lanes with Research Lab definition hash, execution kind, subject, editable closure, budgets, primary and regression Benchmarks;
 - exact `research run` command prefix and exact `project review` follow-up command;
 - uncovered intervention surfaces;
+- an optional next-capability inception contract when no failure lane exists;
 - an authority-boundary statement.
 
 The content hash determines `development-work-order-<16 hex>`. `development-work-orders/current.json` points to the latest successfully written artifact but is never evidence by itself.
@@ -55,6 +64,16 @@ A Research Lab is eligible only when:
 - its definition and program pass normal project validation.
 
 Regression Benchmarks never create eligibility. They only constrain the Judge after a lane has matched its primary Benchmark.
+
+Capability inception is a separate route from failure optimization. It is
+eligible only when design constraints pass, there are no applicable gate
+failures, no uncovered intervention surface, and a later Charter stage is
+`NOT_EVALUATED` for the selected Assembly. The first such stage after the last
+passing stage becomes the next question. A reference evidence scope can inform
+the new design but cannot confer capability. The Agent must author a Plan,
+Task, Scenarios, Objective, Assembly-compatible Benchmark, and readable
+Controller; lock the Benchmark; preserve already passing applicable
+Benchmarks; and produce a new Review before any claim or Training budget.
 
 Routing does not assume that design is finished when behavior work begins. A
 behavior plateau can trigger a design-reassessment Plan, but the Agent must use

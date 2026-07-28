@@ -12,6 +12,44 @@
   ],
   "inspection": {
     "method": "Primary-source review plus shallow Git clones in a disposable directory outside the Mujica workspace.",
+    "repositories": [
+      {
+        "source": "odri-solo12-hardware",
+        "url": "https://github.com/open-dynamic-robot-initiative/open_robot_actuator_hardware",
+        "commit": "66af1522b4fba0ec4a1d7790e66f5e4652208d30",
+        "paths": ["LICENSE", "mechanics/quadruped_robot_12dof_v1"]
+      },
+      {
+        "source": "odri-solo12-model",
+        "url": "https://github.com/open-dynamic-robot-initiative/robot_properties_solo",
+        "commit": "2201f454f4caffa0cad307fa8cbd1d64dd844008",
+        "paths": ["license.txt", "src/robot_properties_solo/resources"]
+      },
+      {
+        "source": "mujoco-menagerie-go2",
+        "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go2",
+        "commit": "71f066ad0be9cd271f7ed58c030243ef157af9f4",
+        "paths": ["unitree_go2/LICENSE", "unitree_go2/go2.xml", "unitree_go2/README.md"]
+      },
+      {
+        "source": "mjbots-quad",
+        "url": "https://github.com/mjbots/quad",
+        "commit": "8ce3bc4ae14e033fea38d88b6a1f46c349e871d6",
+        "paths": ["LICENSE", "README.md", "simulator", "hw"]
+      },
+      {
+        "source": "stanford-doggo",
+        "url": "https://github.com/Nate711/StanfordDoggoProject",
+        "commit": "ce5716b5941739a006ec604669bca5676f265dc1",
+        "paths": ["LICENSE", "README.md", ".gitmodules"]
+      },
+      {
+        "source": "stanford-pupper-v1",
+        "url": "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+        "commit": "dc0c5e2089cf2c0aac3c59982a4f140c31803175",
+        "paths": ["LICENSE", "README.md", "src"]
+      }
+    ],
     "workspaceAssetsAdded": false,
     "generatedImagesAdded": false
   },
@@ -32,9 +70,10 @@
         "hardware": "verified",
         "cad": "verified",
         "electronics": "verified",
-        "software": "separate-upstream-repositories",
-        "simulation": "separate-upstream-repository",
-        "trainedWeights": "not-inspected"
+        "software": "reference-only",
+        "simulation": "reference-only",
+        "trainedWeights": "not-inspected",
+        "documentation": "verified"
       },
       "inspectedAssets": [
         "12-DoF Solo12 body and 3-DoF leg build documentation",
@@ -67,12 +106,13 @@
         "evidence": "Root license.txt and README license section"
       },
       "openness": {
-        "hardware": "reference-to-separate-repository",
-        "cad": "visual meshes included",
+        "hardware": "reference-only",
+        "cad": "partial",
         "electronics": "not-applicable",
         "software": "verified",
-        "simulation": "verified-for-PyBullet-and-Pinocchio",
-        "trainedWeights": "not-inspected"
+        "simulation": "verified",
+        "trainedWeights": "not-inspected",
+        "documentation": "verified"
       },
       "inspectedAssets": [
         "Solo12 Xacro/URDF",
@@ -103,12 +143,13 @@
         "evidence": "unitree_go2/LICENSE; the Menagerie root explicitly requires per-model license review"
       },
       "openness": {
-        "hardware": "not-established",
-        "cad": "visual-and-collision-meshes-only",
-        "electronics": "not-established",
-        "software": "MJCF-only",
+        "hardware": "unknown",
+        "cad": "partial",
+        "electronics": "unknown",
+        "software": "partial",
         "simulation": "verified",
-        "trainedWeights": "not-inspected"
+        "trainedWeights": "not-inspected",
+        "documentation": "verified"
       },
       "inspectedAssets": [
         "MuJoCo and MJX MJCF files",
@@ -139,11 +180,12 @@
       },
       "openness": {
         "hardware": "partial",
-        "cad": "3MF parts plus externally linked Fusion 360 assembly",
+        "cad": "partial",
         "electronics": "partial",
-        "software": "verified-for-inspected-files",
+        "software": "partial",
         "simulation": "verified",
-        "trainedWeights": "not-inspected"
+        "trainedWeights": "not-inspected",
+        "documentation": "verified"
       },
       "inspectedAssets": [
         "C++ quadruped simulator",
@@ -175,12 +217,13 @@
         "evidence": "Root LICENSE covers repository content; linked Fusion 360 CAD and code submodules require separate boundary checks"
       },
       "openness": {
-        "hardware": "documented",
-        "cad": "externally-linked",
-        "electronics": "documented-with-submodule-dependencies",
-        "software": "submodules-not-cloned",
+        "hardware": "partial",
+        "cad": "reference-only",
+        "electronics": "partial",
+        "software": "reference-only",
         "simulation": "not-inspected",
-        "trainedWeights": "not-applicable"
+        "trainedWeights": "not-applicable",
+        "documentation": "verified"
       },
       "inspectedAssets": [
         "Mechanical architecture and electronics documentation",
@@ -211,12 +254,13 @@
         "evidence": "Root LICENSE"
       },
       "openness": {
-        "hardware": "external-build-documentation",
-        "cad": "not-present-in-inspected-repository",
-        "electronics": "external-build-documentation",
+        "hardware": "reference-only",
+        "cad": "unknown",
+        "electronics": "reference-only",
         "software": "verified",
         "simulation": "not-inspected",
-        "trainedWeights": "not-inspected"
+        "trainedWeights": "not-inspected",
+        "documentation": "partial"
       },
       "inspectedAssets": [
         "Raspberry Pi robot loop",
@@ -235,15 +279,21 @@
   ],
   "decision": {
     "route": "adapt",
-    "selectedArchitecture": "odri-solo12-hardware",
-    "selectedModelReference": "odri-solo12-model",
-    "secondarySimulationReference": "mujoco-menagerie-go2",
+    "selectedSources": [
+      "odri-solo12-hardware",
+      "odri-solo12-model",
+      "mujoco-menagerie-go2"
+    ],
     "rationale": [
       "Solo12 is the only inspected candidate that joins a genuinely open 12-DoF physical architecture with build, actuator, electronics, calibration, range-of-motion, inertia, URDF, and mesh evidence.",
       "Three joints per leg directly address the current demo's missing lateral authority without adding an unproven waist as the first reaction.",
       "Adapting the architecture into a new Mujica Assembly keeps deep customization possible while avoiding an unnecessary fork of unrelated upstream software stacks.",
       "Go2 supplies a current MuJoCo model-quality reference without being misrepresented as open hardware."
     ],
+    "assetReuse": {
+      "authorized": false,
+      "attributionRecords": []
+    },
     "notAuthorizedYet": [
       "No upstream source or binary asset may be copied into Mujica until a path-level attribution record is added.",
       "No GitHub fork is created by this study.",

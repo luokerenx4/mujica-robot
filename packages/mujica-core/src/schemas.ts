@@ -19,6 +19,17 @@ export const manifestSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
   charter: relativeFileSchema,
   morphology: relativeFileSchema,
+  inception: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("prior-art-study"),
+      study: relativeFileSchema,
+    }).strict(),
+    z.object({
+      kind: z.literal("demo-fixture"),
+      purpose: z.string().min(1),
+      promotionGate: z.literal("prior-art-study-required"),
+    }).strict(),
+  ]),
   defaults: z.object({ assembly: idSchema, controller: idSchema, task: idSchema, scenario: idSchema, objective: idSchema, benchmark: idSchema }).strict(),
 }).strict();
 
@@ -79,6 +90,119 @@ export const developmentCharterSchema = z.object({
   )).min(1).refine((stages) => new Set(stages.map((stage) => stage.id)).size === stages.length, "capability stage ids must be unique"),
   nonGoals: z.array(z.string().min(1)),
 }).strict();
+
+const projectInceptionAssetStatusSchema = z.enum([
+  "verified",
+  "partial",
+  "reference-only",
+  "unknown",
+  "not-applicable",
+  "not-inspected",
+]);
+
+export const projectInceptionStudySchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("mujica-project-inception-study"),
+  project: idSchema,
+  conductedAt: z.string().date(),
+  question: z.string().min(1),
+  missionAssumptions: z.array(z.string().min(1)).min(1),
+  inspection: z.object({
+    method: z.string().min(1),
+    repositories: z.array(z.object({
+      source: idSchema,
+      url: z.string().url(),
+      commit: z.string().regex(/^[a-f0-9]{40}$/, "must be an exact lowercase Git commit"),
+      paths: z.array(z.string().min(1)).min(1),
+    }).strict()).min(2),
+    workspaceAssetsAdded: z.literal(false),
+    generatedImagesAdded: z.literal(false),
+  }).strict(),
+  sources: z.array(z.object({
+    id: idSchema,
+    name: z.string().min(1),
+    url: z.string().url(),
+    upstreamCommit: z.string().regex(/^[a-f0-9]{40}$/, "must be an exact lowercase Git commit"),
+    upstreamCommitDate: z.string().datetime({ offset: true }),
+    kind: idSchema,
+    license: z.object({
+      status: z.string().min(1),
+      spdx: z.string().min(1),
+      evidence: z.string().min(1),
+    }).strict(),
+    openness: z.object({
+      hardware: projectInceptionAssetStatusSchema,
+      cad: projectInceptionAssetStatusSchema,
+      electronics: projectInceptionAssetStatusSchema,
+      software: projectInceptionAssetStatusSchema,
+      simulation: projectInceptionAssetStatusSchema,
+      trainedWeights: projectInceptionAssetStatusSchema,
+      documentation: projectInceptionAssetStatusSchema,
+    }).strict(),
+    inspectedAssets: z.array(z.string().min(1)).min(1),
+    fit: z.array(z.string().min(1)).min(1),
+    risks: z.array(z.string().min(1)).min(1),
+    disposition: idSchema,
+  }).strict()).min(4).refine(
+    (sources) => new Set(sources.map((source) => source.id)).size === sources.length,
+    "Prior Art Study source ids must be unique",
+  ),
+  decision: z.object({
+    route: z.enum(["adapt", "fork", "combine", "original"]),
+    selectedSources: z.array(idSchema),
+    rationale: z.array(z.string().min(1)).min(1),
+    assetReuse: z.object({
+      authorized: z.boolean(),
+      attributionRecords: z.array(relativeFileSchema),
+    }).strict(),
+    notAuthorizedYet: z.array(z.string().min(1)),
+    nextDesignBrief: z.object({
+      name: z.string().min(1),
+      requirements: z.array(z.string().min(1)).min(1),
+      exitCondition: z.string().min(1),
+    }).strict(),
+    humanReviewRequired: z.literal(true),
+  }).strict(),
+}).strict().superRefine((study, context) => {
+  const sources = new Map(study.sources.map((source) => [source.id, source]));
+  for (const selected of study.decision.selectedSources) {
+    if (!sources.has(selected)) context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["decision", "selectedSources"],
+      message: `selected source '${selected}' is not declared`,
+    });
+  }
+  for (const repository of study.inspection.repositories) {
+    const source = sources.get(repository.source);
+    if (!source) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["inspection", "repositories"],
+        message: `inspected repository source '${repository.source}' is not declared`,
+      });
+    } else if (source.url !== repository.url || source.upstreamCommit !== repository.commit) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["inspection", "repositories"],
+        message: `inspected repository '${repository.source}' must match its declared URL and commit`,
+      });
+    }
+  }
+  if (study.decision.route !== "original" && study.decision.selectedSources.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["decision", "selectedSources"],
+      message: `${study.decision.route} requires at least one selected source`,
+    });
+  }
+  if (study.decision.assetReuse.authorized && study.decision.assetReuse.attributionRecords.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["decision", "assetReuse", "attributionRecords"],
+      message: "authorized asset reuse requires at least one attribution record",
+    });
+  }
+});
 
 export const robotMorphologySchema = z.object({
   version: z.literal(1),
@@ -1296,7 +1420,14 @@ export const developmentWorkOrderSchema = z.object({
   charterHash: sha256Schema,
   review: z.object({ id: z.string().regex(/^development-review-[a-f0-9]{16}$/), hash: sha256Schema }).strict(),
   subject: developmentReviewSchema.shape.subject,
-  status: z.enum(["READY", "PARTIALLY_ROUTED", "NO_ELIGIBLE_LANES", "HUMAN_REVIEW_REQUIRED", "NORTH_STAR_SATISFIED"]),
+  status: z.enum([
+    "READY",
+    "PARTIALLY_ROUTED",
+    "CAPABILITY_INCEPTION_REQUIRED",
+    "NO_ELIGIBLE_LANES",
+    "HUMAN_REVIEW_REQUIRED",
+    "NORTH_STAR_SATISFIED",
+  ]),
   blockers: z.array(z.object({
     rank: z.number().int().positive(),
     benchmark: idSchema,
@@ -1333,6 +1464,43 @@ export const developmentWorkOrderSchema = z.object({
     surface: z.enum(["design", "controller", "assembly", "training", "human-review"]),
     rationale: z.string().min(1),
   }).strict()),
+  inception: z.object({
+    kind: z.literal("capability-inception"),
+    reason: z.literal("next-stage-has-no-applicable-benchmark"),
+    stage: z.object({
+      id: idSchema,
+      name: z.string().min(1),
+      question: z.string().min(1),
+      authoredStatus: z.enum(["planned", "active", "accepted"]),
+    }).strict(),
+    subject: z.object({
+      assembly: idSchema,
+      controller: idSchema,
+    }).strict(),
+    referenceEvidenceScopes: z.array(z.object({
+      assembly: idSchema,
+      controller: idSchema,
+      benchmark: idSchema,
+      revision: idSchema.optional(),
+    }).strict()),
+    regressionBenchmarks: z.array(idSchema),
+    requiredArtifacts: z.tuple([
+      z.literal("plan"),
+      z.literal("task"),
+      z.literal("scenarios"),
+      z.literal("objective"),
+      z.literal("benchmark"),
+      z.literal("readable-controller"),
+    ]),
+    developmentEmphasis: z.enum(["design-heavy", "behavior-heavy"]),
+    authorityBoundary: z.object({
+      mechanismFirst: z.literal(true),
+      trainingAuthorized: z.literal(false),
+      benchmarkLockRequired: z.literal(true),
+      capabilityClaim: z.literal("new-applicable-evidence-required"),
+    }).strict(),
+    reviewArgv: z.array(z.string()).min(1),
+  }).strict().nullable().default(null),
   authorityBoundary: z.object({
     prioritization: z.literal("derived"),
     experimentDecision: z.literal("locked-judge"),
@@ -1518,6 +1686,7 @@ export type ControllerDefinition = z.output<typeof controllerSchema>;
 export type DesignStudyDefinition = z.output<typeof designStudySchema>;
 export type AuthorityProfileDefinition = z.output<typeof authorityProfileSchema>;
 export type DevelopmentCharter = z.output<typeof developmentCharterSchema>;
+export type ProjectInceptionStudy = z.output<typeof projectInceptionStudySchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
 export type ScenarioDefinition = z.output<typeof scenarioSchema>;
 export type DomainProfileDefinition = z.output<typeof domainProfileSchema>;

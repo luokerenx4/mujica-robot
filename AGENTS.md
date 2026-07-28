@@ -46,6 +46,17 @@ baseline or receive substantial Controller/RL optimization without completing
 the study. If an existing project reaches repeated structural failures without
 one, stop behavior spending and perform the study retroactively.
 
+This boundary is executable. Every `mujica.json` declares either a
+`prior-art-study` path or a `demo-fixture` purpose with the fixed
+`prior-art-study-required` promotion gate. `mujica validate` parses and
+cross-checks the study; `project inspect` exposes its status and content hash;
+and `project work` refuses to generate autonomous development work for a demo
+fixture. Do not bypass that refusal by invoking a Research Lab directly. A
+valid study compares at least four primary references, records at least two
+exact repository commits and inspected paths, separates seven asset layers,
+selects one reuse route, keeps human form review mandatory, and requires
+attribution records before it can authorize copying third-party assets.
+
 ## Adaptive development emphasis
 
 Robot development is an evidence-driven loop, not a design-then-RL waterfall and

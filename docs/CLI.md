@@ -6,6 +6,7 @@ mujica project list <workspace> [--json]
 mujica project inspect <workspace-or-project> [--project ID] [--json]
 mujica project create <workspace> --id ID --name NAME --template hexapod [--json]
 mujica project review <workspace-or-project> [--project ID] [--assembly ID] [--controller ID] [--json]
+mujica project work <workspace-or-project> [--project ID] [--review ID] [--json]
 mujica validate <project> [--json]
 mujica inspect <project> [--json]
 mujica component list <project> [--json]
@@ -71,7 +72,9 @@ confined to the Workspace projects directory, refuses overwrite, copies one
 complete executable template, substitutes only project identity, validates the
 Charter and all source definitions, and publishes atomically. The initial
 `hexapod` template is intentionally concrete rather than an invalid blank
-framework.
+framework. It is explicitly `DEMO_FIXTURE_ONLY`; `project inspect` exposes the
+promotion gate and `project work` refuses autonomous optimization until a typed
+Prior Art Study changes the project to `RESEARCH_COMPLETE`.
 
 `project review` joins the Charter to one compiled Assembly/Controller subject.
 It checks the declared design resource envelope, evaluates every unique locked

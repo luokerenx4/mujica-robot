@@ -32,6 +32,30 @@ The study is complete when it has:
 The next Plan begins from that decision. It does not silently turn every
 reference into a dependency.
 
+## Executable project gate
+
+`mujica.json` makes project intent explicit:
+
+- `inception.kind = prior-art-study` names the checked-in study for a real
+  robot-development project;
+- `inception.kind = demo-fixture` names the fixture's narrow purpose and fixes
+  its promotion gate to `prior-art-study-required`.
+
+Core validates the study as a typed definition. It requires four distinct
+primary references, two exact 40-character Git commits with inspected paths,
+and separate status for hardware, CAD, electronics, software, simulation,
+trained weights, and documentation. Selected sources and repository inspection
+records must resolve back to the source ledger. `adapt`, `fork`, and `combine`
+must name selected sources. Asset reuse may be authorized only when at least one
+confined attribution record is present.
+
+`mujica validate` runs this gate, while `project inspect` and Workspace project
+listing expose `RESEARCH_COMPLETE` or `DEMO_FIXTURE_ONLY`. A demo fixture may
+still compile and simulate because it is useful for testing the Harness, but
+`project work` refuses to generate autonomous Development Work Orders until the
+manifest points at a valid Prior Art Study. This is the enforcement point that
+prevents an executable demo from silently becoming the design north star.
+
 ## Research protocol
 
 Prefer primary sources in this order:

@@ -30,6 +30,9 @@ export interface MujicaManifest {
   name: string;
   charter: string;
   morphology: string;
+  inception:
+    | { kind: "prior-art-study"; study: string }
+    | { kind: "demo-fixture"; purpose: string; promotionGate: "prior-art-study-required" };
   defaults: { assembly: string; controller: string; task: string; scenario: string; objective: string; benchmark: string };
 }
 

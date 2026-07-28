@@ -146,13 +146,20 @@ describe("read-only Studio snapshot", () => {
     });
     expect(first.snapshot.developmentWorkOrder).toMatchObject({
       workOrder: {
-        status: "NO_ELIGIBLE_LANES",
+        status: "CAPABILITY_INCEPTION_REQUIRED",
         subject: {
           assembly: "solo12-informed",
           controller: "solo12-balance-stand",
         },
         blockers: [],
         lanes: [],
+        inception: {
+          kind: "capability-inception",
+          stage: {
+            id: "command-foundation",
+          },
+          regressionBenchmarks: ["solo12-disturbance-standing"],
+        },
       },
     });
     expect(first.snapshot.developmentWorkOrder?.workOrder.uncoveredSurfaces).toEqual([]);

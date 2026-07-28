@@ -525,6 +525,11 @@ describe("agent CLI contract", () => {
       expect(created.code).toBe(0);
       expect(JSON.parse(created.stdout).data).toMatchObject({
         project: { id: "field-hexapod", charter: "development-charter.json" },
+        inception: {
+          status: "DEMO_FIXTURE_ONLY",
+          mode: "demo-fixture",
+          promotionGate: "prior-art-study-required",
+        },
         charter: { morphology: { class: "legged", limbCount: 6 } },
         template: "hexapod",
       });
@@ -532,6 +537,10 @@ describe("agent CLI contract", () => {
       expect(JSON.parse(listed.stdout).data.projects).toMatchObject([{ id: "field-hexapod", morphology: { limbCount: 6 } }]);
       const inspected = invoke(["project", "inspect", workspace, "--project", "field-hexapod", "--json"]);
       const inspectedData = JSON.parse(inspected.stdout).data;
+      expect(inspectedData.inception).toMatchObject({
+        status: "DEMO_FIXTURE_ONLY",
+        mode: "demo-fixture",
+      });
       expect(inspectedData.assemblies[0]).toMatchObject({ id: "hexapod", actionSize: 12 });
       expect(inspectedData.assemblies[0].morphology.contactPoints).toHaveLength(6);
       expect(inspectedData.assemblies[0].morphology.contactPoints[0].id).toBe("front-left");
@@ -561,6 +570,11 @@ describe("agent CLI contract", () => {
       const invalidNorthStarBenchmark = invoke(["validate", projectRoot, "--json"]);
       expect(invalidNorthStarBenchmark.code).toBe(1);
       expect(JSON.parse(invalidNorthStarBenchmark.stderr).error.message).toContain("is not named by stage");
+
+      const blockedWork = invoke(["project", "work", projectRoot, "--json"]);
+      expect(blockedWork.code).toBe(1);
+      expect(JSON.parse(blockedWork.stderr).error.message)
+        .toContain("Complete and declare a Prior Art Study");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -599,14 +613,15 @@ describe("agent CLI contract", () => {
     expect(JSON.parse(inspected.stdout).data.developmentReviews).toContain(data.id);
   }, 20_000);
 
-  test("does not route another Assembly family's blockers or research lanes", () => {
+  test("routes the next uncovered capability without borrowing another Assembly family's blockers", () => {
     const result = invoke(["project", "work", "examples/quadruped", "--json"]);
     expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout).data;
+    expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "NO_ELIGIBLE_LANES",
+      status: "CAPABILITY_INCEPTION_REQUIRED",
       subject: { assembly: "solo12-informed", controller: "solo12-balance-stand" },
       authorityBoundary: {
         prioritization: "derived",
@@ -618,7 +633,31 @@ describe("agent CLI contract", () => {
     expect(data.workOrder.blockers).toEqual([]);
     expect(data.workOrder.lanes).toEqual([]);
     expect(data.workOrder.uncoveredSurfaces).toEqual([]);
-    expect(data.workOrderHash).toBe(hashJson(data.workOrder));
+    expect(data.workOrder.inception).toMatchObject({
+      kind: "capability-inception",
+      reason: "next-stage-has-no-applicable-benchmark",
+      stage: {
+        id: "command-foundation",
+        question: expect.stringContaining("execute stop, forward, reverse"),
+      },
+      subject: {
+        assembly: "solo12-informed",
+        controller: "solo12-balance-stand",
+      },
+      referenceEvidenceScopes: [{
+        assembly: "command-conditioned-history-3dof",
+        controller: "command-tracking-gait",
+        benchmark: "command-tracking",
+      }],
+      regressionBenchmarks: ["solo12-disturbance-standing"],
+      developmentEmphasis: "behavior-heavy",
+      authorityBoundary: {
+        mechanismFirst: true,
+        trainingAuthorized: false,
+        benchmarkLockRequired: true,
+        capabilityClaim: "new-applicable-evidence-required",
+      },
+    });
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
   }, 20_000);
 

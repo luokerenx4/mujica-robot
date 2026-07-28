@@ -2,7 +2,7 @@ import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, resolve } from "node:path";
 import { compareAssemblies, compileAssembly } from "./compiler";
-import { authorityProfileSchema, benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, designStudySchema, developmentCharterSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type AuthorityProfileDefinition, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DesignStudyDefinition, type DevelopmentCharter, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
+import { authorityProfileSchema, benchmarkSchema, calibrationSchema, candidateSchema, controllerSchema, designStudySchema, developmentCharterSchema, domainProfileSchema, driverPackageSchema, hardwareCapturePlanSchema, hardwareTargetSchema, objectiveSchema, projectInceptionStudySchema, researchLabSchema, researchSchema, scenarioSchema, taskSchema, trainerSchema, trainingResearchSchema, trainingSchema, type AuthorityProfileDefinition, type BenchmarkDefinition, type CalibrationDefinition, type CandidateDefinition, type ControllerDefinition, type DesignStudyDefinition, type DevelopmentCharter, type DomainProfileDefinition, type DriverPackageDefinition, type HardwareCapturePlanDefinition, type HardwareTargetDefinition, type ObjectiveDefinition, type ProjectInceptionStudy, type ResearchDefinition, type ResearchLabDefinition, type ScenarioDefinition, type TaskDefinition, type TrainerDefinition, type TrainingDefinition, type TrainingResearchDefinition } from "./schemas";
 import type { CompiledAssembly } from "./types";
 import { confined, hashDirectory, hashJson, readJson, sha256, stableJson } from "./utils";
 import { loadProject } from "./workspace";
@@ -74,6 +74,40 @@ export const loadBenchmark = async (projectDir: string, id: string): Promise<Ben
 export async function loadDevelopmentCharter(projectDir: string): Promise<DevelopmentCharter> {
   const project = await loadProject(projectDir);
   return await readJson(confined(project.rootDir, project.manifest.charter), developmentCharterSchema) as DevelopmentCharter;
+}
+export async function loadProjectInceptionStudy(projectDir: string): Promise<ProjectInceptionStudy | null> {
+  const project = await loadProject(projectDir);
+  if (project.manifest.inception.kind === "demo-fixture") return null;
+  return await readJson(
+    confined(project.rootDir, project.manifest.inception.study),
+    projectInceptionStudySchema,
+  ) as ProjectInceptionStudy;
+}
+
+export async function assessProjectInception(projectDir: string): Promise<
+  | { status: "RESEARCH_COMPLETE"; mode: "robot-development"; study: ProjectInceptionStudy; studyHash: string }
+  | { status: "DEMO_FIXTURE_ONLY"; mode: "demo-fixture"; purpose: string; promotionGate: "prior-art-study-required" }
+> {
+  const project = await loadProject(projectDir);
+  if (project.manifest.inception.kind === "demo-fixture") {
+    return {
+      status: "DEMO_FIXTURE_ONLY",
+      mode: "demo-fixture",
+      purpose: project.manifest.inception.purpose,
+      promotionGate: project.manifest.inception.promotionGate,
+    };
+  }
+  const study = await loadProjectInceptionStudy(project.rootDir);
+  if (!study) throw new Error(`Project '${project.manifest.id}' has no Prior Art Study`);
+  if (study.project !== project.manifest.id) {
+    throw new Error(`Prior Art Study project '${study.project}' must match Mujica project '${project.manifest.id}'`);
+  }
+  return {
+    status: "RESEARCH_COMPLETE",
+    mode: "robot-development",
+    study,
+    studyHash: hashJson(study),
+  };
 }
 export const loadTraining = async (projectDir: string, id: string): Promise<TrainingDefinition> => await readJson(confined(resolve(projectDir), `training/${id}.training.json`), trainingSchema) as TrainingDefinition;
 export const loadCandidate = async (projectDir: string, id: string): Promise<CandidateDefinition> => await readJson(confined(resolve(projectDir), `candidates/${id}/candidate.json`), candidateSchema) as CandidateDefinition;
@@ -197,7 +231,11 @@ export async function verifyCandidateChanges(projectDir: string, candidate: Cand
 export async function validateProjectDefinitions(projectDir: string): Promise<Record<string, number>> {
   const project = await loadProject(projectDir); const root = project.rootDir;
   const charter = await loadDevelopmentCharter(root);
+  const inception = await assessProjectInception(root);
   if (charter.project !== project.manifest.id) throw new Error(`Development Charter project '${charter.project}' must match Mujica project '${project.manifest.id}'`);
+  if (inception.status === "DEMO_FIXTURE_ONLY" && charter.capabilityStages.some((stage) => stage.status === "accepted")) {
+    throw new Error(`Demo fixture '${project.manifest.id}' cannot contain accepted capability stages; complete a Prior Art Study first`);
+  }
   const northStarStage = charter.capabilityStages.find((stage) => stage.id === charter.northStar.stage);
   if (!northStarStage) throw new Error(`Development Charter north-star stage '${charter.northStar.stage}' does not exist`);
   if (!northStarStage.scenarios.some((witness) => witness.benchmark === charter.northStar.benchmark)) {

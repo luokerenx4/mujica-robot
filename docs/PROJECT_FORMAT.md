@@ -5,6 +5,7 @@ Every project contains `mujica.json` and owns all robot assets it references.
 ```text
 project/
   mujica.json
+  prior-art-study.json
   development-charter.json
   morphology.json
   development-reviews/<immutable-id>/manifest.json + review.json + report.md
@@ -45,6 +46,15 @@ project/
 ```
 
 IDs use lowercase letters, digits, and hyphens and must match their directory or filename. Relative paths are confined beneath the project or package that owns them. Unknown JSON keys fail validation so typos cannot silently change a robot.
+
+`mujica.json` also declares the Stage 0 boundary. A real robot-development
+project points `inception.kind = prior-art-study` at a typed study. A Harness
+smoke project declares `inception.kind = demo-fixture`, a narrow purpose, and
+the fixed `prior-art-study-required` promotion gate. Validation checks the
+research source ledger, exact inspected commits and paths, per-layer openness,
+reuse decision, attribution boundary, and human-review requirement. Demo
+fixtures may compile and simulate but cannot receive autonomous Development
+Work Orders.
 
 `development-charter.json` freezes the project's proposition, operational
 domain, exclusions, capability stages, north-star stage/Benchmark, human-review

@@ -2,11 +2,51 @@ import { describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { authorityProfileSchema, calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, humanObservationDraftSchema, loadAuthorityProfile, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadObjective, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
+import { assessProjectInception, authorityProfileSchema, calibrationSchema, canonicalPlantXml, compareAssemblies, compileAssembly, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, domainProfileSchema, driverPackageSchema, hardwareCaptureAuthorizationSchema, hardwareCapturePlanSchema, hardwareTargetSchema, hashJson, humanObservationDraftSchema, loadAuthorityProfile, loadBenchmark, loadCalibration, loadCandidate, loadComponent, loadController, loadDomainProfile, loadDriverPackage, loadHardwareCapturePlan, loadHardwareTarget, loadObjective, loadResearch, loadResearchLab, loadTask, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, projectInceptionStudySchema, researchBriefSchema, researchProposalSchema, researchReviewSchema, scenarioSchema, sha256, taskSchema, trainingSchema, validateProject, verifyCandidateChanges } from "./index";
 
 const project = resolve(import.meta.dir, "../../../examples/quadruped");
 
 describe("Robot Assembly compiler", () => {
+  test("Project inception is a source- and license-qualified executable gate", async () => {
+    const inception = await assessProjectInception(project);
+    expect(inception).toMatchObject({
+      status: "RESEARCH_COMPLETE",
+      mode: "robot-development",
+      study: {
+        project: "quadruped",
+        decision: {
+          route: "adapt",
+          selectedSources: [
+            "odri-solo12-hardware",
+            "odri-solo12-model",
+            "mujoco-menagerie-go2",
+          ],
+          assetReuse: { authorized: false, attributionRecords: [] },
+          humanReviewRequired: true,
+        },
+      },
+    });
+    if (inception.status !== "RESEARCH_COMPLETE") throw new Error("expected research-complete inception");
+    expect(inception.study.sources).toHaveLength(6);
+    expect(inception.study.inspection.repositories).toHaveLength(6);
+    expect(inception.studyHash).toBe(hashJson(inception.study));
+    expect(() => projectInceptionStudySchema.parse({
+      ...inception.study,
+      decision: {
+        ...inception.study.decision,
+        route: "fork",
+        selectedSources: ["undeclared-robot"],
+      },
+    })).toThrow("selected source 'undeclared-robot' is not declared");
+    expect(() => projectInceptionStudySchema.parse({
+      ...inception.study,
+      decision: {
+        ...inception.study.decision,
+        assetReuse: { authorized: true, attributionRecords: [] },
+      },
+    })).toThrow("authorized asset reuse requires at least one attribution record");
+  });
+
   test("Authority Profiles keep supervisor state outside the Policy observation ABI", async () => {
     const profile = await loadAuthorityProfile(
       project,
@@ -79,10 +119,37 @@ describe("Robot Assembly compiler", () => {
       benchmarkStatus: "NOT_EVALUATED",
     });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.status).toBe("NO_ELIGIBLE_LANES");
+    expect(workOrder.status).toBe("CAPABILITY_INCEPTION_REQUIRED");
     expect(workOrder.lanes).toEqual([]);
     expect(workOrder.blockers).toEqual([]);
     expect(workOrder.uncoveredSurfaces).toEqual([]);
+    expect(workOrder.inception).toMatchObject({
+      kind: "capability-inception",
+      reason: "next-stage-has-no-applicable-benchmark",
+      stage: {
+        id: "command-foundation",
+        authoredStatus: "accepted",
+      },
+      subject: {
+        assembly: "solo12-informed",
+        controller: "solo12-balance-stand",
+      },
+      regressionBenchmarks: ["solo12-disturbance-standing"],
+      requiredArtifacts: [
+        "plan",
+        "task",
+        "scenarios",
+        "objective",
+        "benchmark",
+        "readable-controller",
+      ],
+      developmentEmphasis: "behavior-heavy",
+      authorityBoundary: {
+        mechanismFirst: true,
+        trainingAuthorized: false,
+        benchmarkLockRequired: true,
+      },
+    });
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });
 
