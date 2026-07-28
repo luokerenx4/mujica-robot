@@ -333,6 +333,10 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
   const benchmarkIds = await fileIds(join(root, "benchmarks"), ".benchmark.json");
   for (const id of benchmarkIds) {
     const benchmark = await loadBenchmark(root, id); await loadObjective(root, benchmark.objective); const assembly = await compileAssembly(root, benchmark.baseline.assembly); const controller = await loadController(root, benchmark.baseline.controller); assertProgramControllerCompatible(controller.definition, assembly);
+    if (benchmark.compatibleAssemblies && !benchmark.compatibleAssemblies.includes(benchmark.baseline.assembly)) {
+      throw new Error(`Benchmark '${benchmark.id}' compatibleAssemblies must include baseline Assembly '${benchmark.baseline.assembly}'`);
+    }
+    for (const compatibleAssembly of benchmark.compatibleAssemblies ?? []) await compileAssembly(root, compatibleAssembly);
     const missionCapabilities = new Set<string>();
     for (const item of benchmark.cases) {
       const task = await loadTask(root, item.task); await loadScenario(root, item.scenario);

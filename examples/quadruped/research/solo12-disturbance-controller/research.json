@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "id": "solo12-disturbance-controller",
+  "name": "Solo12 disturbance-standing Controller research",
+  "program": "research/solo12-disturbance-controller/program.md",
+  "benchmark": "solo12-disturbance-standing",
+  "regressions": [],
+  "execution": {
+    "kind": "controller",
+    "assembly": "solo12-informed",
+    "controller": "solo12-balance-stand"
+  },
+  "editable": {
+    "paths": [
+      "controllers/solo12-balance-stand/**"
+    ]
+  },
+  "budget": {
+    "maxExperiments": 3,
+    "maxWallClockSeconds": 240
+  },
+  "minimumImprovement": 0.01,
+  "promotion": "robot-revision"
+}

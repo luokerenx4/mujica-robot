@@ -1,0 +1,53 @@
+{
+  "version": 4,
+  "id": "001-b12f32c5771d",
+  "experimentHash": "b12f32c5771d949ae75a7b86927526e41857704e6ac21bcd8a8435eab87239b0",
+  "sequence": 1,
+  "sessionId": "session-c1975017e06b685e",
+  "researchId": "solo12-disturbance-controller",
+  "labHash": "8da8e819cd7a290cfffbff985e82b50948309c9e27622b56e52cac34fdfd39bb",
+  "programHash": "d40faa55344b86f7ddc3ae8bdaeeb9ef985a089815c1af5a7454c4addd9214a9",
+  "benchmarkLockHash": "45a33a7605d568e1a0055fc1d9c89a542de7e0872a3593f8830a82c6981eef8c",
+  "researchBriefId": null,
+  "researchBriefHash": null,
+  "sourceHash": "08cb7c9ca566dd156016ac067d405dad3bb973d4f95f37601ebee81d3ca5326a",
+  "historyHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "historyCount": 0,
+  "researcherChangedPaths": [
+    "controllers/solo12-balance-stand/controller.json"
+  ],
+  "changedPaths": [
+    "controllers/solo12-balance-stand/controller.json"
+  ],
+  "proposal": {
+    "strategy": "raise-joint-damping",
+    "hypothesis": "The baseline has ample torque headroom but the delayed/noisy diagonal case has the worst score, so additional joint damping should reduce post-impact velocity, jerk, and settling time without changing static support.",
+    "expectedEffect": "Improve delayed/noisy and lateral-push recovery quality while retaining nominal stance, zero saturation, and every gate."
+  },
+  "policyId": null,
+  "score": 84.74155623453215,
+  "delta": 0.08565328481181211,
+  "verdict": "KEEP",
+  "decision": {
+    "verdict": "KEEP",
+    "gateReasons": [],
+    "previousViolationCount": 0,
+    "candidateViolationCount": 0,
+    "previousViolationSeverity": 0,
+    "candidateViolationSeverity": 0,
+    "feasibilityImproved": false,
+    "severityImproved": false,
+    "scoreImproved": true,
+    "selectionReason": "score-improvement-within-feasibility-tier"
+  },
+  "revisionId": "quadruped-r-2d1e02112975",
+  "review": {
+    "status": "AVAILABLE",
+    "reviewHash": "cf50b1eea0f6fa49581a49b5c34149caa0e0cc78ca3759ee50fd96d34d4fa774",
+    "acceptedRunId": "run-d4f7446b5fa1c901",
+    "candidateRunId": "run-3865a1675cc825a5",
+    "caseId": "push-right"
+  },
+  "durationMs": 16902,
+  "completed": true
+}

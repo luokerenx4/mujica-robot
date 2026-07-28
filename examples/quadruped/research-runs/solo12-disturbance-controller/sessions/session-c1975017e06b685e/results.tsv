@@ -1,0 +1,4 @@
+sequence	experiment	policy	score	delta	violations	status	strategy	description
+1	001-b12f32c5771d	-	84.74155623453215	0.08565328481181211	0	keep	raise-joint-damping	The baseline has ample torque headroom but the delayed/noisy diagonal case has the worst score, so additional joint damping should reduce post-impact velocity, jerk, and settling time without changing static support.
+2	002-396974d38405	-	84.7630255427852	0.021469308253045938	0	keep	moderate-stiffness-damping	If damping alone is insufficient, a small stiffness increase paired with damping should reject peak deflection while staying far below the 2.5 Nm actuator limit.
+3	003-12db72bcfe98	-	84.76487148111102	0.0018459383258147	0	revert	soft-high-damping	If high stiffness is not rewarded, a slightly softer but more damped stance may dissipate the impulse with lower jerk and similar final stability.

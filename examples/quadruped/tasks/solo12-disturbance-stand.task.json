@@ -1,0 +1,29 @@
+{
+  "version": 6,
+  "id": "solo12-disturbance-stand",
+  "name": "Reject one bounded disturbance and regain a quiet Solo12 stance",
+  "durationSeconds": 3,
+  "controlHz": 1000,
+  "motionCommandSchedule": [
+    {
+      "atSeconds": 0,
+      "command": {
+        "frame": "world",
+        "linearVelocityMps": [0, 0],
+        "yawRateRadPerSec": 0
+      }
+    }
+  ],
+  "recoveryEvaluationStartSeconds": 0.9,
+  "mobilityMeasurementStartSeconds": 2.5,
+  "recoveryTarget": {
+    "minimumBaseHeightM": 0.16,
+    "maximumBodyTiltRad": 0.1,
+    "maximumLinearSpeedMps": 0.12,
+    "maximumAngularSpeedRadPerSec": 1,
+    "holdSeconds": 0.3
+  },
+  "healthyHeight": [0.12, 0.35],
+  "terminateOnFall": true,
+  "compatibleAssemblies": ["solo12-informed"]
+}

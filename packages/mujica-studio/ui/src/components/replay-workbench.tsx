@@ -74,24 +74,30 @@ function numberMetric(run: StudioRun, key: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-function isRecoveryRun(run: StudioRun): boolean {
-  return Boolean(run.metrics?.selfRightingTask);
+function stabilityKind(run: StudioRun): string | null {
+  const declared = run.metrics?.stabilityEvaluationKind;
+  if (typeof declared === "string") return declared;
+  return run.metrics?.selfRightingTask ? "self-righting" : null;
 }
 
-function recoveryLabel(run: StudioRun, row: TrajectoryRow | null): string {
+function stabilityLabel(run: StudioRun, row: TrajectoryRow | null): string {
   if (row?.recoveryStableLatched) return "Stable latched";
   if (row?.recoveryTargetSatisfied) return "Target holding";
-  return Number(run.metrics?.selfRightingSuccess) === 1 ? "Recovered" : "Not recovered";
+  const achieved = Boolean(run.metrics?.stabilityTargetAchieved)
+    || Number(run.metrics?.selfRightingSuccess) === 1;
+  if (!achieved) return "Not stable";
+  return run.metrics?.recoveryTriggered ? "Recovered" : "Stable throughout";
 }
 
 function evidenceStatus(run: StudioRun, row: TrajectoryRow | null): {
   label: string;
   variant: "success" | "destructive" | "warning";
 } {
-  if (isRecoveryRun(run)) {
-    const recovered = Number(run.metrics?.selfRightingSuccess) === 1;
+  if (stabilityKind(run)) {
+    const recovered = Boolean(run.metrics?.stabilityTargetAchieved)
+      || Number(run.metrics?.selfRightingSuccess) === 1;
     return {
-      label: recoveryLabel(run, row),
+      label: stabilityLabel(run, row),
       variant: recovered ? "success" : "destructive",
     };
   }
@@ -114,7 +120,7 @@ function telemetry(run: StudioRun, row: TrajectoryRow | null): Array<[string, st
     ["Foot slip", peak(quality?.footSlipSpeedMps)?.toFixed(3) ?? "—"],
     ["Contact impact", peak(quality?.footContactImpactNPerSec)?.toFixed(1) ?? "—"],
   ];
-  if (isRecoveryRun(run)) {
+  if (stabilityKind(run)) {
     cells.push(
       ["Fallen pose", row?.controllerTelemetry?.fallenPose ?? "unreported"],
       ["Recovery pose", row?.controllerTelemetry?.recoveryPose ?? "unreported"],
@@ -231,9 +237,11 @@ function RunReplayCard({
 }
 
 function OutcomeStrip({ sides }: { sides: ReplaySide[] }): React.JSX.Element {
-  const recovery = sides.some((side) => isRecoveryRun(side.run));
-  const keys = recovery
+  const kind = sides.map((side) => stabilityKind(side.run)).find(Boolean);
+  const keys = kind === "self-righting"
     ? ["selfRightingSuccess", "timeToStableStandSeconds", "finalBodyTiltRad", "minimumJointLimitMarginRad"]
+    : kind
+      ? ["maximumPlanarDisplacementM", "timeToStableStandSeconds", "maximumBodyTiltRad", "peakActuator"]
     : ["meanJointJerkRadPerSec3", "meanActionSlewRatePerSec", "meanFootSlipSpeedMps", "totalFootSlipDistanceM"];
   return (
     <div className="grid gap-3 md:grid-cols-4">
@@ -360,9 +368,13 @@ export function ReplayWorkbench({ selection }: { selection: StudioReplaySelectio
     );
   }
 
-  const recovery = sides.some((side) => isRecoveryRun(side.run));
-  const heading = recovery
+  const kind = sides.map((side) => stabilityKind(side.run)).find(Boolean);
+  const heading = kind === "self-righting"
     ? sides[1] ? "Self-righting morphology comparison" : "Self-righting robot replay"
+    : kind === "disturbance-recovery"
+      ? sides[1] ? "Disturbance-standing comparison" : "Disturbance-standing robot replay"
+      : kind === "standing"
+        ? sides[1] ? "Standing stability comparison" : "Standing stability replay"
     : sides[1] ? "Synchronized MuJoCo Run comparison" : "Authoritative MuJoCo robot replay";
   const events = sides
     .flatMap((side) => (side.run.events?.rows ?? []).map((event) => ({ side: side.key, event })))

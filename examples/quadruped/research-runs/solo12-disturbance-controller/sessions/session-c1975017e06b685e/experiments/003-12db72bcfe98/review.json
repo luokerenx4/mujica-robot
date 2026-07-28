@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "solo12-disturbance-controller",
+    "labHash": "8da8e819cd7a290cfffbff985e82b50948309c9e27622b56e52cac34fdfd39bb",
+    "programHash": "d40faa55344b86f7ddc3ae8bdaeeb9ef985a089815c1af5a7454c4addd9214a9",
+    "benchmarkLockHash": "45a33a7605d568e1a0055fc1d9c89a542de7e0872a3593f8830a82c6981eef8c",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-c1975017e06b685e",
+    "experimentId": "003-12db72bcfe98",
+    "experimentHash": "12db72bcfe98cda7c6a9191a01294747501fd0b6389042eec3917bab96f54e23"
+  },
+  "proposal": {
+    "strategy": "soft-high-damping",
+    "hypothesis": "If high stiffness is not rewarded, a slightly softer but more damped stance may dissipate the impulse with lower jerk and similar final stability.",
+    "expectedEffect": "Improve motion-quality costs while preserving recovery dwell, final height, and full survival."
+  },
+  "judge": {
+    "verdict": "REVERT",
+    "decision": {
+      "verdict": "REVERT",
+      "gateReasons": [],
+      "previousViolationCount": 0,
+      "candidateViolationCount": 0,
+      "previousViolationSeverity": 0,
+      "candidateViolationSeverity": 0,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": false,
+      "selectionReason": "no-lexicographic-improvement"
+    },
+    "decisionHash": "887d3a97e86f9143ed6bb8b05bff4108d1dd1ef6e19866bdb9e251c2848f011a"
+  },
+  "selectedCase": {
+    "benchmark": "solo12-disturbance-standing",
+    "id": "delayed-noisy-push",
+    "task": "solo12-disturbance-stand",
+    "scenario": "solo12-delayed-noisy-push",
+    "seed": 1208,
+    "weight": 1,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": 0.016585532077499465,
+    "weightedScoreDelta": 0.016585532077499465
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-126ba1d1402392e6",
+    "runKey": "126ba1d1402392e6e3f29c9c270af489364843bbae891468625446fd2f5f56ec",
+    "resultHash": "86b7531d56a793b034c4b290d7652fb5f4330a3d231571d89d456bf9406ca087",
+    "artifactHash": "7f3ef1c125b5566fc246b74bffb56eabaa1b55143a3c981e26d6f733ca8823bc",
+    "manifestHash": "ba2e3fd13f52d990fb514de352c7280c081443f564ffac548cf8e1e2c5c8a74e",
+    "metricsHash": "a87c09489190980742d3313e98bec6095ee95ffefaee0db7015f283bd7300a57",
+    "scoreHash": "be6af04fcf39f69931676f7fcffa6287e13d542f45a9ac3b3e1e64b4be058f65",
+    "assembly": "solo12-informed",
+    "controller": "solo12-balance-stand",
+    "score": 84.70606653696828
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-e3b55021c60d0c54",
+    "runKey": "e3b55021c60d0c54668efc6d10229aa1835faa98e909fc4530ccefe92b675475",
+    "resultHash": "c2268df2b7c31c09b4081285cfddc81186023e946aae60be8d90563040f254b0",
+    "artifactHash": "105788253ddeb32df0ea313edccfd34977287bded4b3423514db4a13b7eebce9",
+    "manifestHash": "cca4ce16d6cb9800ba21d202817a2c0a416d9d06e3339b5df43bc9930d08eed3",
+    "metricsHash": "71aa2ed0c288a1d49f90f824f9bf0ab2c78fc73747689d5f7be93c3ddbd267be",
+    "scoreHash": "58241f35e1c0178a352f3c67d5212f82ea42b3d517ab138457a8a6350ae260cc",
+    "assembly": "solo12-informed",
+    "controller": "solo12-balance-stand",
+    "score": 84.72265206904578
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

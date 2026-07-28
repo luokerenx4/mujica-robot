@@ -34,6 +34,7 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Solo12 disturbance-standing capability](plans/solo12-disturbance-standing.md) | Established an Assembly-qualified modern quadruped standing capability across nominal, four-direction disturbance, plant variation, and latency cases, then improved its readable Controller through Mujica's autonomous research loop. | 2026-07-28 |
 | [Solo12-informed quadruped baseline](plans/solo12-informed-baseline.md) | Exercised a traceable modern 12-DoF robot through Mujica, established its first honest standing evidence, and repaired the blocking Harness gaps found in use. | 2026-07-28 |
 | [Embodiment-first quadruped design cycle](plans/embodiment-first-quadruped-design-cycle.md) | Compared the demo-family embodiments, added static/dynamic mechanism evidence, and retired that family as the design north star after prior-art research selected a source-grounded successor. | 2026-07-28 |
 | [Project inception prior-art study](plans/project-inception-prior-art.md) | Required source- and license-verified architecture research before committing a new robot to iterative development, and selected a Solo12-informed quadruped adaptation. | 2026-07-28 |

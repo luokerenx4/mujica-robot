@@ -138,6 +138,18 @@ visual/collision hypothesis in design provenance. Never tune a Controller or
 start Training against a large initial constraint impulse before inspecting the
 named contact pair and deciding whether it is a real physical collision.
 
+Standing, disturbance recovery, and self-righting are different evidence
+semantics even when they share one stability target. Runtime and Studio must
+name which one is being evaluated. A robot that never left the stable envelope
+earns standing dwell without claiming self-righting; a push recovery must not be
+presented as a fallen-pose recovery.
+
+For a disturbance capability, final drift is not a substitute for transient
+containment. Preserve maximum displacement from the Episode's pre-disturbance
+base pose alongside final displacement, tilt, recovery time, contact, and
+actuator evidence. A Controller that returns to the origin after an excessive
+excursion has not passed a bounded-excursion gate.
+
 ## Change loop
 
 1. Read `PLANS.md` and the active plan for non-trivial work.

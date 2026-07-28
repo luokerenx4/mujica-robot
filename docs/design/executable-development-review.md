@@ -18,22 +18,28 @@ Each Review binds:
 
 - the exact Charter and morphology hashes;
 - the selected Assembly identity and Controller identity;
-- every unique Benchmark lock named by the Charter;
+- every Charter Benchmark lock applicable to the selected Assembly;
 - per-case metrics, scores, enforced gates, findings, and hypotheses;
 - compiled resource measurements and margins;
-- stage-level observed PASS/FAIL;
+- stage-level observed PASS/FAIL/NOT_EVALUATED;
 - the declared north-star stage and its observed result.
 
 Authored `planned`, `active`, and `accepted` statuses express development
-intent. Review `PASS` and `FAIL` express evidence for one exact subject. They
-are deliberately separate.
+intent. Review `PASS` and `FAIL` express evidence for one exact subject.
+`NOT_EVALUATED` means the stage has no Benchmark applicable to that subject; it
+is not silently treated as a failure or inherited success. These are
+deliberately separate.
 
 ## Stage semantics
 
 A Charter Task/Scenario pair is a human-facing witness into one Benchmark.
 Core validates that the pair exists. Review evaluates every gating case in each
-unique Benchmark named by the stage. This prevents a visually convenient
-witness from standing in for the complete locked test suite.
+stage Benchmark whose explicit `compatibleAssemblies` includes the selected
+Assembly. An omitted applicability list means only the Benchmark baseline
+Assembly. Unrelated witnesses carry `applicable: false`, no case result, and no
+pass/fail claim. This prevents both a visually convenient witness from standing
+in for the complete suite and a project containing multiple robot families from
+cross-running physically unrelated tests.
 
 Development-only witnesses remain useful context, but Benchmark `gating` is the
 only numerical release authority. Human observations remain hypotheses and do

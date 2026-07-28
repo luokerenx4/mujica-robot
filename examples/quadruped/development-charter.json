@@ -54,6 +54,74 @@
   },
   "capabilityStages": [
     {
+      "id": "source-grounded-standing",
+      "name": "Source-grounded disturbance standing",
+      "question": "Can the Solo12-informed robot remain upright and regain a quiet stance across nominal, four-direction push, payload, friction, noise, and delay cases?",
+      "status": "accepted",
+      "evidenceScopes": [
+        {
+          "assembly": "solo12-informed",
+          "controller": "solo12-balance-stand",
+          "benchmark": "solo12-disturbance-standing"
+        }
+      ],
+      "scenarios": [
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "nominal",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "regression"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-push-forward",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-push-backward",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-push-left",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-push-right",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-payload-push",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-low-friction-push",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        },
+        {
+          "task": "solo12-disturbance-stand",
+          "scenario": "solo12-delayed-noisy-push",
+          "benchmark": "solo12-disturbance-standing",
+          "role": "release"
+        }
+      ],
+      "exitCriteria": [
+        "Every enforced case survives with bounded transient displacement, body tilt, joint margin, actuator authority, and zero disallowed contact.",
+        "Every case reaches and holds the declared stability target after the common evaluation boundary.",
+        "The accepted Controller is judged against the exact Solo12 Assembly and locked Benchmark rather than inheriting demo-family capability."
+      ]
+    },
+    {
       "id": "command-foundation",
       "name": "Command-conditioned locomotion",
       "question": "Can the robot execute stop, forward, reverse, lateral, yaw, delay, and disturbance commands without gate violations?",

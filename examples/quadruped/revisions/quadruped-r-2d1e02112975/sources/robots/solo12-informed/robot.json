@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "id": "solo12-informed",
+  "name": "Solo12-informed clean-room 12-DoF quadruped",
+  "mjcf": "model.xml",
+  "mounts": [
+    { "id": "torso-sensor", "type": "sensor-bus", "site": "imu-site", "exclusive": false },
+    { "id": "torso-payload", "type": "payload-bay", "site": "payload-site", "exclusive": true },
+    { "id": "foot-array", "type": "foot-array", "site": "foot-array-site", "exclusive": true }
+  ],
+  "observations": [
+    { "name": "joint-position", "kind": "joint-position", "size": 12, "source": "qpos:joints", "unit": "rad" },
+    { "name": "joint-velocity", "kind": "joint-velocity", "size": 12, "source": "qvel:joints", "unit": "rad-s" },
+    { "name": "base-height", "kind": "body-state", "size": 1, "source": "qpos:root-height", "unit": "m" },
+    { "name": "base-orientation", "kind": "body-state", "size": 4, "source": "qpos:root-quaternion", "unit": "quaternion" },
+    { "name": "base-velocity", "kind": "body-state", "size": 6, "source": "qvel:root", "unit": "mixed" }
+  ],
+  "actions": [
+    { "name": "joint-torque", "kind": "actuator", "size": 12, "source": "actuator:all", "unit": "nm", "low": -2.5, "high": 2.5 }
+  ],
+  "massKg": 2.501304,
+  "license": "Apache-2.0",
+  "attribution": "Original Mujica primitive-geometry MJCF adapted from traceable ODRI Solo12 dimensions and mass properties; contains no copied upstream meshes, CAD, images, or source files",
+  "designProvenance": {
+    "basis": "adapted",
+    "sources": [
+      {
+        "id": "odri-solo12-hardware",
+        "role": "architecture",
+        "url": "https://github.com/open-dynamic-robot-initiative/open_robot_actuator_hardware",
+        "revision": "66af1522b4fba0ec4a1d7790e66f5e4652208d30",
+        "license": "BSD-3-Clause",
+        "inspectedPaths": [
+          "mechanics/quadruped_robot_12dof_v1/README.md",
+          "mechanics/leg_3dof_v1/README.md",
+          "mechanics/actuator_module_v1/README.md"
+        ]
+      },
+      {
+        "id": "odri-solo12-model",
+        "role": "mass-properties",
+        "url": "https://github.com/open-dynamic-robot-initiative/robot_properties_solo",
+        "revision": "2201f454f4caffa0cad307fa8cbd1d64dd844008",
+        "license": "BSD-3-Clause",
+        "inspectedPaths": [
+          "src/robot_properties_solo/resources/xacro/solo12.urdf.xacro",
+          "src/robot_properties_solo/resources/xacro/leg.xacro",
+          "src/robot_properties_solo/config.py"
+        ]
+      },
+      {
+        "id": "mujoco-menagerie-go2",
+        "role": "simulation-reference",
+        "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go2",
+        "revision": "71f066ad0be9cd271f7ed58c030243ef157af9f4",
+        "license": "BSD-3-Clause",
+        "inspectedPaths": [
+          "unitree_go2/go2.xml",
+          "unitree_go2/scene.xml",
+          "unitree_go2/README.md",
+          "unitree_go2/LICENSE"
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "kinematic-dimensions",
+        "status": "sourced",
+        "statement": "Hip locations and the 160 mm upper/lower link lengths follow the inspected Solo12 Xacro dimensions.",
+        "sourceIds": ["odri-solo12-model"],
+        "validation": "Compile the MJCF and compare authored joint/site transforms against the source dimensions."
+      },
+      {
+        "id": "mass-properties",
+        "status": "derived",
+        "statement": "Body and link masses and diagonal inertias are transcribed from the Solo12 Xacro; small off-diagonal inertia terms are omitted in this first clean-room model.",
+        "sourceIds": ["odri-solo12-model"],
+        "validation": "Compare aggregate mass and principal inertias, then replace the approximation only if dynamic sensitivity warrants it."
+      },
+      {
+        "id": "actuator-envelope",
+        "status": "sourced",
+        "statement": "The 2.5 Nm action envelope follows the ODRI actuator module's documented 12 A output.",
+        "sourceIds": ["odri-solo12-hardware"],
+        "validation": "Keep the Runtime action clip at 2.5 Nm and test standing authority before changing the limit."
+      },
+      {
+        "id": "conservative-joint-envelope",
+        "status": "derived",
+        "statement": "HAA is conservatively bounded inside the documented 215-degree standard range; HFE and KFE are limited to one bounded working revolution despite the hardware's multi-rotation capability and cable constraint.",
+        "sourceIds": ["odri-solo12-hardware", "odri-solo12-model"],
+        "validation": "Static studies must report joint margin in every required pose; hardware cable routing must be reviewed before widening limits."
+      },
+      {
+        "id": "primitive-collision-envelope",
+        "status": "hypothesis",
+        "statement": "Primitive torso, actuator-pod, link, and foot collision shapes conservatively represent the open hardware without copying its meshes.",
+        "sourceIds": [],
+        "validation": "Human visual review plus collision-free standing/fall Design Studies; later compare selected clearances against licensed CAD if exact assets are intentionally imported."
+      },
+      {
+        "id": "contact-numerics",
+        "status": "hypothesis",
+        "statement": "A 1 kHz implicit-fast integration step and elliptic contact cone are used as a conservative numerical baseline for the lightweight, low-inertia limbs.",
+        "sourceIds": [],
+        "validation": "Require a bounded home-stand probe and later run timestep/contact sensitivity before treating dynamic scores as architecture evidence."
+      },
+      {
+        "id": "self-righting-feasibility",
+        "status": "hypothesis",
+        "statement": "A realistic 12-DoF architecture offers a more credible recovery mechanism than the demo fixture, but no self-righting capability is assumed.",
+        "sourceIds": [],
+        "validation": "Run identical static and readable-controller probes from left, right, front, and back resting poses."
+      }
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "solo12-disturbance-standing",
+  "name": "Solo12 bounded disturbance rejection",
+  "weights": {
+    "survival": 50,
+    "velocityTracking": 5,
+    "upright": 30,
+    "planarExcursion": 5,
+    "energy": 0.02,
+    "smoothness": 0.01,
+    "componentMass": 0,
+    "sensorChannels": 0,
+    "trainingSteps": 0,
+    "jointJerk": 0.000001,
+    "bodyAngularJerk": 0.00001,
+    "actionSlew": 0.0001,
+    "actuatorSaturation": 2,
+    "footSlip": 1,
+    "footImpact": 0
+  },
+  "gates": {
+    "minimumSurvivalRate": 1,
+    "maximumBackwardDisplacement": 0.15,
+    "maximumAbsolutePitchRad": 0.45,
+    "maximumAbsolutePitchRateRadPerSec": 6,
+    "maximumBodyTiltRad": 0.45,
+    "maximumLateralDrift": 0.15,
+    "maximumPlanarDisplacementM": 0.08,
+    "maximumActuatorSaturationRate": 0.01,
+    "maximumTimeToStableStandSeconds": 1.5,
+    "minimumStableStandingDwellSeconds": 0.5,
+    "maximumFinalBodyTiltRad": 0.1,
+    "minimumFinalBaseHeightM": 0.16,
+    "minimumJointLimitMarginRad": 0.1,
+    "maximumPeakActuator": 2.5,
+    "maximumDisallowedCollisionSteps": 0,
+    "maximumRegression": 0
+  }
+}

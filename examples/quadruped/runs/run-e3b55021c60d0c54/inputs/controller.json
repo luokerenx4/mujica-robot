@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "id": "solo12-balance-stand",
+  "name": "Solo12 disturbance-standing Controller candidate",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {
+        "name": "joint-position",
+        "size": 12
+      },
+      {
+        "name": "joint-velocity",
+        "size": 12
+      }
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 12,
+        "low": -2.5,
+        "high": 2.5
+      }
+    ]
+  },
+  "config": {
+    "kp": 4.5,
+    "kd": 0.22,
+    "maximumTorqueNm": 2.5,
+    "target": [
+      0,
+      0.8,
+      -1.6,
+      0,
+      0.8,
+      -1.6,
+      0,
+      -0.8,
+      1.6,
+      0,
+      -0.8,
+      1.6
+    ]
+  },
+  "smokeTest": {
+    "assembly": "solo12-informed",
+    "task": "solo12-disturbance-stand",
+    "scenario": "solo12-delayed-noisy-push",
+    "objective": "solo12-disturbance-standing"
+  }
+}

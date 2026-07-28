@@ -20,7 +20,7 @@ from mujica_runtime.environment import RecoveryRelapseTracker, RobotEnvironment,
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
 from mujica_runtime.io import hash_directory, hash_file, hash_json
 from mujica_runtime.replay import RENDERER_ID, render_replay
-from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, transition_response_metrics
+from mujica_runtime.simulation import active_mission_phase, episode_survival_rate, mission_phase_metrics, motion_metrics, motion_quality_metrics, quaternion_body_tilt, quaternion_pitch, read_controller_telemetry, recovery_relapse_events, score_metrics, simulate, transition_response_metrics
 from mujica_runtime.state_abi import STATE_ABI_KIND, describe_state
 from mujica_runtime.training import PPOTrainer, assert_domain_profile_plant_compatible, authored_lateral_impact, compile_bilateral_symmetry, deterministic_checkpoint_rank, diagonal_gaussian_reverse_kl, effective_action_transform, masked_mean, mission_outcome_sample, mission_prefix_end_seconds, mission_progression_episode_limit, mission_reward_bonus, normalize_masked_advantages, quality_reward_penalty, record_mission_outcome_step, recovery_reward_bonus, sample_domain_profile, select_curriculum_index, select_progression_index, summarize_domain_samples, summarize_intervention_timing, summarize_lateral_impact_pairs, summarize_mission_outcomes
 from mujica_runtime.twin_audit import AUDITOR_ID, audit_twin
@@ -1455,6 +1455,136 @@ class RuntimeContractTest(unittest.TestCase):
         environment.data.qpos[2] = 0.01
         result = environment.step(np.zeros(environment.model.nu))
         self.assertFalse(result.terminated)
+
+    def test_nominal_standing_records_stability_without_claiming_self_righting(self):
+        model, compiled = compiled_assembly("solo12-informed")
+        controller_root = PROJECT / "controllers" / "solo12-home-stand"
+        controller = json.loads((controller_root / "controller.json").read_text())
+        task = json.loads(
+            (PROJECT / "tasks" / "solo12-disturbance-stand.task.json").read_text()
+        )
+        scenario = json.loads(
+            (PROJECT / "scenarios" / "nominal.scenario.json").read_text()
+        )
+        objective = json.loads(
+            (
+                PROJECT
+                / "objectives"
+                / "solo12-disturbance-standing.objective.json"
+            ).read_text()
+        )
+        result = simulate(
+            {
+                "runtimeVersion": "test-runtime",
+                "runtimeSourceHash": "test-runtime-source",
+                "harnessSourceHash": "test-harness-source",
+                "projectDir": str(PROJECT),
+                "modelPath": str(model),
+                "compiled": compiled,
+                "controller": controller,
+                "controllerRoot": str(controller_root),
+                "controllerHash": hash_directory(controller_root),
+                "task": task,
+                "scenario": scenario,
+                "objective": objective,
+                "seed": 1201,
+            },
+            persist=False,
+        )
+        self.assertFalse(result["metrics"]["recoveryTriggered"])
+        self.assertEqual(result["metrics"]["selfRightingSuccess"], 0)
+        self.assertEqual(
+            result["metrics"]["stabilityEvaluationKind"],
+            "standing",
+        )
+        self.assertTrue(result["metrics"]["stabilityTargetAchieved"])
+        self.assertLess(
+            result["metrics"]["maximumPlanarDisplacementM"],
+            0.001,
+        )
+        self.assertAlmostEqual(
+            result["metrics"]["timeToStableStandSeconds"],
+            0,
+            places=6,
+        )
+        self.assertGreaterEqual(
+            result["metrics"]["stableStandingDwellSeconds"],
+            2,
+        )
+        self.assertTrue(
+            any(
+                event["type"] == "robot.standing-stable"
+                for event in result["events"]
+            )
+        )
+        self.assertFalse(
+            any(
+                event["type"] == "robot.self-righted"
+                for event in result["events"]
+            )
+        )
+
+    def test_push_recovery_restores_stability_without_claiming_self_righting(self):
+        model, compiled = compiled_assembly("solo12-informed")
+        controller_root = PROJECT / "controllers" / "solo12-home-stand"
+        result = simulate(
+            {
+                "runtimeVersion": "test-runtime",
+                "runtimeSourceHash": "test-runtime-source",
+                "harnessSourceHash": "test-harness-source",
+                "projectDir": str(PROJECT),
+                "modelPath": str(model),
+                "compiled": compiled,
+                "controller": json.loads(
+                    (controller_root / "controller.json").read_text()
+                ),
+                "controllerRoot": str(controller_root),
+                "controllerHash": hash_directory(controller_root),
+                "task": json.loads(
+                    (
+                        PROJECT
+                        / "tasks"
+                        / "solo12-disturbance-stand.task.json"
+                    ).read_text()
+                ),
+                "scenario": json.loads(
+                    (
+                        PROJECT
+                        / "scenarios"
+                        / "solo12-push-left.scenario.json"
+                    ).read_text()
+                ),
+                "objective": json.loads(
+                    (
+                        PROJECT
+                        / "objectives"
+                        / "solo12-disturbance-standing.objective.json"
+                    ).read_text()
+                ),
+                "seed": 1204,
+            },
+            persist=False,
+        )
+        self.assertTrue(result["metrics"]["recoveryTriggered"])
+        self.assertFalse(result["metrics"]["selfRightingTask"])
+        self.assertEqual(result["metrics"]["selfRightingSuccess"], 0)
+        self.assertEqual(
+            result["metrics"]["stabilityEvaluationKind"],
+            "disturbance-recovery",
+        )
+        self.assertTrue(result["metrics"]["stabilityTargetAchieved"])
+        self.assertTrue(
+            any(
+                event["type"] == "robot.stability-restored"
+                for event in result["events"]
+            )
+        )
+        self.assertFalse(
+            any(
+                event["type"] == "robot.self-righted"
+                for event in result["events"]
+            )
+        )
 
     def test_scheduled_recovery_task_keeps_exact_post_recovery_command_boundary(self):
         task = json.loads((PROJECT / "tasks" / "recover-forward.task.json").read_text())

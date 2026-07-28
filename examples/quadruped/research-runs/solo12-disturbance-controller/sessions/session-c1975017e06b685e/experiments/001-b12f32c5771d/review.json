@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "kind": "mujica-research-review",
+  "authority": "derived-human-review",
+  "claimKind": "visual-witness",
+  "lineage": {
+    "researchId": "solo12-disturbance-controller",
+    "labHash": "8da8e819cd7a290cfffbff985e82b50948309c9e27622b56e52cac34fdfd39bb",
+    "programHash": "d40faa55344b86f7ddc3ae8bdaeeb9ef985a089815c1af5a7454c4addd9214a9",
+    "benchmarkLockHash": "45a33a7605d568e1a0055fc1d9c89a542de7e0872a3593f8830a82c6981eef8c",
+    "researchBriefId": null,
+    "researchBriefHash": null,
+    "observationIds": [],
+    "sessionId": "session-c1975017e06b685e",
+    "experimentId": "001-b12f32c5771d",
+    "experimentHash": "b12f32c5771d949ae75a7b86927526e41857704e6ac21bcd8a8435eab87239b0"
+  },
+  "proposal": {
+    "strategy": "raise-joint-damping",
+    "hypothesis": "The baseline has ample torque headroom but the delayed/noisy diagonal case has the worst score, so additional joint damping should reduce post-impact velocity, jerk, and settling time without changing static support.",
+    "expectedEffect": "Improve delayed/noisy and lateral-push recovery quality while retaining nominal stance, zero saturation, and every gate."
+  },
+  "judge": {
+    "verdict": "KEEP",
+    "decision": {
+      "verdict": "KEEP",
+      "gateReasons": [],
+      "previousViolationCount": 0,
+      "candidateViolationCount": 0,
+      "previousViolationSeverity": 0,
+      "candidateViolationSeverity": 0,
+      "feasibilityImproved": false,
+      "severityImproved": false,
+      "scoreImproved": true,
+      "selectionReason": "score-improvement-within-feasibility-tier"
+    },
+    "decisionHash": "8d6aa64ab08bea93aef6a444fa7d282b326df16ec46168790f947b6c821d74cb"
+  },
+  "selectedCase": {
+    "benchmark": "solo12-disturbance-standing",
+    "id": "push-right",
+    "task": "solo12-disturbance-stand",
+    "scenario": "solo12-push-right",
+    "seed": 1205,
+    "weight": 1.5,
+    "gating": true,
+    "selectionPolicy": "largest-absolute-weighted-score-delta",
+    "selectionReason": "Largest absolute primary-case score contribution change between the accepted state and candidate.",
+    "candidateScoreDelta": 0.1089148292984845,
+    "weightedScoreDelta": 0.16337224394772676
+  },
+  "accepted": {
+    "role": "accepted",
+    "id": "run-d4f7446b5fa1c901",
+    "runKey": "d4f7446b5fa1c9017483ae3f15d357e3eac008624cc9f24ecde5f50ba30341e1",
+    "resultHash": "815358af4b9a4f5a0bab651a0be0f9c9c6004ead74c9405b15c4bf01ab43e0a6",
+    "artifactHash": "6de577f0430f4d0c93d6c4fd0daa7c9fc1bfe267f9e9f7651b962eb8428bbc26",
+    "manifestHash": "2a26166c5bfc36034024020f0695e0d6f8d42ed4f7ec0a8b45c0728f719903f0",
+    "metricsHash": "ff0b0f93e5ee5bfa73d9e452d44c919d278ab8a6b8ba8426492a94f0ca3fad96",
+    "scoreHash": "bb3695257c9df1933ac881153edd203a70e56df9bf67b0ddfc0b2dda4434b32a",
+    "assembly": "solo12-informed",
+    "controller": "solo12-balance-stand",
+    "score": 84.55975065660907
+  },
+  "candidate": {
+    "role": "candidate",
+    "id": "run-3865a1675cc825a5",
+    "runKey": "3865a1675cc825a52cf25f79da93273984f338452239713e28ced03df63e096e",
+    "resultHash": "e362d8484d89329e41936bf9985a44c97d0df05b76096799a8a18538bff21c12",
+    "artifactHash": "a0da1ab25663fcca55d198b80ca193ddc85cb76a7562cb594bef7c0ad6ecaef9",
+    "manifestHash": "bb63fbf87381c7946cc7daa19a9eb3c0e5a392da86be8f1dd7c2942ed5e1a6a5",
+    "metricsHash": "82f55b5f2b7f09e27cc62404ad47b9fd5073ce1218088e2f730589b94736ec40",
+    "scoreHash": "35125cc1be47c02b42e2f3257350189d762823dbae06b0953110ffc28f05c224",
+    "assembly": "solo12-informed",
+    "controller": "solo12-balance-stand",
+    "score": 84.66866548590755
+  },
+  "authorityBoundary": {
+    "visualInterpretation": "hypothesis-only",
+    "simulationEvidence": "immutable-runs",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed"
+  }
+}

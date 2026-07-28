@@ -627,7 +627,7 @@ export const domainProfileSchema = z.object({
 export const objectiveSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1),
   weights: z.object({
-    survival: z.number(), velocityTracking: z.number(), forwardProgress: z.number().default(0), upright: z.number(), lateralDrift: z.number().default(0),
+    survival: z.number(), velocityTracking: z.number(), forwardProgress: z.number().default(0), upright: z.number(), lateralDrift: z.number().default(0), planarExcursion: z.number().default(0),
     transitionTracking: z.number().default(0), energy: z.number(), smoothness: z.number(), componentMass: z.number(), sensorChannels: z.number(), trainingSteps: z.number(),
     jointJerk: z.number().default(0), bodyAngularJerk: z.number().default(0), actionSlew: z.number().default(0),
     actuatorSaturation: z.number().default(0), footSlip: z.number().default(0), footImpact: z.number().default(0),
@@ -640,7 +640,7 @@ export const objectiveSchema = z.object({
     minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
     minimumSignedForwardProgress: z.number().finite().default(-1_000_000), maximumBackwardDisplacement: z.number().nonnegative().default(1_000_000),
     maximumBackwardPitchRad: z.number().nonnegative().default(1_000_000), maximumAbsolutePitchRad: z.number().nonnegative().default(1_000_000), maximumAbsolutePitchRateRadPerSec: z.number().nonnegative().default(1_000_000), maximumBodyTiltRad: z.number().nonnegative().default(1_000_000),
-    maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumPlanarVelocityTrackingError: z.number().nonnegative().default(1_000_000),
+    maximumLateralDrift: z.number().nonnegative().default(1_000_000), maximumPlanarDisplacementM: z.number().nonnegative().default(1_000_000), maximumPlanarVelocityTrackingError: z.number().nonnegative().default(1_000_000),
     maximumYawRateTrackingError: z.number().nonnegative().default(1_000_000),
     maximumTransitionTerminalPlanarTrackingError: z.number().nonnegative().default(1_000_000), maximumTransitionTerminalYawRateTrackingError: z.number().nonnegative().default(1_000_000),
     maximumPlanarSettlingTimeSeconds: z.number().nonnegative().default(1_000_000), maximumPlanarBrakingSettlingTimeSeconds: z.number().nonnegative().default(1_000_000),
@@ -669,13 +669,14 @@ const benchmarkCaseSchema = z.object({ id: idSchema, task: idSchema, scenario: i
 const benchmarkBase = {
   id: idSchema, name: z.string().min(1), objective: idSchema,
   baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(),
+  compatibleAssemblies: z.array(idSchema).min(1)
+    .refine((ids) => new Set(ids).size === ids.length, "compatible Assembly ids must be unique")
+    .optional(),
   cases: z.array(benchmarkCaseSchema).min(1),
 };
 
 export const benchmarkSchema = z.union([z.object({
-  version: z.literal(1), id: idSchema, name: z.string().min(1), objective: idSchema,
-  baseline: z.object({ assembly: idSchema, controller: idSchema }).strict(),
-  cases: z.array(benchmarkCaseSchema).min(1),
+  version: z.literal(1), ...benchmarkBase,
 }).strict(), z.object({
   version: z.literal(2), ...benchmarkBase,
   kind: z.literal("mission-suite"),
@@ -684,7 +685,15 @@ export const benchmarkSchema = z.union([z.object({
     (capabilities) => new Set(capabilities).size === capabilities.length,
     "required capabilities must be unique",
   ),
-}).strict()]);
+}).strict()]).superRefine((benchmark, context) => {
+  if (benchmark.compatibleAssemblies && !benchmark.compatibleAssemblies.includes(benchmark.baseline.assembly)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["compatibleAssemblies"],
+      message: "must include the baseline Assembly",
+    });
+  }
+});
 
 export const trainerSchema = z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("ppo"), entry: relativeFileSchema, model: relativeFileSchema }).strict();
 
@@ -1249,9 +1258,9 @@ export const developmentReviewSchema = z.object({
     id: idSchema,
     name: z.string().min(1),
     authoredStatus: z.enum(["planned", "active", "accepted"]),
-    observedStatus: z.enum(["PASS", "FAIL"]),
+    observedStatus: z.enum(["PASS", "FAIL", "NOT_EVALUATED"]),
     benchmarks: z.array(z.object({ id: idSchema, status: z.enum(["PASS", "FAIL"]), lockHash: sha256Schema, violationCount: z.number().int().nonnegative() }).strict()),
-    witnesses: z.array(z.object({ task: idSchema, scenario: idSchema, benchmark: idSchema, role: z.enum(["development", "regression", "release"]), cases: z.array(idSchema), passed: z.boolean() }).strict()),
+    witnesses: z.array(z.object({ task: idSchema, scenario: idSchema, benchmark: idSchema, role: z.enum(["development", "regression", "release"]), applicable: z.boolean(), cases: z.array(idSchema), passed: z.boolean().nullable() }).strict()),
     exitCriteria: z.array(z.string().min(1)),
   }).strict()),
   northStar: z.object({
@@ -1263,8 +1272,8 @@ export const developmentReviewSchema = z.object({
     numericalSatisfied: z.boolean(),
     humanReviewStatus: z.enum(["REQUIRED", "NOT_REQUIRED"]),
     designPassed: z.boolean(),
-    stageStatus: z.enum(["PASS", "FAIL"]),
-    benchmarkStatus: z.enum(["PASS", "FAIL"]),
+    stageStatus: z.enum(["PASS", "FAIL", "NOT_EVALUATED"]),
+    benchmarkStatus: z.enum(["PASS", "FAIL", "NOT_EVALUATED"]),
   }).strict(),
   summary: z.object({
     status: z.enum(["NORTH_STAR_SATISFIED", "HUMAN_REVIEW_REQUIRED", "DEVELOPMENT_REQUIRED"]),

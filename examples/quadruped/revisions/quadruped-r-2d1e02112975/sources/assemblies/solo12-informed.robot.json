@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "solo12-informed",
+  "name": "Solo12-informed 12-DoF quadruped with command, IMU, and foot sensing",
+  "base": "solo12-informed",
+  "components": [
+    { "id": "body-imu", "component": "body-imu", "mount": "torso-sensor" },
+    { "id": "motion-command-input", "component": "motion-command-input", "mount": "torso-sensor" },
+    { "id": "foot-force-kit", "component": "foot-force-sensor", "mount": "foot-array" }
+  ]
+}

@@ -413,6 +413,7 @@ def score_metrics(metrics: dict[str, Any], objective: dict[str, Any], compiled: 
         "forwardProgress": weights.get("forwardProgress", 0.0) * metrics["forwardProgress"],
         "upright": weights["upright"] * metrics["meanUpright"],
         "lateralDrift": -weights.get("lateralDrift", 0.0) * metrics["lateralDrift"],
+        "planarExcursion": -weights.get("planarExcursion", 0.0) * metrics.get("maximumPlanarDisplacementM", 0.0),
         "transitionTracking": weights.get("transitionTracking", 0.0) * (1.0 / (1.0 + transient_burden)),
         "energy": -weights["energy"] * metrics["meanEnergy"],
         "smoothness": -weights["smoothness"] * metrics["meanSmoothness"],
@@ -500,6 +501,14 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         tuple[str, str], dict[str, Any]
     ] = {}
     recovery_target = request["task"].get("recoveryTarget")
+    stability_evaluation_kind = (
+        "self-righting"
+        if request["scenario"].get("initialBasePose") is not None
+        else "disturbance-recovery"
+        if request["scenario"].get("externalPush") is not None
+        or request["scenario"].get("lateralPush") is not None
+        else "standing"
+    )
     recovery_evaluation_start = (
         None
         if int(request["task"]["version"]) == 8
@@ -644,7 +653,13 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                     "height": float(environment.data.qpos[2]),
                     "bodyTiltRad": body_tilt,
                 })
-            if recovery_target_satisfied and recovery_triggered:
+            # Standing quality is evidence even when the robot was already
+            # inside the target envelope when evaluation began.  Previously
+            # this counter advanced only after a recovery violation, which
+            # made a nominally stable standing case report zero dwell and the
+            # full episode as its time-to-stable value.  Keep
+            # ``recovery_triggered`` as the separate self-righting witness.
+            if recovery_target_satisfied:
                 if recovery_stable_steps == 0:
                     recovery_entered_at = float(environment.data.time)
                     environment.events.append({"type": "robot.recovery-target-entered", "time": recovery_entered_at})
@@ -655,13 +670,19 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                         float(recovery_entered_at) - float(recovery_evaluation_start)
                     )
                     environment.events.append({
-                        "type": "robot.self-righted",
+                        "type": (
+                            "robot.self-righted"
+                            if stability_evaluation_kind == "self-righting"
+                            else "robot.stability-restored"
+                            if recovery_triggered
+                            else "robot.standing-stable"
+                        ),
                         "time": float(environment.data.time),
                         "stableSince": recovery_entered_at,
                         "recoveryElapsedSeconds": time_to_stable_stand,
                         "requiredDwellSeconds": float(recovery_target["holdSeconds"]),
                     })
-            elif recovery_triggered:
+            else:
                 if recovery_stable_steps > 0:
                     environment.events.append({"type": "robot.recovery-target-exited", "time": float(environment.data.time), "stableSince": recovery_entered_at})
                 recovery_stable_steps = 0
@@ -726,15 +747,22 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
             fell = True
             environment.events.append({"type": "robot.fall", "time": float(environment.data.time), "height": info["height"]})
         if result.terminated or result.truncated: break
-    self_righted_at = next(
+    stability_achieved_at = next(
         (
             float(event["time"])
             for event in environment.events
-            if event["type"] == "robot.self-righted"
+            if event["type"] in (
+                "robot.self-righted",
+                "robot.stability-restored",
+            )
         ),
         None,
     )
-    relapse_events = recovery_relapse_events(trajectory, self_righted_at, request["task"])
+    relapse_events = recovery_relapse_events(
+        trajectory,
+        stability_achieved_at,
+        request["task"],
+    )
     environment.events.extend(relapse_events)
     environment.events.sort(key=lambda event: float(event.get("time", 0.0)))
     steps = max(1, environment.step_index)
@@ -785,8 +813,16 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "maximumAbsolutePitchRad": maximum_absolute_pitch, "maximumAbsolutePitchRateRadPerSec": maximum_absolute_pitch_rate,
         "meanBodyTiltRad": body_tilt_total / steps, "maximumBodyTiltRad": maximum_body_tilt,
         "initialBodyTiltRad": initial_body_tilt, "minimumBodyTiltRad": minimum_body_tilt, "finalBodyTiltRad": quaternion_body_tilt(environment.data.qpos[3:7]), "finalBaseHeightM": float(environment.data.qpos[2]),
-        "selfRightingTask": recovery_target is not None, "recoveryTriggered": recovery_triggered,
-        "selfRightingSuccess": 1.0 if recovery_triggered and time_to_stable_stand is not None else 0.0,
+        "selfRightingTask": recovery_target is not None
+        and stability_evaluation_kind == "self-righting",
+        "stabilityTargetDeclared": recovery_target is not None,
+        "stabilityEvaluationKind": stability_evaluation_kind if recovery_target is not None else None,
+        "stabilityTargetAchieved": time_to_stable_stand is not None,
+        "recoveryTriggered": recovery_triggered,
+        "selfRightingSuccess": 1.0
+        if stability_evaluation_kind == "self-righting"
+        and time_to_stable_stand is not None
+        else 0.0,
         "timeToStableStandSeconds": time_to_stable_stand if time_to_stable_stand is not None else float(request["task"]["durationSeconds"]) - float(recovery_evaluation_start or 0.0),
         "stableStandingDwellSeconds": maximum_recovery_stable_steps / float(request["task"]["controlHz"]),
         "finalStableStandingDwellSeconds": recovery_stable_steps / float(request["task"]["controlHz"]),
@@ -809,6 +845,25 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         ),
         "policyResidualGateEntryCount": residual_gate_entries,
         "policyResidualGateExitCount": residual_gate_exits,
+        "maximumPlanarDisplacementM": max(
+            (
+                float(
+                    np.linalg.norm(
+                        np.asarray(row["qpos"][:2], dtype=np.float64)
+                        - initial_position[:2]
+                    )
+                )
+                for row in trajectory
+            ),
+            default=0.0,
+        ),
+        "maximumPlanarSpeedMps": max(
+            (
+                float(np.linalg.norm(np.asarray(row["qvel"][:2], dtype=np.float64)))
+                for row in trajectory
+            ),
+            default=0.0,
+        ),
         **quality_metrics,
         **transition_metrics,
         **motion_metrics(

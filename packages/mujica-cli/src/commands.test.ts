@@ -599,15 +599,15 @@ describe("agent CLI contract", () => {
     expect(JSON.parse(inspected.stdout).data.developmentReviews).toContain(data.id);
   }, 20_000);
 
-  test("routes integrated Mission blockers without granting promotion authority", () => {
+  test("does not route another Assembly family's blockers or research lanes", () => {
     const result = invoke(["project", "work", "examples/quadruped", "--json"]);
     expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout).data;
     expect(data.workOrder).toMatchObject({
       kind: "mujica-development-work-order",
       project: "quadruped",
-      status: "READY",
-      subject: { assembly: "resilient-command-conditioned-waist-3dof", controller: "articulated-behavior-supervisor" },
+      status: "NO_ELIGIBLE_LANES",
+      subject: { assembly: "solo12-informed", controller: "solo12-balance-stand" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -615,25 +615,8 @@ describe("agent CLI contract", () => {
         northStarClaim: "new-development-review-required",
       },
     });
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "self-righting" && item.case === "back")).toBeDefined();
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "integrated-resilience-mission" && item.case === "impact-left-degraded")).toBeDefined();
-    expect(data.workOrder.blockers.find((item: any) => item.benchmark === "sim-to-real-audit" && item.case === "light-strong")).toBeDefined();
-    expect(data.workOrder.lanes.map((item: any) => item.researchLab)).toEqual([
-      "integrated-resilience-waist-design",
-      "articulated-resilience-controller",
-      "articulated-brace-locomotion-policy",
-      "articulated-inverted-escape-policy",
-    ]);
-    expect(data.workOrder.lanes.find((item: any) => item.researchLab === "articulated-brace-locomotion-policy").baseline).toMatchObject({
-      mode: "policy-head",
-      controller: "articulated-brace-locomotion-policy",
-      issues: [],
-    });
-    expect(data.workOrder.lanes.find((item: any) => item.researchLab === "articulated-inverted-escape-policy").baseline).toMatchObject({
-      mode: "reference-controller-retrain",
-      controller: "articulated-behavior-supervisor",
-      issues: ["execution"],
-    });
+    expect(data.workOrder.blockers).toEqual([]);
+    expect(data.workOrder.lanes).toEqual([]);
     expect(data.workOrder.uncoveredSurfaces).toEqual([]);
     expect(data.workOrderHash).toBe(hashJson(data.workOrder));
     expect(invoke(["project", "work", "examples/quadruped", "--review", data.workOrder.review.id, "--json"]).code).toBe(0);
@@ -1665,7 +1648,7 @@ describe("agent CLI contract", () => {
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);
     expect(envelope.data.definitions.trainingResearch).toBe(4);
-    expect(envelope.data.definitions.researchLabs).toBe(19);
+    expect(envelope.data.definitions.researchLabs).toBe(20);
     expect(envelope.data.definitions.hardwareTargets).toBe(2);
     expect(envelope.data.definitions.domainProfiles).toBe(7);
     expect(envelope.data.definitions.calibrations).toBe(2);

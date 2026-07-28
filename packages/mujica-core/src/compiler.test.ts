@@ -55,39 +55,33 @@ describe("Robot Assembly compiler", () => {
     const workPointer = JSON.parse(await readFile(join(project, "development-work-orders/current.json"), "utf8"));
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
     expect(review.subject).toMatchObject({
-      assembly: "resilient-command-conditioned-waist-3dof",
-      controller: "articulated-behavior-supervisor",
+      assembly: "solo12-informed",
+      controller: "solo12-balance-stand",
     });
-    expect(review.summary.worstCase).toMatchObject({ benchmark: "integrated-resilience-mission", case: "impact-left-degraded" });
+    expect(review.summary).toMatchObject({
+      passedStages: 1,
+      violationCount: 0,
+      worstCase: null,
+    });
+    expect(review.stages.find((stage) => stage.id === "source-grounded-standing")).toMatchObject({
+      observedStatus: "PASS",
+    });
+    expect(review.stages.find((stage) => stage.id === "continuous-resilience")).toMatchObject({
+      observedStatus: "NOT_EVALUATED",
+    });
     expect(review.northStar).toMatchObject({
       stage: "continuous-resilience",
       benchmark: "integrated-resilience-mission",
       satisfied: false,
       numericalSatisfied: false,
       humanReviewStatus: "REQUIRED",
+      stageStatus: "NOT_EVALUATED",
+      benchmarkStatus: "NOT_EVALUATED",
     });
     expect(workOrder.review.id).toBe(reviewPointer.id);
-    expect(workOrder.status).toBe("READY");
-    expect(workOrder.lanes.map((item) => item.researchLab)).toEqual([
-      "integrated-resilience-waist-design",
-      "articulated-resilience-controller",
-      "articulated-brace-locomotion-policy",
-      "articulated-inverted-escape-policy",
-    ]);
-    expect(workOrder.lanes.find((item) => item.researchLab === "articulated-brace-locomotion-policy")?.baseline).toMatchObject({
-      mode: "policy-head",
-      controller: "articulated-brace-locomotion-policy",
-      issues: [],
-    });
-    expect(workOrder.lanes.find((item) => item.researchLab === "articulated-inverted-escape-policy")?.baseline).toMatchObject({
-      mode: "reference-controller-retrain",
-      controller: "articulated-behavior-supervisor",
-      requestedPolicy: "articulated-inverted-escape-64872c025769000b",
-      issues: ["execution"],
-    });
-    expect(workOrder.blockers.some((item) => item.benchmark === "self-righting")).toBe(true);
-    expect(workOrder.blockers.some((item) => item.benchmark === "integrated-resilience-mission")).toBe(true);
-    expect(workOrder.blockers.some((item) => item.benchmark === "sim-to-real-audit")).toBe(true);
+    expect(workOrder.status).toBe("NO_ELIGIBLE_LANES");
+    expect(workOrder.lanes).toEqual([]);
+    expect(workOrder.blockers).toEqual([]);
     expect(workOrder.uncoveredSurfaces).toEqual([]);
     expect(workOrder.authorityBoundary.experimentDecision).toBe("locked-judge");
   });

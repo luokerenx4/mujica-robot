@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "id": "solo12-disturbance-standing",
+  "name": "Solo12 nominal and bounded disturbance standing suite",
+  "objective": "solo12-disturbance-standing",
+  "baseline": {
+    "assembly": "solo12-informed",
+    "controller": "solo12-home-stand"
+  },
+  "cases": [
+    {
+      "id": "nominal",
+      "task": "solo12-disturbance-stand",
+      "scenario": "nominal",
+      "seed": 1201,
+      "weight": 1
+    },
+    {
+      "id": "push-forward",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-push-forward",
+      "seed": 1202,
+      "weight": 1.5
+    },
+    {
+      "id": "push-backward",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-push-backward",
+      "seed": 1203,
+      "weight": 1.5
+    },
+    {
+      "id": "push-left",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-push-left",
+      "seed": 1204,
+      "weight": 1.5
+    },
+    {
+      "id": "push-right",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-push-right",
+      "seed": 1205,
+      "weight": 1.5
+    },
+    {
+      "id": "payload-push",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-payload-push",
+      "seed": 1206,
+      "weight": 1
+    },
+    {
+      "id": "low-friction-push",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-low-friction-push",
+      "seed": 1207,
+      "weight": 1
+    },
+    {
+      "id": "delayed-noisy-push",
+      "task": "solo12-disturbance-stand",
+      "scenario": "solo12-delayed-noisy-push",
+      "seed": 1208,
+      "weight": 1
+    }
+  ]
+}

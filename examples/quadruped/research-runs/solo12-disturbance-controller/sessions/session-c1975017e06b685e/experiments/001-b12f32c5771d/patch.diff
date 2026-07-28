@@ -1,0 +1,54 @@
+diff --git a/before/controllers/solo12-balance-stand/controller.json b/after/controllers/solo12-balance-stand/controller.json
+index 727c340..6accab2 100644
+--- a/before/controllers/solo12-balance-stand/controller.json
++++ b/after/controllers/solo12-balance-stand/controller.json
+@@ -6,22 +6,41 @@
+   "entry": "controller.py",
+   "interface": {
+     "requiredObservations": [
+-      { "name": "joint-position", "size": 12 },
+-      { "name": "joint-velocity", "size": 12 }
++      {
++        "name": "joint-position",
++        "size": 12
++      },
++      {
++        "name": "joint-velocity",
++        "size": 12
++      }
+     ],
+     "actionChannels": [
+-      { "name": "joint-torque", "size": 12, "low": -2.5, "high": 2.5 }
++      {
++        "name": "joint-torque",
++        "size": 12,
++        "low": -2.5,
++        "high": 2.5
++      }
+     ]
+   },
+   "config": {
+     "kp": 5,
+-    "kd": 0.1,
++    "kd": 0.18,
+     "maximumTorqueNm": 2.5,
+     "target": [
+-      0, 0.8, -1.6,
+-      0, 0.8, -1.6,
+-      0, -0.8, 1.6,
+-      0, -0.8, 1.6
++      0,
++      0.8,
++      -1.6,
++      0,
++      0.8,
++      -1.6,
++      0,
++      -0.8,
++      1.6,
++      0,
++      -0.8,
++      1.6
+     ]
+   },
+   "smokeTest": {

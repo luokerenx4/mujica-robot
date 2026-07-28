@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "spatial-generalization",
+  "name": "Held-out spatial disturbance generalization",
+  "objective": "spatial-locomotion",
+  "baseline": { "assembly": "force-sensing-3dof", "controller": "spatial-forward-gait" },
+  "cases": [
+    { "id": "reset-c", "task": "forward-walk", "scenario": "reset-perturbation", "seed": 808, "weight": 1 },
+    { "id": "reset-d", "task": "forward-walk", "scenario": "reset-perturbation", "seed": 909, "weight": 1 },
+    { "id": "reverse-strong-push", "task": "forward-walk", "scenario": "reverse-strong-lateral-push", "seed": 1001, "weight": 1.5 },
+    { "id": "delay-20ms", "task": "forward-walk", "scenario": "actuator-delay-one-step", "seed": 1002, "weight": 1 },
+    { "id": "delay-60ms", "task": "forward-walk", "scenario": "actuator-delay-three-step", "seed": 1003, "weight": 1.5 },
+    { "id": "delay-plus-push", "task": "forward-walk", "scenario": "delayed-lateral-push", "seed": 1004, "weight": 2 },
+    { "id": "delay-plus-reset", "task": "forward-walk", "scenario": "delayed-reset-perturbation", "seed": 1005, "weight": 2 }
+  ]
+}

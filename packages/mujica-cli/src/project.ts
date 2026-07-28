@@ -159,6 +159,8 @@ export async function projectReviewCommand(input: string, options: { project?: s
   const benchmarkReviews: DevelopmentBenchmarkReview[] = [];
   for (const benchmarkId of benchmarkIds) {
     const benchmark = await loadBenchmark(project.rootDir, benchmarkId);
+    const compatibleAssemblies = benchmark.compatibleAssemblies ?? [benchmark.baseline.assembly];
+    if (!compatibleAssemblies.includes(assemblyId)) continue;
     const lock = await requireBenchmarkLock(project, benchmark);
     const objective = await loadObjective(project.rootDir, benchmark.objective);
     const baseline = await evaluatePair(project, benchmark, benchmark.baseline.assembly, benchmark.baseline.controller);
@@ -206,17 +208,30 @@ export async function projectReviewCommand(input: string, options: { project?: s
   }
   const stages = charter.capabilityStages.map((stage) => {
     const stageBenchmarkIds = [...new Set(stage.scenarios.map((witness) => witness.benchmark))];
-    const reviews = stageBenchmarkIds.map((id) => benchmarkReviews.find((review) => review.id === id)!);
+    const reviews = stageBenchmarkIds
+      .map((id) => benchmarkReviews.find((review) => review.id === id))
+      .filter((review): review is DevelopmentBenchmarkReview => review !== undefined);
     const witnesses = stage.scenarios.map((witness) => {
-      const review = benchmarkReviews.find((item) => item.id === witness.benchmark)!;
-      const cases = review.cases.filter((item) => item.task === witness.task && item.scenario === witness.scenario);
-      return { ...witness, cases: cases.map((item) => item.id), passed: cases.length > 0 && cases.every((item) => item.violations.length === 0) };
+      const review = benchmarkReviews.find((item) => item.id === witness.benchmark);
+      const cases = review?.cases.filter((item) => item.task === witness.task && item.scenario === witness.scenario) ?? [];
+      return {
+        ...witness,
+        applicable: review !== undefined,
+        cases: cases.map((item) => item.id),
+        passed: review === undefined
+          ? null
+          : cases.length > 0 && cases.every((item) => item.violations.length === 0),
+      };
     });
     return {
       id: stage.id,
       name: stage.name,
       authoredStatus: stage.status,
-      observedStatus: reviews.every((review) => review.status === "PASS") ? "PASS" as const : "FAIL" as const,
+      observedStatus: reviews.length === 0
+        ? "NOT_EVALUATED" as const
+        : reviews.every((review) => review.status === "PASS")
+          ? "PASS" as const
+          : "FAIL" as const,
       benchmarks: reviews.map((review) => ({ id: review.id, status: review.status, lockHash: review.lockHash, violationCount: review.violationCount })),
       witnesses,
       exitCriteria: stage.exitCriteria,
@@ -224,8 +239,9 @@ export async function projectReviewCommand(input: string, options: { project?: s
   });
   const designPassed = design.constraints.every((constraint) => constraint.passed);
   const northStarStage = stages.find((stage) => stage.id === charter.northStar.stage)!;
-  const northStarBenchmark = benchmarkReviews.find((review) => review.id === charter.northStar.benchmark)!;
-  const numericalNorthStarSatisfied = designPassed && northStarStage.observedStatus === "PASS" && northStarBenchmark.status === "PASS";
+  const northStarBenchmark = benchmarkReviews.find((review) => review.id === charter.northStar.benchmark);
+  const northStarBenchmarkStatus = northStarBenchmark?.status ?? "NOT_EVALUATED" as const;
+  const numericalNorthStarSatisfied = designPassed && northStarStage.observedStatus === "PASS" && northStarBenchmarkStatus === "PASS";
   const northStarSatisfied = numericalNorthStarSatisfied && !charter.northStar.requireHumanReview;
   const worstCases = benchmarkReviews.flatMap((review) => review.cases.filter((item) => item.gating).map((item) => ({ benchmark: review.id, ...item })))
     .filter((item) => item.violationSeverity > 0)
@@ -252,7 +268,7 @@ export async function projectReviewCommand(input: string, options: { project?: s
       humanReviewStatus: charter.northStar.requireHumanReview ? "REQUIRED" as const : "NOT_REQUIRED" as const,
       designPassed,
       stageStatus: northStarStage.observedStatus,
-      benchmarkStatus: northStarBenchmark.status,
+      benchmarkStatus: northStarBenchmarkStatus,
     },
     summary: {
       status: northStarSatisfied

@@ -1,0 +1,38 @@
+[
+  {
+    "version": 1,
+    "source": "current-session",
+    "researchId": "solo12-disturbance-controller",
+    "sessionId": "session-c1975017e06b685e",
+    "experimentId": "001-b12f32c5771d",
+    "sequence": 1,
+    "startedAt": "2026-07-28T07:22:22.081Z",
+    "binding": {
+      "sameLab": true,
+      "sameProgram": true,
+      "sameBenchmarkLock": true
+    },
+    "labHash": "8da8e819cd7a290cfffbff985e82b50948309c9e27622b56e52cac34fdfd39bb",
+    "programHash": "d40faa55344b86f7ddc3ae8bdaeeb9ef985a089815c1af5a7454c4addd9214a9",
+    "benchmarkLockHash": "45a33a7605d568e1a0055fc1d9c89a542de7e0872a3593f8830a82c6981eef8c",
+    "proposal": {
+      "strategy": "raise-joint-damping",
+      "hypothesis": "The baseline has ample torque headroom but the delayed/noisy diagonal case has the worst score, so additional joint damping should reduce post-impact velocity, jerk, and settling time without changing static support.",
+      "expectedEffect": "Improve delayed/noisy and lateral-push recovery quality while retaining nominal stance, zero saturation, and every gate."
+    },
+    "policyId": null,
+    "score": 84.74155623453215,
+    "delta": 0.08565328481181211,
+    "verdict": "KEEP",
+    "decision": {
+      "selectionReason": "score-improvement-within-feasibility-tier",
+      "gateReasons": [],
+      "previousViolationCount": 0,
+      "candidateViolationCount": 0,
+      "previousViolationSeverity": 0,
+      "candidateViolationSeverity": 0
+    },
+    "revisionId": "quadruped-r-2d1e02112975",
+    "error": null
+  }
+]
