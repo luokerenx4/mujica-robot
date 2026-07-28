@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "solo12-readable-locomotion",
+  "name": "Solo12 readable forward locomotion suite",
+  "objective": "solo12-readable-locomotion",
+  "baseline": {
+    "assembly": "solo12-informed",
+    "controller": "solo12-balance-stand"
+  },
+  "compatibleAssemblies": [
+    "solo12-informed"
+  ],
+  "cases": [
+    {
+      "id": "nominal",
+      "task": "solo12-forward-walk",
+      "scenario": "nominal",
+      "seed": 1301,
+      "weight": 1
+    },
+    {
+      "id": "reset",
+      "task": "solo12-forward-walk",
+      "scenario": "solo12-walk-reset",
+      "seed": 1302,
+      "weight": 1
+    },
+    {
+      "id": "degraded",
+      "task": "solo12-forward-walk",
+      "scenario": "solo12-walk-degraded",
+      "seed": 1303,
+      "weight": 1.5
+    },
+    {
+      "id": "lateral-push",
+      "task": "solo12-forward-walk",
+      "scenario": "solo12-walk-lateral-push",
+      "seed": 1304,
+      "weight": 1.5
+    }
+  ]
+}

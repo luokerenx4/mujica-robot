@@ -194,7 +194,7 @@ export async function twinStudioCommand(projectDir: string, auditId: string) {
     || audit.manifest.identity.stateContractHash !== source.stateContractHash
   ) throw new Error(`Digital Twin Audit '${auditId}' no longer matches its immutable Capture and Bundle`);
 
-  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
+  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 1.4 } };
   const runtimeHash = await runtimeSourceHash();
   const measuredReplay = await invokeRuntime("render-replay", {
     runtimeVersion,

@@ -122,6 +122,51 @@
       ]
     },
     {
+      "id": "source-grounded-locomotion",
+      "name": "Source-grounded readable locomotion",
+      "question": "Can the Solo12-informed robot create sustained forward contact exchange with one readable bounded Controller before learning is introduced?",
+      "status": "accepted",
+      "evidenceScopes": [
+        {
+          "assembly": "solo12-informed",
+          "controller": "solo12-readable-crawl",
+          "benchmark": "solo12-readable-locomotion"
+        }
+      ],
+      "scenarios": [
+        {
+          "task": "solo12-forward-walk",
+          "scenario": "nominal",
+          "benchmark": "solo12-readable-locomotion",
+          "role": "development"
+        },
+        {
+          "task": "solo12-forward-walk",
+          "scenario": "solo12-walk-reset",
+          "benchmark": "solo12-readable-locomotion",
+          "role": "release"
+        },
+        {
+          "task": "solo12-forward-walk",
+          "scenario": "solo12-walk-degraded",
+          "benchmark": "solo12-readable-locomotion",
+          "role": "release"
+        },
+        {
+          "task": "solo12-forward-walk",
+          "scenario": "solo12-walk-lateral-push",
+          "benchmark": "solo12-readable-locomotion",
+          "role": "release"
+        }
+      ],
+      "exitCriteria": [
+        "Every locked case survives, advances at least fifteen percent of the commanded target, and respects tilt, drift, collision, joint, saturation, and actuator gates.",
+        "The same Controller retains the accepted Solo12 disturbance-standing Benchmark under zero command.",
+        "A human-visible trajectory shows all four feet taking distinct swing turns in a stable three-foot-support crawl rather than sliding, falling, or static survival being scored as locomotion.",
+        "Reverse, lateral, yaw, and Training remain unauthorized until this bounded forward mechanism passes."
+      ]
+    },
+    {
       "id": "command-foundation",
       "name": "Command-conditioned locomotion",
       "question": "Can the robot execute stop, forward, reverse, lateral, yaw, delay, and disturbance commands without gate violations?",

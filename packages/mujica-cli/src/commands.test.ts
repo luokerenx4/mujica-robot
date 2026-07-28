@@ -622,7 +622,7 @@ describe("agent CLI contract", () => {
       kind: "mujica-development-work-order",
       project: "quadruped",
       status: "CAPABILITY_INCEPTION_REQUIRED",
-      subject: { assembly: "solo12-informed", controller: "solo12-balance-stand" },
+      subject: { assembly: "solo12-informed", controller: "solo12-readable-crawl" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -642,14 +642,17 @@ describe("agent CLI contract", () => {
       },
       subject: {
         assembly: "solo12-informed",
-        controller: "solo12-balance-stand",
+        controller: "solo12-readable-crawl",
       },
       referenceEvidenceScopes: [{
         assembly: "command-conditioned-history-3dof",
         controller: "command-tracking-gait",
         benchmark: "command-tracking",
       }],
-      regressionBenchmarks: ["solo12-disturbance-standing"],
+      regressionBenchmarks: [
+        "solo12-disturbance-standing",
+        "solo12-readable-locomotion",
+      ],
       developmentEmphasis: "behavior-heavy",
       authorityBoundary: {
         mechanismFirst: true,

@@ -133,7 +133,7 @@ export async function studioCommand(
     }
     const modelHash = sha256(await readFile(modelPath));
     const trajectoryPath = join(runRoot, "trajectory.ndjson"); const trajectoryHash = sha256(await readFile(trajectoryPath));
-    const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
+    const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 1.4 } };
     return invokeRuntime("render-replay", {
       runtimeVersion,
       runtimeSourceHash: await runtimeSourceHash(),
@@ -243,7 +243,7 @@ export async function studioCaptureCommand(projectDir: string, captureId: string
     stateContractAuthority = "derived-from-frozen-model";
   }
 
-  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 2.2 } };
+  const settings = { width: 640, height: 480, stride: 1, camera: { azimuth: 135, elevation: -22, distance: 1.4 } };
   const replay = await invokeRuntime("render-replay", {
     runtimeVersion,
     runtimeSourceHash: await runtimeSourceHash(),

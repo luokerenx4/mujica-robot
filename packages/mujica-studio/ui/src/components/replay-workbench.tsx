@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { nextPlaybackStep } from "@/lib/playback";
 import type {
   MappedReplayFrame,
   ReplaySide,
@@ -291,11 +292,10 @@ export function ReplayWorkbench({ selection }: { selection: StudioReplaySelectio
       setPlaying(false);
       return undefined;
     }
-    const from = clockTimes[clockIndex] ?? 0;
-    const to = clockTimes[clockIndex + 1] ?? from;
+    const step = nextPlaybackStep(clockTimes, clockIndex, speed);
     const timer = window.setTimeout(
-      () => setClockIndex((value) => Math.min(clockTimes.length - 1, value + 1)),
-      Math.max(8, (1_000 * Math.max(0.001, to - from)) / speed),
+      () => setClockIndex(step.nextIndex),
+      step.delayMs,
     );
     return () => window.clearTimeout(timer);
   }, [clockIndex, clockTimes, playing, speed]);

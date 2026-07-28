@@ -96,14 +96,17 @@ describe("Robot Assembly compiler", () => {
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
     expect(review.subject).toMatchObject({
       assembly: "solo12-informed",
-      controller: "solo12-balance-stand",
+      controller: "solo12-readable-crawl",
     });
     expect(review.summary).toMatchObject({
-      passedStages: 1,
+      passedStages: 2,
       violationCount: 0,
       worstCase: null,
     });
     expect(review.stages.find((stage) => stage.id === "source-grounded-standing")).toMatchObject({
+      observedStatus: "PASS",
+    });
+    expect(review.stages.find((stage) => stage.id === "source-grounded-locomotion")).toMatchObject({
       observedStatus: "PASS",
     });
     expect(review.stages.find((stage) => stage.id === "continuous-resilience")).toMatchObject({
@@ -132,9 +135,12 @@ describe("Robot Assembly compiler", () => {
       },
       subject: {
         assembly: "solo12-informed",
-        controller: "solo12-balance-stand",
+        controller: "solo12-readable-crawl",
       },
-      regressionBenchmarks: ["solo12-disturbance-standing"],
+      regressionBenchmarks: [
+        "solo12-disturbance-standing",
+        "solo12-readable-locomotion",
+      ],
       requiredArtifacts: [
         "plan",
         "task",

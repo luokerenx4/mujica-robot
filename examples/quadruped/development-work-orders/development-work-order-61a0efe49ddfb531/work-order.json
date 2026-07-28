@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "kind": "mujica-development-work-order",
+  "project": "quadruped",
+  "charterHash": "d5ea63bc469ee7ba9bd842d97ba184fa9f0fd8cae5cd7185ac6161da79d3eb9d",
+  "review": {
+    "id": "development-review-a45277cff5fc46ed",
+    "hash": "a45277cff5fc46ed40e7a945c1c07c8ea0651b4a6ba6817c7f883776a720bff1"
+  },
+  "subject": {
+    "assembly": "solo12-informed",
+    "assemblyHash": "ac34a7cff44f70633a4723ca14bf7af783e87a3769c584f37cf65366ee5b49a6",
+    "controller": "solo12-readable-crawl",
+    "controllerHash": "92f65aa74d017fa4fd86aec8e1832b1339d67dcbb9a849e988f965dd021de34e",
+    "controllerKind": "program"
+  },
+  "status": "CAPABILITY_INCEPTION_REQUIRED",
+  "blockers": [],
+  "lanes": [],
+  "uncoveredSurfaces": [],
+  "inception": {
+    "kind": "capability-inception",
+    "reason": "next-stage-has-no-applicable-benchmark",
+    "stage": {
+      "id": "command-foundation",
+      "name": "Command-conditioned locomotion",
+      "question": "Can the robot execute stop, forward, reverse, lateral, yaw, delay, and disturbance commands without gate violations?",
+      "authoredStatus": "accepted"
+    },
+    "subject": {
+      "assembly": "solo12-informed",
+      "controller": "solo12-readable-crawl"
+    },
+    "referenceEvidenceScopes": [
+      {
+        "assembly": "command-conditioned-history-3dof",
+        "controller": "command-tracking-gait",
+        "benchmark": "command-tracking",
+        "revision": "quadruped-r-d193b01b53f1"
+      }
+    ],
+    "regressionBenchmarks": [
+      "solo12-disturbance-standing",
+      "solo12-readable-locomotion"
+    ],
+    "requiredArtifacts": [
+      "plan",
+      "task",
+      "scenarios",
+      "objective",
+      "benchmark",
+      "readable-controller"
+    ],
+    "developmentEmphasis": "behavior-heavy",
+    "authorityBoundary": {
+      "mechanismFirst": true,
+      "trainingAuthorized": false,
+      "benchmarkLockRequired": true,
+      "capabilityClaim": "new-applicable-evidence-required"
+    },
+    "reviewArgv": [
+      "project",
+      "review",
+      "/Users/ame/2606toydev/mujica/examples/quadruped",
+      "--assembly",
+      "solo12-informed",
+      "--controller",
+      "solo12-readable-crawl"
+    ]
+  },
+  "authorityBoundary": {
+    "prioritization": "derived",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed",
+    "northStarClaim": "new-development-review-required"
+  }
+}
