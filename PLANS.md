@@ -35,6 +35,7 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Routed Studio workspace](plans/routed-studio-workspace.md) | Turned one generated Studio into a deep-linkable project workspace with route-owned static evidence projections. | 2026-07-28 |
 | [TypeScript React Studio foundation](plans/typescript-react-studio-foundation.md) | Made the primary Studio surface a typed, locally generated React application while preserving immutable evidence and the complete legacy debugger during incremental migration. | 2026-07-28 |
 | [Lateral-reach recovery co-design](plans/lateral-reach-recovery-co-design.md) | Bounded a four-foot reach/contact hypothesis, froze its viable non-promoted mechanism, and preserved the failed complete-Mission evidence that now motivates design reassessment. | 2026-07-27 |
 | [Causal continuous Mission graph](plans/causal-continuous-mission-graph.md) | Made every Training and Judge episode advance from observed robot/environment events instead of a memorized wall-clock script. | 2026-07-25 |

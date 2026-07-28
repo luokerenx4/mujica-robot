@@ -95,10 +95,21 @@ export interface StudioRun {
 
 export interface CapabilityStage {
   id: string;
+  name?: string;
+  question?: string;
   status: string;
+  scenarios?: Array<Record<string, unknown>>;
+  exitCriteria?: string[];
 }
 
-export interface StudioSnapshot {
+export interface StudioReplaySelection {
+  selectedRun: StudioRun | null;
+  selectedReplay: StudioReplay | null;
+  comparisonRun: StudioRun | null;
+  comparisonReplay: StudioReplay | null;
+}
+
+export interface StudioSnapshot extends StudioReplaySelection {
   version: number;
   kind: "mujica-studio-snapshot";
   renderer: {
@@ -143,6 +154,109 @@ export interface StudioSnapshot {
   researchSessions: Array<{
     experiments?: unknown[];
   }>;
+}
+
+export interface StudioRouteManifest {
+  version: 1;
+  kind: "mujica-studio-route-manifest";
+  renderer: StudioSnapshot["renderer"];
+  project: StudioSnapshot["project"];
+  defaultRoute: string;
+  paths: {
+    project: string;
+    designs: string;
+    runs: string;
+    compare: string | null;
+  };
+  packagedRuns: Array<{
+    id: string;
+    path: string;
+    hasReplay: boolean;
+    role: "selected" | "comparison";
+  }>;
+}
+
+export interface ProjectRouteData {
+  version: 1;
+  kind: "mujica-studio-project-route";
+  project: StudioSnapshot["project"];
+  charter: StudioSnapshot["charter"];
+  renderer: StudioSnapshot["renderer"];
+  developmentReview: Record<string, unknown> | null;
+  developmentWorkOrder: Record<string, unknown> | null;
+  currentDesignProbe: StudioSnapshot["currentDesignProbe"];
+  counts: {
+    assemblies: number;
+    runs: number;
+    policies: number;
+    researchSessions: number;
+    researchExperiments: number;
+    revisions: number;
+  };
+  selectedRunId: string | null;
+  comparisonRunId: string | null;
+}
+
+export interface StudioAssembly {
+  id: string;
+  name?: string;
+  hash?: string;
+  totalMassKg?: number;
+  componentCost?: number;
+  components?: Array<Record<string, unknown>>;
+  observationContract?: { size?: number; [key: string]: unknown };
+  actionContract?: { size?: number; [key: string]: unknown };
+}
+
+export interface DesignRouteData {
+  version: 1;
+  kind: "mujica-studio-design-route";
+  selectedAssembly: string;
+  assemblies: StudioAssembly[];
+  components: Array<Record<string, unknown>>;
+  revisions: Array<Record<string, unknown>>;
+  currentDesignStudy: Record<string, any> | null;
+  currentDesignProbe: Record<string, any> | null;
+}
+
+export interface RunSummary {
+  id: string;
+  seed?: number;
+  completed?: boolean;
+  resultHash?: string;
+  assemblyHash?: string;
+  controllerHash?: string;
+  modelHash?: string;
+  trainingSteps?: number;
+  mujocoVersion?: string;
+  [key: string]: unknown;
+}
+
+export interface RunsRouteData {
+  version: 1;
+  kind: "mujica-studio-runs-route";
+  runs: RunSummary[];
+  packagedRuns: StudioRouteManifest["packagedRuns"];
+}
+
+export interface RunRouteData {
+  version: 1;
+  kind: "mujica-studio-run-route";
+  run: StudioRun;
+  replay: StudioReplay | null;
+  role: "selected" | "comparison";
+}
+
+export interface CompareRouteData {
+  version: 1;
+  kind: "mujica-studio-compare-route";
+  runs: {
+    left: { id: string; path: string };
+    right: { id: string; path: string };
+  };
+  selectedResearchReview: Record<string, unknown> | null;
+  authorityCounterfactual: Record<string, unknown> | null;
+  researchTimeline: Record<string, unknown> | null;
 }
 
 export interface ReplaySide {

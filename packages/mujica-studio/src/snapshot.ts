@@ -700,7 +700,7 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
     : null;
   const developmentReview = await currentDevelopmentReview(project.rootDir);
   return {
-    version: 9, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-react-v1", sourceHash: await studioRendererSourceHash(studioHtml.toString()) }, project: project.manifest,
+    version: 10, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-react-v2", sourceHash: await studioRendererSourceHash(studioHtml.toString()) }, project: project.manifest,
     charter: await loadDevelopmentCharter(project.rootDir),
     developmentReview,
     developmentWorkOrder: await currentDevelopmentWorkOrder(project.rootDir, developmentReview),
@@ -738,6 +738,142 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
     researchLabs: await researchLabDefinitions(join(project.rootDir, "research")),
     researchSessions: await researchSessions(join(project.rootDir, "research-runs")),
   };
+}
+
+type StudioSnapshot = Awaited<ReturnType<typeof buildStudioSnapshot>>;
+
+export function buildStudioRouteProjection(snapshot: StudioSnapshot) {
+  const packagedRuns = [
+    snapshot.selectedRun ? {
+      id: snapshot.selectedRun.id,
+      path: `./data/runs/${encodeURIComponent(snapshot.selectedRun.id)}.json`,
+      hasReplay: Boolean(snapshot.selectedReplay),
+      role: "selected" as const,
+    } : null,
+    snapshot.comparisonRun ? {
+      id: snapshot.comparisonRun.id,
+      path: `./data/runs/${encodeURIComponent(snapshot.comparisonRun.id)}.json`,
+      hasReplay: Boolean(snapshot.comparisonReplay),
+      role: "comparison" as const,
+    } : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
+  const experimentCount = snapshot.researchSessions.reduce(
+    (sum, session) => sum + (session.experiments?.length ?? 0),
+    0,
+  );
+  const paths = {
+    project: "./data/project.json",
+    designs: "./data/designs.json",
+    runs: "./data/runs.json",
+    compare: snapshot.comparisonRun ? "./data/compare.json" : null,
+  };
+  const manifest = {
+    version: 1 as const,
+    kind: "mujica-studio-route-manifest" as const,
+    renderer: snapshot.renderer,
+    project: {
+      id: snapshot.project.id,
+      name: snapshot.project.name,
+    },
+    defaultRoute: "/overview",
+    paths,
+    packagedRuns,
+  };
+  const files: Array<{ path: string; data: Record<string, unknown> }> = [
+    {
+      path: "data/project.json",
+      data: {
+        version: 1,
+        kind: "mujica-studio-project-route",
+        project: snapshot.project,
+        charter: snapshot.charter,
+        renderer: snapshot.renderer,
+        developmentReview: snapshot.developmentReview,
+        developmentWorkOrder: snapshot.developmentWorkOrder,
+        currentDesignProbe: snapshot.currentDesignProbe,
+        counts: {
+          assemblies: snapshot.assemblies.length,
+          runs: snapshot.runs.length,
+          policies: snapshot.policies.length,
+          researchSessions: snapshot.researchSessions.length,
+          researchExperiments: experimentCount,
+          revisions: snapshot.revisions.length,
+        },
+        selectedRunId: snapshot.selectedRun?.id ?? null,
+        comparisonRunId: snapshot.comparisonRun?.id ?? null,
+      },
+    },
+    {
+      path: "data/designs.json",
+      data: {
+        version: 1,
+        kind: "mujica-studio-design-route",
+        selectedAssembly: snapshot.selectedAssembly,
+        assemblies: snapshot.assemblies,
+        components: snapshot.components,
+        revisions: snapshot.revisions,
+        currentDesignStudy: snapshot.currentDesignStudy,
+        currentDesignProbe: snapshot.currentDesignProbe,
+      },
+    },
+    {
+      path: "data/runs.json",
+      data: {
+        version: 1,
+        kind: "mujica-studio-runs-route",
+        runs: snapshot.runs,
+        packagedRuns,
+      },
+    },
+  ];
+  if (snapshot.selectedRun) {
+    files.push({
+      path: `data/runs/${encodeURIComponent(snapshot.selectedRun.id)}.json`,
+      data: {
+        version: 1,
+        kind: "mujica-studio-run-route",
+        role: "selected",
+        run: snapshot.selectedRun,
+        replay: snapshot.selectedReplay,
+      },
+    });
+  }
+  if (snapshot.comparisonRun) {
+    files.push({
+      path: `data/runs/${encodeURIComponent(snapshot.comparisonRun.id)}.json`,
+      data: {
+        version: 1,
+        kind: "mujica-studio-run-route",
+        role: "comparison",
+        run: snapshot.comparisonRun,
+        replay: snapshot.comparisonReplay,
+      },
+    });
+    files.push({
+      path: "data/compare.json",
+      data: {
+        version: 1,
+        kind: "mujica-studio-compare-route",
+        runs: {
+          left: { id: snapshot.selectedRun?.id, path: packagedRuns.find((run) => run.role === "selected")?.path },
+          right: { id: snapshot.comparisonRun.id, path: packagedRuns.find((run) => run.role === "comparison")?.path },
+        },
+        selectedResearchReview: snapshot.selectedResearchReview,
+        authorityCounterfactual: snapshot.authorityCounterfactual,
+        researchTimeline: snapshot.researchTimeline,
+      },
+    });
+  }
+  return { manifest, files };
+}
+
+function studioRouteDataScript(path: string, data: Record<string, unknown>): string {
+  const key = JSON.stringify(`./${path}`);
+  const value = JSON.stringify(data)
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026");
+  return `globalThis.__MUJICA_STUDIO_ROUTE_DATA__=globalThis.__MUJICA_STUDIO_ROUTE_DATA__||{};globalThis.__MUJICA_STUDIO_ROUTE_DATA__[${key}]=${value};\n`;
 }
 
 function studioHtml(snapshot: Awaited<ReturnType<typeof buildStudioSnapshot>>): string {
@@ -1214,6 +1350,7 @@ export async function writeStudioSnapshot(projectDirectory: string, options: Stu
   const id = `studio-${snapshotHash.slice(0, 16)}`; const target = join(project.rootDir, ".mujica", "studio", id);
   if (!(await exists(join(target, "snapshot.json")))) await atomicDirectory(target, async (directory) => {
     const rendererBundle = await ensureStudioRendererBundle(project.rootDir, snapshot.renderer.sourceHash);
+    const routes = buildStudioRouteProjection(snapshot);
     await writeJson(join(directory, "snapshot.json"), snapshot);
     if (options.replay) await cp(options.replay.path, join(directory, "replay"), { recursive: true });
     if (options.compareReplay) await cp(options.compareReplay.path, join(directory, "comparison-replay"), { recursive: true });
@@ -1229,8 +1366,16 @@ export async function writeStudioSnapshot(projectDirectory: string, options: Stu
     if (captureReplay) await cp(captureReplay.path, join(directory, "hardware-replay"), { recursive: true });
     if (options.twinAudit) await cp(options.twinAudit.predictionReplay.path, join(directory, "twin-replay"), { recursive: true });
     await copyStudioRendererBundle(rendererBundle, directory);
+    await mkdir(join(directory, "data", "runs"), { recursive: true });
+    for (const file of routes.files) {
+      await writeJson(join(directory, file.path), file.data);
+      await Bun.write(
+        join(directory, file.path.replace(/\.json$/, ".js")),
+        studioRouteDataScript(file.path, file.data),
+      );
+    }
     await Bun.write(join(directory, "legacy.html"), studioHtml(snapshot));
-    await Bun.write(join(directory, "index.html"), reactStudioHtml(snapshot));
+    await Bun.write(join(directory, "index.html"), reactStudioHtml(routes.manifest));
   });
   await writeJson(join(project.rootDir, ".mujica", "studio", "current.json"), { version: 1, id });
   return { id, snapshotHash, path: target, indexPath: join(target, "index.html"), selectedRun: snapshot.selectedRun?.id ?? null, comparisonRun: snapshot.comparisonRun?.id ?? null, snapshot };

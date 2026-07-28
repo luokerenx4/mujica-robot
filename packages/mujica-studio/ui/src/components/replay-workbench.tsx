@@ -19,7 +19,7 @@ import type {
   ReplaySide,
   StudioReplay,
   StudioRun,
-  StudioSnapshot,
+  StudioReplaySelection,
   TrajectoryRow,
 } from "@/types";
 
@@ -254,13 +254,13 @@ function OutcomeStrip({ sides }: { sides: ReplaySide[] }): React.JSX.Element {
   );
 }
 
-export function ReplayWorkbench({ snapshot }: { snapshot: StudioSnapshot }): React.JSX.Element {
+export function ReplayWorkbench({ selection }: { selection: StudioReplaySelection }): React.JSX.Element {
   const sides = React.useMemo<ReplaySide[]>(() => {
     const values: ReplaySide[] = [];
-    if (snapshot.selectedRun) values.push({ key: "A", run: snapshot.selectedRun, replay: snapshot.selectedReplay });
-    if (snapshot.comparisonRun) values.push({ key: "B", run: snapshot.comparisonRun, replay: snapshot.comparisonReplay });
+    if (selection.selectedRun) values.push({ key: "A", run: selection.selectedRun, replay: selection.selectedReplay });
+    if (selection.comparisonRun) values.push({ key: "B", run: selection.comparisonRun, replay: selection.comparisonReplay });
     return values;
-  }, [snapshot]);
+  }, [selection]);
   const clockTimes = React.useMemo(() => {
     const values = sides.flatMap((side) => timesFor(side.run, side.replay));
     const unique = [...new Set(values.map((value) => Number(value).toFixed(9)))].map(Number).sort((a, b) => a - b);

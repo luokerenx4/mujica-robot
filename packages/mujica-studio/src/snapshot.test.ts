@@ -41,7 +41,7 @@ describe("read-only Studio snapshot", () => {
     const first = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     const second = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     expect(second.id).toBe(first.id);
-    expect(first.snapshot.renderer).toMatchObject({ id: "mujica-studio-react-v1" });
+    expect(first.snapshot.renderer).toMatchObject({ id: "mujica-studio-react-v2" });
     expect(first.snapshot.renderer.sourceHash).toHaveLength(64);
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
@@ -181,13 +181,54 @@ describe("read-only Studio snapshot", () => {
     const html = await readFile(join(first.path, "legacy.html"), "utf8");
     const reactBundle = await readFile(join(first.path, "assets", "studio.js"), "utf8");
     expect(index).toContain('id="root"');
-    expect(index).toContain('id="mujica-studio-snapshot"');
+    expect(index).toContain('id="mujica-studio-route-manifest"');
+    expect(index).toContain('"kind":"mujica-studio-route-manifest"');
+    expect(index).toContain('"defaultRoute":"/overview"');
+    expect(index).not.toContain('"kind":"mujica-studio-snapshot"');
+    expect(index).not.toContain('"trajectory"');
     expect(index).toContain('./assets/studio.js');
     expect(index).toContain("script-src 'self'");
+    expect(index).toContain("connect-src 'self'");
     expect(index).not.toContain("'unsafe-inline'");
-    expect(reactBundle).toContain("Complete evidence");
+    expect(reactBundle).toContain("Project overview");
+    expect(reactBundle).toContain("Robot designs and lineage");
+    expect(reactBundle).toContain("Simulation and evaluation Runs");
+    expect(reactBundle).toContain("Synchronized Run comparison");
     expect(reactBundle).toContain("./legacy.html");
     expect(await readFile(join(first.path, "assets", "studio.css"), "utf8")).toContain("--font-display");
+    const projectRoute = JSON.parse(await readFile(join(first.path, "data", "project.json"), "utf8"));
+    const designsRoute = JSON.parse(await readFile(join(first.path, "data", "designs.json"), "utf8"));
+    const runsRoute = JSON.parse(await readFile(join(first.path, "data", "runs.json"), "utf8"));
+    const runRoute = JSON.parse(await readFile(join(first.path, "data", "runs", "run-e8bd80892b0f0123.json"), "utf8"));
+    expect(projectRoute).toMatchObject({
+      kind: "mujica-studio-project-route",
+      project: { id: "quadruped" },
+      selectedRunId: "run-e8bd80892b0f0123",
+      comparisonRunId: null,
+    });
+    expect(projectRoute).not.toHaveProperty("runs");
+    expect(await readFile(join(first.path, "data", "project.js"), "utf8")).toContain(
+      'globalThis.__MUJICA_STUDIO_ROUTE_DATA__["./data/project.json"]',
+    );
+    expect(designsRoute).toMatchObject({
+      kind: "mujica-studio-design-route",
+      selectedAssembly: "resilient-command-conditioned-history-3dof",
+    });
+    expect(designsRoute).not.toHaveProperty("runs");
+    expect(runsRoute).toMatchObject({
+      kind: "mujica-studio-runs-route",
+      packagedRuns: [{ id: "run-e8bd80892b0f0123", role: "selected", hasReplay: false }],
+    });
+    expect(runRoute).toMatchObject({
+      kind: "mujica-studio-run-route",
+      role: "selected",
+      run: { id: "run-e8bd80892b0f0123" },
+      replay: null,
+    });
+    expect(await readFile(join(first.path, "data", "runs", "run-e8bd80892b0f0123.js"), "utf8")).toContain(
+      '"kind":"mujica-studio-run-route"',
+    );
+    await expect(readFile(join(first.path, "data", "compare.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     expect(html).toContain("Release authority · Causal Continuous Mission Case");
     expect(html).toContain("Recovery relapses");
     expect(html).toContain("recoveryRelapseCount");
@@ -330,6 +371,25 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("headlessArgv");
     expect(html).toContain("'evidence','inspect'");
     expect(html).toContain("subject − baseline");
+    const comparison = JSON.parse(await readFile(join(result.path, "data", "compare.json"), "utf8"));
+    expect(comparison).toMatchObject({
+      kind: "mujica-studio-compare-route",
+      runs: {
+        left: {
+          id: "run-e8bd80892b0f0123",
+          path: "./data/runs/run-e8bd80892b0f0123.json",
+        },
+        right: {
+          id: "run-0307db1a1c3dc228",
+          path: "./data/runs/run-0307db1a1c3dc228.json",
+        },
+      },
+    });
+    expect(comparison).not.toHaveProperty("selectedRun");
+    expect(JSON.parse(await readFile(join(result.path, "data", "runs", "run-0307db1a1c3dc228.json"), "utf8"))).toMatchObject({
+      role: "comparison",
+      run: { id: "run-0307db1a1c3dc228" },
+    });
   });
 
   test("projects recovery identity, outcome direction, and frame safety evidence", async () => {

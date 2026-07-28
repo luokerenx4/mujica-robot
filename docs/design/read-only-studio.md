@@ -6,7 +6,7 @@ Status: implemented vertical slice.
 
 Studio is a debugger for evidence already produced by the file-native Harness. It is not a robot editor, simulator, evaluator, or mutable database. The authoritative inputs remain `mujica.json`, Robot Assemblies and Components, compiled contracts, immutable Runs and Policies, locked Benchmarks, Candidates, and Revision manifests.
 
-`mujica studio <project> [--run ID] [--compare-run ID]` reads those inputs, creates or reuses one independently content-addressed MuJoCo replay per selected Run beneath `.mujica/replays/<replay-id>/`, and writes an offline projection beneath `.mujica/studio/<snapshot-id>/`. The snapshot contains `snapshot.json`, a TypeScript-authored Vite + React renderer, a transitional complete Evidence view, and verified copies of the replay frames. It has no external network assets and uses a restrictive Content Security Policy. Repeating the command over identical evidence and renderer source yields the same ids.
+`mujica studio <project> [--run ID] [--compare-run ID]` reads those inputs, creates or reuses one independently content-addressed MuJoCo replay per selected Run beneath `.mujica/replays/<replay-id>/`, and writes an offline projection beneath `.mujica/studio/<snapshot-id>/`. The snapshot contains `snapshot.json`, a TypeScript-authored Vite + React renderer, route-owned static data under `data/`, a transitional complete Evidence view, and verified copies of the replay frames. It has no external network assets and uses a restrictive Content Security Policy. Repeating the command over identical evidence and renderer source yields the same ids.
 
 The renderer is a replaceable projection over the typed Snapshot contract. Its
 source and build contract participate in `renderer.sourceHash`; generated
@@ -14,13 +14,32 @@ JavaScript and CSS are local derived assets and do not become robot source.
 React state may choose a frame, tab, filter, or copied selector, but it cannot
 write project files, execute MuJoCo, train a Policy, or produce a Judge verdict.
 During incremental migration, `index.html` is the primary React workbench and
+embeds only a route manifest. `data/project.json`, `data/designs.json`, and
+`data/runs.json` own the project, embodiment, and immutable ledger projections.
+Only Runs explicitly selected by the Studio command receive full
+`data/runs/<id>.json` trajectory/replay projections; `data/compare.json` names
+the packaged pair without duplicating either Run. Each JSON projection has a
+deterministic external-script mirror used only when the directory is opened
+through `file://`, where browsers do not permit ordinary JSON fetches.
 `legacy.html` preserves every not-yet-migrated debugger surface inside the same
 content-addressed directory.
+
+Studio uses hash routes intentionally. `#/overview`, `#/designs`, `#/runs`,
+`#/runs/:runId`, `#/compare?left=…&right=…`, and `#/evidence` can be copied,
+refreshed, and opened without requiring an HTTP history-fallback rule. A route
+changes only which immutable projection is loaded and displayed; it does not
+change evidence or create a new source of authority.
 
 ## Debugging surfaces
 
 The V1 projection shows:
 
+- a project overview with the Charter, active capability stages, current
+  development emphasis, and evidence counts;
+- a dedicated embodiment workspace for Design Study hypotheses, compiled
+  Assembly variants, and kept Robot Revision lineage;
+- an immutable Run ledger that distinguishes packaged replay evidence from
+  historical summary-only entries;
 - every compiled Assembly, component membership, mass/cost proxy, and ordered Observation/Action contract;
 - a selected completed Simulation Run, its metrics, score identity, semantic Event timeline, and top-down trajectory playback;
 - actual MuJoCo-rendered 3D poses synchronized with play/pause, stepping, speed, scrubbing, Event seeking, health, attitude, motion, contact, and Action telemetry;

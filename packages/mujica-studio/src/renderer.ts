@@ -3,7 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { atomicDirectory, hashJson, sha256, writeJson } from "@mujica/core";
 
 const UI_ROOT = resolve(import.meta.dir, "../ui");
-const UI_BUILD_VERSION = 1;
+const UI_BUILD_VERSION = 2;
 const UI_ASSETS = ["assets/studio.css", "assets/studio.js"] as const;
 
 async function exists(path: string): Promise<boolean> {
@@ -115,10 +115,10 @@ function escapeHtml(value: unknown): string {
     .replaceAll('"', "&quot;");
 }
 
-export function reactStudioHtml(snapshot: {
+export function reactStudioHtml(manifest: {
   project: { name: string };
 }): string {
-  const data = JSON.stringify(snapshot)
+  const data = JSON.stringify(manifest)
     .replaceAll("<", "\\u003c")
     .replaceAll(">", "\\u003e")
     .replaceAll("&", "\\u0026");
@@ -128,13 +128,13 @@ export function reactStudioHtml(snapshot: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self';">
-  <title>Mujica Studio — ${escapeHtml(snapshot.project.name)}</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self';">
+  <title>Mujica Studio — ${escapeHtml(manifest.project.name)}</title>
   <link rel="stylesheet" href="./assets/studio.css">
 </head>
 <body>
   <div id="root"></div>
-  <script id="mujica-studio-snapshot" type="application/json">${data}</script>
+  <script id="mujica-studio-route-manifest" type="application/json">${data}</script>
   <script defer src="./assets/studio.js"></script>
 </body>
 </html>`;

@@ -930,7 +930,7 @@ describe("agent CLI contract", () => {
     expect(studioEnvelope.artifacts.map((item: any) => item.kind)).toEqual(["hardware-replay", "studio-snapshot"]);
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 9,
+      version: 10,
       selectedRun: null,
       comparisonRun: null,
       selectedHardwareCapture: {
@@ -1060,7 +1060,7 @@ describe("agent CLI contract", () => {
     });
     const snapshot = JSON.parse(await readFile(resolve(studioEnvelope.data.path, "snapshot.json"), "utf8"));
     expect(snapshot).toMatchObject({
-      version: 9,
+      version: 10,
       selectedTwinAudit: {
         id: envelope.data.id,
         auditHash: envelope.data.auditHash,
