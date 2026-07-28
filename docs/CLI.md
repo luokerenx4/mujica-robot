@@ -160,7 +160,7 @@ It is derived model-fit evidence, not Calibration or hardware verification.
 side; a human observation may bind to that exact transition without changing
 the Audit or Judge authority.
 
-The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. The attention queue ranks measured Run/Capture failures before human hypotheses. “Copy frame context for Agent” includes a directly executable `evidence inspect` argv. Studio may copy or download an observation draft, but it cannot write project state. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode; renderer source participates in snapshot identity.
+The generated Studio directory can be opened directly or served by any static file server. Its controls support play/pause, previous/next frame, `0.25×`–`2×` speed, scrubbing, keyboard stepping, and Event seeking. A single `--run` renders as one full-width replay; the comparison column exists only when a meaningful `--compare-run` is supplied. The attention queue ranks measured Run/Capture failures before human hypotheses. “Copy frame context for Agent” includes a directly executable `evidence inspect` argv. Studio may copy or download an observation draft, but it cannot write project state. The command reports both the immutable `simulation-replay` and derived `studio-snapshot` artifacts in JSON mode; renderer source participates in snapshot identity.
 
 `evidence inspect` is the Agent/headless side of the same workspace. Run mode
 returns the exact row at or before `--time`, nearby Events, metrics, score, file

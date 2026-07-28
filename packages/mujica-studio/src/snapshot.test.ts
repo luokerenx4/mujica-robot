@@ -192,6 +192,10 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("missionSuiteJudge:'promotion-only'");
     expect(html).toContain("read-only evidence debugger");
     expect(html).toContain("Authoritative MuJoCo replay comparison");
+    expect(html).toContain('id="comparison-card" hidden');
+    expect(html).toContain("Self-righting robot replay · exact fallen pose");
+    expect(html).toContain("Single immutable Run; add --compare-run only when a meaningful same-scenario baseline exists.");
+    expect(html).toContain("q('#comparison-card').hidden=!B.run");
     expect(html).toContain("Top-down path");
     expect(html).toContain("Research Lab ledger");
     expect(html).toContain("Review-guided Development Work Order");
