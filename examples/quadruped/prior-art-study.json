@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "kind": "mujica-project-inception-study",
+  "project": "quadruped",
+  "conductedAt": "2026-07-28",
+  "question": "Which openly documented quadruped architecture should replace the Harness demo morphology as the starting point for a customizable MuJoCo-first robot?",
+  "missionAssumptions": [
+    "The robot needs credible omnidirectional leg placement rather than four planar sticks.",
+    "The design must expose enough geometry, joint, actuator, and mass evidence to build an honest MuJoCo Assembly.",
+    "Fall recovery must be treated as an embodiment capability before Controller or RL optimization.",
+    "Deep customization is required, but source history and licenses must remain traceable."
+  ],
+  "inspection": {
+    "method": "Primary-source review plus shallow Git clones in a disposable directory outside the Mujica workspace.",
+    "workspaceAssetsAdded": false,
+    "generatedImagesAdded": false
+  },
+  "sources": [
+    {
+      "id": "odri-solo12-hardware",
+      "name": "Open Dynamic Robot Initiative Solo12 hardware",
+      "url": "https://github.com/open-dynamic-robot-initiative/open_robot_actuator_hardware",
+      "upstreamCommit": "66af1522b4fba0ec4a1d7790e66f5e4652208d30",
+      "upstreamCommitDate": "2022-09-06T17:20:49+02:00",
+      "kind": "open-hardware",
+      "license": {
+        "status": "verified",
+        "spdx": "BSD-3-Clause",
+        "evidence": "Root LICENSE and README license section"
+      },
+      "openness": {
+        "hardware": "verified",
+        "cad": "verified",
+        "electronics": "verified",
+        "software": "separate-upstream-repositories",
+        "simulation": "separate-upstream-repository",
+        "trainedWeights": "not-inspected"
+      },
+      "inspectedAssets": [
+        "12-DoF Solo12 body and 3-DoF leg build documentation",
+        "STL and zipped SolidWorks source",
+        "actuator module STEP files",
+        "electronics, wiring, calibration, bill of materials, range-of-motion, and inertia documentation"
+      ],
+      "fit": [
+        "Four 3-DoF legs provide hip abduction/adduction plus sagittal placement.",
+        "A modular torque-controlled actuator stack gives the morphology a real hardware basis.",
+        "Build and calibration evidence expose practical constraints that the current demo omits."
+      ],
+      "risks": [
+        "The inspected hardware commit is from 2022 and upstream component availability must be refreshed.",
+        "The physical architecture is a reference baseline, not proof that all recovery poses are feasible.",
+        "Control, firmware, and master-board dependencies live in separate repositories and need their own ledger before reuse."
+      ],
+      "disposition": "selected-architecture-reference"
+    },
+    {
+      "id": "odri-solo12-model",
+      "name": "ODRI robot_properties_solo",
+      "url": "https://github.com/open-dynamic-robot-initiative/robot_properties_solo",
+      "upstreamCommit": "2201f454f4caffa0cad307fa8cbd1d64dd844008",
+      "upstreamCommitDate": "2023-03-22T17:49:47+01:00",
+      "kind": "simulation-description",
+      "license": {
+        "status": "verified",
+        "spdx": "BSD-3-Clause",
+        "evidence": "Root license.txt and README license section"
+      },
+      "openness": {
+        "hardware": "reference-to-separate-repository",
+        "cad": "visual meshes included",
+        "electronics": "not-applicable",
+        "software": "verified",
+        "simulation": "verified-for-PyBullet-and-Pinocchio",
+        "trainedWeights": "not-inspected"
+      },
+      "inspectedAssets": [
+        "Solo12 Xacro/URDF",
+        "Solo12 visual meshes",
+        "Pinocchio configuration and PyBullet wrapper",
+        "joint naming for FL, FR, HL, and HR HAA/HFE/KFE joints"
+      ],
+      "fit": [
+        "Provides a traceable kinematic bridge from the open hardware to a simulation model.",
+        "Joint naming and resources can inform a clean MuJoCo reimplementation."
+      ],
+      "risks": [
+        "It is not an MJCF source and should not be dropped into Mujica without an explicit conversion and validation step.",
+        "Model fidelity and inertial values still require comparison with the hardware documentation."
+      ],
+      "disposition": "selected-model-reference"
+    },
+    {
+      "id": "mujoco-menagerie-go2",
+      "name": "MuJoCo Menagerie Unitree Go2",
+      "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go2",
+      "upstreamCommit": "71f066ad0be9cd271f7ed58c030243ef157af9f4",
+      "upstreamCommitDate": "2026-07-04T13:08:40-07:00",
+      "kind": "mujoco-model",
+      "license": {
+        "status": "verified-for-model-directory",
+        "spdx": "BSD-3-Clause",
+        "evidence": "unitree_go2/LICENSE; the Menagerie root explicitly requires per-model license review"
+      },
+      "openness": {
+        "hardware": "not-established",
+        "cad": "visual-and-collision-meshes-only",
+        "electronics": "not-established",
+        "software": "MJCF-only",
+        "simulation": "verified",
+        "trainedWeights": "not-inspected"
+      },
+      "inspectedAssets": [
+        "MuJoCo and MJX MJCF files",
+        "OBJ visual/collision meshes",
+        "documented URDF-to-MJCF conversion and contact edits"
+      ],
+      "fit": [
+        "Strong reference for readable, production-shaped MuJoCo modeling and contact setup.",
+        "Useful visual and structural comparison for a 12-DoF commercial morphology."
+      ],
+      "risks": [
+        "A licensed MJCF model does not establish open manufacturing CAD, electronics, or hardware rights.",
+        "It should calibrate modeling quality, not become the claimed open hardware architecture."
+      ],
+      "disposition": "simulation-reference-only"
+    },
+    {
+      "id": "mjbots-quad",
+      "name": "mjbots quad",
+      "url": "https://github.com/mjbots/quad",
+      "upstreamCommit": "8ce3bc4ae14e033fea38d88b6a1f46c349e871d6",
+      "upstreamCommitDate": "2026-06-17T14:23:31-04:00",
+      "kind": "integrated-open-robot",
+      "license": {
+        "status": "partial",
+        "spdx": "Apache-2.0",
+        "evidence": "Root LICENSE and per-file headers; README says most files are Apache-2.0"
+      },
+      "openness": {
+        "hardware": "partial",
+        "cad": "3MF parts plus externally linked Fusion 360 assembly",
+        "electronics": "partial",
+        "software": "verified-for-inspected-files",
+        "simulation": "verified",
+        "trainedWeights": "not-inspected"
+      },
+      "inspectedAssets": [
+        "C++ quadruped simulator",
+        "walking robot control and inverse kinematics",
+        "robot configurations and web control",
+        "3MF chassis and leg parts",
+        "assembly, operation, maintenance, and calibration documentation"
+      ],
+      "fit": [
+        "Best inspected example of one repository joining a physical robot, simulator, controller, maintenance, and human interface.",
+        "Useful reference for Mujica's hardware-to-Studio lifecycle."
+      ],
+      "risks": [
+        "The phrase 'most files' requires path-by-path license verification before copying.",
+        "The overall editable CAD assembly is externally hosted and was not established as a repository-owned source asset."
+      ],
+      "disposition": "integration-reference-only"
+    },
+    {
+      "id": "stanford-doggo",
+      "name": "Stanford Doggo",
+      "url": "https://github.com/Nate711/StanfordDoggoProject",
+      "upstreamCommit": "ce5716b5941739a006ec604669bca5676f265dc1",
+      "upstreamCommitDate": "2024-07-08T11:08:11+09:00",
+      "kind": "open-hardware-research-platform",
+      "license": {
+        "status": "partial",
+        "spdx": "MIT",
+        "evidence": "Root LICENSE covers repository content; linked Fusion 360 CAD and code submodules require separate boundary checks"
+      },
+      "openness": {
+        "hardware": "documented",
+        "cad": "externally-linked",
+        "electronics": "documented-with-submodule-dependencies",
+        "software": "submodules-not-cloned",
+        "simulation": "not-inspected",
+        "trainedWeights": "not-applicable"
+      },
+      "inspectedAssets": [
+        "Mechanical architecture and electronics documentation",
+        "2-DoF five-bar leg and quasi-direct-drive rationale",
+        "linked CAD plus Doggo and ODrive submodule identities",
+        "ICRA architecture paper"
+      ],
+      "fit": [
+        "Useful reference for high-power, backdrivable leg transmission and explicit actuator tradeoffs.",
+        "Demonstrates dynamic jumping and backflip performance from a reproducible research platform."
+      ],
+      "risks": [
+        "Planar 2-DoF legs constrain lateral placement and are a poor default for the current omnidirectional mission.",
+        "The repository is end-of-life and important assets sit behind external CAD or separate submodules."
+      ],
+      "disposition": "powertrain-reference-only"
+    },
+    {
+      "id": "stanford-pupper-v1",
+      "name": "Stanford Pupper v1",
+      "url": "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+      "upstreamCommit": "dc0c5e2089cf2c0aac3c59982a4f140c31803175",
+      "upstreamCommitDate": "2024-07-03T12:53:32+09:00",
+      "kind": "educational-robot-software",
+      "license": {
+        "status": "verified-for-repository",
+        "spdx": "MIT",
+        "evidence": "Root LICENSE"
+      },
+      "openness": {
+        "hardware": "external-build-documentation",
+        "cad": "not-present-in-inspected-repository",
+        "electronics": "external-build-documentation",
+        "software": "verified",
+        "simulation": "not-inspected",
+        "trainedWeights": "not-inspected"
+      },
+      "inspectedAssets": [
+        "Raspberry Pi robot loop",
+        "gait, stance, swing, inverse-kinematics, IMU, joystick, and hardware interfaces"
+      ],
+      "fit": [
+        "Readable educational decomposition for a cheap deterministic Controller probe.",
+        "Useful example of separating gait scheduling, stance, swing, IK, and hardware interfaces."
+      ],
+      "risks": [
+        "Pupper v1 is explicitly end-of-life.",
+        "The inspected repository does not contain the manufacturing design needed for a new physical baseline."
+      ],
+      "disposition": "educational-control-reference-only"
+    }
+  ],
+  "decision": {
+    "route": "adapt",
+    "selectedArchitecture": "odri-solo12-hardware",
+    "selectedModelReference": "odri-solo12-model",
+    "secondarySimulationReference": "mujoco-menagerie-go2",
+    "rationale": [
+      "Solo12 is the only inspected candidate that joins a genuinely open 12-DoF physical architecture with build, actuator, electronics, calibration, range-of-motion, inertia, URDF, and mesh evidence.",
+      "Three joints per leg directly address the current demo's missing lateral authority without adding an unproven waist as the first reaction.",
+      "Adapting the architecture into a new Mujica Assembly keeps deep customization possible while avoiding an unnecessary fork of unrelated upstream software stacks.",
+      "Go2 supplies a current MuJoCo model-quality reference without being misrepresented as open hardware."
+    ],
+    "notAuthorizedYet": [
+      "No upstream source or binary asset may be copied into Mujica until a path-level attribution record is added.",
+      "No GitHub fork is created by this study.",
+      "No self-righting capability is inferred from range-of-motion documentation alone.",
+      "No Controller or RL budget resumes until the adapted design passes static reach/contact probes and a human visual review."
+    ],
+    "nextDesignBrief": {
+      "name": "Solo12-informed Mujica quadruped baseline",
+      "requirements": [
+        "Implement a clean, parameterized 12-DoF Assembly with HAA, HFE, and KFE joints per leg.",
+        "Source dimensions, mass, inertia, joint ranges, and actuator limits from traceable upstream facts or mark them as explicit hypotheses.",
+        "Model torso, hip packaging, feet, collision geometry, and cable/joint limits rather than copying the current block body.",
+        "Generate local design previews for standing, folded, supine, prone, and lateral recovery poses.",
+        "Compare the adaptation against the current demo fixture using identical static reach/contact probes before any dynamic optimization.",
+        "Ask a human to review the candidate form and force paths before declaring it the project baseline."
+      ],
+      "exitCondition": "A checked-in Design Study shows a physically plausible 12-DoF baseline with authoritative collision-free standing and recovery contact opportunities, and human review accepts its overall form for bounded dynamic probes."
+    },
+    "humanReviewRequired": true
+  }
+}

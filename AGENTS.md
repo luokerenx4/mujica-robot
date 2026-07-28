@@ -16,6 +16,36 @@ Mujica is an AI-native robot development harness. Domain correctness, reproducib
 - A Coding Agent edits files and invokes the same CLI as a human; it does not manipulate a 3D scene as source state.
 - A kept Development Candidate creates a new Robot Revision with explicit lineage.
 
+## Project inception research
+
+A real robot project starts with a Prior Art Study, before its first capability
+Plan or substantial morphology iteration. Search primary repositories, project
+documentation, and papers for existing robots that already address the mission.
+Inspect promising repositories with shallow clones outside the workspace and
+record the upstream URL and exact commit.
+
+The study must say plainly what is actually open. Verify software, firmware,
+electronics, CAD, meshes, simulation models, trained weights, and documentation
+as separate asset layers; a public repository or licensed MJCF does not prove
+that the hardware is open. Read model-directory and submodule licenses instead
+of assuming the root license covers them. Do not fork, vendor, or copy an asset
+until its source boundary, attribution, and redistribution obligations have
+been recorded.
+
+End the study with one explicit route: adapt a licensed upstream architecture,
+fork a selected source while preserving its history, combine separately
+licensed references behind clear boundaries, or design from scratch with a
+reason the available work does not fit. A human reviews the candidate forms
+before one becomes the design baseline. Generated previews and research images
+remain local; third-party source assets enter Git only as an intentional,
+licensed dependency with provenance.
+
+An explicitly labelled `demo-fixture` may skip the full comparison when its
+only purpose is exercising the Harness. It cannot become a robot's north-star
+baseline or receive substantial Controller/RL optimization without completing
+the study. If an existing project reaches repeated structural failures without
+one, stop behavior spending and perform the study retroactively.
+
 ## Adaptive development emphasis
 
 Robot development is an evidence-driven loop, not a design-then-RL waterfall and
