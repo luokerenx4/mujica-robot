@@ -12,7 +12,7 @@ from .io import atomic_directory, hash_file, hash_json, write_json
 from .replay import write_rgb_png
 
 
-DESIGN_PREVIEW_RENDERER_ID = "mujica-runtime-design-preview-v1"
+DESIGN_PREVIEW_RENDERER_ID = "mujica-runtime-design-preview-v2"
 
 
 def _name(model: mujoco.MjModel, kind: mujoco.mjtObj, index: int) -> str:
@@ -70,6 +70,22 @@ def _home_state(model: mujoco.MjModel, data: mujoco.MjData) -> None:
     else:
         mujoco.mj_resetData(model, data)
     mujoco.mj_forward(model, data)
+
+
+def _resolve_camera_distance(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    requested: object,
+) -> tuple[float, str]:
+    if requested == "auto":
+        _home_state(model, data)
+        lower, upper = _robot_bounds(model, data)
+        maximum_span = float(np.max(upper - lower))
+        return max(0.35, min(20.0, maximum_span * 1.8)), "auto-bounds-v1"
+    distance = float(requested)
+    if not math.isfinite(distance) or not 0.2 <= distance <= 20:
+        raise RuntimeError("Design camera distance is outside the supported range")
+    return distance, "fixed"
 
 
 def _root_free_joint(model: mujoco.MjModel) -> tuple[int, int] | None:
@@ -201,15 +217,20 @@ def render_design_preview(request: dict[str, Any]) -> dict[str, Any]:
     if hash_file(model_path) != request["modelHash"]:
         raise RuntimeError("Design Preview model hash differs from compiled source")
 
-    settings = request["settings"]
+    model = mujoco.MjModel.from_xml_path(str(model_path))
+    data = mujoco.MjData(model)
+    settings = dict(request["settings"])
     width = int(settings["width"])
     height = int(settings["height"])
-    distance = float(settings["cameraDistance"])
+    distance, distance_mode = _resolve_camera_distance(
+        model,
+        data,
+        settings["cameraDistance"],
+    )
+    settings["cameraDistance"] = distance
+    settings["cameraDistanceMode"] = distance_mode
     if not 320 <= width <= 1920 or not 240 <= height <= 1080:
         raise RuntimeError("Design Preview resolution is outside the supported range")
-    if not math.isfinite(distance) or not 0.2 <= distance <= 20:
-        raise RuntimeError("Design Preview camera distance is outside the supported range")
-
     identity = {
         "renderer": DESIGN_PREVIEW_RENDERER_ID,
         "runtimeVersion": request["runtimeVersion"],
@@ -222,8 +243,6 @@ def render_design_preview(request: dict[str, Any]) -> dict[str, Any]:
     }
     preview_id = f"design-preview-{hash_json(identity)[:16]}"
     target = output_root / preview_id
-    model = mujoco.MjModel.from_xml_path(str(model_path))
-    data = mujoco.MjData(model)
     track_body_name = str(request["baseBody"])
     track_body_id = mujoco.mj_name2id(
         model,

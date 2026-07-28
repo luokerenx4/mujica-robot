@@ -814,6 +814,7 @@ export function buildStudioRouteProjection(snapshot: StudioSnapshot) {
         revisions: snapshot.revisions,
         currentDesignStudy: snapshot.currentDesignStudy,
         currentDesignProbe: snapshot.currentDesignProbe,
+        capabilityStages: snapshot.charter.capabilityStages,
       },
     },
     {

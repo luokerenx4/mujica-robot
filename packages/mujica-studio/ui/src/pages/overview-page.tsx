@@ -117,6 +117,11 @@ export function OverviewPage({ manifest }: { manifest: StudioRouteManifest }): R
                       <Badge variant={accepted ? "success" : active ? "default" : "secondary"}>{stage.status}</Badge>
                     </div>
                     {stage.question ? <p className="mt-1 text-xs leading-5 text-slate-500">{stage.question}</p> : null}
+                    {accepted ? (
+                      <p className="mt-1 font-mono text-[10px] leading-4 text-slate-600">
+                        qualified for {stage.evidenceScopes?.map((scope) => scope.assembly).join(", ") || "no Assembly"}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               );

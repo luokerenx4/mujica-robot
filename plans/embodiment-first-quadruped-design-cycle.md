@@ -1,6 +1,6 @@
 # Embodiment-first quadruped design cycle
 
-Status: active
+Status: completed
 
 ## Outcome
 
@@ -85,7 +85,7 @@ Out of scope:
 - [x] Compile, render, and inspect every candidate locally.
 - [x] Exercise short shared scenarios with readable Program Controllers.
 - [x] Select or reject candidates through governed evidence.
-- [ ] Update emphasis and create the next bounded Plan.
+- [x] Update emphasis and create the next bounded Plan.
 
 ## Findings and decisions
 
@@ -171,3 +171,7 @@ Out of scope:
   diagnosis. The candidate created four-foot support in all four frozen falls
   but retained stable standing only laterally, so work moved to `balanced`
   plant/Controller co-design while Training stayed closed.
+- 2026-07-28: Closed this demo-family cycle after the Prior Art Study replaced
+  the morphology proposition. Follow-on work moved to the source-grounded
+  `solo12-informed-baseline` Plan; the old family remains regression evidence,
+  not the robot-design north star.

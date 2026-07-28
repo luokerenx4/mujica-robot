@@ -119,6 +119,25 @@ promotion authority. A Development Work Order lists eligible lanes; it does not
 require the Agent to spend equal budget on them or to continue an exhausted RL
 lane.
 
+Capability acceptance is Assembly-qualified, never project-global. Every
+`accepted` Charter stage names the Assembly, Controller, Benchmark, and optional
+Revision that earned the claim. A newly compiled or materially changed Assembly
+starts unqualified even if its interface is compatible and another project
+variant has passing evidence.
+
+When a Controller is intentionally introduced with a plant-specific first
+probe, declare its `smokeTest`. Agent discovery and Studio actions use that
+route instead of combining the Controller with unrelated project defaults.
+Absolute Task thresholds such as base height are plant assumptions; do not
+reuse them across materially different geometries without an applicability
+check or a derived design fact.
+
+Compact joint packages often contain intentional geometry overlap. Represent
+legal mounting overlap with explicit MJCF contact exclusions and keep the
+visual/collision hypothesis in design provenance. Never tune a Controller or
+start Training against a large initial constraint impulse before inspecting the
+named contact pair and deciding whether it is a real physical collision.
+
 ## Change loop
 
 1. Read `PLANS.md` and the active plan for non-trivial work.

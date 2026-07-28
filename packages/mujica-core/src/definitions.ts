@@ -60,6 +60,11 @@ export function assertProgramControllerCompatible(controller: ControllerDefiniti
   if (issues.length) throw new Error(issues.map((issue) => issue.message).join("\n"));
 }
 export const loadTask = async (projectDir: string, id: string): Promise<TaskDefinition> => await readJson(confined(resolve(projectDir), `tasks/${id}.task.json`), taskSchema) as TaskDefinition;
+export function assertTaskApplicable(task: TaskDefinition, assemblyId: string): void {
+  if (task.compatibleAssemblies && !task.compatibleAssemblies.includes(assemblyId)) {
+    throw new Error(`Task '${task.id}' is not applicable to Assembly '${assemblyId}'; compatible Assemblies: ${task.compatibleAssemblies.join(", ")}`);
+  }
+}
 export const loadScenario = async (projectDir: string, id: string): Promise<ScenarioDefinition> => await readJson(confined(resolve(projectDir), `scenarios/${id}.scenario.json`), scenarioSchema) as ScenarioDefinition;
 export const loadDomainProfile = async (projectDir: string, id: string): Promise<DomainProfileDefinition> => await readJson(confined(resolve(projectDir), `domain-profiles/${id}.domain.json`), domainProfileSchema) as DomainProfileDefinition;
 export const loadAuthorityProfile = async (projectDir: string, id: string): Promise<AuthorityProfileDefinition> => await readJson(confined(resolve(projectDir), `authority-profiles/${id}.authority.json`), authorityProfileSchema) as AuthorityProfileDefinition;
@@ -252,6 +257,17 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     }
   }
   const objectiveIds = await fileIds(join(root, "objectives"), ".objective.json"); for (const id of objectiveIds) await loadObjective(root, id);
+  for (const id of controllerIds) {
+    const controller = await loadController(root, id);
+    if (controller.definition.kind !== "program" || !controller.definition.smokeTest) continue;
+    const smoke = controller.definition.smokeTest;
+    const assembly = await compileAssembly(root, smoke.assembly);
+    assertProgramControllerCompatible(controller.definition, assembly);
+    const task = await loadTask(root, smoke.task);
+    assertTaskApplicable(task, assembly.id);
+    await loadScenario(root, smoke.scenario);
+    if (smoke.objective) await loadObjective(root, smoke.objective);
+  }
   const designStudyIds = await listDesignStudyIds(root);
   for (const id of designStudyIds) {
     const study = await loadDesignStudy(root, id);
@@ -328,6 +344,26 @@ export async function validateProjectDefinitions(projectDir: string): Promise<Re
     if (benchmark.version === 2) {
       const missing = benchmark.requiredCapabilities.filter((capability) => !missionCapabilities.has(capability));
       if (missing.length) throw new Error(`Mission Suite '${benchmark.id}' does not witness required capabilities: ${missing.join(", ")}`);
+    }
+  }
+  for (const stage of charter.capabilityStages) {
+    for (const scope of stage.evidenceScopes ?? []) {
+      const assembly = await compileAssembly(root, scope.assembly);
+      const controller = await loadController(root, scope.controller);
+      assertProgramControllerCompatible(controller.definition, assembly);
+      await loadBenchmark(root, scope.benchmark);
+      if (scope.revision) {
+        const revisionPath = confined(root, `revisions/${scope.revision}/manifest.json`);
+        await requireFile(revisionPath, `Capability stage '${stage.id}' Revision`);
+        const revision = JSON.parse(await Bun.file(revisionPath).text());
+        if (
+          revision.assembly !== scope.assembly
+          || revision.controller !== scope.controller
+          || revision.benchmarkId !== scope.benchmark
+        ) {
+          throw new Error(`Capability stage '${stage.id}' evidence scope does not match Revision '${scope.revision}'`);
+        }
+      }
     }
   }
   for (const stage of charter.capabilityStages) {

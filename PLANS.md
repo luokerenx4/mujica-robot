@@ -21,7 +21,6 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
-| [Embodiment-first quadruped design cycle](plans/embodiment-first-quadruped-design-cycle.md) | Compare explicit quadruped embodiments with cheap physical probes before returning substantial budget to Controller or RL optimization. | 2026-07-27 |
 | [Articulated delay-resilience loop](plans/articulated-delay-resilience-loop.md) | Remove delayed-observation left/right recovery regressions using complete no-reset Mission evidence and bounded Controller/RL authority. | 2026-07-25 |
 | [Self-righting capability and morphology study](plans/self-righting-capability.md) | Prove recovery from front, back, and side resting poses, comparing the current rigid body with an articulated torso before adding a waist to the robot design. | 2026-07-24 |
 
@@ -35,6 +34,8 @@ There is normally one active capability Plan. Follow-on work gets a new Plan ins
 
 | Plan | Outcome | Updated |
 | --- | --- | --- |
+| [Solo12-informed quadruped baseline](plans/solo12-informed-baseline.md) | Exercised a traceable modern 12-DoF robot through Mujica, established its first honest standing evidence, and repaired the blocking Harness gaps found in use. | 2026-07-28 |
+| [Embodiment-first quadruped design cycle](plans/embodiment-first-quadruped-design-cycle.md) | Compared the demo-family embodiments, added static/dynamic mechanism evidence, and retired that family as the design north star after prior-art research selected a source-grounded successor. | 2026-07-28 |
 | [Project inception prior-art study](plans/project-inception-prior-art.md) | Required source- and license-verified architecture research before committing a new robot to iterative development, and selected a Solo12-informed quadruped adaptation. | 2026-07-28 |
 | [Routed Studio workspace](plans/routed-studio-workspace.md) | Turned one generated Studio into a deep-linkable project workspace with route-owned static evidence projections. | 2026-07-28 |
 | [TypeScript React Studio foundation](plans/typescript-react-studio-foundation.md) | Made the primary Studio surface a typed, locally generated React application while preserving immutable evidence and the complete legacy debugger during incremental migration. | 2026-07-28 |

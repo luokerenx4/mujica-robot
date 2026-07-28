@@ -98,6 +98,12 @@ export interface CapabilityStage {
   name?: string;
   question?: string;
   status: string;
+  evidenceScopes?: Array<{
+    assembly: string;
+    controller: string;
+    benchmark: string;
+    revision?: string;
+  }>;
   scenarios?: Array<Record<string, unknown>>;
   exitCriteria?: string[];
 }
@@ -217,6 +223,7 @@ export interface DesignRouteData {
   revisions: Array<Record<string, unknown>>;
   currentDesignStudy: Record<string, any> | null;
   currentDesignProbe: Record<string, any> | null;
+  capabilityStages: CapabilityStage[];
 }
 
 export interface RunSummary {

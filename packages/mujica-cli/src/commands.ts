@@ -1,7 +1,7 @@
 import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
-  assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
+  assertProgramControllerCompatible, assertTaskApplicable, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
   listDesignStudyIds, listDomainProfileIds, listDriverPackageIds, listHardwareCapturePlanIds, loadController, loadDesignStudy, loadDevelopmentCharter, loadDomainProfile, loadDriverPackage, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
   type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type DesignStudyDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type ResearchReview, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
@@ -51,10 +51,12 @@ export async function controllerIdentity(projectDir: string, id: string, overrid
 async function baseRequest(project: ProjectContext, assembly: CompiledAssembly, controllerId: string, taskId: string, scenarioId: string, objectiveId: string, seed: number, override?: ControllerDefinition) {
   const controller = await controllerIdentity(project.rootDir, controllerId, override);
   assertProgramControllerCompatible(controller.definition, assembly);
+  const task = await loadTask(project.rootDir, taskId);
+  assertTaskApplicable(task, assembly.id);
   return {
     request: {
       runtimeVersion, runtimeSourceHash: await runtimeSourceHash(), harnessSourceHash: await harnessSourceHash(), projectDir: project.rootDir, modelPath: assembly.modelPath, compiled: runtimeCompiled(assembly), controller: controller.definition, controllerRoot: controller.rootDir,
-      controllerHash: controller.hash, trainingSteps: controller.trainingSteps, task: await loadTask(project.rootDir, taskId), scenario: await loadScenario(project.rootDir, scenarioId), objective: await loadObjective(project.rootDir, objectiveId), seed,
+      controllerHash: controller.hash, trainingSteps: controller.trainingSteps, task, scenario: await loadScenario(project.rootDir, scenarioId), objective: await loadObjective(project.rootDir, objectiveId), seed,
     },
     controller,
   };
@@ -482,8 +484,16 @@ export async function controllerListCommand(projectDir: string) {
 
 export async function controllerInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const controller = await controllerIdentity(project.rootDir, id); const compatibility = await controllerCompatibility(project, controller.definition);
-  const first = compatibility.compatibleAssemblies[0];
-  return success("controller.inspect", { definition: controller.definition, hash: controller.hash, rootDir: controller.rootDir, ...compatibility }, project, [], first ? [{ id: "simulate-compatible", description: "Run this Controller with its first compatible Assembly and project-default test inputs", argv: ["simulate", project.rootDir, "--assembly", first, "--controller", id, "--task", project.manifest.defaults.task, "--scenario", project.manifest.defaults.scenario], effect: "creates-artifact" }] : []);
+  const smokeTest = controller.definition.kind === "program" ? controller.definition.smokeTest : undefined;
+  if (smokeTest && !compatibility.compatibleAssemblies.includes(smokeTest.assembly)) {
+    throw new Error(`Controller '${id}' smoke-test Assembly '${smokeTest.assembly}' is not interface-compatible`);
+  }
+  const assembly = smokeTest?.assembly ?? compatibility.compatibleAssemblies[0];
+  const task = smokeTest?.task ?? project.manifest.defaults.task;
+  const scenario = smokeTest?.scenario ?? project.manifest.defaults.scenario;
+  const objective = smokeTest?.objective;
+  const argv = assembly ? ["simulate", project.rootDir, "--assembly", assembly, "--controller", id, "--task", task, "--scenario", scenario, ...(objective ? ["--objective", objective] : [])] : [];
+  return success("controller.inspect", { definition: controller.definition, hash: controller.hash, rootDir: controller.rootDir, ...compatibility }, project, [], assembly ? [{ id: "simulate-compatible", description: smokeTest ? "Run the Controller's declared smoke test" : "Run this Controller with its first compatible Assembly and project-default test inputs", argv, effect: "creates-artifact" }] : []);
 }
 
 export async function assemblyCompileCommand(projectDir: string, id: string) {
@@ -506,7 +516,7 @@ export async function designRenderCommand(projectDir: string, id: string) {
     settings: {
       width: 640,
       height: 480,
-      cameraDistance: 2.2,
+      cameraDistance: "auto",
     },
   });
   const primaryImage = preview.manifest.images.find(
@@ -574,7 +584,7 @@ export async function designAnalyzeCommand(
       ),
       width: 640,
       height: 480,
-      cameraDistance: 2.2,
+      cameraDistance: "auto",
     },
   }, 120_000);
   return success("design.analyze", {

@@ -60,6 +60,12 @@ export const developmentCharterSchema = z.object({
     name: z.string().min(1),
     question: z.string().min(1),
     status: z.enum(["planned", "active", "accepted"]),
+    evidenceScopes: z.array(z.object({
+      assembly: idSchema,
+      controller: idSchema,
+      benchmark: idSchema,
+      revision: idSchema.optional(),
+    }).strict()).optional(),
     scenarios: z.array(z.object({
       task: idSchema,
       scenario: idSchema,
@@ -67,7 +73,10 @@ export const developmentCharterSchema = z.object({
       role: z.enum(["development", "regression", "release"]),
     }).strict()).min(1),
     exitCriteria: z.array(z.string().min(1)).min(1),
-  }).strict()).min(1).refine((stages) => new Set(stages.map((stage) => stage.id)).size === stages.length, "capability stage ids must be unique"),
+  }).strict().refine(
+    (stage) => stage.status !== "accepted" || (stage.evidenceScopes?.length ?? 0) > 0,
+    "accepted capability stages require at least one Assembly-qualified evidence scope",
+  )).min(1).refine((stages) => new Set(stages.map((stage) => stage.id)).size === stages.length, "capability stage ids must be unique"),
   nonGoals: z.array(z.string().min(1)),
 }).strict();
 
@@ -84,10 +93,70 @@ export const robotMorphologySchema = z.object({
   }).strict()).refine((points) => new Set(points.map((point) => point.id)).size === points.length, "contact point ids must be unique"),
 }).strict();
 
+const designSourceSchema = z.object({
+  id: idSchema,
+  role: z.enum([
+    "architecture",
+    "dimensions",
+    "mass-properties",
+    "joint-envelope",
+    "actuation",
+    "simulation-reference",
+  ]),
+  url: z.string().url(),
+  revision: z.string().min(1),
+  license: z.string().min(1),
+  inspectedPaths: z.array(z.string().min(1)).min(1),
+}).strict();
+
+const designAssumptionSchema = z.object({
+  id: idSchema,
+  status: z.enum(["sourced", "derived", "hypothesis"]),
+  statement: z.string().min(1),
+  sourceIds: z.array(idSchema),
+  validation: z.string().min(1),
+}).strict();
+
+export const designProvenanceSchema = z.object({
+  basis: z.enum(["original", "adapted", "forked", "combined"]),
+  sources: z.array(designSourceSchema),
+  assumptions: z.array(designAssumptionSchema),
+}).strict()
+  .refine(
+    (value) => value.basis === "original" || value.sources.length > 0,
+    "adapted, forked, or combined designs require at least one source",
+  )
+  .refine(
+    (value) => new Set(value.sources.map((source) => source.id)).size === value.sources.length,
+    "design source ids must be unique",
+  )
+  .refine(
+    (value) => new Set(value.assumptions.map((assumption) => assumption.id)).size === value.assumptions.length,
+    "design assumption ids must be unique",
+  )
+  .refine(
+    (value) => {
+      const sourceIds = new Set(value.sources.map((source) => source.id));
+      return value.assumptions.every((assumption) =>
+        assumption.sourceIds.every((sourceId) => sourceIds.has(sourceId)));
+    },
+    "design assumptions may reference only declared source ids",
+  )
+  .refine(
+    (value) => value.assumptions.every((assumption) =>
+      assumption.status === "hypothesis" || assumption.sourceIds.length > 0),
+    "sourced and derived design assumptions require source evidence",
+  );
+
 export const robotSchema = z.object({
   version: z.literal(1), id: idSchema, name: z.string().min(1), mjcf: relativeFileSchema,
   mounts: z.array(mountSchema), observations: z.array(channelSchema), actions: z.array(channelSchema),
   massKg: z.number().nonnegative(), license: z.string().min(1), attribution: z.string(),
+  designProvenance: designProvenanceSchema.default({
+    basis: "original",
+    sources: [],
+    assumptions: [],
+  }),
 }).strict();
 
 export const componentSchema = z.object({
@@ -169,6 +238,12 @@ export const controllerSchema = z.discriminatedUnion("kind", [
       actionChannels: z.array(z.object({ name: idSchema, size: z.number().int().positive(), low: z.number().finite(), high: z.number().finite() }).strict().refine((value) => value.low <= value.high, "low must not exceed high")).min(1).refine((channels) => new Set(channels.map((channel) => channel.name)).size === channels.length, "Action channel names must be unique"),
     }).strict(),
     config: z.record(z.unknown()).default({}),
+    smokeTest: z.object({
+      assembly: idSchema,
+      task: idSchema,
+      scenario: idSchema,
+      objective: idSchema.optional(),
+    }).strict().optional(),
   }).strict(),
   z.object({ version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("policy"), policy: idSchema, deterministic: z.boolean().default(true) }).strict(),
 ]);
@@ -210,7 +285,17 @@ const motionCommandSchema = z.object({
   frame: z.literal("world"), linearVelocityMps: z.tuple([z.number().finite().min(-1).max(1), z.number().finite().min(-1).max(1)]), yawRateRadPerSec: z.number().finite().min(-2).max(2),
 }).strict();
 
-const taskBase = { id: idSchema, name: z.string().min(1), durationSeconds: z.number().finite().positive(), controlHz: z.number().finite().positive(), healthyHeight: z.tuple([z.number(), z.number()]), terminateOnFall: z.boolean() };
+const taskBase = {
+  id: idSchema,
+  name: z.string().min(1),
+  durationSeconds: z.number().finite().positive(),
+  controlHz: z.number().finite().positive(),
+  healthyHeight: z.tuple([z.number(), z.number()]),
+  terminateOnFall: z.boolean(),
+  compatibleAssemblies: z.array(idSchema).min(1)
+    .refine((ids) => new Set(ids).size === ids.length, "compatible Assembly ids must be unique")
+    .optional(),
+};
 
 const scheduledTaskSchema = z.object({
   version: z.literal(3), ...taskBase,

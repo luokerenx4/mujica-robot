@@ -58,6 +58,14 @@
       "name": "Command-conditioned locomotion",
       "question": "Can the robot execute stop, forward, reverse, lateral, yaw, delay, and disturbance commands without gate violations?",
       "status": "accepted",
+      "evidenceScopes": [
+        {
+          "assembly": "command-conditioned-history-3dof",
+          "controller": "command-tracking-gait",
+          "benchmark": "command-tracking",
+          "revision": "quadruped-r-d193b01b53f1"
+        }
+      ],
       "scenarios": [
         { "task": "stand", "scenario": "nominal", "benchmark": "command-tracking", "role": "regression" },
         { "task": "forward-walk", "scenario": "nominal", "benchmark": "command-tracking", "role": "release" },
@@ -73,6 +81,14 @@
       "name": "Autonomous self-righting",
       "question": "Can the complete robot recover from front, back, left-side, and right-side resting poses into a stable stand without unsafe contacts, joint-limit use, or excess actuator authority?",
       "status": "accepted",
+      "evidenceScopes": [
+        {
+          "assembly": "self-righting-rigid-3dof",
+          "controller": "phased-self-right",
+          "benchmark": "self-righting",
+          "revision": "quadruped-r-0bb926344064"
+        }
+      ],
       "scenarios": [
         { "task": "self-right", "scenario": "fallen-front", "benchmark": "self-righting", "role": "release" },
         { "task": "self-right", "scenario": "fallen-back", "benchmark": "self-righting", "role": "release" },

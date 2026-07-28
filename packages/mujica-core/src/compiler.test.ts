@@ -145,6 +145,21 @@ describe("Robot Assembly compiler", () => {
     expect(assembly.modelHash).toBe("9690d57de5ea56e19d3c970b2acdda352a69e42a95bbe19797f963b8131ff0ea"); expect(assembly.executionHash).toHaveLength(64);
   });
 
+  test("compiled robot design preserves source evidence and unresolved hypotheses", async () => {
+    const assembly = await compileAssembly(project, "solo12-informed");
+    expect(assembly.designProvenance.basis).toBe("adapted");
+    expect(assembly.designProvenance.sources.map((source) => source.id)).toEqual([
+      "odri-solo12-hardware",
+      "odri-solo12-model",
+      "mujoco-menagerie-go2",
+    ]);
+    expect(assembly.designProvenance.assumptions.find((item) =>
+      item.id === "primitive-collision-envelope")).toMatchObject({
+        status: "hypothesis",
+        sourceIds: [],
+      });
+  });
+
   test("plant identity ignores comments and inter-tag layout but preserves MJCF semantics", async () => {
     expect(canonicalPlantXml("<mujoco><!-- runtime only --><worldbody>\n  <body mass=\"1\" />\n</worldbody></mujoco>"))
       .toBe("<mujoco><worldbody><body mass=\"1\" /></worldbody></mujoco>");
@@ -240,7 +255,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("resilient-command-conditioned-history-3dof");
     expect(result.project.manifest.defaults.controller).toBe("behavior-supervisor");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "resilient-command-conditioned-waist-3dof", "resilient-command-conditioned-waist-history-3dof", "self-righting-balanced-3dof", "self-righting-balanced-waist-3dof", "self-righting-balanced-waist-overcenter-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "resilient-command-conditioned-waist-3dof", "resilient-command-conditioned-waist-history-3dof", "self-righting-balanced-3dof", "self-righting-balanced-waist-3dof", "self-righting-balanced-waist-overcenter-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof", "solo12-informed"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);

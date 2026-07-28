@@ -99,6 +99,10 @@ export function DesignsPage({ manifest }: { manifest: StudioRouteManifest }): Re
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {data.assemblies.map((assembly) => {
             const selected = assembly.id === data.selectedAssembly;
+            const qualifiedStages = data.capabilityStages.filter((stage) =>
+              stage.status === "accepted"
+              && stage.evidenceScopes?.some((scope) => scope.assembly === assembly.id),
+            );
             return (
               <Card key={assembly.id} className={selected ? "border-cyan-300/25 bg-cyan-300/[0.035]" : ""}>
                 <CardHeader>
@@ -129,6 +133,15 @@ export function DesignsPage({ manifest }: { manifest: StudioRouteManifest }): Re
                     <GitCommitHorizontal className="mb-2 size-4 text-emerald-200" />
                     <div className="font-mono text-slate-200">{assembly.actionContract?.size ?? "—"}</div>
                     <div className="mt-1 text-slate-500">actions</div>
+                  </div>
+                  <div className="col-span-2 rounded-lg bg-white/[0.035] p-3 text-xs">
+                    <ShieldAlert className="mb-2 size-4 text-violet-200" />
+                    <div className="font-mono text-slate-200">
+                      {qualifiedStages.length
+                        ? qualifiedStages.map((stage) => stage.name ?? stage.id).join(", ")
+                        : "unqualified"}
+                    </div>
+                    <div className="mt-1 text-slate-500">Assembly-scoped accepted capabilities</div>
                   </div>
                 </CardContent>
               </Card>

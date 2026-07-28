@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "modern-architecture-baseline",
+  "name": "Demo fixture versus source-grounded quadruped",
+  "question": "Does the Solo12-informed candidate preserve nominal four-foot support and collision-free recovery contact opportunities while replacing the demo fixture with a traceable physical architecture?",
+  "samples": 2048,
+  "candidates": [
+    {
+      "id": "demo-fixture-reference",
+      "assembly": "self-righting-balanced-3dof",
+      "role": "baseline",
+      "hypothesis": "The corrected demo fixture provides the existing static support/contact screen that the modern candidate must not regress.",
+      "falsifiedIf": "The authored home lacks four-foot support or any frozen resting pose lacks two collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    },
+    {
+      "id": "solo12-informed-clean-room",
+      "assembly": "solo12-informed",
+      "role": "candidate",
+      "hypothesis": "A source-grounded 2.5 kg, 12-DoF architecture with realistic link lengths and actuator limits preserves the cheap static mechanisms needed to justify bounded dynamic standing and recovery probes.",
+      "falsifiedIf": "The authored home lacks four-foot support, any frozen resting pose lacks two collision-free foot contact opportunities, or the required pose depends on disallowed self-contact.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    }
+  ],
+  "authorityBoundary": {
+    "claim": "sampled-kinematic-screening",
+    "designAcceptance": "none",
+    "dynamicCapability": false,
+    "physicalEvidence": false,
+    "promotion": "locked-judge-only"
+  }
+}

@@ -272,7 +272,7 @@ class RuntimeContractTest(unittest.TestCase):
                 "settings": {
                     "width": 320,
                     "height": 240,
-                    "cameraDistance": 2.2,
+                    "cameraDistance": "auto",
                 },
             }
             first = render_design_preview(request)
@@ -283,6 +283,11 @@ class RuntimeContractTest(unittest.TestCase):
             manifest = first["manifest"]
             self.assertEqual(manifest["renderer"], DESIGN_PREVIEW_RENDERER_ID)
             self.assertEqual(manifest["kind"], "mujica-design-preview")
+            self.assertEqual(
+                manifest["settings"]["cameraDistanceMode"],
+                "auto-bounds-v1",
+            )
+            self.assertLess(manifest["settings"]["cameraDistance"], 2.2)
             self.assertEqual(len(manifest["images"]), 8)
             self.assertEqual(
                 {image["pose"] for image in manifest["images"]},
@@ -335,7 +340,7 @@ class RuntimeContractTest(unittest.TestCase):
                     "minimumSupportContacts": 2,
                     "width": 320,
                     "height": 240,
-                    "cameraDistance": 2.2,
+                    "cameraDistance": "auto",
                 },
             }
             first = analyze_design(request)
@@ -345,6 +350,10 @@ class RuntimeContractTest(unittest.TestCase):
             self.assertEqual(first["id"], second["id"])
             analysis = first["analysis"]
             self.assertEqual(analysis["analyzer"], DESIGN_ANALYZER_ID)
+            self.assertEqual(
+                analysis["settings"]["cameraDistanceMode"],
+                "auto-bounds-v1",
+            )
             self.assertEqual(analysis["screeningOutcome"], "HOME_SUPPORT_BLOCKED")
             self.assertEqual(
                 analysis["homeSupport"]["screeningOutcome"],

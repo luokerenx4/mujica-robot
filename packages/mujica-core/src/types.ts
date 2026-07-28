@@ -53,6 +53,24 @@ export interface RobotManifest {
   massKg: number;
   license: string;
   attribution: string;
+  designProvenance: {
+    basis: "original" | "adapted" | "forked" | "combined";
+    sources: Array<{
+      id: string;
+      role: "architecture" | "dimensions" | "mass-properties" | "joint-envelope" | "actuation" | "simulation-reference";
+      url: string;
+      revision: string;
+      license: string;
+      inspectedPaths: string[];
+    }>;
+    assumptions: Array<{
+      id: string;
+      status: "sourced" | "derived" | "hypothesis";
+      statement: string;
+      sourceIds: string[];
+      validation: string;
+    }>;
+  };
 }
 
 export interface ComponentManifest {
@@ -126,6 +144,7 @@ export interface CompiledAssembly {
   plantHash: string;
   baseId: string;
   baseHash: string;
+  designProvenance: RobotManifest["designProvenance"];
   catalogHash: string;
   morphology: RobotMorphology;
   totalMassKg: number;

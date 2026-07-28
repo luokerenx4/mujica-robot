@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "solo12-home-stand",
+  "name": "Readable Solo12-informed home-pose PD stand",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {
+        "name": "joint-position",
+        "size": 12
+      },
+      {
+        "name": "joint-velocity",
+        "size": 12
+      }
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 12,
+        "low": -2.5,
+        "high": 2.5
+      }
+    ]
+  },
+  "config": {
+    "kp": 12,
+    "kd": 0.45,
+    "maximumTorqueNm": 2.5,
+    "target": [
+      0,
+      0.8,
+      -1.6,
+      0,
+      0.8,
+      -1.6,
+      0,
+      -0.8,
+      1.6,
+      0,
+      -0.8,
+      1.6
+    ]
+  }
+}

@@ -192,7 +192,7 @@ export async function compileAssembly(projectDir: string, assemblyId: string): P
   const sourceFiles = [relative(project.rootDir, join(project.rootDir, "assemblies", `${assembly.id}.robot.json`)), relative(project.rootDir, join(base.rootDir, "robot.json")), relative(project.rootDir, baseModelPath), ...resolved.flatMap((item) => [relative(project.rootDir, join(item.rootDir, "component.json")), ...[item.manifest.fragment, item.manifest.mountFragment].filter((path): path is string => path !== undefined).map((path) => relative(project.rootDir, confined(item.rootDir, path)))])];
   const result: CompiledAssembly = {
     version: 1, id: assembly.id, name: assembly.name, projectId: project.manifest.id, rootDir: project.rootDir, artifactDir, modelPath,
-    assemblyHash, executionHash, modelHash, plantHash, baseId: base.manifest.id, baseHash: base.hash, catalogHash, morphology, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
+    assemblyHash, executionHash, modelHash, plantHash, baseId: base.manifest.id, baseHash: base.hash, designProvenance: base.manifest.designProvenance, catalogHash, morphology, totalMassKg: base.manifest.massKg + resolved.reduce((sum, item) => sum + item.manifest.massKg, 0),
     componentCost: resolved.reduce((sum, item) => sum + item.manifest.cost, 0), components: resolved.map((item) => item.compiled), observationContract, actionContract, sourceFiles,
   };
   await writeJson(join(artifactDir, "compiled-assembly.json"), { ...result, rootDir: undefined, artifactDir: undefined, modelPath: "model.xml" });

@@ -47,6 +47,32 @@ def has_disallowed_self_contact(model: mujoco.MjModel, data: mujoco.MjData) -> b
     return bool(disallowed_self_contact_geom_pairs(model, data))
 
 
+def named_disallowed_self_contact_pairs(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+) -> list[dict[str, list[str]]]:
+    result = []
+    for first_geom, second_geom in sorted(
+        disallowed_self_contact_geom_pairs(model, data)
+    ):
+        geoms = [
+            mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom)
+            or f"geom-{geom}"
+            for geom in (first_geom, second_geom)
+        ]
+        bodies = [
+            mujoco.mj_id2name(
+                model,
+                mujoco.mjtObj.mjOBJ_BODY,
+                int(model.geom_bodyid[geom]),
+            )
+            or f"body-{int(model.geom_bodyid[geom])}"
+            for geom in (first_geom, second_geom)
+        ]
+        result.append({"geoms": geoms, "bodies": bodies})
+    return result
+
+
 def read_controller_telemetry(controller: Any) -> dict[str, Any] | None:
     provider = getattr(controller, "telemetry", None)
     if provider is None:
@@ -470,6 +496,9 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
     maximum_pitch = float("-inf")
     minimum_limit_margin = minimum_joint_limit_margin(environment.model, environment.data)
     disallowed_collision_steps = 0
+    disallowed_collision_pairs: dict[
+        tuple[str, str], dict[str, Any]
+    ] = {}
     recovery_target = request["task"].get("recoveryTarget")
     recovery_evaluation_start = (
         None
@@ -579,9 +608,21 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         minimum_pitch = min(minimum_pitch, pitch)
         maximum_pitch = max(maximum_pitch, pitch)
         minimum_limit_margin = min(minimum_limit_margin, minimum_joint_limit_margin(environment.model, environment.data))
-        disallowed_contact = has_disallowed_self_contact(environment.model, environment.data)
+        named_contact_pairs = named_disallowed_self_contact_pairs(
+            environment.model,
+            environment.data,
+        )
+        disallowed_contact = bool(named_contact_pairs)
         if disallowed_contact:
             disallowed_collision_steps += 1
+            for pair in named_contact_pairs:
+                key = tuple(pair["geoms"])
+                summary = disallowed_collision_pairs.setdefault(key, {
+                    **pair,
+                    "steps": 0,
+                    "firstTimeSeconds": float(environment.data.time),
+                })
+                summary["steps"] += 1
         recovery_target_satisfied = False
         recovery_evaluation_active = (
             recovery_target is not None
@@ -679,7 +720,7 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
                 previous_mission_stage = mission_stage
         foot_contact_force = result.observation.get("foot-contact-force")
         foot_positions_world = environment.foot_positions_world()
-        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "missionStage": mission_stage, "missionPhaseEnteredAtSeconds": info.get("missionPhaseEnteredAtSeconds"), "missionPhaseElapsedSeconds": info.get("missionPhaseElapsedSeconds"), "missionTransition": info.get("missionTransition"), "recoveryEvaluationActive": recovery_evaluation_active, "recoveryTargetSatisfied": recovery_target_satisfied, "recoveryStableProgress": info.get("recoveryStableProgress"), "recoveryStableLatched": info.get("recoveryStableLatched"), "recoveryStableAtSeconds": info.get("recoveryStableAtSeconds"), "recoveryStableSinceSeconds": info.get("recoveryStableSinceSeconds"), "recoveryDeadlineExpired": info.get("recoveryDeadlineExpired"), "recoveryDeadlineExpiredAtSeconds": info.get("recoveryDeadlineExpiredAtSeconds"), "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
+        trajectory.append({"step": environment.step_index, "commandStep": int(info["commandStep"]), "time": float(environment.data.time), "qpos": environment.data.qpos.tolist(), "qvel": environment.data.qvel.tolist(), "motionCommand": np.asarray(info["motionCommand"]).tolist(), "measuredMotion": np.asarray(info["measuredMotion"]).tolist(), "pitchRad": pitch, "pitchRateRadPerSec": pitch_rate, "bodyTiltRad": body_tilt, "missionStage": mission_stage, "missionPhaseEnteredAtSeconds": info.get("missionPhaseEnteredAtSeconds"), "missionPhaseElapsedSeconds": info.get("missionPhaseElapsedSeconds"), "missionTransition": info.get("missionTransition"), "recoveryEvaluationActive": recovery_evaluation_active, "recoveryTargetSatisfied": recovery_target_satisfied, "recoveryStableProgress": info.get("recoveryStableProgress"), "recoveryStableLatched": info.get("recoveryStableLatched"), "recoveryStableAtSeconds": info.get("recoveryStableAtSeconds"), "recoveryStableSinceSeconds": info.get("recoveryStableSinceSeconds"), "recoveryDeadlineExpired": info.get("recoveryDeadlineExpired"), "recoveryDeadlineExpiredAtSeconds": info.get("recoveryDeadlineExpiredAtSeconds"), "controllerPhase": controller_phase, "controllerTelemetry": controller_telemetry, "disallowedSelfContact": disallowed_contact, "disallowedSelfContactPairs": named_contact_pairs, "jointLimitMarginRad": minimum_joint_limit_margin(environment.model, environment.data), "footContactForce": None if foot_contact_force is None else np.asarray(foot_contact_force).tolist(), "footPositionWorld": None if foot_positions_world is None else foot_positions_world.tolist(), "commandedAction": np.asarray(info["commandedAction"]).tolist(), "appliedAction": np.asarray(info["appliedAction"]).tolist(), "action": np.asarray(info["appliedAction"]).tolist(), "reward": result.reward, "healthy": info["healthy"]})
         observation = result.observation
         if result.terminated:
             fell = True
@@ -751,6 +792,10 @@ def simulate(request: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         "finalStableStandingDwellSeconds": recovery_stable_steps / float(request["task"]["controlHz"]),
         "recoveryRelapseCount": len(relapse_events),
         "minimumJointLimitMarginRad": minimum_limit_margin, "disallowedCollisionSteps": disallowed_collision_steps,
+        "disallowedCollisionPairs": sorted(
+            disallowed_collision_pairs.values(),
+            key=lambda pair: (-int(pair["steps"]), pair["geoms"]),
+        ),
         "meanEnergy": totals["energy"] / steps, "meanSmoothness": totals["smoothness"] / steps,
         "peakActuator": max((max(abs(value) for value in row["action"]) for row in trajectory), default=0.0),
         "policyResidualActiveSteps": sum(

@@ -10,12 +10,18 @@ import mujoco
 import numpy as np
 
 from .collisions import disallowed_self_contact_geom_pairs
-from .design_preview import _home_state, _name, _robot_bounds, _root_free_joint
+from .design_preview import (
+    _home_state,
+    _name,
+    _resolve_camera_distance,
+    _robot_bounds,
+    _root_free_joint,
+)
 from .io import atomic_directory, hash_file, hash_json, write_json
 from .replay import write_rgb_png
 
 
-DESIGN_ANALYZER_ID = "mujica-runtime-design-analysis-v1"
+DESIGN_ANALYZER_ID = "mujica-runtime-design-analysis-v2"
 
 _PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53]
 
@@ -576,14 +582,22 @@ def analyze_design(request: dict[str, Any]) -> dict[str, Any]:
     if hash_file(model_path) != request["modelHash"]:
         raise RuntimeError("Design Analysis model hash differs from compiled source")
 
-    settings = request["settings"]
+    model = mujoco.MjModel.from_xml_path(str(model_path))
+    data = mujoco.MjData(model)
+    settings = dict(request["settings"])
     samples = int(settings["samples"])
     tolerance = float(settings["contactToleranceM"])
     floor_clearance = float(settings["floorClearanceM"])
     minimum_support_contacts = int(settings["minimumSupportContacts"])
     width = int(settings["width"])
     height = int(settings["height"])
-    distance = float(settings["cameraDistance"])
+    distance, distance_mode = _resolve_camera_distance(
+        model,
+        data,
+        settings["cameraDistance"],
+    )
+    settings["cameraDistance"] = distance
+    settings["cameraDistanceMode"] = distance_mode
     if not 128 <= samples <= 65_536:
         raise RuntimeError("Design Analysis samples must be between 128 and 65536")
     if not math.isfinite(tolerance) or not 0.001 <= tolerance <= 0.1:
@@ -594,9 +608,6 @@ def analyze_design(request: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("Design Analysis minimum support contact count is invalid")
     if not 320 <= width <= 640 or not 240 <= height <= 480:
         raise RuntimeError("Design Analysis resolution is outside supported bounds")
-    if not math.isfinite(distance) or not 0.2 <= distance <= 20:
-        raise RuntimeError("Design Analysis camera distance is outside bounds")
-
     identity = {
         "analyzer": DESIGN_ANALYZER_ID,
         "runtimeVersion": request["runtimeVersion"],
@@ -625,8 +636,6 @@ def analyze_design(request: dict[str, Any]) -> dict[str, Any]:
             "cached": True,
         }
 
-    model = mujoco.MjModel.from_xml_path(str(model_path))
-    data = mujoco.MjData(model)
     root = _root_free_joint(model)
     if root is None:
         raise RuntimeError("Design Analysis requires a free root joint")
