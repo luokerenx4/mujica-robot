@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "kind": "mujica-development-work-order",
+  "project": "quadruped",
+  "charterHash": "7bd8a5ac2589f2fb91a73c302653f64112e9a861d25d2afb28051f550ab4fb3c",
+  "review": {
+    "id": "development-review-a1d4f99215a57e1e",
+    "hash": "a1d4f99215a57e1e27c42ae87c94008b23bbd0f1115b2a112326e37b5dde9864"
+  },
+  "subject": {
+    "assembly": "solo12-informed",
+    "assemblyHash": "ac34a7cff44f70633a4723ca14bf7af783e87a3769c584f37cf65366ee5b49a6",
+    "controller": "solo12-command-crawl",
+    "controllerHash": "620e78202a321acd1c47970f660c26d1e133556f79014b619fd825bc51540361",
+    "controllerKind": "program"
+  },
+  "status": "CAPABILITY_INCEPTION_REQUIRED",
+  "blockers": [],
+  "lanes": [],
+  "uncoveredSurfaces": [],
+  "inception": {
+    "kind": "capability-inception",
+    "reason": "next-stage-has-no-applicable-benchmark",
+    "stage": {
+      "id": "self-righting",
+      "name": "Autonomous self-righting",
+      "question": "Can the complete robot recover from front, back, left-side, and right-side resting poses into a stable stand without unsafe contacts, joint-limit use, or excess actuator authority?",
+      "authoredStatus": "accepted"
+    },
+    "subject": {
+      "assembly": "solo12-informed",
+      "controller": "solo12-command-crawl"
+    },
+    "referenceEvidenceScopes": [
+      {
+        "assembly": "self-righting-rigid-3dof",
+        "controller": "phased-self-right",
+        "benchmark": "self-righting",
+        "revision": "quadruped-r-0bb926344064"
+      }
+    ],
+    "regressionBenchmarks": [
+      "solo12-command-foundation",
+      "solo12-disturbance-standing",
+      "solo12-readable-locomotion"
+    ],
+    "requiredArtifacts": [
+      "plan",
+      "task",
+      "scenarios",
+      "objective",
+      "benchmark",
+      "readable-controller"
+    ],
+    "developmentEmphasis": "behavior-heavy",
+    "authorityBoundary": {
+      "mechanismFirst": true,
+      "trainingAuthorized": false,
+      "benchmarkLockRequired": true,
+      "capabilityClaim": "new-applicable-evidence-required"
+    },
+    "reviewArgv": [
+      "project",
+      "review",
+      "/Users/ame/2606toydev/mujica/examples/quadruped",
+      "--assembly",
+      "solo12-informed",
+      "--controller",
+      "solo12-command-crawl"
+    ]
+  },
+  "authorityBoundary": {
+    "prioritization": "derived",
+    "experimentDecision": "locked-judge",
+    "sourcePromotion": "verdict-governed",
+    "northStarClaim": "new-development-review-required"
+  }
+}

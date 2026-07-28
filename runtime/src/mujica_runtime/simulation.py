@@ -149,15 +149,16 @@ def motion_metrics(initial_position: np.ndarray, final_position: np.ndarray, dis
 
 def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str, Any], objective: dict[str, Any]) -> dict[str, Any]:
     schedule = resolved_motion_command_schedule(task, trajectory)
-    measurement = objective.get("transientMeasurement", {"planarToleranceMps": 0.12, "yawRateToleranceRadPerSec": 0.25, "holdSeconds": 0.2})
+    measurement = objective.get("transientMeasurement", {"planarToleranceMps": 0.12, "yawRateToleranceRadPerSec": 0.25, "averagingSeconds": 0.2, "holdSeconds": 0.2})
     control_hz = float(task["controlHz"])
+    averaging_steps = max(1, int(np.ceil(float(measurement.get("averagingSeconds", measurement["holdSeconds"])) * control_hz - 1e-12)))
     hold_steps = max(1, int(np.ceil(float(measurement["holdSeconds"]) * control_hz - 1e-12)))
 
     def settling(rows: list[dict[str, Any]], values: list[np.ndarray], target: np.ndarray, dimensions: slice | int, at_step: int, tolerance: float) -> tuple[float, bool]:
-        window_errors = [float(np.linalg.norm(np.mean(values[index:index + hold_steps], axis=0)[dimensions] - target[dimensions])) for index in range(0, len(values) - hold_steps + 1)]
+        window_errors = [float(np.linalg.norm(np.mean(values[index:index + averaging_steps], axis=0)[dimensions] - target[dimensions])) for index in range(0, len(values) - averaging_steps + 1)]
         for index, error in enumerate(window_errors):
-            if error <= tolerance and all(later <= tolerance for later in window_errors[index:]):
-                end_row = rows[index + hold_steps - 1]
+            if index + hold_steps <= len(window_errors) and error <= tolerance and all(later <= tolerance for later in window_errors[index:]):
+                end_row = rows[index + averaging_steps - 1]
                 return (float(int(end_row["step"]) - at_step) / control_hz, True)
         return (float(len(rows)) / control_hz, False)
 
@@ -171,7 +172,7 @@ def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str
         measured = [np.asarray(row["measuredMotion"], dtype=np.float64) for row in rows]
         planar_errors = [float(np.linalg.norm(value[:2] - target[:2])) for value in measured]
         yaw_errors = [abs(float(value[2] - target[2])) for value in measured]
-        terminal = np.mean(measured[-hold_steps:], axis=0) if measured else np.zeros(3, dtype=np.float64)
+        terminal = np.mean(measured[-averaging_steps:], axis=0) if measured else np.zeros(3, dtype=np.float64)
         planar_delta = target[:2] - previous[:2]
         planar_delta_size = float(np.linalg.norm(planar_delta))
         planar_overshoot = max([0.0, *([float(np.dot(value[:2] - target[:2], planar_delta / planar_delta_size)) for value in measured] if planar_delta_size > 1e-12 else [])])
@@ -190,6 +191,8 @@ def transition_response_metrics(trajectory: list[dict[str, Any]], task: dict[str
             "planarBraking": planar_braking,
         })
     return {
+        "transientAveragingSeconds": averaging_steps / control_hz,
+        "transientHoldSeconds": hold_steps / control_hz,
         "motionCommandSchedule": [{"atStep": int(segment["atStep"]), "atSeconds": float(segment["atSeconds"]), "command": np.asarray(segment["command"]).tolist()} for segment in schedule],
         "transitionCount": len(transitions), "transitions": transitions,
         "maximumTransitionTerminalPlanarTrackingError": max((item["terminalPlanarTrackingError"] for item in transitions), default=0.0),

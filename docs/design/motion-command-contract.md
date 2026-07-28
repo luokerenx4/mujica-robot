@@ -58,7 +58,17 @@ motion-quality evidence.
 
 ## Evidence
 
-Every new trajectory row records both `motionCommand` and `measuredMotion` in the same order. Constant-command Run metrics record the command, mean measured motion, task-level planar/yaw error between those episode means, and mean instantaneous errors for gait diagnostics. Capability gates use the task-level errors: averaging instantaneous absolute error would incorrectly punish the deliberate within-stride velocity oscillation of a legged gait. Scheduled Tasks additionally record resolved segment boundaries and per-transition response metrics so stopping and settling cannot be hidden by an episode average. Terminal response is the mean of the final configured hold window. Settling is the earliest completed hold window whose windowed tracking error is within tolerance and for which every later complete window in that segment remains within tolerance; a temporary threshold crossing followed by divergence is not settlement.
+Every new trajectory row records both `motionCommand` and `measuredMotion` in the same order. Constant-command Run metrics record the command, mean measured motion, task-level planar/yaw error between those episode means, and mean instantaneous errors for gait diagnostics. Capability gates use the task-level errors: averaging instantaneous absolute error would incorrectly punish the deliberate within-stride velocity oscillation of a legged gait. Scheduled Tasks additionally record resolved segment boundaries and per-transition response metrics so stopping and settling cannot be hidden by an episode average.
+
+Transient measurement separates `averagingSeconds` from `holdSeconds`.
+Terminal response averages the final configured averaging window; for a
+periodic gait that window should cover a meaningful fraction or one full
+cycle. Settling is the earliest completed averaging window whose tracking
+error is within tolerance, leaves at least one complete hold duration, and for
+which every later complete averaging window in that segment remains within
+tolerance. A temporary threshold crossing followed by divergence is not
+settlement, while ordinary within-stride velocity oscillation is not
+misclassified as failure.
 
 Planar braking is classified separately when a non-zero planar command transitions to zero. `maximumPlanarSettlingTimeSeconds` covers every planar transition, including establishment from rest; `maximumPlanarBrakingSettlingTimeSeconds` covers only those braking transitions. This prevents an honest cold-start allowance from silently weakening the stop requirement. Count gates use one failed transition as one severity unit even when their allowed count is zero. This makes command tracking directly inspectable without reconstructing intent from a Task file or confusing vertical velocity with yaw.
 

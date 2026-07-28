@@ -177,15 +177,28 @@
           "controller": "command-tracking-gait",
           "benchmark": "command-tracking",
           "revision": "quadruped-r-d193b01b53f1"
+        },
+        {
+          "assembly": "solo12-informed",
+          "controller": "solo12-command-crawl",
+          "benchmark": "solo12-command-foundation"
         }
       ],
       "scenarios": [
         { "task": "stand", "scenario": "nominal", "benchmark": "command-tracking", "role": "regression" },
         { "task": "forward-walk", "scenario": "nominal", "benchmark": "command-tracking", "role": "release" },
-        { "task": "lateral-walk", "scenario": "delayed-lateral-push", "benchmark": "command-tracking", "role": "release" }
+        { "task": "lateral-walk", "scenario": "delayed-lateral-push", "benchmark": "command-tracking", "role": "release" },
+        { "task": "solo12-command-stand", "scenario": "nominal", "benchmark": "solo12-command-foundation", "role": "development" },
+        { "task": "solo12-command-reverse", "scenario": "nominal", "benchmark": "solo12-command-foundation", "role": "development" },
+        { "task": "solo12-command-lateral", "scenario": "nominal", "benchmark": "solo12-command-foundation", "role": "development" },
+        { "task": "solo12-command-yaw", "scenario": "nominal", "benchmark": "solo12-command-foundation", "role": "development" },
+        { "task": "solo12-command-tour", "scenario": "nominal", "benchmark": "solo12-command-foundation", "role": "release" },
+        { "task": "solo12-command-tour", "scenario": "solo12-command-delay", "benchmark": "solo12-command-foundation", "role": "release" },
+        { "task": "solo12-command-tour", "scenario": "solo12-command-disturbance", "benchmark": "solo12-command-foundation", "role": "release" }
       ],
       "exitCriteria": [
         "All gating cases in the locked command-tracking Benchmark pass.",
+        "Every gating case in an Assembly-qualified command-foundation Benchmark passes atomic direction, no-reset switching, delayed execution, disturbance, transient, and motion-quality gates.",
         "Every accepted Controller remains compatible with the declared Assembly interface."
       ]
     },

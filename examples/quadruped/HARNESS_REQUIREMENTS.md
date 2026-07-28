@@ -13,6 +13,8 @@ list for generic framework abstractions.
 | `adaptive-design-camera` | usability | Local Design Preview and Design Analysis frame the compiled robot from its home bounds. | The 0.55 m candidate occupied a small fraction of a camera fixed at 2.2 m. | resolved |
 | `readable-replay-framing` | usability | Simulation and twin replays use a robot-readable default camera distance instead of inheriting the old 2.2 m overview framing. | Solo12 leg exchange occupied too few pixels for a human to distinguish the active foot. | resolved; replay and twin defaults now use a 1.4 m tracking camera |
 | `simulation-time-playback` | usability defect | Replay speed follows recorded simulation time and may skip dense rendered frames without changing evidence identity. | A 1 kHz trajectory advanced one PNG per 8 ms browser timer, so “1×” played at roughly 0.125× and made a four-second gait take more than thirty seconds. | resolved; sparse evidence keeps exact delays while dense evidence advances to the frame at the next 16 ms simulation-time budget |
+| `periodic-transient-averaging` | misleading evidence | Transition terminal and settling measurements separate the signal-averaging window from the required settled hold duration. | Reusing a 0.2 s hold window as the signal average falsely marked a healthy 1 Hz gait unsettled based on within-stride velocity phase. | resolved; Objectives now declare `averagingSeconds` independently from `holdSeconds`, and the Solo12 suite averages one full gait period |
+| `benchmark-case-gate-scope` | missing requirement | A composite Benchmark case may narrow or override Objective gates that are semantically inapplicable to that Task while preserving one locked suite. | A no-reset tour containing forward, reverse, lateral, yaw, and stops was judged by the same net-forward-progress gate as an atomic forward Task, even though transition and tracking metrics were the relevant evidence. | open; the current suite uses a conservative common progress floor, but future mixed-semantics suites need typed per-case gate scope rather than weakened global gates or non-gating cases |
 | `declared-gait-contact-witness` | missing metric | A Controller gait declaration should bind intended swing/support feet to measured contact exchange and expose a Judge gate, rather than requiring an ad hoc trajectory query. | The first positive-displacement probe passed progress gates while only the forefeet lifted; shell inspection of contact bit patterns was required to reject it. | open; the final crawl records typed swing-leg telemetry and all four measured off-ground turns, but Judge does not yet score declaration/contact agreement |
 | `controller-smoke-test` | usability defect | A Controller may declare one compatible smoke-test route; inspect must emit that command instead of unrelated project defaults. | Inspecting the Solo12 stand Controller suggested the old integrated-resilience task. | resolved |
 | `task-assembly-applicability` | missing requirement | Tasks with absolute plant assumptions, such as healthy base height, may declare compatible Assemblies; execution rejects incompatible combinations before Runtime. | The old `stand` task false-failed the smaller robot at 0.18 m. | resolved for explicit applicability; geometry-derived thresholds remain future work |
@@ -33,7 +35,7 @@ false contact; the same sourced PD gains then stood for the full two-second,
 2,000-step probe with no fall, no disallowed collision, and 0.623 Nm peak
 actuation.
 
-The first two bounded behavior slices are now complete. The locked eight-case
+The first three bounded behavior slices are now complete. The locked eight-case
 Solo12-specific suite covers nominal standing, four 20 N cardinal pushes, a
 300 g payload, lower friction, and a delayed/noisy diagonal disturbance. A
 source-governed Research Lab kept two gain changes and rejected one, improving
@@ -47,6 +49,10 @@ diagonal pair never achieved honest contact exchange. The accepted replacement
 is a conservative four-beat crawl. It advances in all four locked cases, keeps
 mean foot slip at 0.0160–0.0199 m/s, preserves the eight standing regressions,
 and makes FL, RR, FR, and RL take distinct measured swing turns. The next Work
-Order routes a Solo12-specific command-foundation inception. RL remains
-unauthorized until that readable mechanism has stop, reverse, lateral, yaw, and
-transition evidence.
+Order then routed a Solo12-specific command foundation. Its readable hybrid
+Controller retains the accepted longitudinal joint-space crawl, uses analytic
+foot-space strokes only for lateral and yaw motion, and passes stand, forward,
+reverse, lateral, yaw, plus nominal, delayed, and disturbed 20-second no-reset
+tours. Both accepted standing and forward-locomotion suites remain passing.
+RL remains unauthorized until a later Work Order identifies a behavior
+bottleneck that readable mechanisms cannot close.

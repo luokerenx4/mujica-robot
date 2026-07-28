@@ -46,7 +46,7 @@ describe("read-only Studio snapshot", () => {
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
     expect(first.snapshot.assemblies.find((item) => item.id === "force-sensing-3dof")?.observationContract.size).toBe(45);
-    expect(first.snapshot.benchmarks).toHaveLength(21);
+    expect(first.snapshot.benchmarks).toHaveLength(22);
     expect(first.snapshot.candidates).toHaveLength(17);
     expect(first.snapshot.hardwareBundles.length).toBeGreaterThanOrEqual(2);
     expect(first.snapshot.hardwareVerifications.length).toBeGreaterThanOrEqual(2);
@@ -149,16 +149,17 @@ describe("read-only Studio snapshot", () => {
         status: "CAPABILITY_INCEPTION_REQUIRED",
         subject: {
           assembly: "solo12-informed",
-          controller: "solo12-readable-crawl",
+          controller: "solo12-command-crawl",
         },
         blockers: [],
         lanes: [],
         inception: {
           kind: "capability-inception",
           stage: {
-            id: "command-foundation",
+            id: "self-righting",
           },
           regressionBenchmarks: [
+            "solo12-command-foundation",
             "solo12-disturbance-standing",
             "solo12-readable-locomotion",
           ],

@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "id": "solo12-command-foundation",
+  "name": "Solo12 atomic and no-reset command foundation suite",
+  "objective": "solo12-command-foundation",
+  "baseline": {
+    "assembly": "solo12-informed",
+    "controller": "solo12-readable-crawl"
+  },
+  "compatibleAssemblies": ["solo12-informed"],
+  "cases": [
+    {
+      "id": "stand",
+      "task": "solo12-command-stand",
+      "scenario": "nominal",
+      "seed": 1401,
+      "weight": 1
+    },
+    {
+      "id": "forward",
+      "task": "solo12-forward-walk",
+      "scenario": "nominal",
+      "seed": 1402,
+      "weight": 1
+    },
+    {
+      "id": "reverse",
+      "task": "solo12-command-reverse",
+      "scenario": "nominal",
+      "seed": 1403,
+      "weight": 1
+    },
+    {
+      "id": "lateral",
+      "task": "solo12-command-lateral",
+      "scenario": "nominal",
+      "seed": 1404,
+      "weight": 1.5
+    },
+    {
+      "id": "yaw",
+      "task": "solo12-command-yaw",
+      "scenario": "nominal",
+      "seed": 1405,
+      "weight": 1.5
+    },
+    {
+      "id": "tour",
+      "task": "solo12-command-tour",
+      "scenario": "nominal",
+      "seed": 1406,
+      "weight": 2
+    },
+    {
+      "id": "delayed-tour",
+      "task": "solo12-command-tour",
+      "scenario": "solo12-command-delay",
+      "seed": 1407,
+      "weight": 2
+    },
+    {
+      "id": "disturbed-tour",
+      "task": "solo12-command-tour",
+      "scenario": "solo12-command-disturbance",
+      "seed": 1408,
+      "weight": 2.5
+    }
+  ]
+}

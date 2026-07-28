@@ -96,10 +96,10 @@ describe("Robot Assembly compiler", () => {
     const workOrder = developmentWorkOrderSchema.parse(JSON.parse(await readFile(join(project, "development-work-orders", workPointer.id, "work-order.json"), "utf8")));
     expect(review.subject).toMatchObject({
       assembly: "solo12-informed",
-      controller: "solo12-readable-crawl",
+      controller: "solo12-command-crawl",
     });
     expect(review.summary).toMatchObject({
-      passedStages: 2,
+      passedStages: 3,
       violationCount: 0,
       worstCase: null,
     });
@@ -107,6 +107,9 @@ describe("Robot Assembly compiler", () => {
       observedStatus: "PASS",
     });
     expect(review.stages.find((stage) => stage.id === "source-grounded-locomotion")).toMatchObject({
+      observedStatus: "PASS",
+    });
+    expect(review.stages.find((stage) => stage.id === "command-foundation")).toMatchObject({
       observedStatus: "PASS",
     });
     expect(review.stages.find((stage) => stage.id === "continuous-resilience")).toMatchObject({
@@ -130,14 +133,15 @@ describe("Robot Assembly compiler", () => {
       kind: "capability-inception",
       reason: "next-stage-has-no-applicable-benchmark",
       stage: {
-        id: "command-foundation",
+        id: "self-righting",
         authoredStatus: "accepted",
       },
       subject: {
         assembly: "solo12-informed",
-        controller: "solo12-readable-crawl",
+        controller: "solo12-command-crawl",
       },
       regressionBenchmarks: [
+        "solo12-command-foundation",
         "solo12-disturbance-standing",
         "solo12-readable-locomotion",
       ],

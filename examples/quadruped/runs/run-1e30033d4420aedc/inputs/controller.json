@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "id": "solo12-readable-crawl",
+  "name": "Solo12 readable command-conditioned four-beat crawl",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {
+        "name": "joint-position",
+        "size": 12
+      },
+      {
+        "name": "joint-velocity",
+        "size": 12
+      },
+      {
+        "name": "base-orientation",
+        "size": 4
+      },
+      {
+        "name": "base-velocity",
+        "size": 6
+      },
+      {
+        "name": "imu-angular-velocity",
+        "size": 3
+      },
+      {
+        "name": "foot-contact-force",
+        "size": 4
+      },
+      {
+        "name": "motion-command",
+        "size": 3
+      }
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 12,
+        "low": -2.5,
+        "high": 2.5
+      }
+    ]
+  },
+  "config": {
+    "homeTarget": [
+      0,
+      0.8,
+      -1.6,
+      0,
+      0.8,
+      -1.6,
+      0,
+      -0.8,
+      1.6,
+      0,
+      -0.8,
+      1.6
+    ],
+    "kpAbduction": 6,
+    "kpSagittal": 6,
+    "kdAbduction": 0.2,
+    "kdSagittal": 0.2,
+    "maximumTorqueNm": 2.5,
+    "frequencyHz": 1,
+    "dutyFactor": 0.75,
+    "nominalForwardSpeedMps": 0.12,
+    "commandDeadbandMps": 0.01,
+    "activityRampPerSecond": 2.5,
+    "hipAmplitudeRad": 0.11,
+    "kneeLiftRad": 0.26,
+    "statePredictionSeconds": 0.002,
+    "rollPositionGain": 0,
+    "rollRateGain": 0,
+    "pitchPositionGain": 0,
+    "pitchRateGain": 0,
+    "maximumBodyCorrectionRad": 0.12,
+    "contactThresholdNewton": 1
+  },
+  "smokeTest": {
+    "assembly": "solo12-informed",
+    "task": "solo12-forward-walk",
+    "scenario": "nominal",
+    "objective": "solo12-readable-locomotion"
+  }
+}

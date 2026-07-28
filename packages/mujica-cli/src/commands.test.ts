@@ -622,7 +622,7 @@ describe("agent CLI contract", () => {
       kind: "mujica-development-work-order",
       project: "quadruped",
       status: "CAPABILITY_INCEPTION_REQUIRED",
-      subject: { assembly: "solo12-informed", controller: "solo12-readable-crawl" },
+      subject: { assembly: "solo12-informed", controller: "solo12-command-crawl" },
       authorityBoundary: {
         prioritization: "derived",
         experimentDecision: "locked-judge",
@@ -637,19 +637,20 @@ describe("agent CLI contract", () => {
       kind: "capability-inception",
       reason: "next-stage-has-no-applicable-benchmark",
       stage: {
-        id: "command-foundation",
-        question: expect.stringContaining("execute stop, forward, reverse"),
+        id: "self-righting",
+        question: expect.stringContaining("recover from front, back"),
       },
       subject: {
         assembly: "solo12-informed",
-        controller: "solo12-readable-crawl",
+        controller: "solo12-command-crawl",
       },
       referenceEvidenceScopes: [{
-        assembly: "command-conditioned-history-3dof",
-        controller: "command-tracking-gait",
-        benchmark: "command-tracking",
+        assembly: "self-righting-rigid-3dof",
+        controller: "phased-self-right",
+        benchmark: "self-righting",
       }],
       regressionBenchmarks: [
+        "solo12-command-foundation",
         "solo12-disturbance-standing",
         "solo12-readable-locomotion",
       ],

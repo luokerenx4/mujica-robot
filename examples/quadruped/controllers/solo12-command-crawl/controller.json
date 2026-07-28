@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "id": "solo12-command-crawl",
+  "name": "Solo12 readable planar-command four-beat crawl",
+  "kind": "program",
+  "entry": "controller.py",
+  "interface": {
+    "requiredObservations": [
+      {"name": "joint-position", "size": 12},
+      {"name": "joint-velocity", "size": 12},
+      {"name": "base-orientation", "size": 4},
+      {"name": "base-velocity", "size": 6},
+      {"name": "imu-angular-velocity", "size": 3},
+      {"name": "foot-contact-force", "size": 4},
+      {"name": "motion-command", "size": 3}
+    ],
+    "actionChannels": [
+      {
+        "name": "joint-torque",
+        "size": 12,
+        "low": -2.5,
+        "high": 2.5
+      }
+    ]
+  },
+  "config": {
+    "homeTarget": [
+      0, 0.8, -1.6,
+      0, 0.8, -1.6,
+      0, -0.8, 1.6,
+      0, -0.8, 1.6
+    ],
+    "kpAbduction": 6,
+    "kpAbductionSpatial": 6,
+    "kpSagittal": 6,
+    "kdAbduction": 0.3,
+    "kdAbductionSpatial": 0.5,
+    "maximumTargetJointSpeedRadPerSec": 4,
+    "kdSagittal": 0.2,
+    "maximumTorqueNm": 2.5,
+    "frequencyHz": 1,
+    "dutyFactor": 0.75,
+    "nominalForwardSpeedMps": 0.12,
+    "nominalLateralSpeedMps": 0.06,
+    "nominalYawRateRadPerSec": 0.25,
+    "commandDeadband": 0.01,
+    "commandRampPerSecond": 2.5,
+    "upperLegLengthM": 0.16,
+    "lowerLegLengthM": 0.16,
+    "hipLateralOffsetM": 0.06045,
+    "frontHipLongitudinalOffsetM": -0.0195,
+    "rearHipLongitudinalOffsetM": 0.0195,
+    "hipAmplitudeRad": 0.11,
+    "reverseHipAmplitudeRad": 0.25,
+    "kneeLiftRad": 0.26,
+    "reverseHipPhaseRad": 1.5707963267948966,
+    "lateralHalfStrokeM": 0.0225,
+    "lateralFrequencyScale": 1,
+    "yawTangentialHalfStrokeM": 0.02,
+    "swingClearanceM": 0.03,
+    "statePredictionSeconds": 0.002,
+    "contactThresholdNewton": 1
+  },
+  "smokeTest": {
+    "assembly": "solo12-informed",
+    "task": "solo12-command-tour",
+    "scenario": "nominal",
+    "objective": "solo12-command-foundation"
+  }
+}

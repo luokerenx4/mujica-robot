@@ -1434,6 +1434,28 @@ class RuntimeContractTest(unittest.TestCase):
         self.assertTrue(transition["planarBraking"])
         self.assertAlmostEqual(metrics["maximumPlanarBrakingSettlingTimeSeconds"], 0.3)
 
+    def test_transition_metrics_average_periodic_gait_before_settling(self):
+        task = {"version": 3, "durationSeconds": 3.0, "controlHz": 10, "motionCommandSchedule": [
+            {"atSeconds": 0.0, "command": {"frame": "world", "linearVelocityMps": [0.0, 0.0], "yawRateRadPerSec": 0.0}},
+            {"atSeconds": 1.0, "command": {"frame": "world", "linearVelocityMps": [0.1, 0.0], "yawRateRadPerSec": 0.0}},
+        ]}
+        objective = {"transientMeasurement": {"planarToleranceMps": 0.02, "yawRateToleranceRadPerSec": 0.1, "averagingSeconds": 1.0, "holdSeconds": 0.2}}
+        rows = [
+            {
+                "step": step + 1,
+                "commandStep": step,
+                "measuredMotion": [0.0 if step % 2 == 0 else 0.2, 0.0, 0.0],
+            }
+            for step in range(10, 30)
+        ]
+        metrics = transition_response_metrics(rows, task, objective)
+        transition = metrics["transitions"][0]
+        self.assertAlmostEqual(metrics["transientAveragingSeconds"], 1.0)
+        self.assertAlmostEqual(metrics["transientHoldSeconds"], 0.2)
+        self.assertAlmostEqual(transition["terminalPlanarTrackingError"], 0.0)
+        self.assertAlmostEqual(transition["planarSettlingTimeSeconds"], 1.0)
+        self.assertTrue(transition["planarSettled"])
+
     def test_scenario_friction_applies_to_every_contact_geometry(self):
         model, compiled = compiled_assembly("baseline")
         task = json.loads((PROJECT / "tasks" / "stand.task.json").read_text())

@@ -758,8 +758,9 @@ export const objectiveSchema = z.object({
     selfRighting: z.number().default(0), recoveryTime: z.number().default(0), recoveryRelapse: z.number().default(0), jointLimitMargin: z.number().default(0),
   }).strict(),
   transientMeasurement: z.object({
-    planarToleranceMps: z.number().finite().nonnegative(), yawRateToleranceRadPerSec: z.number().finite().nonnegative(), holdSeconds: z.number().finite().positive(),
-  }).strict().default({ planarToleranceMps: 0.12, yawRateToleranceRadPerSec: 0.25, holdSeconds: 0.2 }),
+    planarToleranceMps: z.number().finite().nonnegative(), yawRateToleranceRadPerSec: z.number().finite().nonnegative(),
+    averagingSeconds: z.number().finite().positive().default(0.2), holdSeconds: z.number().finite().positive(),
+  }).strict().default({ planarToleranceMps: 0.12, yawRateToleranceRadPerSec: 0.25, averagingSeconds: 0.2, holdSeconds: 0.2 }),
   gates: z.object({
     minimumSurvivalRate: z.number().min(0).max(1), minimumForwardProgress: z.number().min(0).max(1).default(0),
     minimumSignedForwardProgress: z.number().finite().default(-1_000_000), maximumBackwardDisplacement: z.number().nonnegative().default(1_000_000),
