@@ -80,6 +80,14 @@ class BalancedWaistRecoveryProbe:
             )
             for pose, values in config["plantTargetByPose"].items()
         }
+        self.tip = {
+            pose: (
+                front_rear(values)
+                if pose in ("front", "back")
+                else left_right(values)
+            )
+            for pose, values in config.get("tipTargetByPose", {}).items()
+        }
         self.stand = front_rear(config["standTarget"])
         self.reset(0)
 
@@ -88,6 +96,7 @@ class BalancedWaistRecoveryProbe:
         self.started_at = None
         self.pose = None
         self.plant_started_at = None
+        self.tip_started_at = None
         self.rise_started_at = None
         self.phase = "uninitialized"
         self.last_telemetry = {
@@ -95,6 +104,7 @@ class BalancedWaistRecoveryProbe:
             "fallenPose": None,
             "supportFeet": 0,
             "plantTriggered": False,
+            "tipTriggered": False,
             "recoveryTargetSatisfied": False,
         }
 
@@ -164,13 +174,24 @@ class BalancedWaistRecoveryProbe:
                 self.plant_started_at = time_seconds
             if self.plant_started_at is not None and self.rise_started_at is None:
                 planted_for = time_seconds - self.plant_started_at
+                minimum_plant_seconds = self.config.get(
+                    "plantMinimumSecondsByPose",
+                    {},
+                ).get(pose, self.config["plantMinimumSeconds"])
+                maximum_plant_seconds = self.config.get(
+                    "plantMaximumSecondsByPose",
+                    {},
+                ).get(pose, self.config["plantMaximumSeconds"])
                 ready = (
-                    planted_for >= self.config["plantMinimumSeconds"]
+                    planted_for >= minimum_plant_seconds
                     and support_feet >= self.config["plantMinimumSupportFeet"]
                 )
-                timed_out = planted_for >= self.config["plantMaximumSeconds"]
+                timed_out = planted_for >= maximum_plant_seconds
                 if ready or timed_out:
-                    self.rise_started_at = time_seconds
+                    if pose in self.tip and self.tip_started_at is None:
+                        self.tip_started_at = time_seconds
+                    elif pose not in self.tip:
+                        self.rise_started_at = time_seconds
                 else:
                     self.phase = "plant"
                     target = self.plant[pose]
@@ -185,6 +206,21 @@ class BalancedWaistRecoveryProbe:
                     else self.started_at
                     + self.config["captureUntilSecondsByPose"][pose]
                 )
+            if self.tip_started_at is not None and self.rise_started_at is None:
+                tip_for = time_seconds - self.tip_started_at
+                tip_complete = (
+                    tilt <= self.config["tipExitTiltRadByPose"][pose]
+                    or tip_for >= self.config["tipMaximumSecondsByPose"][pose]
+                )
+                if tip_complete:
+                    self.rise_started_at = time_seconds
+                else:
+                    self.phase = "tip"
+                    target = self.tip[pose]
+                    waist = np.asarray(
+                        self.config["tipWaistTargetByPose"][pose],
+                        dtype=np.float64,
+                    )
             if self.rise_started_at is not None:
                 alpha = min(
                     1.0,
@@ -193,7 +229,9 @@ class BalancedWaistRecoveryProbe:
                 )
                 self.phase = "stand" if alpha >= 1.0 else "rise"
                 origin = (
-                    self.plant[pose]
+                    self.tip[pose]
+                    if self.tip_started_at is not None
+                    else self.plant[pose]
                     if self.plant_started_at is not None
                     else self.capture[pose]
                 )
@@ -250,6 +288,7 @@ class BalancedWaistRecoveryProbe:
             "fallenPose": pose,
             "supportFeet": support_feet,
             "plantTriggered": self.plant_started_at is not None,
+            "tipTriggered": self.tip_started_at is not None,
             "recoveryTargetSatisfied": self.recovery_target_satisfied(
                 observation,
                 tilt,

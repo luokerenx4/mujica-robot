@@ -247,7 +247,12 @@ self-righting/collision/joint-margin thresholds. `mujica design probe` executes
 it only after the current static Study supports that candidate. Its aggregate
 JSON/Markdown/HTML lives under ignored `.mujica/design-probes/`; referenced
 Simulation Runs remain immutable project evidence. The aggregate has no design,
-capability, Training, physical-evidence, or promotion authority.
+capability, Training, physical-evidence, or promotion authority. Each Scenario
+also records a derived diagnosis over the immutable trajectory: phase
+summaries, closest-upright, maximum-support and final witnesses, additive
+failure modes, and the next causal question. Aggregate routing distinguishes a
+missing contact mechanism from a support mechanism that exists but is lost
+during the plant-to-rise transition.
 
 Completed Hardware Capture episodes use the same renderer only after Capture
 and Bundle integrity verification. Their v2

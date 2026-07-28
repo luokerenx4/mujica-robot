@@ -240,7 +240,7 @@ describe("Robot Assembly compiler", () => {
     expect(result.project.manifest.id).toBe("quadruped");
     expect(result.project.manifest.defaults.assembly).toBe("resilient-command-conditioned-history-3dof");
     expect(result.project.manifest.defaults.controller).toBe("behavior-supervisor");
-    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "resilient-command-conditioned-waist-3dof", "resilient-command-conditioned-waist-history-3dof", "self-righting-balanced-3dof", "self-righting-balanced-waist-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
+    expect(result.assemblies.map((item) => item.id)).toEqual(["baseline", "command-conditioned-history-3dof", "filtered-imu-default", "filtered-imu-fast", "force-sensing", "force-sensing-3dof", "force-sensing-history-3dof", "force-sensing-telemetry-3dof", "payload-equipped", "resilient-command-conditioned-history-3dof", "resilient-command-conditioned-waist-3dof", "resilient-command-conditioned-waist-history-3dof", "self-righting-balanced-3dof", "self-righting-balanced-waist-3dof", "self-righting-balanced-waist-overcenter-3dof", "self-righting-rigid-3dof", "self-righting-waist-3dof"]);
     const spatial = result.assemblies.find((item) => item.id === "force-sensing-3dof");
     expect(spatial?.observationContract.size).toBe(45);
     expect(spatial?.actionContract.size).toBe(12);

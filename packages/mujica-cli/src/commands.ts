@@ -799,9 +799,170 @@ export async function designStudyCommand(projectDir: string, id: string) {
   }, project, [projectArtifact("design-study", artifactId, target, false)]);
 }
 
+function dynamicProbeSupportFeet(frame: any): number {
+  const reported = Number(frame?.controllerTelemetry?.supportFeet);
+  if (Number.isFinite(reported)) return reported;
+  return Array.isArray(frame?.footContactForce)
+    ? frame.footContactForce.filter((value: unknown) => Number(value) >= 1).length
+    : 0;
+}
+
+function dynamicProbeWitness(frame: any) {
+  return {
+    timeSeconds: Number(frame.time),
+    phase: String(frame.controllerPhase ?? frame.controllerTelemetry?.phase ?? "unreported"),
+    bodyTiltRad: Number(frame.bodyTiltRad),
+    baseHeightM: Number(frame.qpos?.[2] ?? 0),
+    supportFeet: dynamicProbeSupportFeet(frame),
+    jointLimitMarginRad: Number(frame.jointLimitMarginRad),
+    footHeightsM: Array.isArray(frame.footPositionWorld)
+      ? frame.footPositionWorld.map((position: unknown[]) => Number(position?.[2]))
+      : [],
+  };
+}
+
+export function diagnoseDynamicProbeTrajectory(
+  frames: any[],
+  passed: boolean,
+  expectations: {
+    maximumDisallowedCollisionSteps: number;
+    minimumJointLimitMarginRad: number;
+  },
+  reorientationThresholdRad = 0.35,
+) {
+  if (frames.length === 0) throw new Error("Dynamic Design Probe trajectory is empty");
+  const phases = new Map<string, any[]>();
+  for (const frame of frames) {
+    const phase = String(frame.controllerPhase ?? frame.controllerTelemetry?.phase ?? "unreported");
+    phases.set(phase, [...(phases.get(phase) ?? []), frame]);
+  }
+  const bestTiltFrame = frames.reduce((best, frame) =>
+    Number(frame.bodyTiltRad) < Number(best.bodyTiltRad) ? frame : best);
+  const bestSupportFrame = frames.reduce((best, frame) =>
+    dynamicProbeSupportFeet(frame) > dynamicProbeSupportFeet(best) ? frame : best);
+  const finalFrame = frames.at(-1)!;
+  const minimumTiltRad = Number(bestTiltFrame.bodyTiltRad);
+  const maximumSupportFeet = dynamicProbeSupportFeet(bestSupportFrame);
+  const finalSupportFeet = dynamicProbeSupportFeet(finalFrame);
+  const minimumJointLimitMarginRad = Math.min(...frames.map((frame) =>
+    Number(frame.jointLimitMarginRad)));
+  const disallowedCollisionSteps = frames.filter((frame) =>
+    Boolean(frame.disallowedSelfContact)).length;
+  const failureModes: string[] = [];
+  if (passed) {
+    failureModes.push("RECOVERED");
+  } else {
+    if (disallowedCollisionSteps > expectations.maximumDisallowedCollisionSteps) {
+      failureModes.push("DISALLOWED_CONTACT");
+    }
+    if (minimumJointLimitMarginRad < expectations.minimumJointLimitMarginRad) {
+      failureModes.push("JOINT_LIMIT_BOUNDARY");
+    }
+    if (minimumTiltRad > reorientationThresholdRad) {
+      failureModes.push("REORIENTATION_NOT_ACHIEVED");
+    }
+    if (maximumSupportFeet < 2) {
+      failureModes.push("NO_FOOT_SUPPORT");
+    } else if (maximumSupportFeet >= 4 && finalSupportFeet < 2) {
+      failureModes.push("SUPPORT_LOST_AFTER_CONTACT");
+    }
+    if (
+      minimumTiltRad <= reorientationThresholdRad
+      && Number(finalFrame.bodyTiltRad) > reorientationThresholdRad
+    ) {
+      failureModes.push("REORIENTATION_NOT_RETAINED");
+    }
+    if (failureModes.length === 0) failureModes.push("UNSTABLE_FINAL_STATE");
+  }
+  const nextQuestion = failureModes.includes("SUPPORT_LOST_AFTER_CONTACT")
+    ? "Can the plant-to-rise transition retain foot support instead of retracting into the failed basin?"
+    : failureModes.includes("NO_FOOT_SUPPORT")
+      ? "Can morphology or readable contact-seeking logic create at least two supporting feet before rise?"
+      : failureModes.includes("REORIENTATION_NOT_RETAINED")
+        ? "Can the candidate retain its reoriented pose while building a stable support polygon?"
+        : failureModes.includes("DISALLOWED_CONTACT") || failureModes.includes("JOINT_LIMIT_BOUNDARY")
+          ? "Can the same mechanism stay inside collision and joint-limit gates without relaxing them?"
+          : passed
+            ? "Does the demonstrated mechanism survive the complete locked Mission and regression set?"
+            : "Which morphology or controller change can produce stable standing from the closest witness?";
+  return {
+    primaryFailureMode: failureModes[0],
+    failureModes,
+    mechanismSignals: {
+      reorientationObserved: minimumTiltRad <= reorientationThresholdRad,
+      fourFootSupportObserved: maximumSupportFeet >= 4,
+      stableStandObserved: passed,
+      collisionSafe: disallowedCollisionSteps <= expectations.maximumDisallowedCollisionSteps,
+      jointLimitSafe: minimumJointLimitMarginRad >= expectations.minimumJointLimitMarginRad,
+    },
+    witnesses: {
+      closestToUpright: dynamicProbeWitness(bestTiltFrame),
+      maximumSupport: dynamicProbeWitness(bestSupportFrame),
+      final: dynamicProbeWitness(finalFrame),
+    },
+    phases: [...phases.entries()].map(([phase, rows]) => ({
+      phase,
+      fromSeconds: Number(rows[0].time),
+      toSeconds: Number(rows.at(-1).time),
+      minimumBodyTiltRad: Math.min(...rows.map((row) => Number(row.bodyTiltRad))),
+      maximumSupportFeet: Math.max(...rows.map(dynamicProbeSupportFeet)),
+      minimumJointLimitMarginRad: Math.min(...rows.map((row) => Number(row.jointLimitMarginRad))),
+      disallowedCollisionSteps: rows.filter((row) => Boolean(row.disallowedSelfContact)).length,
+    })),
+    nextQuestion,
+  };
+}
+
+export function routeDynamicProbeDevelopment(scenarios: any[], gatePassed: boolean) {
+  const scenariosWithReorientation = scenarios.filter((scenario) =>
+    scenario.diagnosis.mechanismSignals.reorientationObserved).length;
+  const scenariosWithFourFootSupport = scenarios.filter((scenario) =>
+    scenario.diagnosis.mechanismSignals.fourFootSupportObserved).length;
+  const scenariosWithStableStand = scenarios.filter((scenario) =>
+    scenario.diagnosis.mechanismSignals.stableStandObserved).length;
+  const unsafeScenarios = scenarios.filter((scenario) =>
+    !scenario.diagnosis.mechanismSignals.collisionSafe
+    || !scenario.diagnosis.mechanismSignals.jointLimitSafe).length;
+  const mechanismCoverageComplete = scenariosWithFourFootSupport === scenarios.length;
+  if (gatePassed) {
+    return {
+      nextDevelopmentEmphasis: "balanced",
+      recommendedSurface: "complete-robot-validation",
+      mechanismCoverageComplete,
+      scenariosWithReorientation,
+      scenariosWithFourFootSupport,
+      scenariosWithStableStand,
+      unsafeScenarios,
+      rationale: "Every frozen scenario reached stable standing; preserve the readable mechanism while moving to complete locked Mission validation.",
+    };
+  }
+  if (mechanismCoverageComplete) {
+    return {
+      nextDevelopmentEmphasis: "balanced",
+      recommendedSurface: "embodiment-controller-co-design",
+      mechanismCoverageComplete,
+      scenariosWithReorientation,
+      scenariosWithFourFootSupport,
+      scenariosWithStableStand,
+      unsafeScenarios,
+      rationale: "Every frozen scenario produced four-foot support, but at least one failed to retain it safely through rise; refine the transition and geometry together before Training.",
+    };
+  }
+  return {
+    nextDevelopmentEmphasis: "design-reassessment",
+    recommendedSurface: "embodiment",
+    mechanismCoverageComplete,
+    scenariosWithReorientation,
+    scenariosWithFourFootSupport,
+    scenariosWithStableStand,
+    unsafeScenarios,
+    rationale: "At least one frozen scenario never produced four-foot support, so the declared dynamic mechanism remains structurally incomplete.",
+  };
+}
+
 function dynamicProbeReport(result: any): string {
   const rows = result.scenarios.map((scenario: any) => (
-    `| \`${scenario.scenario}\` | \`${scenario.runId}\` | ${scenario.passed ? "PASS" : "FAIL"} | ${scenario.metrics.selfRightingSuccess} | ${scenario.metrics.disallowedCollisionSteps} | ${scenario.metrics.minimumJointLimitMarginRad.toFixed(4)} | ${scenario.metrics.finalBodyTiltRad.toFixed(3)} | ${scenario.metrics.finalBaseHeightM.toFixed(3)} |`
+    `| \`${scenario.scenario}\` | \`${scenario.runId}\` | ${scenario.passed ? "PASS" : "FAIL"} | \`${scenario.diagnosis.primaryFailureMode}\` | ${scenario.metrics.selfRightingSuccess} | ${scenario.metrics.disallowedCollisionSteps} | ${scenario.metrics.minimumJointLimitMarginRad.toFixed(4)} | ${scenario.metrics.finalBodyTiltRad.toFixed(3)} | ${scenario.metrics.finalBaseHeightM.toFixed(3)} |`
   ));
   return [
     `# Dynamic Design Probe ${result.study}/${result.candidate}`,
@@ -810,13 +971,34 @@ function dynamicProbeReport(result: any): string {
     "",
     `Static prerequisite: \`${result.staticStudy.id}\` / \`${result.staticStudy.verdict}\``,
     "",
-    "| Scenario | Run | Gate | Self-right | Collision steps | Joint margin rad | Final tilt rad | Final height m |",
-    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    "| Scenario | Run | Gate | Diagnosis | Self-right | Collision steps | Joint margin rad | Final tilt rad | Final height m |",
+    "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ...rows,
+    "",
+    "## Mechanism diagnosis",
+    "",
+    ...result.scenarios.flatMap((scenario: any) => [
+      `### ${scenario.scenario} · ${scenario.diagnosis.primaryFailureMode}`,
+      "",
+      `Signals: reorientation=${scenario.diagnosis.mechanismSignals.reorientationObserved}, four-foot-support=${scenario.diagnosis.mechanismSignals.fourFootSupportObserved}, stable-stand=${scenario.diagnosis.mechanismSignals.stableStandObserved}, collision-safe=${scenario.diagnosis.mechanismSignals.collisionSafe}, joint-limit-safe=${scenario.diagnosis.mechanismSignals.jointLimitSafe}.`,
+      "",
+      `Closest upright witness: ${scenario.diagnosis.witnesses.closestToUpright.timeSeconds.toFixed(3)} s / ${scenario.diagnosis.witnesses.closestToUpright.phase}, tilt ${scenario.diagnosis.witnesses.closestToUpright.bodyTiltRad.toFixed(3)} rad, ${scenario.diagnosis.witnesses.closestToUpright.supportFeet} supporting feet.`,
+      "",
+      `Maximum-support witness: ${scenario.diagnosis.witnesses.maximumSupport.timeSeconds.toFixed(3)} s / ${scenario.diagnosis.witnesses.maximumSupport.phase}, ${scenario.diagnosis.witnesses.maximumSupport.supportFeet} supporting feet, tilt ${scenario.diagnosis.witnesses.maximumSupport.bodyTiltRad.toFixed(3)} rad.`,
+      "",
+      `Next question: ${scenario.diagnosis.nextQuestion}`,
+      "",
+    ]),
     "",
     `Successful scenarios: **${result.successfulScenarios}/${result.scenarios.length}** (required ${result.expectations.minimumSuccessfulScenarios})`,
     "",
     `Next development emphasis: **${result.nextDevelopmentEmphasis}**`,
+    "",
+    `Recommended surface: **${result.developmentDiagnosis.recommendedSurface}**`,
+    "",
+    `Mechanism coverage: reorientation ${result.developmentDiagnosis.scenariosWithReorientation}/${result.scenarios.length}, four-foot support ${result.developmentDiagnosis.scenariosWithFourFootSupport}/${result.scenarios.length}, stable stand ${result.developmentDiagnosis.scenariosWithStableStand}/${result.scenarios.length}, unsafe ${result.developmentDiagnosis.unsafeScenarios}/${result.scenarios.length}.`,
+    "",
+    result.developmentDiagnosis.rationale,
     "",
     result.switchBackReason,
     "",
@@ -836,13 +1018,15 @@ function dynamicProbeHtml(result: any): string {
       .map((check: any) => `<li>${escapeHtml(check.metric)}: ${escapeHtml(check.actual)} ${escapeHtml(check.comparator)} ${escapeHtml(check.threshold)}</li>`)
       .join("");
     return `<article><header><div><div class="eyebrow">${escapeHtml(scenario.runId)}</div><h2>${escapeHtml(scenario.scenario)}</h2></div><strong class="${scenario.passed ? "pass" : "fail"}">${scenario.passed ? "PASS" : "FAIL"}</strong></header>`
-      + `<div class="metrics"><span><b>${escapeHtml(scenario.metrics.selfRightingSuccess)}</b>self-right</span><span><b>${escapeHtml(scenario.metrics.finalBodyTiltRad.toFixed(3))}</b>final tilt</span><span><b>${escapeHtml(scenario.metrics.finalBaseHeightM.toFixed(3))}</b>height m</span><span><b>${escapeHtml(scenario.metrics.minimumJointLimitMarginRad.toFixed(4))}</b>joint margin</span></div>`
+      + `<div class="metrics"><span><b>${escapeHtml(scenario.metrics.selfRightingSuccess)}</b>self-right</span><span><b>${escapeHtml(scenario.metrics.finalBodyTiltRad.toFixed(3))}</b>final tilt</span><span><b>${escapeHtml(scenario.diagnosis.witnesses.maximumSupport.supportFeet)}</b>max support</span><span><b>${escapeHtml(scenario.metrics.minimumJointLimitMarginRad.toFixed(4))}</b>joint margin</span></div>`
+      + `<p><strong>${escapeHtml(scenario.diagnosis.primaryFailureMode)}</strong><br><span class="summary">${escapeHtml(scenario.diagnosis.failureModes.join(" · "))}</span></p>`
+      + `<p class="summary">${escapeHtml(scenario.diagnosis.nextQuestion)}</p>`
       + `${failed ? `<details open><summary>Failed gates</summary><ul>${failed}</ul></details>` : "<p class=\"pass\">All declared dynamic gates passed.</p>"}`
       + `<a href="../../../runs/${escapeHtml(scenario.runId)}/report.md">Open immutable run report</a></article>`;
   }).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dynamic Design Probe ${escapeHtml(result.candidate)}</title><style>
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#080b10;color:#edf3f8}*{box-sizing:border-box}body{margin:0;padding:36px;background:radial-gradient(circle at 20% 0,#182840 0,#080b10 38%);min-height:100vh}.wrap{max-width:1250px;margin:auto}.hero{display:flex;justify-content:space-between;gap:24px;align-items:end}.eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#8ea4c2}h1{font-size:clamp(34px,6vw,68px);line-height:.95;margin:10px 0}.summary{color:#b9c5d2;max-width:780px;line-height:1.55}.verdict{font:800 12px ui-monospace,monospace;border:1px solid #33445b;border-radius:999px;padding:10px 13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:28px}article{background:#111722;border:1px solid #263143;border-radius:16px;padding:18px}article header{display:flex;justify-content:space-between;gap:12px}h2{margin:5px 0 14px}.pass{color:#68e0ad}.fail{color:#ff8989}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metrics span{border:1px solid #273345;border-radius:9px;padding:9px;color:#8fa1b7;font-size:11px}.metrics b{display:block;color:#edf3f8;font-size:16px}details{margin:14px 0;color:#bac5d2}a{color:#7cc7ff}.decision,.boundary{margin-top:18px;padding:16px;background:#111722;border-left:3px solid #e7ba61;line-height:1.55}.boundary{border-left-color:#6e86a8;color:#b8c3d1}@media(max-width:800px){body{padding:20px}.hero{display:block}.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
-</style></head><body><main class="wrap"><header class="hero"><div><div class="eyebrow">Mujica · Static-gated dynamic evidence</div><h1>${escapeHtml(result.candidate)}</h1><p class="summary">Static screen <code>${escapeHtml(result.staticStudy.id)}</code> passed before these exact simulations ran. ${result.successfulScenarios}/${result.scenarios.length} frozen scenarios passed; the required gate is ${result.expectations.minimumSuccessfulScenarios}/${result.scenarios.length}.</p></div><div class="verdict ${result.gatePassed ? "pass" : "fail"}">${escapeHtml(result.outcome)}</div></header><section class="grid">${scenarioCards}</section><aside class="decision"><strong>Next emphasis · ${escapeHtml(result.nextDevelopmentEmphasis)}</strong><br>${escapeHtml(result.switchBackReason)}</aside><aside class="boundary"><strong>Authority boundary.</strong> Bounded simulated mechanism evidence only. No design acceptance, capability claim, revision promotion, or physical evidence.</aside></main></body></html>`;
+</style></head><body><main class="wrap"><header class="hero"><div><div class="eyebrow">Mujica · Static-gated dynamic evidence</div><h1>${escapeHtml(result.candidate)}</h1><p class="summary">Static screen <code>${escapeHtml(result.staticStudy.id)}</code> passed before these exact simulations ran. ${result.successfulScenarios}/${result.scenarios.length} frozen scenarios passed; the required gate is ${result.expectations.minimumSuccessfulScenarios}/${result.scenarios.length}.</p></div><div class="verdict ${result.gatePassed ? "pass" : "fail"}">${escapeHtml(result.outcome)}</div></header><section class="grid">${scenarioCards}</section><aside class="decision"><strong>Next emphasis · ${escapeHtml(result.nextDevelopmentEmphasis)} · ${escapeHtml(result.developmentDiagnosis.recommendedSurface)}</strong><br>${escapeHtml(result.developmentDiagnosis.rationale)}<br>${escapeHtml(result.switchBackReason)}</aside><aside class="boundary"><strong>Authority boundary.</strong> Bounded simulated mechanism evidence only. No design acceptance, capability claim, revision promotion, or physical evidence.</aside></main></body></html>`;
 }
 
 export async function designProbeCommand(projectDir: string, studyId: string, candidateId: string) {
@@ -857,6 +1041,10 @@ export async function designProbeCommand(projectDir: string, studyId: string, ca
     throw new Error(`Dynamic Design Probe refused: candidate '${candidateId}' is '${staticCandidate?.verdict ?? "UNKNOWN"}' in static Study '${staticEnvelope.data.id}'`);
   }
   const probe = candidate.dynamicProbe;
+  const probeTask: any = await loadTask(project.rootDir, probe.task);
+  const reorientationThresholdRad = Number(
+    probeTask.recoveryTarget?.maximumBodyTiltRad ?? 0.35,
+  );
   const scenarios: any[] = [];
   for (const scenario of probe.scenarios) {
     const envelope = await simulateCommand(project.rootDir, {
@@ -891,13 +1079,18 @@ export async function designProbeCommand(projectDir: string, studyId: string, ca
         passed: Number(run.metrics.minimumJointLimitMarginRad) >= probe.expectations.minimumJointLimitMarginRad,
       },
     ];
+    const trajectory = (await readFile(
+      join(project.rootDir, "runs", run.runId, "trajectory.ndjson"),
+      "utf8",
+    )).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    const passed = checks.every((check) => check.passed);
     scenarios.push({
       scenario,
       runId: run.runId,
       resultHash: run.resultHash,
       runPath: `runs/${run.runId}`,
       cached: run.cached,
-      passed: checks.every((check) => check.passed),
+      passed,
       checks,
       metrics: {
         selfRightingSuccess: Number(run.metrics.selfRightingSuccess),
@@ -909,6 +1102,12 @@ export async function designProbeCommand(projectDir: string, studyId: string, ca
         disallowedCollisionSteps: Number(run.metrics.disallowedCollisionSteps),
         minimumJointLimitMarginRad: Number(run.metrics.minimumJointLimitMarginRad),
       },
+      diagnosis: diagnoseDynamicProbeTrajectory(
+        trajectory,
+        passed,
+        probe.expectations,
+        reorientationThresholdRad,
+      ),
     });
   }
   const successfulScenarios = scenarios.filter((scenario) => scenario.passed).length;
@@ -918,6 +1117,10 @@ export async function designProbeCommand(projectDir: string, studyId: string, ca
     : successfulScenarios > 0
       ? "PARTIAL_DYNAMIC_MECHANISM_OBSERVED"
       : "NO_DYNAMIC_MECHANISM_OBSERVED";
+  const developmentDiagnosis = routeDynamicProbeDevelopment(
+    scenarios,
+    gatePassed,
+  );
   const result = {
     version: 1,
     kind: "mujica-design-probe-result",
@@ -941,10 +1144,11 @@ export async function designProbeCommand(projectDir: string, studyId: string, ca
     successfulScenarios,
     gatePassed,
     outcome,
-    nextDevelopmentEmphasis: gatePassed ? "balanced" : "design-reassessment",
+    developmentDiagnosis,
+    nextDevelopmentEmphasis: developmentDiagnosis.nextDevelopmentEmphasis,
     switchBackReason: gatePassed
       ? "The readable Controller demonstrates the declared mechanism across the frozen probe set; bounded Controller work may continue before any RL budget."
-      : `${probe.switchBackIf} Observed ${successfulScenarios}/${scenarios.length} passing scenarios, so increasing RL budget is not authorized by this probe.`,
+      : `${probe.switchBackIf} Observed ${successfulScenarios}/${scenarios.length} passing scenarios and ${developmentDiagnosis.scenariosWithFourFootSupport}/${scenarios.length} with four-foot support, so increasing RL budget is not authorized by this probe.`,
     authorityBoundary: {
       claim: "bounded-simulated-dynamic-mechanism",
       designAcceptance: "none",
@@ -1005,6 +1209,7 @@ export async function designProbeCommand(projectDir: string, studyId: string, ca
     gatePassed,
     successfulScenarios,
     scenarios,
+    developmentDiagnosis,
     nextDevelopmentEmphasis: result.nextDevelopmentEmphasis,
     switchBackReason: result.switchBackReason,
     resultPath: join(target, "result.json"),

@@ -105,9 +105,13 @@ dynamic recovery, Design acceptance, promotion, or physical evidence. See
 and refuses to simulate a candidate that is not `SUPPORTED_WITHIN_SCREEN`. It
 runs the declared readable Program Controller across the frozen Scenario set,
 preserves every immutable Run, evaluates self-righting, collision, and
-joint-margin checks per Scenario, and emits a local aggregate with the next
-development emphasis. Partial success is mechanism evidence only; it does not
-authorize Training, accept a capability, or promote a Revision.
+joint-margin checks per Scenario, and emits a local aggregate with phase
+summaries, closest-upright/maximum-support/final witnesses, explicit failure
+modes, and the next development emphasis. A missing contact mechanism routes
+work to embodiment reassessment; complete four-foot contact coverage followed
+by a failed rise routes work to balanced embodiment/Controller co-design.
+Partial success is mechanism evidence only; neither route authorizes Training,
+accepts a capability, or promotes a Revision.
 
 `domain list|inspect` exposes each Domain Profile's physical uncertainty ranges,
 provenance, optional evidence-file hash, and combined identity. A `synthetic`

@@ -59,7 +59,14 @@ authoritative collision-free selection with a `CONTACT_OPPORTUNITY` outcome;
 the raw highest-contact sample is diagnostic data and can never satisfy a gate.
 A checked-in dynamic probe may run only after its exact candidate passes the
 current static Study. Partial dynamic success remains scenario-level evidence,
-not an aggregate capability claim.
+not an aggregate capability claim. The Probe must preserve phase-level
+mechanism witnesses: closest-to-upright state, maximum supporting feet, final
+state, collision steps, and joint-limit margin. Route a candidate back to
+`design-reassessment` when a required Scenario never creates the declared
+contact mechanism. Route to `balanced` co-design when every Scenario creates
+four-foot support but a readable transition loses that support or crosses a
+safety boundary. Neither route authorizes Training; only a passing declared
+dynamic gate may justify a separately bounded Training decision.
 
 Switch emphasis from design toward behavior only when no known design-envelope
 failure or physical impossibility blocks the current capability and simple

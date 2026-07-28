@@ -65,7 +65,12 @@ neither can accept a design or claim dynamic recovery. `design probe` is the
 next bounded gate: it requires one statically supported candidate, executes an
 exact readable Program Controller over frozen Scenarios, preserves every
 immutable Run, and reports full/partial/no dynamic mechanism evidence plus the
-next development emphasis. It still cannot authorize Training or promotion.
+next development emphasis. It derives phase-level mechanism witnesses rather
+than guessing from terminal score alone: whether reorientation occurred,
+whether four-foot support ever existed, where support was lost, and whether
+collision or joint limits invalidated the transition. Missing support routes
+back to embodiment; complete support coverage with a failed transition routes
+to balanced co-design. It still cannot authorize Training or promotion.
 Static and dynamic layers share one disallowed-self-contact predicate, and raw
 colliding samples can never satisfy a static gate. This supplies a cheap
 falsification boundary between visual design work and behavior optimization.

@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { hashJson, loadController, loadResearch, loadResearchLab, loadTraining, loadTrainingResearch } from "@mujica/core";
-import { assertDomainProfilePlantCompatible, candidateSelection, evaluateDesignStudyPose, researchDecision, researchGateReasons, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
+import { assertDomainProfilePlantCompatible, candidateSelection, diagnoseDynamicProbeTrajectory, evaluateDesignStudyPose, researchDecision, researchGateReasons, routeDynamicProbeDevelopment, upperViolationSeverity, validateResearchProposal, validateTrainingProposal } from "./commands";
 import { assertDevelopmentPromotionEvidence, assertResearchLabEditableChanges, loadResearchLabHistory, policyBehaviorEvaluation, policyReferenceGateReasons, researchPathIsEditable, selectResearchReviewCase, trainingRunStableResultIdentity } from "./research-lab";
 import { assertCaptureDecisionDeadline, assertCaptureModeAllowed, validateCaptureAuthorization } from "./hardware";
 import { loadFrozenPolicyArtifact } from "./policy-artifact";
@@ -319,6 +319,89 @@ describe("agent CLI contract", () => {
     });
   });
 
+  test("turns a transient four-foot contact into an explicit support-loss diagnosis", () => {
+    const frame = (
+      time: number,
+      phase: string,
+      tilt: number,
+      supportFeet: number,
+      margin: number,
+    ) => ({
+      time,
+      controllerPhase: phase,
+      bodyTiltRad: tilt,
+      qpos: [0, 0, supportFeet === 4 ? 0.08 : 0.06],
+      jointLimitMarginRad: margin,
+      disallowedSelfContact: false,
+      controllerTelemetry: { supportFeet },
+      footPositionWorld: Array.from({ length: 4 }, (_, index) =>
+        [0, 0, index < supportFeet ? 0.04 : 0.3]),
+    });
+    const diagnosis = diagnoseDynamicProbeTrajectory([
+      frame(0.1, "impulse", 1.5, 0, 0.2),
+      frame(1.6, "plant", 3.1, 4, 0.15),
+      frame(3.0, "rise", 3.0, 2, 0.1),
+      frame(6.0, "stand", 3.14, 0, 0.3),
+    ], false, {
+      maximumDisallowedCollisionSteps: 0,
+      minimumJointLimitMarginRad: 0.02,
+    });
+    expect(diagnosis).toMatchObject({
+      primaryFailureMode: "REORIENTATION_NOT_ACHIEVED",
+      failureModes: expect.arrayContaining([
+        "REORIENTATION_NOT_ACHIEVED",
+        "SUPPORT_LOST_AFTER_CONTACT",
+      ]),
+      mechanismSignals: {
+        reorientationObserved: false,
+        fourFootSupportObserved: true,
+        stableStandObserved: false,
+        collisionSafe: true,
+        jointLimitSafe: true,
+      },
+      witnesses: {
+        maximumSupport: {
+          timeSeconds: 1.6,
+          phase: "plant",
+          supportFeet: 4,
+        },
+        final: {
+          supportFeet: 0,
+        },
+      },
+    });
+    expect(diagnosis.nextQuestion).toContain("plant-to-rise");
+  });
+
+  test("routes complete contact mechanisms to co-design without authorizing Training", () => {
+    const scenario = (stableStandObserved: boolean, unsafe = false) => ({
+      diagnosis: {
+        mechanismSignals: {
+          reorientationObserved: stableStandObserved,
+          fourFootSupportObserved: true,
+          stableStandObserved,
+          collisionSafe: !unsafe,
+          jointLimitSafe: true,
+        },
+      },
+    });
+    expect(routeDynamicProbeDevelopment([
+      scenario(true),
+      scenario(true),
+      scenario(false, true),
+      scenario(false),
+    ], false)).toEqual({
+      nextDevelopmentEmphasis: "balanced",
+      recommendedSurface: "embodiment-controller-co-design",
+      mechanismCoverageComplete: true,
+      scenariosWithReorientation: 2,
+      scenariosWithFourFootSupport: 4,
+      scenariosWithStableStand: 2,
+      unsafeScenarios: 1,
+      rationale: "Every frozen scenario produced four-foot support, but at least one failed to retain it safely through rise; refine the transition and geometry together before Training.",
+    });
+  });
+
   test("runs a readable dynamic mechanism probe only after its static design gate", async () => {
     const first = invoke([
       "design", "probe", "examples/quadruped",
@@ -342,10 +425,34 @@ describe("agent CLI contract", () => {
         trainingAuthorization: false,
       },
       scenarios: expect.arrayContaining([
-        expect.objectContaining({ scenario: "fallen-left", passed: true }),
-        expect.objectContaining({ scenario: "fallen-right", passed: true }),
-        expect.objectContaining({ scenario: "fallen-front", passed: false }),
-        expect.objectContaining({ scenario: "fallen-back", passed: false }),
+        expect.objectContaining({
+          scenario: "fallen-left",
+          passed: true,
+          diagnosis: expect.objectContaining({
+            primaryFailureMode: "RECOVERED",
+          }),
+        }),
+        expect.objectContaining({
+          scenario: "fallen-right",
+          passed: true,
+          diagnosis: expect.objectContaining({
+            primaryFailureMode: "RECOVERED",
+          }),
+        }),
+        expect.objectContaining({
+          scenario: "fallen-front",
+          passed: false,
+          diagnosis: expect.objectContaining({
+            failureModes: expect.arrayContaining(["REORIENTATION_NOT_RETAINED"]),
+          }),
+        }),
+        expect.objectContaining({
+          scenario: "fallen-back",
+          passed: false,
+          diagnosis: expect.objectContaining({
+            failureModes: expect.arrayContaining(["REORIENTATION_NOT_ACHIEVED"]),
+          }),
+        }),
       ]),
     });
     expect(await readFile(envelope.data.reportPath, "utf8"))
@@ -367,6 +474,44 @@ describe("agent CLI contract", () => {
     expect(blocked.code).toBe(1);
     expect(JSON.parse(blocked.stderr).error.message)
       .toContain("has no dynamicProbe declaration");
+
+    const overcenter = invoke([
+      "design", "probe", "examples/quadruped",
+      "--study", "nominal-support-correction",
+      "--candidate", "overcenter-recovery-workspace",
+      "--json",
+    ]);
+    expect({ code: overcenter.code, stderr: overcenter.stderr })
+      .toEqual({ code: 0, stderr: "" });
+    expect(JSON.parse(overcenter.stdout).data).toMatchObject({
+      outcome: "PARTIAL_DYNAMIC_MECHANISM_OBSERVED",
+      gatePassed: false,
+      successfulScenarios: 2,
+      nextDevelopmentEmphasis: "balanced",
+      developmentDiagnosis: {
+        recommendedSurface: "embodiment-controller-co-design",
+        mechanismCoverageComplete: true,
+        scenariosWithFourFootSupport: 4,
+        scenariosWithStableStand: 2,
+      },
+      scenarios: expect.arrayContaining([
+        expect.objectContaining({
+          scenario: "fallen-back",
+          passed: false,
+          diagnosis: expect.objectContaining({
+            failureModes: expect.arrayContaining([
+              "SUPPORT_LOST_AFTER_CONTACT",
+            ]),
+            mechanismSignals: expect.objectContaining({
+              fourFootSupportObserved: true,
+            }),
+          }),
+        }),
+      ]),
+      authorityBoundary: {
+        trainingAuthorization: false,
+      },
+    });
   }, 30_000);
 
   test("creates and discovers an independently chartered hexapod project atomically", async () => {
@@ -1514,8 +1659,8 @@ describe("agent CLI contract", () => {
   test("validation crosses the Python MuJoCo boundary", async () => {
     const result = invoke(["validate", "examples/quadruped", "--json"]); const envelope = JSON.parse(result.stdout);
     expect(result.code).toBe(0);
-    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14, 14, 12, 14, 12, 14]);
-    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6]);
+    expect(envelope.data.runtimeModels.map((item: { nu: number }) => item.nu)).toEqual([8, 12, 8, 8, 8, 12, 12, 12, 8, 12, 14, 14, 12, 14, 14, 12, 14]);
+    expect(envelope.data.runtimeModels.map((item: { nsensor: number }) => item.nsensor)).toEqual([2, 6, 2, 2, 6, 6, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6]);
     const baseline = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "baseline"); const payload = envelope.data.runtimeModels.find((item: { assembly: string }) => item.assembly === "payload-equipped");
     expect(payload.ngeom).toBe(baseline.ngeom + 1); expect(payload.modelMassKg - baseline.modelMassKg).toBeCloseTo(0.2);
     expect(envelope.data.definitions.research).toBe(9);

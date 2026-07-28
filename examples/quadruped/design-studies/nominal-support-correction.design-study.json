@@ -1,8 +1,8 @@
 {
   "version": 1,
   "id": "nominal-support-correction",
-  "name": "Nominal support kinematic correction",
-  "question": "Do mirrored rear sagittal axes and hip mounts outside the torso collision envelope correct four-foot home support while retaining collision-free recovery contact opportunities?",
+  "name": "Nominal support and recovery-workspace correction",
+  "question": "Which corrected four-foot geometry preserves nominal support and creates a safe executable contact mechanism across every frozen fall?",
   "samples": 2048,
   "candidates": [
     {
@@ -70,6 +70,41 @@
           "minimumJointLimitMarginRad": 0.02
         },
         "switchBackIf": "Any frozen resting orientation lacks a collision-free transition from body reorientation into stable four-foot support after a bounded readable-controller search."
+      }
+    },
+    {
+      "id": "overcenter-recovery-workspace",
+      "assembly": "self-righting-balanced-waist-overcenter-3dof",
+      "role": "candidate",
+      "hypothesis": "A bounded over-centre abduction workspace lets the four declared feet cross the inverted torso plane and create support from a motionless back fall, while modest sagittal overtravel covers the exact front-fall boundary observed in the prior probe.",
+      "falsifiedIf": "The candidate loses nominal/static support, cannot create foot support from the frozen back fall, or still cannot transition all four frozen falls into stable standing without collision or joint-limit violation.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      },
+      "dynamicProbe": {
+        "controller": "balanced-waist-recovery-probe",
+        "task": "self-right",
+        "objective": "self-righting",
+        "seed": 42,
+        "scenarios": [
+          "fallen-left",
+          "fallen-right",
+          "fallen-front",
+          "fallen-back"
+        ],
+        "expectations": {
+          "minimumSuccessfulScenarios": 4,
+          "minimumSelfRightingSuccess": 1,
+          "maximumDisallowedCollisionSteps": 0,
+          "minimumJointLimitMarginRad": 0.02
+        },
+        "switchBackIf": "The over-centre candidate cannot create and retain four-foot support in front/back recovery, or its larger workspace introduces collision or joint-limit failures."
       }
     }
   ],

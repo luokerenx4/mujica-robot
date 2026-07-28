@@ -12,15 +12,15 @@ RL optimization.
 
 ## Development emphasis
 
-- Mode: `design-reassessment`
-- Evidence: the corrected split-torso candidate passes the complete static
-  Study and a readable Controller establishes left/right recovery, but the
-  static-gated Dynamic Design Probe fails front/back. Front can reorient but
-  cannot plant and rise without crossing a joint limit; back remains inverted.
-- Budget bias: morphology, joint topology, contact geometry, actuator/sensor
-  adequacy, standard Design Previews, and cheap Program-Controller probes.
-  Small behavior experiments are allowed only when they distinguish competing
-  embodiment hypotheses.
+- Mode: `balanced`
+- Evidence: the corrected split-torso candidate established left/right
+  recovery but lacked a back-support mechanism. A bounded over-centre
+  four-foot candidate now preserves the static screen and creates four-foot
+  support in every frozen fall. Front still crosses collision/joint gates and
+  loses its stand; back loses a real four-foot plant during rise.
+- Budget bias: plant-to-rise geometry and readable Controller sequencing as one
+  co-design surface. No Training budget until front/back pass the declared
+  safety and stable-stand gates.
 - Exit condition: at least one candidate demonstrates an executable mechanism
   for nominal support and each required recovery transition without depending
   on substantial RL search.
@@ -84,7 +84,7 @@ Out of scope:
 - [x] Add the smallest executable feasibility probes required to compare it.
 - [x] Compile, render, and inspect every candidate locally.
 - [x] Exercise short shared scenarios with readable Program Controllers.
-- [ ] Select or reject candidates through governed evidence.
+- [x] Select or reject candidates through governed evidence.
 - [ ] Update emphasis and create the next bounded Plan.
 
 ## Findings and decisions
@@ -131,6 +131,17 @@ Out of scope:
   opportunity is neither a mathematical reachability proof nor dynamic
   self-righting; a passing future candidate must still exercise the mechanism
   with a short readable Program Controller before behavior-heavy work resumes.
+- The over-centre candidate is not selected or promoted, but it changes the
+  causal diagnosis. `fallen-back` reaches four-foot support at 1.70 s with
+  zero disallowed collision steps and positive joint margin, then retracts
+  during rise and returns inverted. `fallen-front` also reaches four-foot
+  support after reorientation but records three collision steps and a negative
+  joint margin. Contact topology is no longer the missing mechanism; the next
+  bounded surface is the safe plant-to-rise transition.
+- Dynamic Probe diagnosis is now phase-aware. Terminal failure no longer erases
+  transient mechanism evidence, and aggregate routing distinguishes absent
+  support (`design-reassessment`) from complete support coverage with a failed
+  transition (`balanced`). Training remains unauthorized in both cases.
 
 ## Progress log
 
@@ -156,3 +167,7 @@ Out of scope:
   corrected split-torso candidate in all four frozen falls. Lateral recovery
   passed; front/back failed, so Studio and the Agent handoff now recommend
   `design-reassessment` instead of increasing RL budget.
+- 2026-07-28: Added the over-centre four-foot candidate and phase-level Probe
+  diagnosis. The candidate created four-foot support in all four frozen falls
+  but retained stable standing only laterally, so work moved to `balanced`
+  plant/Controller co-design while Training stayed closed.

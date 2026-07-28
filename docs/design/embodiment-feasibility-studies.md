@@ -82,10 +82,14 @@ content-addressed aggregate under ignored
 - `NO_DYNAMIC_MECHANISM_OBSERVED`.
 
 Partial success is never averaged into a capability claim. The artifact reports
-every Scenario, exact Run/result identity, failed metric gates, and the next
-development emphasis. Studio reads the verified current Study and Probe
-pointers, renders the same scenario-level evidence, and copies exact headless
-reproduction commands for an Agent.
+every Scenario, exact Run/result identity, failed metric gates, phase summaries,
+closest-upright/maximum-support/final witnesses, additive failure modes, and
+the next causal question. Aggregate routing uses those mechanism signals:
+missing four-foot support returns to `design-reassessment`; four-foot support
+in every Scenario followed by an unsafe or unstable rise selects `balanced`
+embodiment/Controller co-design. Both keep Training unauthorized. Studio reads
+the verified current Study and Probe pointers, renders the same scenario-level
+evidence, and copies exact headless reproduction commands for an Agent.
 
 ## Interpretation
 
@@ -117,7 +121,17 @@ two-foot contact opportunities; the inherited family still fails solely
 because of that home state.
 
 The follow-up `nominal-support-correction` Study fixes rear-axis symmetry and
-hip clearance. Both corrected Assemblies pass static screening. Its articulated
-candidate's dynamic probe succeeds from left and right but fails front and back,
-so the current outcome is `PARTIAL_DYNAMIC_MECHANISM_OBSERVED` and the next
-emphasis is `design-reassessment`, not RL.
+hip clearance. Both corrected Assemblies pass static screening. Its first
+articulated candidate's dynamic probe succeeds from left and right but never
+creates four-foot back support, so that result routes to
+`design-reassessment`.
+
+The next candidate extends only the four authored feet through a bounded
+over-centre abduction workspace and adds modest sagittal overtravel. It
+preserves four-foot home support and collision-free sampled opportunities. In
+the dynamic Probe, left/right still recover; front reaches upright and later
+four-foot support but crosses collision/joint gates; back creates four-foot
+support for the first time and then loses it during rise. The result remains
+`PARTIAL_DYNAMIC_MECHANISM_OBSERVED` (2/4), but mechanism coverage is now 4/4,
+so the next emphasis is `balanced` co-design rather than another blind
+morphology sweep or RL.
