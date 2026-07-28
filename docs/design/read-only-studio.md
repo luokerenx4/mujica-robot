@@ -6,7 +6,16 @@ Status: implemented vertical slice.
 
 Studio is a debugger for evidence already produced by the file-native Harness. It is not a robot editor, simulator, evaluator, or mutable database. The authoritative inputs remain `mujica.json`, Robot Assemblies and Components, compiled contracts, immutable Runs and Policies, locked Benchmarks, Candidates, and Revision manifests.
 
-`mujica studio <project> [--run ID] [--compare-run ID]` reads those inputs, creates or reuses one independently content-addressed MuJoCo replay per selected Run beneath `.mujica/replays/<replay-id>/`, and writes an offline projection beneath `.mujica/studio/<snapshot-id>/`. The snapshot contains `snapshot.json`, `index.html`, and verified copies of the replay frames; it has no external network assets and uses a restrictive Content Security Policy. Repeating the command over identical evidence yields the same ids.
+`mujica studio <project> [--run ID] [--compare-run ID]` reads those inputs, creates or reuses one independently content-addressed MuJoCo replay per selected Run beneath `.mujica/replays/<replay-id>/`, and writes an offline projection beneath `.mujica/studio/<snapshot-id>/`. The snapshot contains `snapshot.json`, a TypeScript-authored Vite + React renderer, a transitional complete Evidence view, and verified copies of the replay frames. It has no external network assets and uses a restrictive Content Security Policy. Repeating the command over identical evidence and renderer source yields the same ids.
+
+The renderer is a replaceable projection over the typed Snapshot contract. Its
+source and build contract participate in `renderer.sourceHash`; generated
+JavaScript and CSS are local derived assets and do not become robot source.
+React state may choose a frame, tab, filter, or copied selector, but it cannot
+write project files, execute MuJoCo, train a Policy, or produce a Judge verdict.
+During incremental migration, `index.html` is the primary React workbench and
+`legacy.html` preserves every not-yet-migrated debugger surface inside the same
+content-addressed directory.
 
 ## Debugging surfaces
 

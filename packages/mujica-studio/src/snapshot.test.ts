@@ -41,7 +41,7 @@ describe("read-only Studio snapshot", () => {
     const first = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     const second = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123" });
     expect(second.id).toBe(first.id);
-    expect(first.snapshot.renderer).toMatchObject({ id: "mujica-studio-offline-v1" });
+    expect(first.snapshot.renderer).toMatchObject({ id: "mujica-studio-react-v1" });
     expect(first.snapshot.renderer.sourceHash).toHaveLength(64);
     expect(first.snapshot.selectedRun?.trajectory.total).toBe(250);
     expect((first.snapshot.selectedRun?.trajectory.rows.at(-1) as any).qpos[0]).toBeCloseTo(0.6681203053846321);
@@ -177,7 +177,17 @@ describe("read-only Studio snapshot", () => {
         candidate: { id: "run-b05629b197f18ee9" },
       },
     });
-    const html = await readFile(first.indexPath, "utf8");
+    const index = await readFile(first.indexPath, "utf8");
+    const html = await readFile(join(first.path, "legacy.html"), "utf8");
+    const reactBundle = await readFile(join(first.path, "assets", "studio.js"), "utf8");
+    expect(index).toContain('id="root"');
+    expect(index).toContain('id="mujica-studio-snapshot"');
+    expect(index).toContain('./assets/studio.js');
+    expect(index).toContain("script-src 'self'");
+    expect(index).not.toContain("'unsafe-inline'");
+    expect(reactBundle).toContain("Complete evidence");
+    expect(reactBundle).toContain("./legacy.html");
+    expect(await readFile(join(first.path, "assets", "studio.css"), "utf8")).toContain("--font-display");
     expect(html).toContain("Release authority · Causal Continuous Mission Case");
     expect(html).toContain("Recovery relapses");
     expect(html).toContain("recoveryRelapseCount");
@@ -294,7 +304,7 @@ describe("read-only Studio snapshot", () => {
     });
     expect(result.snapshot.developmentReview?.manifest.id).toMatch(/^development-review-[a-f0-9]{16}$/);
     expect(result.snapshot.developmentReview?.manifest.reviewHash).toBe(hashJson(result.snapshot.developmentReview?.review));
-    const html = await readFile(result.indexPath, "utf8");
+    const html = await readFile(join(result.path, "legacy.html"), "utf8");
     expect(html).toContain("Executable Development Review");
     expect(html).toContain("Compiled design envelope");
     expect(html).toContain("Observed capability stages");
@@ -313,7 +323,7 @@ describe("read-only Studio snapshot", () => {
     const result = await writeStudioSnapshot(project, { run: "run-e8bd80892b0f0123", compareRun: "run-0307db1a1c3dc228" });
     expect(result.snapshot.selectedRun?.id).toBe("run-e8bd80892b0f0123");
     expect(result.snapshot.comparisonRun?.id).toBe("run-0307db1a1c3dc228");
-    const html = await readFile(result.indexPath, "utf8");
+    const html = await readFile(join(result.path, "legacy.html"), "utf8");
     expect(html).toContain("shared simulation time");
     expect(html).toContain("Motion-quality deltas");
     expect(html).toContain("mujica-run-comparison-context");
@@ -335,7 +345,7 @@ describe("read-only Studio snapshot", () => {
       subject: { assembly: "self-righting-waist-3dof", base: "quadruped-waist-3dof", controller: "waist-self-right" },
       metrics: { selfRightingTask: true, selfRightingSuccess: 0 },
     });
-    const html = await readFile(result.indexPath, "utf8");
+    const html = await readFile(join(result.path, "legacy.html"), "utf8");
     expect(html).toContain("Self-righting outcome deltas");
     expect(html).toContain("Recovery target");
     expect(html).toContain("Runtime stable dwell");
@@ -422,7 +432,7 @@ describe("read-only Studio snapshot", () => {
       const result = await writeStudioSnapshot(project, { run: runId, replay: { path: temporary, manifest } });
       expect(result.snapshot.selectedReplay).toMatchObject({ id: "replay-test", frameBase: "replay/frames" });
       expect(await readFile(join(result.path, "replay", "frames", "000000.png"))).toEqual(frameBytes);
-      const html = await readFile(result.indexPath, "utf8");
+      const html = await readFile(join(result.path, "legacy.html"), "utf8");
       expect(html).toContain("Authoritative MuJoCo replay comparison");
       expect(html).toContain("Copy comparison context for Agent");
       expect(html).toContain("mujica-runtime-mujoco-rgb-v1");

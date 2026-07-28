@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Avenir Next", "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-display);
+  background: #070a0f;
+  color: #e7edf4;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: #070a0f;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(34, 211, 238, 0.08), transparent 34rem),
+    linear-gradient(180deg, #080c12 0%, #070a0f 65%, #06090d 100%);
+}
+
+button,
+select,
+summary,
+input[type="range"] {
+  cursor: pointer;
+}
+
+code {
+  font-family: var(--font-mono);
+  color: #a5f3fc;
+}
+
+::selection {
+  background: rgba(103, 232, 249, 0.25);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080c12;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid #080c12;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.28);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 232, 249, 0.35);
+}

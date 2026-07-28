@@ -3,6 +3,7 @@ import { cp, lstat, mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join, resolve } from "node:path";
 import { atomicDirectory, compileAssembly, confined, controllerSourceIdentity, developmentReviewSchema, developmentWorkOrderSchema, hashJson, humanObservationDraftSchema, listAssemblyIds, listComponentIds, loadComponent, loadDevelopmentCharter, loadProject, researchReviewSchema, sha256, writeJson, type DevelopmentReview, type DevelopmentWorkOrder, type ResearchReview } from "@mujica/core";
+import { copyStudioRendererBundle, ensureStudioRendererBundle, reactStudioHtml, studioRendererSourceHash } from "./renderer";
 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true; }
@@ -699,7 +700,7 @@ export async function buildStudioSnapshot(projectDirectory: string, options: Stu
     : null;
   const developmentReview = await currentDevelopmentReview(project.rootDir);
   return {
-    version: 9, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-offline-v1", sourceHash: sha256(studioHtml.toString()) }, project: project.manifest,
+    version: 9, kind: "mujica-studio-snapshot", renderer: { id: "mujica-studio-react-v1", sourceHash: await studioRendererSourceHash(studioHtml.toString()) }, project: project.manifest,
     charter: await loadDevelopmentCharter(project.rootDir),
     developmentReview,
     developmentWorkOrder: await currentDevelopmentWorkOrder(project.rootDir, developmentReview),
@@ -1212,6 +1213,7 @@ export async function writeStudioSnapshot(projectDirectory: string, options: Stu
   const project = await loadProject(projectDirectory); const snapshot = await buildStudioSnapshot(project.rootDir, options); const snapshotHash = hashJson(snapshot);
   const id = `studio-${snapshotHash.slice(0, 16)}`; const target = join(project.rootDir, ".mujica", "studio", id);
   if (!(await exists(join(target, "snapshot.json")))) await atomicDirectory(target, async (directory) => {
+    const rendererBundle = await ensureStudioRendererBundle(project.rootDir, snapshot.renderer.sourceHash);
     await writeJson(join(directory, "snapshot.json"), snapshot);
     if (options.replay) await cp(options.replay.path, join(directory, "replay"), { recursive: true });
     if (options.compareReplay) await cp(options.compareReplay.path, join(directory, "comparison-replay"), { recursive: true });
@@ -1226,7 +1228,9 @@ export async function writeStudioSnapshot(projectDirectory: string, options: Stu
     const captureReplay = options.twinAudit?.hardwareCapture.replay ?? options.hardwareCapture?.replay;
     if (captureReplay) await cp(captureReplay.path, join(directory, "hardware-replay"), { recursive: true });
     if (options.twinAudit) await cp(options.twinAudit.predictionReplay.path, join(directory, "twin-replay"), { recursive: true });
-    await Bun.write(join(directory, "index.html"), studioHtml(snapshot));
+    await copyStudioRendererBundle(rendererBundle, directory);
+    await Bun.write(join(directory, "legacy.html"), studioHtml(snapshot));
+    await Bun.write(join(directory, "index.html"), reactStudioHtml(snapshot));
   });
   await writeJson(join(project.rootDir, ".mujica", "studio", "current.json"), { version: 1, id });
   return { id, snapshotHash, path: target, indexPath: join(target, "index.html"), selectedRun: snapshot.selectedRun?.id ?? null, comparisonRun: snapshot.comparisonRun?.id ?? null, snapshot };

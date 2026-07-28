@@ -951,7 +951,7 @@ describe("agent CLI contract", () => {
         frameCount: 11,
       },
     });
-    const html = await readFile(resolve(studioEnvelope.data.path, "index.html"), "utf8");
+    const html = await readFile(resolve(studioEnvelope.data.path, "legacy.html"), "utf8");
     expect(html).toContain("Device telemetry → frozen MuJoCo digital twin");
     expect(html).toContain("mujica-hardware-capture-frame-selector");
     expect(html).toContain("not camera footage, motion capture, physical contact truth");
@@ -1074,7 +1074,7 @@ describe("agent CLI contract", () => {
       },
     });
     expect(snapshot.selectedTwinAudit.transitions[6].residual.jointVelocityNormRadPerSec).toBeGreaterThan(0);
-    const html = await readFile(resolve(studioEnvelope.data.path, "index.html"), "utf8");
+    const html = await readFile(resolve(studioEnvelope.data.path, "legacy.html"), "utf8");
     expect(html).toContain("Device telemetry ↔ one-step frozen MuJoCo prediction");
     expect(html).toContain("mujica-digital-twin-residual-selector");
     expect(html).toContain("digital-twin-audit-transition");
@@ -1650,7 +1650,7 @@ describe("agent CLI contract", () => {
         reviewCount: 1,
       },
     });
-    const timelineHtml = readFileSync(resolve(JSON.parse(studio.stdout).data.indexPath), "utf8");
+    const timelineHtml = readFileSync(resolve(JSON.parse(studio.stdout).data.path, "legacy.html"), "utf8");
     expect(timelineHtml).toContain("Robot Research · Iteration Timeline");
     expect(timelineHtml).toContain("data-timeline-key");
     expect(timelineHtml).toContain("Metrics only");
