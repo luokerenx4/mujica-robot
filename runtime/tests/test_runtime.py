@@ -13,6 +13,7 @@ import torch
 
 from mujica_runtime.calibration import OneStepEstimator, _fit
 from mujica_runtime.controllers import POLICY_WARMUP_PASSES, advance_program_residual_gate_scale, create_policy_network, load_policy_controller, load_program_controller, program_residual_gate_scale, program_residual_scale_vector, transform_policy_action
+from mujica_runtime.design_analysis import DESIGN_ANALYZER_ID, analyze_design
 from mujica_runtime.design_preview import DESIGN_PREVIEW_RENDERER_ID, render_design_preview
 from mujica_runtime.environment import RecoveryRelapseTracker, RobotEnvironment, active_mission_phase, compile_motion_command_schedule
 from mujica_runtime.hardware_capture import _command_lease_expiration, _device_health, _device_health_assessment, _device_health_reasons, _driver_deadline_rejection, _state_age_reason, _state_safety_reasons, _stopped_acknowledged
@@ -293,6 +294,84 @@ class RuntimeContractTest(unittest.TestCase):
             primary.write_bytes(primary.read_bytes() + b"corrupt")
             with self.assertRaisesRegex(RuntimeError, "integrity"):
                 render_design_preview(request)
+
+    def test_design_analysis_screening_is_local_deterministic_and_visual(self):
+        model, compiled = compiled_assembly("resilient-command-conditioned-waist-3dof")
+        with tempfile.TemporaryDirectory() as directory:
+            request = {
+                "runtimeVersion": "test-runtime",
+                "runtimeSourceHash": "test-source",
+                "assembly": compiled["id"],
+                "assemblyHash": compiled["assemblyHash"],
+                "modelHash": hash_file(model),
+                "modelPath": str(model),
+                "baseBody": compiled["morphology"]["baseBody"],
+                "contactPoints": [
+                    {"id": item["id"], "site": item["site"]}
+                    for item in compiled["morphology"]["contactPoints"]
+                ],
+                "outputRoot": str(Path(directory) / "design-analyses"),
+                "settings": {
+                    "samples": 128,
+                    "contactToleranceM": 0.03,
+                    "floorClearanceM": 0.002,
+                    "minimumSupportContacts": 2,
+                    "width": 320,
+                    "height": 240,
+                    "cameraDistance": 2.2,
+                },
+            }
+            first = analyze_design(request)
+            second = analyze_design(request)
+            self.assertFalse(first["cached"])
+            self.assertTrue(second["cached"])
+            self.assertEqual(first["id"], second["id"])
+            analysis = first["analysis"]
+            self.assertEqual(analysis["analyzer"], DESIGN_ANALYZER_ID)
+            self.assertEqual(analysis["screeningOutcome"], "HOME_SUPPORT_BLOCKED")
+            self.assertEqual(
+                analysis["homeSupport"]["screeningOutcome"],
+                "HOME_SUPPORT_BLOCKED",
+            )
+            self.assertEqual(
+                analysis["homeSupport"]["simultaneousFootContacts"],
+                2,
+            )
+            self.assertEqual(len(analysis["restingPoses"]), 4)
+            self.assertEqual(
+                {pose["id"] for pose in analysis["restingPoses"]},
+                {"fallen-left", "fallen-right", "fallen-front", "fallen-back"},
+            )
+            back = next(
+                pose
+                for pose in analysis["restingPoses"]
+                if pose["id"] == "fallen-back"
+            )
+            self.assertEqual(
+                back["screeningOutcome"],
+                "NO_CONTACT_OPPORTUNITY_IN_SAMPLE_BUDGET",
+            )
+            self.assertEqual(back["best"]["simultaneousFootContacts"], 1)
+            self.assertFalse(back["best"]["selfCollisionPairs"])
+            self.assertEqual(
+                analysis["authorityBoundary"]["designAcceptance"],
+                "none",
+            )
+            manifest = first["manifest"]
+            self.assertEqual(len(manifest["images"]), 4)
+            for image in manifest["images"]:
+                image_path = Path(first["path"]) / image["file"]
+                self.assertEqual(image_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            report = Path(first["path"]) / "report.md"
+            self.assertIn("sampled kinematic screening", report.read_text())
+            html_report = Path(first["path"]) / "index.html"
+            self.assertIn(
+                "deterministic sampled kinematics",
+                html_report.read_text(),
+            )
+            html_report.write_text(html_report.read_text() + "corrupt")
+            with self.assertRaisesRegex(RuntimeError, "integrity"):
+                analyze_design(request)
 
     def test_program_prior_policy_freezes_the_exact_controller_source(self):
         policy_root = PROJECT / "policies" / "upright-residual-locomotion-1d4c901d04ccfabb"

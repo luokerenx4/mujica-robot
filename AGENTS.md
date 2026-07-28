@@ -45,6 +45,14 @@ required contacts, reach, actuation, sensing, and state transitions are
 physically available. These probes are feasibility evidence, not capability
 claims.
 
+When two or more embodiment candidates are plausible, encode the family as a
+checked-in Design Study: name one baseline, give every candidate a falsifiable
+physical hypothesis, hold the sampled probe budget and required poses constant,
+and inspect both the machine-readable result and locally generated comparison
+page. Do not commit the generated HTML or image assets. A passing static screen
+only authorizes the next bounded dynamic probe; it does not authorize RL or
+accept the design.
+
 Switch emphasis from design toward behavior only when no known design-envelope
 failure or physical impossibility blocks the current capability and simple
 execution demonstrates a viable mechanism. Switch back toward design when any

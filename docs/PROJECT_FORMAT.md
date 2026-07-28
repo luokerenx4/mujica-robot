@@ -140,7 +140,7 @@ snapshot; the verified Brief travels in the Agent request and is copied into the
 Session. `research run --brief` fails closed when the current Lab, program, lock,
 Brief, or referenced Observation bytes differ.
 
-Compiled Assemblies have two identities. `assemblyHash` covers the complete Base/Component package provenance; `executionHash` covers the composed MJCF bytes and ordered Observation/Action contracts. A metadata edit therefore changes provenance even when execution is identical. `policy requalify` may derive a new immutable Policy only when the old content-addressed MJCF and both contracts exactly match the new Assembly; otherwise retraining is mandatory.
+Compiled Assemblies have two identities. `assemblyHash` covers the complete Base/Component package provenance; `executionHash` covers the composed MJCF bytes and ordered Observation/Action contracts. A metadata edit therefore changes provenance even when execution is identical. `policy requalify` may derive a new immutable Policy only when the old MJCF and both contracts exactly match the new Assembly. It prefers the ignored local content-addressed cache; a clean clone may use a checked-in requalification proof only when that proof binds the exact source Policy hash and proves equal old/new model hashes. The new proof records this transitive provenance. Otherwise retraining is mandatory.
 
 A Candidate contains a strict `changes` declaration for components, Observation channels, Action channels, Controller files, optional Trainer/training files, and an optional frozen Policy transition. Mujica compiles both Assemblies and rejects the Candidate when this declaration differs from the semantic diff. Controller and Trainer files declared as changed must also appear in `allowedChanges`. `trainer: null` and `policy: null` are explicit evidence that a Candidate did not change those surfaces.
 
@@ -225,6 +225,21 @@ MJCF after clone and contain standard home/resting views plus machine-readable
 model facts. They are visual design projections and never Design Review,
 capability, promotion, or physical evidence. See
 [Local Design Previews](design/local-design-previews.md).
+
+Checked-in Design Study definitions live at:
+
+```text
+design-studies/<id>.design-study.json
+```
+
+They bind one baseline and at least one candidate Assembly to a shared sampled
+probe budget, an explicit physical hypothesis and falsification condition, and
+minimum authored-home/resting-pose contact counts. Generated per-Assembly
+analyses and multi-Assembly comparison pages live under ignored
+`.mujica/design-analyses/` and `.mujica/design-studies/`. They are reconstructed
+after clone and make no dynamic-capability, design-acceptance, promotion, or
+physical-evidence claim. See [Embodiment Feasibility
+Studies](design/embodiment-feasibility-studies.md).
 
 Completed Hardware Capture episodes use the same renderer only after Capture
 and Bundle integrity verification. Their v2

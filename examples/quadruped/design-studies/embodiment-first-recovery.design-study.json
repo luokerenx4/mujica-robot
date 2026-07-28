@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "id": "embodiment-first-recovery",
+  "name": "Embodiment-first recovery family",
+  "question": "Before spending more controller or RL budget, which inherited quadruped embodiment provides full authored home support and at least two collision-free foot contact opportunities from every frozen resting orientation?",
+  "samples": 2048,
+  "candidates": [
+    {
+      "id": "rigid-reference",
+      "assembly": "self-righting-rigid-3dof",
+      "role": "baseline",
+      "hypothesis": "The rigid twelve-actuator body already has enough leg workspace for a controller to establish a two-foot recovery brace in every resting orientation.",
+      "falsifiedIf": "The authored home has fewer than four feet within tolerance, or any frozen resting orientation has fewer than two collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    },
+    {
+      "id": "waist-reference",
+      "assembly": "self-righting-waist-3dof",
+      "role": "candidate",
+      "hypothesis": "Split-torso waist articulation removes the rigid body's directional recovery-contact bottleneck without compromising nominal support.",
+      "falsifiedIf": "The authored home has fewer than four feet within tolerance, or waist articulation still leaves any frozen resting orientation below two collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    },
+    {
+      "id": "extended-rigid",
+      "assembly": "resilient-command-conditioned-history-3dof",
+      "role": "candidate",
+      "hypothesis": "Extended hip travel on the rigid torso creates a collision-free two-foot brace in every recovery direction.",
+      "falsifiedIf": "The authored home has fewer than four feet within tolerance, or the extended rigid workspace still needs self-collision to reach two feet in any frozen resting orientation.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    },
+    {
+      "id": "contact-seeking-waist",
+      "assembly": "resilient-command-conditioned-waist-3dof",
+      "role": "candidate",
+      "hypothesis": "The contact-seeking waist plus expanded lateral workspace supplies a two-foot brace from every required resting orientation while preserving four-foot nominal support.",
+      "falsifiedIf": "The authored home has fewer than four feet within tolerance, or any frozen resting orientation remains below two collision-free foot contact opportunities.",
+      "expectations": {
+        "homeSupportMinimumContacts": 4,
+        "restingPoseMinimumContacts": {
+          "fallen-left": 2,
+          "fallen-right": 2,
+          "fallen-front": 2,
+          "fallen-back": 2
+        }
+      }
+    }
+  ],
+  "authorityBoundary": {
+    "claim": "sampled-kinematic-screening",
+    "designAcceptance": "none",
+    "dynamicCapability": false,
+    "physicalEvidence": false,
+    "promotion": "locked-judge-only"
+  }
+}

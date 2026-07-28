@@ -20,6 +20,7 @@ mujica.json + Robot Base + Component packages + Robot Assembly
   -> deterministic MJCF fragment composition
   -> observation/action contract compilation
   -> optional ignored local Design Preview + structural inventory
+  -> optional sampled Design Analysis + falsifiable multi-Assembly Design Study
   -> Task motion-command injection for command-capable Assemblies
   -> Controller interface compatibility validation
   -> content-addressed compiled robot directory
@@ -42,7 +43,7 @@ Research selection is lexicographic. A candidate may not turn a passing gate int
 
 The training path freezes every candidate Policy before scoring it. Training reward never decides KEEP. Whole-robot Revisions and Policy Revisions are distinct lineages, so a learned-lane improvement cannot silently replace a stronger robot controller. Development Candidate change declarations are compiled and verified before evaluation; kept Revisions freeze component, contract, Controller, and Policy identities in addition to source/evaluation snapshots. Benchmark locks include production evaluator source and dependency locks, not only authored JSON inputs. Locomotion evaluation uses net displacement and target distance, so standing or oscillating cannot masquerade as walking; seeded reset perturbations make multi-seed cases physically distinct.
 
-Full Assembly provenance and executable compatibility are separate identities. `assemblyHash` changes for any Component-package edit; `executionHash` is a hash of composed MJCF plus ordered contracts. Frozen Policies bind execution identity. Metadata migration never edits an artifact: requalification produces a derived Policy only after proving byte-identical old/new MJCF and contract hashes against the old content-addressed cache.
+Full Assembly provenance and executable compatibility are separate identities. `assemblyHash` changes for any Component-package edit; `executionHash` is a hash of composed MJCF plus ordered contracts. Frozen Policies bind execution identity. Metadata migration never edits an artifact: requalification produces a derived Policy only after proving byte-identical old/new MJCF and contract hashes against either the old content-addressed cache or an already-published requalification proof bound to the exact source Policy hash.
 
 Assembly Component config is compiled through explicit typed MJCF bindings. Resolved defaults are part of the compiled Component and semantic diff; a declared value that is unbound is rejected rather than allowed to become inert provenance.
 
@@ -54,6 +55,15 @@ and are rebuilt after clone; only model source and renderer logic belong in
 Git. A preview may guide a design hypothesis but grants no Design Review,
 Training, or promotion authority. See [Local Design
 Previews](design/local-design-previews.md).
+
+`design analyze` adds machine-readable sampled kinematic evidence to that visual
+surface. `design study` binds multiple exact Assemblies to checked-in hypotheses,
+shared probe settings, and explicit contact thresholds, then produces one local
+JSON/Markdown/HTML comparison. Both artifact families are derived and ignored;
+neither can accept a design or claim dynamic recovery. This supplies a cheap
+falsification boundary between visual design work and behavior optimization.
+See [Embodiment Feasibility
+Studies](design/embodiment-feasibility-studies.md).
 
 The development loop uses a reversible emphasis rather than a permanent phase:
 design-heavy, balanced, behavior-heavy, or design-reassessment. Evidence can
@@ -126,4 +136,4 @@ state. An acknowledged trip enters a stop-latched health window; continuously
 healthy evidence may recommend a new session, but the current process has no
 rearm transition and cannot recover actuation authority.
 
-See [the harness design](design/robot-development-harness.md), [Adaptive Development Emphasis](design/adaptive-development-emphasis.md), [Local Design Previews](design/local-design-previews.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [Device telemetry replay](design/device-telemetry-replay.md), [Hardware State ABI](design/hardware-state-abi.md), [Human-guided Research Briefs](design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](design/human-reviewed-research-outcomes.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [behavior supervision](design/behavior-supervision.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).
+See [the harness design](design/robot-development-harness.md), [Adaptive Development Emphasis](design/adaptive-development-emphasis.md), [Local Design Previews](design/local-design-previews.md), [Embodiment Feasibility Studies](design/embodiment-feasibility-studies.md), [Human–AI debugging workspace](design/human-ai-debugging-workspace.md), [Device telemetry replay](design/device-telemetry-replay.md), [Hardware State ABI](design/hardware-state-abi.md), [Human-guided Research Briefs](design/human-guided-research-briefs.md), [Human-reviewed Research Outcomes](design/human-reviewed-research-outcomes.md), [ML motion-quality research](design/ml-motion-quality-research.md), [component hardware inventory](design/component-hardware-inventory.md), [typed Component configuration](design/component-configuration.md), [structural Mount slots](design/structural-mount-slots.md), [Program Controller interface](design/program-controller-interface.md), [motion command contract](design/motion-command-contract.md), [behavior supervision](design/behavior-supervision.md), [traction recovery](design/traction-recovery.md), [read-only Studio](design/read-only-studio.md), [hardware verification boundary](design/hardware-verification-boundary.md), [forward locomotion benchmark](design/forward-locomotion-benchmark.md), [controller research](design/robot-research-loop.md), [policy training research](design/policy-training-research.md), [project format](PROJECT_FORMAT.md), and [CLI reference](CLI.md).

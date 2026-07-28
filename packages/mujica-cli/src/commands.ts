@@ -2,8 +2,8 @@ import { appendFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } fro
 import { dirname, join, resolve } from "node:path";
 import {
   assertProgramControllerCompatible, atomicDirectory, compareAssemblies, compileAssembly, confined, domainProfileSchema, hashDirectory, hashJson, listAssemblyIds, listCalibrationIds, listComponentIds, listControllerIds, loadAssembly, loadBenchmark, loadCalibration, loadCandidate, loadComponent,
-  listDomainProfileIds, listDriverPackageIds, listHardwareCapturePlanIds, loadController, loadDevelopmentCharter, loadDomainProfile, loadDriverPackage, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
-  type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type ResearchReview, type TrainingDefinition, type TrainingResearchDefinition,
+  listDesignStudyIds, listDomainProfileIds, listDriverPackageIds, listHardwareCapturePlanIds, loadController, loadDesignStudy, loadDevelopmentCharter, loadDomainProfile, loadDriverPackage, loadObjective, loadProject, loadResearch, loadScenario, loadTask, loadTrainer, loadTraining, loadTrainingResearch, programControllerInterfaceIssues, researchProposalSchema, sha256, stableJson, trainingSchema, validateProject, verifyCandidateChanges, writeJson,
+  type BenchmarkDefinition, type CalibrationDefinition, type CompiledAssembly, type ControllerDefinition, type DesignStudyDefinition, type ProjectContext, type ResearchDefinition, type ResearchProposal, type ResearchReview, type TrainingDefinition, type TrainingResearchDefinition,
 } from "@mujica/core";
 import { validateProjectDefinitions } from "@mujica/core";
 import { success, type Artifact } from "./contract";
@@ -67,11 +67,11 @@ export async function validateCommand(projectDir: string) {
 }
 
 export async function inspectCommand(projectDir: string) {
-  const project = await loadProject(projectDir); const charter = await loadDevelopmentCharter(project.rootDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const drivers = await listDriverPackageIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir); const capturePlans = await listHardwareCapturePlanIds(project.rootDir);
+  const project = await loadProject(projectDir); const charter = await loadDevelopmentCharter(project.rootDir); const components = await listComponentIds(project.rootDir); const assemblies = await listAssemblyIds(project.rootDir); const controllers = await listControllerIds(project.rootDir); const designStudies = await listDesignStudyIds(project.rootDir); const domainProfiles = await listDomainProfileIds(project.rootDir); const drivers = await listDriverPackageIds(project.rootDir); const calibrations = await listCalibrationIds(project.rootDir); const capturePlans = await listHardwareCapturePlanIds(project.rootDir);
   const policies = await listManifestDirectories(join(project.rootDir, "policies")); const runs = await listManifestDirectories(join(project.rootDir, "runs")); const trainingRuns = await listManifestDirectories(join(project.rootDir, "training-runs")); const calibrationRuns = await listManifestDirectories(join(project.rootDir, "calibration-runs")); const revisions = await listManifestDirectories(join(project.rootDir, "revisions")); const policyRevisions = await listManifestDirectories(join(project.rootDir, "policy-revisions"));
   const hardwareBundles = await listManifestDirectories(join(project.rootDir, "hardware-bundles")); const hardwareVerifications = await listManifestDirectories(join(project.rootDir, "hardware-verifications")); const hardwareCaptures = await listManifestDirectories(join(project.rootDir, "hardware-captures")); const humanObservations = await listManifestDirectories(join(project.rootDir, "human-observations")); const researchBriefs = await listManifestDirectories(join(project.rootDir, "research-briefs"));
   const twinAudits = await listManifestDirectories(join(project.rootDir, "twin-audits"));
-  return success("inspect", { project: project.manifest, charter, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, domainProfiles: domainProfiles.length, drivers: drivers.length, calibrations: calibrations.length, capturePlans: capturePlans.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length, hardwareCaptures: hardwareCaptures.length, twinAudits: twinAudits.length, humanObservations: humanObservations.length, researchBriefs: researchBriefs.length }, components, assemblies, controllers, domainProfiles, drivers, calibrations, capturePlans, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications, hardwareCaptures, twinAudits, humanObservations, researchBriefs }, project);
+  return success("inspect", { project: project.manifest, charter, counts: { components: components.length, assemblies: assemblies.length, controllers: controllers.length, designStudies: designStudies.length, domainProfiles: domainProfiles.length, drivers: drivers.length, calibrations: calibrations.length, capturePlans: capturePlans.length, policies: policies.length, runs: runs.length, trainingRuns: trainingRuns.length, calibrationRuns: calibrationRuns.length, revisions: revisions.length, policyRevisions: policyRevisions.length, hardwareBundles: hardwareBundles.length, hardwareVerifications: hardwareVerifications.length, hardwareCaptures: hardwareCaptures.length, twinAudits: twinAudits.length, humanObservations: humanObservations.length, researchBriefs: researchBriefs.length }, components, assemblies, controllers, designStudies, domainProfiles, drivers, calibrations, capturePlans, policies, runs, trainingRuns, calibrationRuns, revisions, policyRevisions, hardwareBundles, hardwareVerifications, hardwareCaptures, twinAudits, humanObservations, researchBriefs }, project);
 }
 
 export async function driverListCommand(projectDir: string) {
@@ -540,6 +540,226 @@ export async function designRenderCommand(projectDir: string, id: string) {
   ]);
 }
 
+export async function designAnalyzeCommand(
+  projectDir: string,
+  id: string,
+  options: { samples?: number } = {},
+) {
+  const project = await loadProject(projectDir);
+  const assembly = await compileAssembly(project.rootDir, id);
+  const samples = options.samples ?? 2_048;
+  if (!Number.isInteger(samples) || samples < 128 || samples > 65_536) {
+    throw new Error("Design Analysis samples must be an integer between 128 and 65536");
+  }
+  const result = await invokeRuntime("analyze-design", {
+    runtimeVersion,
+    runtimeSourceHash: await runtimeSourceHash(),
+    assembly: assembly.id,
+    assemblyHash: assembly.assemblyHash,
+    modelHash: assembly.modelHash,
+    modelPath: assembly.modelPath,
+    baseBody: assembly.morphology.baseBody,
+    contactPoints: assembly.morphology.contactPoints.map((contact) => ({
+      id: contact.id,
+      site: contact.site,
+    })),
+    outputRoot: join(project.rootDir, ".mujica", "design-analyses"),
+    settings: {
+      samples,
+      contactToleranceM: 0.03,
+      floorClearanceM: 0.002,
+      minimumSupportContacts: Math.min(
+        2,
+        assembly.morphology.contactPoints.length,
+      ),
+      width: 640,
+      height: 480,
+      cameraDistance: 2.2,
+    },
+  }, 120_000);
+  return success("design.analyze", {
+    id: result.id,
+    path: result.path,
+    cached: result.cached,
+    assembly: {
+      id: assembly.id,
+      assemblyHash: assembly.assemblyHash,
+      base: assembly.baseId,
+      contactPoints: assembly.morphology.contactPoints,
+      actionSize: assembly.actionContract.size,
+    },
+    screeningOutcome: result.analysis.screeningOutcome,
+    homeSupport: result.analysis.homeSupport,
+    restingPoses: result.analysis.restingPoses,
+    limitations: result.analysis.limitations,
+    authorityBoundary: result.analysis.authorityBoundary,
+    images: result.manifest.images.map((image: { file: string }) => ({
+      ...image,
+      path: join(result.path, image.file),
+    })),
+    htmlPath: join(result.path, "index.html"),
+    reportPath: join(result.path, "report.md"),
+    analysisPath: join(result.path, "analysis.json"),
+  }, project, [
+    projectArtifact("design-analysis", result.id, result.path, false),
+  ]);
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function designStudyReport(study: DesignStudyDefinition, result: any): string {
+  const rows = result.candidates.map((candidate: any) => {
+    const contacts = candidate.restingPoses
+      .map((pose: any) => `${pose.pose}:${pose.actual}/${pose.minimum}`)
+      .join(", ");
+    return `| \`${candidate.id}\` | \`${candidate.assembly}\` | \`${candidate.verdict}\` | ${candidate.homeSupport.actual}/${candidate.homeSupport.minimum} | ${contacts} |`;
+  });
+  return [
+    `# Design Study ${study.id}`,
+    "",
+    study.question,
+    "",
+    `Outcome: **${result.outcome}**`,
+    "",
+    "| Candidate | Assembly | Screening verdict | Home | Resting poses |",
+    "| --- | --- | --- | ---: | --- |",
+    ...rows,
+    "",
+    "## Authority boundary",
+    "",
+    "This study compares deterministic sampled kinematic screens. A passing",
+    "candidate is not dynamically validated, accepted, promoted, or supported by",
+    "physical hardware evidence.",
+    "",
+  ].join("\n");
+}
+
+function designStudyHtml(study: DesignStudyDefinition, result: any): string {
+  const candidateCards = result.candidates.map((candidate: any) => {
+    const poseCards = candidate.restingPoses.map((pose: any) => (
+      `<figure><img src="${escapeHtml(pose.imageRelativePath)}" alt="${escapeHtml(candidate.id)} ${escapeHtml(pose.pose)}">`
+      + `<figcaption><span>${escapeHtml(pose.pose)}</span><strong class="${pose.passed ? "pass" : "fail"}">${pose.actual}/${pose.minimum} feet</strong></figcaption></figure>`
+    )).join("");
+    return `<article class="candidate"><header><div><div class="eyebrow">${escapeHtml(candidate.role)} · ${escapeHtml(candidate.assembly)}</div>`
+      + `<h2>${escapeHtml(candidate.id)}</h2></div><div class="verdict ${candidate.verdict === "SUPPORTED_WITHIN_SCREEN" ? "pass" : "fail"}">${escapeHtml(candidate.verdict)}</div></header>`
+      + `<p class="hypothesis">${escapeHtml(candidate.hypothesis)}</p>`
+      + `<div class="home"><span>Authored home</span><strong class="${candidate.homeSupport.passed ? "pass" : "fail"}">${candidate.homeSupport.actual}/${candidate.homeSupport.minimum} feet</strong></div>`
+      + `<div class="poses">${poseCards}</div><details><summary>Falsification rule and failed checks</summary>`
+      + `<p>${escapeHtml(candidate.falsifiedIf)}</p><ul>${candidate.failedChecks.map((check: string) => `<li>${escapeHtml(check)}</li>`).join("") || "<li>None within this screen.</li>"}</ul></details></article>`;
+  }).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(study.name)}</title><style>
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#090c11;color:#eef3f8}*{box-sizing:border-box}body{margin:0;padding:38px;background:radial-gradient(circle at 20% 0,#17243b 0,#090c11 36%);min-height:100vh}.wrap{max-width:1500px;margin:auto}.eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.13em;text-transform:uppercase;color:#8fa4c2}.hero{display:flex;justify-content:space-between;gap:30px;align-items:end;margin-bottom:28px}h1{font-size:clamp(32px,6vw,68px);line-height:.95;margin:10px 0}.question{max-width:800px;color:#bac6d4;font-size:18px;line-height:1.55}.verdict{font:800 12px ui-monospace,monospace;border:1px solid #34445b;border-radius:999px;padding:10px 13px}.pass{color:#67e3ac}.fail{color:#ff8989}.candidate{background:#111722;border:1px solid #263143;border-radius:18px;padding:20px;margin:18px 0}.candidate header{display:flex;justify-content:space-between;gap:16px;align-items:start}.candidate h2{font-size:27px;margin:7px 0}.hypothesis{color:#c5cfdb;line-height:1.55;max-width:1000px}.home{display:flex;justify-content:space-between;padding:13px 0;border-top:1px solid #293344}.poses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}figure{margin:0;background:#090c11;border-radius:12px;overflow:hidden;border:1px solid #222d3c}figure img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}figcaption{display:flex;justify-content:space-between;gap:8px;padding:10px;font:700 11px ui-monospace,monospace}details{margin-top:14px;color:#acb8c8;line-height:1.5}.boundary{margin-top:22px;padding:18px;border-left:3px solid #6d87ad;background:#111722;color:#b8c3d1}@media(max-width:900px){body{padding:20px}.hero{display:block}.poses{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.poses{grid-template-columns:1fr}.candidate header{display:block}}
+</style></head><body><main class="wrap"><header class="hero"><div><div class="eyebrow">Mujica · Design Study</div><h1>${escapeHtml(study.name)}</h1><p class="question">${escapeHtml(study.question)}</p></div><div class="verdict ${result.outcome === "NO_CANDIDATE_PASSED" ? "fail" : "pass"}">${escapeHtml(result.outcome)}</div></header>${candidateCards}<aside class="boundary"><strong>Authority boundary.</strong> This gallery compares sampled kinematic screens. It does not establish dynamic recovery, accept a design, promote a candidate, or provide physical evidence.</aside></main></body></html>`;
+}
+
+export async function designStudyCommand(projectDir: string, id: string) {
+  const project = await loadProject(projectDir);
+  const study = await loadDesignStudy(project.rootDir, id);
+  if (study.id !== id) throw new Error(`Design Study id '${study.id}' must match filename '${id}'`);
+  const candidates: any[] = [];
+  for (const candidate of study.candidates) {
+    const analysisEnvelope = await designAnalyzeCommand(project.rootDir, candidate.assembly, { samples: study.samples });
+    const analysis: any = analysisEnvelope.data;
+    const failedChecks: string[] = [];
+    const homeMinimum = candidate.expectations.homeSupportMinimumContacts;
+    if (analysis.homeSupport.simultaneousFootContacts < homeMinimum) {
+      failedChecks.push(`home contacts ${analysis.homeSupport.simultaneousFootContacts} < ${homeMinimum}`);
+    }
+    const restingPoses = Object.entries(candidate.expectations.restingPoseMinimumContacts).map(([pose, minimum]) => {
+      const measured = analysis.restingPoses.find((item: any) => item.id === pose);
+      if (!measured) throw new Error(`Design Analysis for '${candidate.assembly}' omitted pose '${pose}'`);
+      const actual = measured.best.simultaneousFootContacts;
+      if (actual < minimum) failedChecks.push(`${pose} contacts ${actual} < ${minimum}`);
+      return {
+        pose,
+        actual,
+        minimum,
+        passed: actual >= minimum,
+        secondFootContactGapM: measured.best.secondFootContactGapM,
+        imageRelativePath: `../../design-analyses/${analysis.id}/${measured.image}`,
+      };
+    });
+    candidates.push({
+      ...candidate,
+      analysisId: analysis.id,
+      analysisHash: sha256(await readFile(analysis.analysisPath)),
+      screeningOutcome: analysis.screeningOutcome,
+      homeSupport: {
+        actual: analysis.homeSupport.simultaneousFootContacts,
+        minimum: homeMinimum,
+        passed: analysis.homeSupport.simultaneousFootContacts >= homeMinimum,
+      },
+      restingPoses,
+      failedChecks,
+      verdict: failedChecks.length === 0 ? "SUPPORTED_WITHIN_SCREEN" : "FALSIFIED_WITHIN_SCREEN",
+    });
+  }
+  const result = {
+    version: 1,
+    kind: "mujica-design-study-result",
+    harnessSourceHash: await harnessSourceHash(),
+    study: study.id,
+    studyHash: hashJson(study),
+    question: study.question,
+    samples: study.samples,
+    candidates,
+    outcome: candidates.some((candidate) => candidate.verdict === "SUPPORTED_WITHIN_SCREEN")
+      ? "CANDIDATE_PASSED_SCREEN"
+      : "NO_CANDIDATE_PASSED",
+    authorityBoundary: study.authorityBoundary,
+  };
+  const artifactId = `design-study-${hashJson(result).slice(0, 16)}`;
+  const target = join(project.rootDir, ".mujica", "design-studies", artifactId);
+  let cached = await exists(join(target, "manifest.json"));
+  if (!cached) {
+    await atomicDirectory(target, async (directory) => {
+      await writeJson(join(directory, "result.json"), result);
+      await writeFile(join(directory, "report.md"), designStudyReport(study, result));
+      await writeFile(join(directory, "index.html"), designStudyHtml(study, result));
+      await writeJson(join(directory, "manifest.json"), {
+        version: 1,
+        id: artifactId,
+        kind: result.kind,
+        study: study.id,
+        studyHash: result.studyHash,
+        resultHash: sha256(await readFile(join(directory, "result.json"))),
+        reportHash: sha256(await readFile(join(directory, "report.md"))),
+        htmlHash: sha256(await readFile(join(directory, "index.html"))),
+        analysisIds: candidates.map((candidate) => candidate.analysisId),
+        authorityBoundary: study.authorityBoundary,
+        completed: true,
+      });
+    });
+  } else {
+    const manifest = JSON.parse(await readFile(join(target, "manifest.json"), "utf8"));
+    for (const [file, key] of [["result.json", "resultHash"], ["report.md", "reportHash"], ["index.html", "htmlHash"]] as const) {
+      if (sha256(await readFile(join(target, file))) !== manifest[key]) throw new Error(`Design Study '${artifactId}' failed artifact integrity verification`);
+    }
+    if (manifest.studyHash !== result.studyHash || stableJson(manifest.analysisIds) !== stableJson(candidates.map((candidate) => candidate.analysisId))) {
+      throw new Error(`Design Study '${artifactId}' identity is inconsistent`);
+    }
+  }
+  return success("design.study", {
+    id: artifactId,
+    path: target,
+    cached,
+    study,
+    outcome: result.outcome,
+    candidates,
+    resultPath: join(target, "result.json"),
+    reportPath: join(target, "report.md"),
+    htmlPath: join(target, "index.html"),
+    authorityBoundary: result.authorityBoundary,
+  }, project, [projectArtifact("design-study", artifactId, target, false)]);
+}
+
 export async function assemblyInspectCommand(projectDir: string, id: string) {
   const project = await loadProject(projectDir); const source = await loadAssembly(project.rootDir, id); const compiled = await compileAssembly(project.rootDir, id);
   return success("assembly.inspect", { source, compiled }, project);
@@ -785,12 +1005,39 @@ export async function policyInspectCommand(projectDir: string, id: string) {
 export async function policyRequalifyCommand(projectDir: string, policyId: string, assemblyId: string) {
   const project = await loadProject(projectDir); const source = confined(project.rootDir, `policies/${policyId}`); const manifest = JSON.parse(await readFile(join(source, "manifest.json"), "utf8")); const sourcePolicyHash = await hashDirectory(source);
   const assembly = await compileAssembly(project.rootDir, assemblyId); const oldModelPath = confined(project.rootDir, `.mujica/cache/assemblies/${manifest.assemblyHash}/model.xml`);
-  if (!(await exists(oldModelPath))) throw new Error(`Old compiled Assembly '${manifest.assemblyHash}' is unavailable; execution equivalence cannot be proven`);
-  const oldModelHash = sha256(await readFile(oldModelPath)); if (oldModelHash !== assembly.modelHash) throw new Error("Old and new compiled MJCF differ; Policy must be retrained");
+  let oldModelHash: string;
+  let oldModelProvenance: { kind: "local-compiled-cache"; assemblyHash: string } | { kind: "transitive-requalification"; policy: string; proofHash: string };
+  if (await exists(oldModelPath)) {
+    oldModelHash = sha256(await readFile(oldModelPath));
+    oldModelProvenance = { kind: "local-compiled-cache", assemblyHash: manifest.assemblyHash };
+  } else {
+    const witnesses = [];
+    for (const candidateId of await listManifestDirectories(join(project.rootDir, "policies"))) {
+      const candidateRoot = confined(project.rootDir, `policies/${candidateId}`);
+      const proofPath = join(candidateRoot, "requalification.json");
+      if (!(await exists(proofPath))) continue;
+      const candidateManifest = JSON.parse(await readFile(join(candidateRoot, "manifest.json"), "utf8"));
+      const candidateProof = JSON.parse(await readFile(proofPath, "utf8"));
+      if (
+        candidateManifest.derivedFromPolicy === policyId
+        && candidateManifest.derivedFromPolicyHash === sourcePolicyHash
+        && candidateProof.kind === "execution-equivalent-metadata-migration"
+        && candidateProof.sourcePolicyId === policyId
+        && candidateProof.sourcePolicyHash === sourcePolicyHash
+        && candidateProof.oldAssemblyHash === manifest.assemblyHash
+        && candidateProof.oldModelHash === candidateProof.newModelHash
+      ) witnesses.push({ policy: candidateId, proof: candidateProof, proofHash: hashJson(candidateProof) });
+    }
+    const witness = witnesses.sort((left, right) => left.policy.localeCompare(right.policy))[0];
+    if (!witness) throw new Error(`Old compiled Assembly '${manifest.assemblyHash}' is unavailable and no bound transitive requalification proof exists; execution equivalence cannot be proven`);
+    oldModelHash = witness.proof.oldModelHash;
+    oldModelProvenance = { kind: "transitive-requalification", policy: witness.policy, proofHash: witness.proofHash };
+  }
+  if (oldModelHash !== assembly.modelHash) throw new Error("Old and new compiled MJCF differ; Policy must be retrained");
   const oldObservation = JSON.parse(await readFile(join(source, "observation-contract.json"), "utf8")); const oldAction = JSON.parse(await readFile(join(source, "action-contract.json"), "utf8"));
   const observationContractHash = hashJson(assembly.observationContract); const actionContractHash = hashJson(assembly.actionContract);
   if (hashJson(oldObservation) !== observationContractHash || hashJson(oldAction) !== actionContractHash) throw new Error("Old and new Controller contracts differ; Policy must be retrained");
-  const proof = { version: 1, kind: "execution-equivalent-metadata-migration", sourcePolicyId: policyId, sourcePolicyHash, oldAssemblyHash: manifest.assemblyHash, newAssemblyHash: assembly.assemblyHash, oldModelHash, newModelHash: assembly.modelHash, executionHash: assembly.executionHash, observationContractHash, actionContractHash };
+  const proof = { version: 2, kind: "execution-equivalent-metadata-migration", sourcePolicyId: policyId, sourcePolicyHash, oldAssemblyHash: manifest.assemblyHash, newAssemblyHash: assembly.assemblyHash, oldModelHash, oldModelProvenance, newModelHash: assembly.modelHash, executionHash: assembly.executionHash, observationContractHash, actionContractHash };
   const identity = hashJson(proof); const id = `${manifest.id.split(/-[0-9a-f]{16}$/)[0]}-q-${identity.slice(0, 16)}`; const target = confined(project.rootDir, `policies/${id}`);
   if (!(await exists(join(target, "manifest.json")))) await atomicDirectory(target, async (directory) => {
     await cp(source, directory, { recursive: true }); const sourceHashes = JSON.parse(await readFile(join(source, "source-hashes.json"), "utf8"));

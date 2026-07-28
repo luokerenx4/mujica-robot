@@ -21,6 +21,8 @@ mujica controller inspect <project> --controller ID [--json]
 mujica assembly inspect|compile <project> --assembly ID [--json]
 mujica assembly compare <project> --from ID --to ID [--json]
 mujica design render <project> --assembly ID [--json]
+mujica design analyze <project> --assembly ID [--samples N] [--json]
+mujica design study <project> --study ID [--json]
 mujica simulate <project> --assembly ID --controller ID --task ID --scenario ID [--seed N]
 mujica studio <workspace> [--json]
 mujica studio <project> ([--run ID] [--compare-run ID] | --research-lab ID [--session ID [--experiment ID]] | --capture ID --episode ID | --twin-audit ID | --authority-counterfactual ID [--case ID]) [--json]
@@ -87,6 +89,16 @@ the command reconstructs it from checked-in MJCF and Component source. The
 preview is a derived visual projection, not a Design Review, physical test,
 Training authorization, or promotion result. See
 [Local Design Previews](design/local-design-previews.md).
+
+`design analyze` applies the same deterministic sampled kinematic screen to one
+compiled Assembly. It checks authored-home foot clearance and four frozen
+resting orientations, records collision-free contact opportunities and related
+machine measurements, and emits an ignored local JSON/Markdown/HTML artifact.
+`design study` loads a checked-in candidate-family definition, runs that same
+probe and sample budget for every Assembly, evaluates the declared falsification
+thresholds, and emits one local comparison gallery. A passing screen is not
+dynamic recovery, Design acceptance, promotion, or physical evidence. See
+[Embodiment Feasibility Studies](design/embodiment-feasibility-studies.md).
 
 `domain list|inspect` exposes each Domain Profile's physical uncertainty ranges,
 provenance, optional evidence-file hash, and combined identity. A `synthetic`
@@ -274,7 +286,14 @@ emergency stop and publish an ineligible `ABORTED`/`FAILED` artifact rather than
 discarding the evidence. The driver must acknowledge the exact episode and stop
 kind; writing a stop request alone is not success.
 
-`policy requalify` is a narrow metadata-migration operation, not training. It requires the old content-addressed Assembly cache, byte-identical old/new MJCF, and identical Observation/Action contract hashes. Success creates a new immutable Policy with an explicit `requalification.json` proof and leaves the source Policy untouched. Any executable difference fails closed and requires training.
+`policy requalify` is a narrow metadata-migration operation, not training. It
+requires byte-identical old/new MJCF and identical Observation/Action contract
+hashes. The old model identity comes from the local content-addressed Assembly
+cache when present; after a clean clone it may instead follow an already
+published requalification proof bound to the exact source Policy hash. The new
+proof records which source was used. Success creates a new immutable Policy and
+leaves the source Policy untouched. Any missing proof or executable difference
+fails closed and requires restoration of evidence or retraining.
 
 `policy counterfactual` is a causal authority experiment, not training or
 promotion. It executes one immutable Policy twice across every locked Benchmark

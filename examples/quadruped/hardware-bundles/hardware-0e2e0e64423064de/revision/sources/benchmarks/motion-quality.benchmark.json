@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "motion-quality",
+  "name": "Nominal and delayed gait motion quality",
+  "objective": "motion-quality",
+  "baseline": {
+    "assembly": "command-conditioned-history-3dof",
+    "controller": "upright-traction-gait"
+  },
+  "cases": [
+    {
+      "id": "nominal-forward",
+      "task": "forward-walk",
+      "scenario": "nominal",
+      "seed": 1807,
+      "weight": 1
+    },
+    {
+      "id": "delayed-forward",
+      "task": "forward-walk",
+      "scenario": "actuator-delay-three-step",
+      "seed": 1807,
+      "weight": 1
+    }
+  ]
+}

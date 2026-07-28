@@ -102,6 +102,8 @@ describe("agent CLI contract", () => {
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.list")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "controller.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.render")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.analyze")).toBe(true);
+    expect(envelope.data.commands.some((item: { id: string }) => item.id === "design.study")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "diagnose")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "domain.inspect")).toBe(true);
     expect(envelope.data.commands.some((item: { id: string }) => item.id === "driver.inspect")).toBe(true);
@@ -158,6 +160,129 @@ describe("agent CLI contract", () => {
     );
     expect(ignored.exitCode).toBe(0);
   }, 20_000);
+
+  test("screens compiled embodiment feasibility before spending Training budget", async () => {
+    const first = invoke([
+      "design",
+      "analyze",
+      "examples/quadruped",
+      "--assembly",
+      "resilient-command-conditioned-waist-3dof",
+      "--samples",
+      "128",
+      "--json",
+    ]);
+    expect(first.code).toBe(0);
+    const data = JSON.parse(first.stdout).data;
+    expect(data).toMatchObject({
+      screeningOutcome: "HOME_SUPPORT_BLOCKED",
+      assembly: {
+        id: "resilient-command-conditioned-waist-3dof",
+        actionSize: 14,
+      },
+      homeSupport: {
+        screeningOutcome: "HOME_SUPPORT_BLOCKED",
+        simultaneousFootContacts: 2,
+        requiredFootContacts: 4,
+      },
+      authorityBoundary: {
+        source: "compiled-mjcf",
+        probe: "deterministic-sampled-kinematics",
+        designAcceptance: "none",
+        dynamicCapability: false,
+        physicalEvidence: false,
+        promotion: "locked-judge-only",
+      },
+    });
+    expect(data.restingPoses).toHaveLength(4);
+    expect(data.restingPoses.find((pose: any) => pose.id === "fallen-back"))
+      .toMatchObject({
+        screeningOutcome: "NO_CONTACT_OPPORTUNITY_IN_SAMPLE_BUDGET",
+        best: { simultaneousFootContacts: 1, selfCollisionPairs: [] },
+      });
+    expect(data.images).toHaveLength(4);
+    expect((await readFile(data.images[0].path)).subarray(0, 8))
+      .toEqual(Buffer.from("\x89PNG\r\n\x1a\n", "binary"));
+    expect(await readFile(data.reportPath, "utf8"))
+      .toContain("sampled kinematic screening");
+    expect(await readFile(data.htmlPath, "utf8"))
+      .toContain("deterministic sampled kinematics");
+    const repeated = invoke([
+      "design",
+      "analyze",
+      "examples/quadruped",
+      "--assembly",
+      "resilient-command-conditioned-waist-3dof",
+      "--samples",
+      "128",
+      "--json",
+    ]);
+    expect(repeated.code).toBe(0);
+    expect(JSON.parse(repeated.stdout).data).toMatchObject({
+      id: data.id,
+      cached: true,
+    });
+    const ignored = Bun.spawnSync(
+      ["git", "check-ignore", "--quiet", data.images[0].path],
+      { cwd: root },
+    );
+    expect(ignored.exitCode).toBe(0);
+  }, 20_000);
+
+  test("compares falsifiable embodiment hypotheses in one local Design Study", async () => {
+    const first = invoke([
+      "design",
+      "study",
+      "examples/quadruped",
+      "--study",
+      "embodiment-first-recovery",
+      "--json",
+    ]);
+    expect({ code: first.code, stderr: first.stderr }).toEqual({ code: 0, stderr: "" });
+    const envelope = JSON.parse(first.stdout);
+    expect(envelope.data).toMatchObject({
+      outcome: "NO_CANDIDATE_PASSED",
+      study: {
+        id: "embodiment-first-recovery",
+        samples: 2048,
+      },
+      authorityBoundary: {
+        claim: "sampled-kinematic-screening",
+        designAcceptance: "none",
+        dynamicCapability: false,
+        physicalEvidence: false,
+        promotion: "locked-judge-only",
+      },
+    });
+    expect(envelope.data.candidates).toHaveLength(4);
+    expect(envelope.data.candidates.every((candidate: any) =>
+      candidate.verdict === "FALSIFIED_WITHIN_SCREEN")).toBe(true);
+    expect(envelope.data.candidates.find((candidate: any) =>
+      candidate.id === "contact-seeking-waist")).toMatchObject({
+      homeSupport: { actual: 2, minimum: 4, passed: false },
+      restingPoses: expect.arrayContaining([
+        expect.objectContaining({ pose: "fallen-left", actual: 2, passed: true }),
+        expect.objectContaining({ pose: "fallen-back", actual: 1, passed: false }),
+      ]),
+    });
+    expect(await readFile(envelope.data.htmlPath, "utf8"))
+      .toContain("Embodiment-first recovery family");
+    expect(await readFile(envelope.data.reportPath, "utf8"))
+      .toContain("NO_CANDIDATE_PASSED");
+    const ignored = Bun.spawnSync(
+      ["git", "check-ignore", "--quiet", envelope.data.htmlPath],
+      { cwd: root },
+    );
+    expect(ignored.exitCode).toBe(0);
+    const repeated = invoke([
+      "design", "study", "examples/quadruped",
+      "--study", "embodiment-first-recovery", "--json",
+    ]);
+    expect(JSON.parse(repeated.stdout).data).toMatchObject({
+      id: envelope.data.id,
+      cached: true,
+    });
+  }, 60_000);
 
   test("creates and discovers an independently chartered hexapod project atomically", async () => {
     const workspace = await mkdtemp(resolve(tmpdir(), "mujica-workspace-"));
@@ -1440,8 +1565,13 @@ describe("agent CLI contract", () => {
 
   test("Policy requalification requires byte-identical MJCF and contracts", () => {
     const result = invoke(["policy", "requalify", "examples/quadruped", "--policy", "spatial-residual-locomotion-81df145800cc15c7", "--assembly", "force-sensing-3dof", "--json"]); const envelope = JSON.parse(result.stdout);
-    expect(result.code).toBe(0); expect(envelope.data.id).toBe("spatial-residual-locomotion-q-d3136275b7233448");
+    expect(result.code).toBe(0); expect(envelope.data.id).toMatch(/^spatial-residual-locomotion-q-[0-9a-f]{16}$/);
     expect(envelope.data.proof.oldModelHash).toBe(envelope.data.proof.newModelHash); expect(envelope.data.proof.executionHash).toHaveLength(64);
+    expect(envelope.data.proof.oldModelProvenance).toMatchObject({
+      kind: "transitive-requalification",
+    });
+    expect(envelope.data.proof.oldModelProvenance.policy).toMatch(/^spatial-residual-locomotion-q-[0-9a-f]{16}$/);
+    expect(envelope.data.proof.oldModelProvenance.proofHash).toHaveLength(64);
   });
 
   test("the promoted spatial policy exposes the corrected low-friction failure", () => {

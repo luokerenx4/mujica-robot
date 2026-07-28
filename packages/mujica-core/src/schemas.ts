@@ -108,6 +108,44 @@ export const assemblySchema = z.object({
   components: z.array(z.object({ id: idSchema, component: idSchema, mount: idSchema, config: z.record(z.unknown()).optional() }).strict()),
 }).strict();
 
+const designStudyPoseSchema = z.enum([
+  "fallen-left",
+  "fallen-right",
+  "fallen-front",
+  "fallen-back",
+]);
+
+export const designStudySchema = z.object({
+  version: z.literal(1),
+  id: idSchema,
+  name: z.string().min(1),
+  question: z.string().min(1),
+  samples: z.number().int().min(128).max(65_536),
+  candidates: z.array(z.object({
+    id: idSchema,
+    assembly: idSchema,
+    role: z.enum(["baseline", "candidate"]),
+    hypothesis: z.string().min(1),
+    falsifiedIf: z.string().min(1),
+    expectations: z.object({
+      homeSupportMinimumContacts: z.number().int().nonnegative(),
+      restingPoseMinimumContacts: z.record(
+        designStudyPoseSchema,
+        z.number().int().nonnegative(),
+      ),
+    }).strict(),
+  }).strict()).min(2)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "candidate ids must be unique")
+    .refine((items) => items.filter((item) => item.role === "baseline").length === 1, "exactly one baseline is required"),
+  authorityBoundary: z.object({
+    claim: z.literal("sampled-kinematic-screening"),
+    designAcceptance: z.literal("none"),
+    dynamicCapability: z.literal(false),
+    physicalEvidence: z.literal(false),
+    promotion: z.literal("locked-judge-only"),
+  }).strict(),
+}).strict();
+
 export const controllerSchema = z.discriminatedUnion("kind", [
   z.object({
     version: z.literal(1), id: idSchema, name: z.string().min(1), kind: z.literal("program"), entry: relativeFileSchema,
@@ -1368,6 +1406,7 @@ export const researchReviewSchema = z.object({
 }).strict();
 
 export type ControllerDefinition = z.output<typeof controllerSchema>;
+export type DesignStudyDefinition = z.output<typeof designStudySchema>;
 export type AuthorityProfileDefinition = z.output<typeof authorityProfileSchema>;
 export type DevelopmentCharter = z.output<typeof developmentCharterSchema>;
 export type TaskDefinition = z.output<typeof taskSchema>;
