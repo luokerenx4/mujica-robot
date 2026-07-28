@@ -193,6 +193,9 @@ describe("read-only Studio snapshot", () => {
     expect(html).toContain("read-only evidence debugger");
     expect(html).toContain("Authoritative MuJoCo replay comparison");
     expect(html).toContain('id="comparison-card" hidden');
+    expect(html).toContain('id="replay-controls" aria-label="Synchronized replay controls"');
+    expect(html.indexOf('id="replay-controls"')).toBeLessThan(html.indexOf('id="replay-grid"'));
+    expect(html.indexOf('id="play"')).toBeLessThan(html.indexOf('id="telemetry-a"'));
     expect(html).toContain("Self-righting robot replay · exact fallen pose");
     expect(html).toContain("Single immutable Run; add --compare-run only when a meaningful same-scenario baseline exists.");
     expect(html).toContain("q('#comparison-card').hidden=!B.run");
